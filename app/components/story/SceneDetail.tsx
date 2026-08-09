@@ -703,11 +703,17 @@ export default function SceneDetail({
   night: number;
   glassRail: THREE.Material;
 }) {
+  /* REVERTED 2026-08-09. The grass and the mountain bands shipped and made
+     the scene worse, not better — the grass was a field of single triangles
+     flip-flopping in the wind (one triangle cannot bend, so it can only
+     rotate, which is exactly what it looked like) and it cost real frame
+     time; the ridge bands never read as mountains at any distance. Both are
+     pulled from the mount rather than deleted, so the rebuild in progress
+     has something to diff against. Everything else here — steps, hammock,
+     net lounge, wildlife, bollard lighting, steam, clouds — stays. */
   return (
     <group>
-      <MountainRange />
       <Clouds frozen={frozen} />
-      <GrassField frozen={frozen} />
       <EntranceSteps glassRail={glassRail} />
       <Hammock frozen={frozen} />
       <NetLounge />

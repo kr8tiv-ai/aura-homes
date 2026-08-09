@@ -1200,44 +1200,19 @@ function Forest({ frozen }: { frozen: boolean }) {
   const tealClones = useNormalizedClones(teal.scene, 4.3, TEAL_PINES);
   const rockClones = useNormalizedClones(rocks.scene, 1.4, ROCKS);
 
-  /* Wind + cursor. The original sway was 0.006 rad — about a third of a
-     degree, which is real but invisible. This keeps the same gentle base and
-     adds a slow GUST envelope on top, so the stand breathes rather than
-     ticking like a metronome. The cursor is raycast to the ground once a
-     frame (a maths plane, not geometry) and trees within a few metres lean
-     away from it, which is what makes the canopy feel touchable. */
-  const { camera, pointer } = useThree();
-  const _ray = useMemo(() => new THREE.Raycaster(), []);
-  const _plane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), []);
-  const _hit = useMemo(() => new THREE.Vector3(), []);
-  const _has = useRef(false);
-
+  /* REVERTED 2026-08-09 to the original gentle sway. The amplified version
+     rotated on BOTH z and x, and rotation.x tilts a tree toward and away
+     from the camera — which reads as the whole canopy bobbing up and down
+     rather than bending in wind. Proper side-to-side vertex-shader bend,
+     anchored at the trunk, is being rebuilt separately; until then this is
+     the version that looked right. */
   useFrame(({ clock }) => {
     if (frozen) return;
     const t = clock.elapsedTime;
-    _ray.setFromCamera(pointer, camera);
-    _has.current = !!_ray.ray.intersectPlane(_plane, _hit);
-    // gust envelope: 0.55..1.0, drifting slowly across the whole stand
-    const gust = 0.55 + 0.45 * (0.5 + 0.5 * Math.sin(t * 0.23));
     sway.current.forEach((g, i) => {
       if (!g) return;
-      const base = Math.sin(t * 0.55 + i * 1.7) * 0.019 + Math.sin(t * 1.31 + i * 0.7) * 0.007;
-      const cross = Math.cos(t * 0.42 + i * 2.3) * 0.014;
-      let leanZ = 0;
-      let leanX = 0;
-      if (_has.current) {
-        const dx = g.position.x - _hit.x;
-        const dz = g.position.z - _hit.z;
-        const d = Math.hypot(dx, dz);
-        const push = Math.max(0, 1 - d / 5.5);
-        if (push > 0) {
-          const k = push * push * 0.09;
-          leanZ = (dx / (d || 1)) * k;
-          leanX = -(dz / (d || 1)) * k;
-        }
-      }
-      g.rotation.z = base * gust + leanZ;
-      g.rotation.x = cross * gust + leanX;
+      g.rotation.z = Math.sin(t * 0.4 + i * 1.7) * 0.006;
+      g.rotation.x = Math.cos(t * 0.33 + i * 2.3) * 0.005;
     });
   });
 
