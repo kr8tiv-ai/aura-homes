@@ -43,7 +43,7 @@ Constraint checks are the product's teeth — each one guards a real five-figure
 
 ## app/ — the face
 
-Next.js (app router, TypeScript, Tailwind). Design language: `#050807` ground, emerald `#10b981` accent, teal/violet aurora highlights, off-white `#e7ece9` type, hairline borders, uppercase tracked labels, no crypto-glow clutter. Pages map 1:1 to the pipeline stages; wallet flow via wagmi/viem with hand-defined X Layer chains (both networks). Normie-first: CAD-readable pricing everywhere, wallet complexity progressively disclosed, account abstraction on the roadmap (X Layer's documented AA stack: Particle Network + Safe — Pimlico does not support chain 196).
+Next.js (app router, TypeScript, Tailwind). Design language (light-first per BRAND.md v3): paper `#fafaf9` ground, ink `#171a18` type, emerald `#10b981` accent (AA-dark variants for body text), violet rationed to on-chain surfaces, hairline borders, uppercase tracked labels, no crypto-glow clutter; dark survives only inside framed media and the favicon chip. Pages map 1:1 to the pipeline stages; wallet flow via wagmi/viem with hand-defined X Layer chains (both networks). Normie-first: CAD-readable pricing everywhere, wallet complexity progressively disclosed, account abstraction on the roadmap (X Layer's documented AA stack: Particle Network + Safe — Pimlico does not support chain 196).
 
 ## data/ — the spine
 

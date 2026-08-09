@@ -51,7 +51,7 @@ function BudgetBand() {
           <span key={s}>{s}</span>
         ))}
       </div>
-      <p className="story-band-basis">Computed for a 780 sq ft SIP build, Alberta suppliers, 2026 pricing.</p>
+      <p className="story-band-basis">Computed for an 800 sq ft SIP build, Alberta suppliers, 2026 pricing.</p>
     </div>
   );
 }

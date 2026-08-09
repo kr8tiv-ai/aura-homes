@@ -200,4 +200,48 @@ Pipeline stages (VISION.md:26–34):
 
 ---
 
-*Next audit: append `## Audit #4 — <date>` below this line. Do not edit prior audits.*
+## Audit #4 — 2026-08-09 (post-white-flip)
+
+**Method:** fresh-context full verification after the light-brand flip and the white 3D site, per the founder's standing order. Delta since Audit #3 plus the standing anchors — everything below executed or fetched live, nothing accepted from docs. Note: the landing agent was actively committing during this audit (`6c74cab` "Entry-scene elevation" landed and pushed mid-pass); one app build attempt collided with it (corrupted `.next`, `clientModules` TypeError) — a clean rebuild then passed twice, so the anchor is green and the failure was contention, not code.
+
+**Anchors — ALL GREEN, executed this pass:**
+- contracts `npx hardhat test` — **10 passing** (escrow happy path, holdback maturity revert, 2-of-3, arbiter tie-break, cancel; registry mint/permissions).
+- agent `npm run demo` — **LOW $199,100 / MID $301,280 / HIGH $443,900 ex-land** — equals `data/alberta/cost-model.json` to the dollar; sums re-verified by hand this pass (181,000×1.10 / 269,000×1.12 / 386,000×1.15; inc-land = ex-land + 75/150/350K exactly). Lakeside Estates **REJECT** intact (1,076 vs 800 sqft, district-not-county wording); 2 constraint notes (winter battery floor 30→42 kWh, SIP chase freeze).
+- agent `npm run brain` — journey state, **4 slips (1 CRITICAL)**, digest renders with reconciling money position; `npm run memory` — **MEMORY DEMO PASSED** (all PASS checks green); `npm run mcp:smoke` — 402 challenge on eip155:1952 / native testnet USDC `0xDec9…b9B3` / $0.01, honest simulated-settlement receipt, **SMOKE PASSED**.
+- app `npm run build` — ✓ 10/10 static pages, 8 routes (/, /_not-found, /budget, /dashboard, /design, /escrow, /land, /overview); `GH_PAGES=1 npm run build` — ✓ exit 0, `out/` complete with CNAME.
+
+**Live web — verified over the wire:**
+- **7/7 pages 200 over HTTPS** at aurahomes.fun (/, /land, /design, /budget, /escrow, /dashboard, /overview); **http→https 301** confirmed.
+- The served homepage IS the white 3D journey site: beats `01 · Land` … `05 · Build`, in-scene **"Step inside the dashboard →"** and end-CTA **"Open the build dashboard →"** — matching `app/components/story/copy.ts` exactly.
+- GitHub repo og:image serves from repository-images.githubusercontent.com — **downloaded and inspected: the LIGHT card** (paper ground, light-native mark, ink/emerald wordmark). README on main: **all 11 image refs resolve** (6 shields badges with light labelColor + hero/section-rule/pipeline/budget-bands/escrow-flow); `hero.png` inspected — light, LAND-first 5-stage strip.
+- Live RPC: `eth_chainId` **0x7a0 (1952)**; deployer `0x831F…f260` **balance 0x0, nonce 0x0** — testnet deploy still faucet-gated (captcha), unchanged.
+- `x.com/AuraHomesAI` → **404** — account still uncreated, expected human gate.
+- GitHub issue **#3 CLOSED** (2026-08-09T21:28Z, Parkland/Sturgeon minimums verified); #1, #2, #4–#7 remain open.
+
+**White-flip verification:**
+- BRAND.md is **v3 light-first** with the "Benchmarked against the best (Aug 2026)" subsection (Apple/Stripe/Linear/Airbnb five-pattern check) ✓.
+- AI-HANDOFF rule 7 records **light-as-canonical** (Aug 9, founder's standing direction) and carries the four newest never-un-learn bullets: **Aura-AI brand collision** (Rkcr7 proctoring-evasion repo), **elevated-floor R-28.5 rule**, **crypto rails hidden in consumer UX**, **"AI is the architect" legally impossible → review-ready package + productized seal** ✓.
+- Dark-mandate grep across README + docs: README clean; **three stragglers found and fixed this pass** (see fixes).
+- **One white-flip MISS found at the app layer** (contradiction #2 below): the live site's own og:image is still the dark pre-flip card.
+
+**NotebookLM integration — verified:**
+- cost-model.json `unbudgetedItemsIdentified`: **3 entries** (elevated-floor assembly over unheated space, P.Eng screw-pile stamp as its own line, deeper piles on wind-washed bare soil), **no amounts (TBD)**, totals **UNCHANGED at 199,100/301,280/443,900** ✓.
+- ALBERTA-PLAYBOOK: **green financing** (CEIP with verified municipal rates and the corrected Greener-Homes **$40K** cap, CMHC refund), **grid-tied tier truth** (~35¢/kWh Solar Club exports, AR 27/2008 100–110% sizing, Pre-Solar 180-day enrollment), **Notarius/ConsignO + ASET P.Tech** stamping path, **verified Parkland** (only minimum in the LUB is the 30.0 m² accessory-suite floor; principal dwellings none) and **Sturgeon** (minimums eliminated except R2 Country Estate 1,076 sqft; "strongest pilot jurisdiction") ✓.
+- OPEN-QUESTIONS holds the two strategic forks: **#10 A277 factory-modular vs site-built SIP**, **#11 off-grid flagship vs grid-tied default** ✓ (+ #12 code follow-up for the Sturgeon sample parcel, correctly assigned to the agent package owner).
+
+**Deltas since Audit #3 (all verified):** the white flip landed end-to-end (BRAND v3, condensed light README, light GitHub card, white 3D journey site deployed at aurahomes.fun with dashboard docking); NotebookLM insights integrated (b910f8d); custom domain live with HTTPS + 301; Audit #3's CREDITS flag **resolved** (all 6 GLBs in `app/public/models/` have rows incl. `lantern.glb`, and the new `forest-ambience.mp3` is credited founder-owned); Audit #2's stale `pipeline.ts` $185K comment **gone**; Audit #2 GAP #3 **CLOSED** — the escrow page now renders the Financing panel (Aave V3 on X Layer + Ledn, "Educational, not financial advice") and it is **served live** at aurahomes.fun/escrow/.
+
+**New contradictions found, with fixes:**
+1. **The story page's budget-band basis says "780 sq ft"** (`app/components/story/Story.tsx:54`, committed on main AND served live) — the reference build is **800 sqft** everywhere else (cost-model `referenceHome`, README §BUDGET/FIG.3/district-trap, the demo design, the REJECT copy). One-line fix, 780 → 800 — **app source, owner: main session/landing agent** (this audit does not touch `app\`).
+2. **The live site's og:image is still the DARK pre-flip card.** `app/public/social-card.png` (1280×640, night render) is what aurahomes.fun serves as og:image + twitter:image; the light **`assets/site-card.png` (1200×630) exists but was never copied into `app/public/`**, and `app/app/layout.tsx:23` declares 1200×630 for the 1280×640 file. Every share of aurahomes.fun renders dark — the one surviving dark marketing surface. Fix: copy `assets/site-card.png` → `app/public/site-card.png`, point `layout.tsx` og/twitter images at `/site-card.png` (declared dims become true), redeploy Pages — **owner: main session/landing agent**. BRAND.md:127 annotated meanwhile so the doc no longer states intent as fact.
+3. **VISION.md:23 still mandated "same dark premium design language"** — the last dark-only mandate in the repo, contradicting BRAND v3 + AI-HANDOFF rule 7. **Fixed this pass** using the vision doc's own inline-correction pattern: records the founder's Aug 9 dark→light pivot and points to BRAND.md v3.
+4. **ARCHITECTURE.md:46 described the app's design language as the dark system** (`#050807` ground, off-white type) as current fact. **Fixed this pass**: rewritten light-first (paper/ink/emerald, violet rationed to on-chain, dark only inside framed media + favicon chip), per BRAND.md v3.
+5. **SEO.md §5.2 specified `theme-color #050807`** (pre-flip) for the white site. **Fixed this pass**: → `#fafaf9`. (Minor observation, not a defect: the deployed app emits no theme-color meta at all; adding it rides with fix #2's redeploy.)
+
+**Fixes applied this pass (docs only, per the never-touch-source rule):** VISION.md:23 pivot annotation; ARCHITECTURE.md:46 light-first rewrite; SEO.md theme-color; BRAND.md:127 spec-vs-live annotation. Nothing in `app\`, `agent\`, `contracts\`, or `data\` was modified; cost-model arithmetic re-verified untouched.
+
+**Verdict — pass/fail per category:** anchors **PASS** (contracts 10/10, demo reconciles to the dollar, brain/memory/smoke green, both app builds green); live site **PASS** (7/7 + 301 + journey content + light GitHub card + README assets); white flip **PASS with one app-layer miss** (the dark live og:image, fix #2); NotebookLM integration **PASS** (all five artifacts verified); human gates **UNCHANGED** (faucet 0 OKB / nonce 0; @AuraHomesAI uncreated). **12 days to the Aug 21, 23:59 UTC deadline.** Critical path per SUBMISSION.md, still entirely founder-side: claim the faucet (30-second captcha) → `npm run deploy:testnet` → create @AuraHomesAI → build-in-public posts → demo video → submit. The repo-side items for the next session's hands: Story.tsx 780→800, the site-card swap + Pages redeploy.
+
+---
+
+*Next audit: append `## Audit #5 — <date>` below this line. Do not edit prior audits.*

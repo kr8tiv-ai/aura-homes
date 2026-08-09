@@ -135,7 +135,7 @@ Title (54 chars), description (149 chars), verified under the 60/155 limits:
 <title>Aura Homes — AI-designed off-grid eco homes in Alberta</title>
 <meta name="description" content="An open-source AI agent that takes you from USDC on X Layer to the keys of an off-grid eco home in Alberta — land, design, budget, escrow, and build.">
 <link rel="canonical" href="https://aurahomes.fun/">
-<meta name="theme-color" content="#050807">
+<meta name="theme-color" content="#fafaf9">
 
 <!-- Open Graph -->
 <meta property="og:type" content="website">

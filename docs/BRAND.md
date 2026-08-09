@@ -124,7 +124,7 @@ Restraint, again. Vocabulary from MengTo's kage scroll-craft (credited in [CREDI
 
 - `assets/social-card.png` (1280×640) and `assets/site-card.png` (1200×630): paper ground, light-native mark left, ink wordmark with emerald `HOMES`, emerald-deep domain, hairline divider, KR8TIV lockup closing. The template for every card — swap the chip row per context.
 - Chips are outlined hairline pills, never filled; one emerald, one violet, one neutral — maximum three.
-- The Pages site serves `site-card.png` as `og:image`; light OG cards are fine and distinctive in a dark-mode feed.
+- The Pages site serves `site-card.png` as `og:image`; light OG cards are fine and distinctive in a dark-mode feed. *(Spec, not yet live: as of Aug 9 the deployed site still serves the pre-flip dark `social-card.png` — copy `assets/site-card.png` to `app/public/` and point `layout.tsx` at it. Flagged in Audit #4.)*
 - Favicon/avatar: the dark chip (§3).
 
 ## 11. Sources
