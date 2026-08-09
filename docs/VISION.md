@@ -14,6 +14,7 @@
 4. **LAND as a first-class step** — find the land, filter it for what the build needs (district minimum dwelling size, aquifer reliability, power-line proximity, septic suitability), then acquire it — USDC in, title out.
 5. **The AI is the architect** — an AI design process produces the home design; existing eco-home designs can be adapted; third-party software integrated where necessary and paid for in USDC (x402/agent-payments style).
 6. **Off-grid everything, grid-optional** — solar power, an AWG unit **standard on every home** *(plumbed into the water loop as the summer producer; cistern/well carries winter — physics is physics)*, off-grid sewage and greywater handled eco-first, wood stove heat. Every home connectable to grid later.
+6b. **No-concrete foundations** — homes stand on driven/screw piles protected against any leaching into the ground; conventional concrete is avoided everywhere possible, and where a concrete-like material is genuinely needed, hempcrete (hemp-lime) is the preference. Nothing the build touches may affect the water table. (Happy alignment: protected steel screw piles are already the cheaper option in Alberta — see the foundations research.)
 7. **The lifestyle layer** — every home includes a wood-fired hot tub and a beautiful deck. These homes must be desirable, not worthy-but-dull.
 8. **One-click feel, card-first** — answer questions, get a designed home, fund it, watch it build. Normies must be able to use it: **someone with zero crypto pays by Visa** and the app converts to USDC in-flow (no exchange account ever required — build as if the exchange gap doesn't exist, because for our users it won't); no visible crypto complexity, prices readable in CAD, token (if ever) invisible behind the scenes.
 9. **Alberta pilot, Canada first** — start in Alberta, source everything locally in Alberta wherever possible; buy elsewhere only what Alberta cannot supply. Cut out middlemen everywhere.
@@ -32,7 +33,7 @@
 2. **DESIGN** — questionnaire → AI architect → review-ready design package (SIP catalog, code-constraint checked: Part 9, zone 7A, FDWR).
 3. **BUDGET** — live Alberta-first line-item budget, LOW/MID/HIGH, no middlemen, real supplier directory.
 4. **ESCROW** — USDC milestone escrow on X Layer with Alberta's statutory 10% holdback modeled on-chain; build record minted as a non-financial RWA NFT.
-5. **BUILD** — orchestrated permits, professionals, materials, milestones; each completion updates the on-chain record.
+5. **BUILD** — orchestrated permits, professionals, materials, milestones; each completion updates the on-chain record. Every work package offers the choice: **do it yourself** (the app guides; `ownerBuildable` lines are flagged in the cost model) or **hire it out** — in which case the app runs a wide internet-scale contractor research sweep (ratings, reviews, trade records, the supplier directory), triggered automatically once engineering + architecture + the per-build feasibility check are complete, and returns a ranked shortlist per trade.
 
 ## The ambition horizon
 

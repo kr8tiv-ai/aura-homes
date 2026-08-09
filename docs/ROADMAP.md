@@ -21,6 +21,7 @@
 - Partner bench signed: residential designer, P.Eng, Insulspan/EnerSmart quote pipeline, 2 solar installers, 2 septic designers, McLeod Law.
 - Account abstraction (Particle + Safe on X Layer) — invisible wallets; **card-first on-ramp integration** (MoonPay/Transak/Banxa evaluation: X Layer support, Canadian card success rates, KYC depth) so a Visa is all anyone needs; CAD display everywhere.
 - The Aura Brain, phase 1 (per [AI-BRAIN.md](AI-BRAIN.md)): journey state machine + MCP server extraction + email digests + slip-rule library + outcome logging.
+- **Contractor scout**: the DIY-or-hire toggle on every budget line (`ownerBuildable` is already in the data), plus the per-build contractor research sweep — a fan-out agent workflow (per-trade researchers → review/rating verification → ranked shortlist) that runs at the engineering-complete stage gate. Sweep results cache into the supplier directory so the network compounds with every build.
 
 ## Phase 2 — product (2027)
 
