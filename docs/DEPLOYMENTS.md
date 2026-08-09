@@ -1,5 +1,12 @@
 # Deployments
 
+## Custom domain — aurahomes.fun (LIVE DNS, 2026-08-09)
+
+**The site's home is [aurahomes.fun](https://aurahomes.fun).** Configured end-to-end:
+- Hostinger DNS zone (set via hPanel; the API token is expired — OPEN-QUESTIONS #9): apex `A @` → GitHub Pages IPs `185.199.108.153 / 109.153 / 110.153 / 111.153` (TTL 14400), `CNAME www` → `kr8tiv-ai.github.io` (TTL 300); the parking record deleted.
+- GitHub Pages: `CNAME` file on `gh-pages` + custom domain registered on the repo. HTTPS cert auto-provisions after DNS propagates (15 min–24 h); then enforce HTTPS (`gh api -X PUT repos/kr8tiv-ai/aura-homes/pages -F https_enforced=true`).
+- **Build-mode rule:** with the custom domain, the site serves at the domain ROOT — deploys now build **without** the `/aura-homes` basePath (`GH_PAGES=1` keeps the export mode; the basePath only applies when no custom domain is set). The old kr8tiv-ai.github.io/aura-homes URL 301s to the domain.
+
 ## Hosted web demo — GitHub Pages (decision 2026-08-09)
 
 **LIVE: [https://kr8tiv-ai.github.io/aura-homes/](https://kr8tiv-ai.github.io/aura-homes/)** — all five pipeline pages verified serving (200): landing, /land, /design, /budget, /escrow, plus /dashboard. Ships from the `gh-pages` branch (static export: `GH_PAGES=1 npm run build` in `app/`, output pushed to the branch — no workflow file, no server). The Hostinger API token on this machine is expired (401 — re-mint is a founder task, tracked in OPEN-QUESTIONS); if re-minted later a custom domain can front this, but Pages is fully sufficient for judging.

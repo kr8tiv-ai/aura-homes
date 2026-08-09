@@ -144,4 +144,60 @@ Pipeline stages (VISION.md:26–34):
 
 ---
 
-*Next audit: append `## Audit #3 — <date>` below this line. Do not edit prior audits.*
+## Audit #3 — 2026-08-09 (leave nothing undone)
+
+**Method:** the full session's 24-item founder ledger, graded adversarially with executed anchors — nothing accepted from docs alone. `app\` untouched (live agent is rebuilding it); app-level visual items graded IN-FLIGHT per the founder's order.
+
+**Anchors executed this pass (all green):**
+- agent `npm run demo` — LOW **$199,100** / MID **$301,280** / HIGH **$443,900** ex-land; Lakeside Estates **REJECT** (1,076 sqft Country Residential minimum vs 800 sqft design, district-not-county wording intact); 2 constraint notes (winter battery floor, SIP chase freeze).
+- agent `npm run brain` — journey state, 4 slips (1 CRITICAL), guidance, digest; `npm run memory` — **PASSED, 27 PASS checks printed** (session logs said 26 — actual count is one higher, all green); `npm run mcp:smoke` — **11 tools incl. `journey_memory`**, x402 paid tier: 402 challenge on eip155:1952 / native testnet USDC / $0.01, honest simulated-settlement receipt, **SMOKE PASSED**.
+- contracts `npx hardhat test` — **10 passing**; `npm run demo:lifecycle` — fund → 2-of-3 → 90/10 release → early holdback grab **REVERTED HoldbackNotMatured()** → +60d release → arbiter tie-break on milestone 2 → **RECONCILED TO THE DOLLAR: YES**.
+- cost-model sums re-verified by hand: 181,000×1.10 / 269,000×1.12 / 386,000×1.15 = the published totals, AWG line included; inc-land = ex-land + 75/150/350K exactly.
+- git: `main` == `origin/main` @ 721ee3d, all commits authored Matt-Aurora-Ventures <lucidbloks@gmail.com>; only `app\` files dirty/untracked (owned by the live landing agent) — Audit #2's "push the fixes" flag is resolved.
+- Live web: **6/6 Pages URLs 200** (/, /land, /design, /budget, /escrow, /dashboard); GitHub og:image serves from `repository-images.githubusercontent.com` (social card set); **7 open issues (#1–#7) + 11 repo topics** live via API.
+- Live RPC: deployer `0x831F…f260` balance **0x0**, nonce **0x0** — testnet deploy still pending the faucet captcha.
+- `claude mcp list`: **blender ✓ Connected**; scheduled-tasks registry: **aura-vision-audit registered, cron `0 7 */2 * *` (every 2 days, 7 AM), enabled, next run Aug 10** — the recurrence Audit #2 called a GAP now exists as a mechanism.
+
+**Scorecard — 24 ledger items: DONE 22 · IN-FLIGHT 1 · HUMAN-GATED 1 · GAP 0**
+
+| # | Item | Grade | Evidence (anchor) |
+|---|---|---|---|
+| 1 | Feasibility study + win assessment | DONE | FEASIBILITY.md incl. odds/collisions; Audit #2 verified §1 |
+| 2 | Public MIT repo, authorship, hackathon README | DONE | git/API verified; LICENSE MIT; README §14 + footer credit |
+| 3 | Logo family, brand, BRAND.md, typography v2 | DONE | assets/ present; BRAND.md type table (Space Grotesk/Manrope/JetBrains Mono, OFL); in-app application rides the landing rebuild |
+| 4 | Social preview card set on GitHub | DONE | live og:image = repository-images URL |
+| 5 | README WorldClaw rhythm, no-concrete, DIY-or-hire, agent-first | DONE | 427 lines; kickers 01–19; FIG. 1–4; §01 no-concrete para; §01/§05 DIY-or-hire |
+| 6 | AWG standard + totals reconcile everywhere | DONE | demo = cost-model = README table/FAQ = FEASIBILITY §6 (~$199K/$301K/$444K); one stale parenthetical fixed (below) |
+| 7 | Card-first Visa + Wealthsimple truth + Aave/Ledn | DONE | README §06 + honesty table; FEASIBILITY; suppliers.json financing entries |
+| 8 | No-concrete research + playbook + README + VISION 6b | DONE | research/FOUNDATIONS-NO-CONCRETE.md; cost-model foundation basis; VISION.md:17 |
+| 9 | Greywater product spec (biofilter + drip, SOP 8.5) | DONE | cost-model septic line (Ecoflo + subsurface drip, SOP 8.5); types.ts; brain guidance; MCP fact — **closes Audit #2 GAP #1** |
+| 10 | DIY-or-hire + contractor sweep | DONE | README:47, VISION:36, ROADMAP:24, issue #7 open |
+| 11 | LAND first-class + district-minimum REJECT | DONE | demo + MCP `check_parcel` both REJECT; /land live |
+| 12 | Escrow + registry 10/10, lifecycle demo reconciles | DONE | executed this pass, output above |
+| 13 | Testnet deploy | **HUMAN-GATED** | faucet captcha only; 0 OKB / nonce 0 re-verified; DEPLOYMENTS.md one-command path intact |
+| 14 | GitHub Pages demo live | DONE | 6/6 200s; deploy predates the landing rebuild — **redeploy Pages after it lands** |
+| 15 | Aura Brain + memory pipeline + AI-BRAIN.md | DONE | brain/memory green; Memory section + @0xWast3 credit at AI-BRAIN.md:15 |
+| 16 | MCP server 11 tools + x402 metering | DONE | smoke output above |
+| 17 | TOKEN-RESEARCH + TOKEN-DESIGNS (5) + USDC-pair flag | DONE | 5 architectures §§1–5; OPEN-QUESTIONS #8 |
+| 18 | Graph doctrine + recurring 48h audit task | DONE | GRAPH-ENGINEERING.md; task registered + enabled — **closes Audit #2 GAP #2** |
+| 19 | Blender MCP installed/connected/documented | DONE | research/BLENDER-MCP.md; `claude mcp list` Connected |
+| 20 | Submission package current | DONE | SUBMISSION.md complete; demo link live; contracts correctly marked pending faucet |
+| 21 | Contributor flywheel: 7 issues + topics | DONE | verified via API |
+| 22 | WorldClaw verdict (skip; no license) | DONE | research/WORLDCLAW.md |
+| 23 | CREDITS.md exists + complete | **IN-FLIGHT** | file exists, non-empty (MengTo + all GLBs); the live agent added the `lantern.glb` row (CC0, Kay Lousberg) mid-audit — complete as of this writing, but the rebuild is still running and nothing is committed, so the final check belongs to the pre-commit pass |
+| 24 | Vault bullet | DONE (noted) | top log bullet 2026-08-09 records the session and names this audit in-flight; parent session owes one closing bullet when the rebuild + audit conclude |
+
+**Small fixes applied this pass (docs only):**
+1. FEASIBILITY.md §6 totals note said "(optional AWG module excluded)" — false both ways: the AWG is standard (not optional) and the computed totals *include* it. Rewritten to match cost-model.json's totalsRule. Sums re-verified after the edit.
+
+**Flags (not gaps — routed, not dropped):**
+- `lantern.glb` credit landed mid-audit (item 23) — verify the CREDITS table still covers every file in `app/public/models/` at the pre-commit pass, since the rebuild is still adding assets.
+- Pages redeploy after the landing rebuild lands (item 14) — owner: landing agent / next session.
+- Audit #2 GAP #3 (in-app financing panel rendering the Aave/Ledn entries) is **still open at the app layer** — grep of `app\` finds no Aave/Ledn/financing surface. Not in this ledger's 24 items (item 7 requires documentation, which is done), but it must not vanish: assign to the landing agent's brief or the next session.
+- CREDITS.md is cross-linked only from BRAND.md; a README repo-map row would aid discoverability (README is outside this pass's fix zone).
+
+**Verdict:** zero GAPs. 22 of 24 done with executed evidence; the one IN-FLIGHT item is owned by a live agent; the one HUMAN-GATED item is a 30-second captcha. Both of Audit #2's repo-side gaps (greywater, audit recurrence) are verifiably closed; its third rides with the app rebuild. The critical path to submission is unchanged and entirely founder-side: **claim the faucet, deploy to 1952, create @AuraHomesAI, submit.**
+
+---
+
+*Next audit: append `## Audit #4 — <date>` below this line. Do not edit prior audits.*

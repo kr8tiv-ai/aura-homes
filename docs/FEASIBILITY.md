@@ -97,7 +97,7 @@ Reference build (800 sqft off-grid SIP, Edmonton ring):
 | **Total ex-land** (computed: Σ lines × contingency) | **~$199K** | **~$301K** | **~$444K** |
 | **Total with land** | **~$274K** | **~$451K** | **~$794K** |
 
-*Totals are computed from the line items above (optional AWG module excluded) — the machine-readable model in [data/alberta/cost-model.json](../data/alberta/cost-model.json) carries the same rule, so the app, the docs, and a judge's calculator always agree. The original research sweep's rounded envelope ($185–465K ex-land) sits within these bands.*
+*Totals are computed from the line items above (every line included — the AWG module is standard on every home, no line is optional) — the machine-readable model in [data/alberta/cost-model.json](../data/alberta/cost-model.json) carries the same rule, so the app, the docs, and a judge's calculator always agree. The original research sweep's rounded envelope ($185–465K ex-land) sits within these bands.*
 
 A conventional builder delivers the same home at $450–650K ex-land — the owner-builder path Aura orchestrates saves $150–250K in exchange for 12–24 months of sweat. Platform revenue: x402-style micro-fees on design runs + flat "ridiculously affordable" package fees in USDC. Deliberately no commission on materials — the no-middlemen principle is the brand.
 

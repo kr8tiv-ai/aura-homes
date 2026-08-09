@@ -17,7 +17,9 @@
 [![License](https://img.shields.io/badge/license-MIT-e7ece9?style=flat-square&labelColor=050807)](LICENSE)
 [![Made in](https://img.shields.io/badge/pilot-Alberta,_Canada-a3e635?style=flat-square&labelColor=050807)](docs/ALBERTA-PLAYBOOK.md)
 
-[The vision](docs/VISION.md) · [Feasibility study](docs/FEASIBILITY.md) · [Architecture](docs/ARCHITECTURE.md) · [Roadmap](docs/ROADMAP.md) · [Hackathon submission](docs/SUBMISSION.md) · [Brand](docs/BRAND.md) · [Continue this with any AI](docs/AI-HANDOFF.md)
+**▶ [LIVE — aurahomes.fun](https://aurahomes.fun)** — the demo, hosted and open.
+
+[The vision](docs/VISION.md) · [Feasibility study](docs/FEASIBILITY.md) · [Architecture](docs/ARCHITECTURE.md) · [Roadmap](docs/ROADMAP.md) · [Hackathon submission](docs/SUBMISSION.md) · [Brand](docs/BRAND.md) · [Credits](docs/CREDITS.md) · [Continue this with any AI](docs/AI-HANDOFF.md)
 
 <sub>A **KR8TIV AI** product · sibling of Aura-H2O, Aura-Farms, and AuraBNB</sub>
 
