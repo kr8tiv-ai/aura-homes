@@ -22,6 +22,7 @@ used within its license terms; nothing here carries NC or ND restrictions.
 | `pine-teal.glb` | Pine Tree | Danni Bittman | [CC-BY 3.0](https://creativecommons.org/licenses/by/3.0/) | [poly.pizza/m/2Qo-fmVKuSG](https://poly.pizza/m/2Qo-fmVKuSG) |
 | `campfire.glb` | Campfire | Poly by Google | [CC-BY 3.0](https://creativecommons.org/licenses/by/3.0/) | [poly.pizza/m/0vzzmM-t8CP](https://poly.pizza/m/0vzzmM-t8CP) |
 | `rocks.glb` | Rocks | [Quaternius](https://quaternius.com/) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | [poly.pizza/m/OQvi8PIZ40](https://poly.pizza/m/OQvi8PIZ40) |
+| `lantern.glb` | Lantern (Halloween Bits pack) | [Kay Lousberg](https://kaylousberg.com/) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | [poly.pizza/m/CtHBJ1ufeW](https://poly.pizza/m/CtHBJ1ufeW) |
 
 Attribution for the CC-BY models: "Cabin" and "Campfire" by **Poly by Google**,
 "Pine Tree" by **Danni Bittman**, all via [Poly Pizza](https://poly.pizza/).

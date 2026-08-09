@@ -22,8 +22,8 @@ export default function LandPage() {
   return (
     <div className="py-16">
       <p className="aura-label mb-4">Land discovery</p>
-      <h1 className="text-3xl font-semibold">Find land that passes</h1>
-      <p className="mt-3 max-w-xl text-sm text-aura-text/60">
+      <h1 className="font-display text-[2.35rem] font-medium leading-[1.08] tracking-[-0.025em]">Find land that passes</h1>
+      <p className="mt-4 max-w-xl text-[0.95rem] leading-[1.65] text-aura-text/75">
         Every parcel is checked against the district land-use bylaw, aquifer reliability,
         grid distance, and septic soils before you spend a dollar on it.
       </p>
@@ -49,7 +49,7 @@ export default function LandPage() {
             <option value="well">Drilled well</option>
           </select>
         </label>
-        <p className="ml-auto text-xs uppercase tracking-label text-aura-text/50">
+        <p className="ml-auto text-xs uppercase tracking-label text-aura-text/70">
           {results.length > 0
             ? `${passCount} of ${results.length} parcels pass`
             : "Enter a design size"}
@@ -62,7 +62,7 @@ export default function LandPage() {
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold">{parcel.name}</p>
-                <p className="mt-1 text-xs text-aura-text/50">
+                <p className="mt-1 text-xs text-aura-text/70">
                   {parcel.county} &middot; {parcel.district} district
                   {parcel.acreage ? ` · ${parcel.acreage} acres` : ""}
                 </p>
@@ -80,7 +80,7 @@ export default function LandPage() {
                 </span>
               </div>
             </div>
-            <div className="mt-4 grid gap-x-8 gap-y-1 text-xs text-aura-text/50 md:grid-cols-3">
+            <div className="mt-4 grid gap-x-8 gap-y-1 text-xs text-aura-text/70 md:grid-cols-3">
               <p>
                 District minimum:{" "}
                 {parcel.minDwellingSizeSqft
@@ -108,7 +108,7 @@ export default function LandPage() {
         ))}
       </div>
 
-      <p className="mt-8 text-xs text-aura-text/40">
+      <p className="mt-8 text-xs text-aura-text/65">
         Sample listings researched Aug 2026 (realtor.ca). District minimums: Lac Ste. Anne
         Agricultural 592 sqft, Country Residential 1,076 sqft — always verify the parcel
         district before purchase.

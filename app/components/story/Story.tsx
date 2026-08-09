@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { useEffect, useRef, useState } from "react";
-import { HERO, BEATS, END } from "./copy";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { HERO, BEATS, END, BUILD_CTA } from "./copy";
+import { withBase } from "../../lib/basePath";
 
 const StoryCanvas = dynamic(() => import("./StoryCanvas"), { ssr: false });
 
@@ -76,7 +78,24 @@ export default function Story() {
   const sectionsRef = useRef<(HTMLElement | null)[]>([]);
   const [reduced, setReduced] = useState<boolean | null>(null);
   const [active, setActive] = useState(0);
+  const [leaving, setLeaving] = useState(false);
   const activeRef = useRef(0);
+  const router = useRouter();
+
+  /* Story -> app: dip to the app's dark ground, then route. The scene
+     doesn't hard-cut — the world fades and the tool takes over. */
+  const enterApp = useCallback(
+    (href: string) => (e: React.MouseEvent) => {
+      e.preventDefault();
+      if (reduced) {
+        router.push(href);
+        return;
+      }
+      setLeaving(true);
+      window.setTimeout(() => router.push(href), 520);
+    },
+    [reduced, router]
+  );
 
   // Reduced-motion watch — the scene falls back to a still beauty shot.
   useEffect(() => {
@@ -169,6 +188,7 @@ export default function Story() {
       <div className="story-sky" aria-hidden />
       {reduced !== null && <StoryCanvas progressRef={progressRef} reduced={reduced} />}
       <div className="story-grain" aria-hidden />
+      <div className={`story-veil${leaving ? " on" : ""}`} aria-hidden />
 
       {/* progress rail */}
       <nav className="story-rail" aria-label="Story progress">
@@ -195,6 +215,8 @@ export default function Story() {
           className="story-hero story-rv-group"
         >
           <div className="story-hero-inner">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={withBase("/aura-mark.png")} alt="" className="story-mark" data-rv />
             <p className="story-label" data-rv>
               {HERO.label}
             </p>
@@ -229,6 +251,18 @@ export default function Story() {
               </p>
               {b.id === "budget" && <BudgetBand />}
               {b.id === "escrow" && <EscrowLine />}
+              {b.id === "build" && (
+                <Link
+                  href={BUILD_CTA.href}
+                  onClick={enterApp(BUILD_CTA.href)}
+                  className="story-cta"
+                  data-rv
+                  style={{ transitionDelay: "380ms" }}
+                >
+                  {BUILD_CTA.label}
+                  <i aria-hidden>&rarr;</i>
+                </Link>
+              )}
             </div>
           </section>
         ))}
@@ -241,13 +275,25 @@ export default function Story() {
           className="story-end story-rv-group"
         >
           <div className="story-end-inner">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={withBase("/aura-mark.png")} alt="" className="story-mark story-mark-end" data-rv />
             <p className="story-wordmark" data-rv>
               Aura <em>Homes</em>
             </p>
             <Reveal className="story-display story-end-tagline" text={END.tagline} />
-            <nav className="story-end-links" data-rv style={{ transitionDelay: "300ms" }} aria-label="Product">
+            <div data-rv style={{ transitionDelay: "260ms" }}>
+              <Link
+                href={END.cta.href}
+                onClick={enterApp(END.cta.href)}
+                className="story-cta story-cta-primary"
+              >
+                {END.cta.label}
+                <i aria-hidden>&rarr;</i>
+              </Link>
+            </div>
+            <nav className="story-end-links" data-rv style={{ transitionDelay: "380ms" }} aria-label="Product">
               {END.links.map((l) => (
-                <Link key={l.href} href={l.href}>
+                <Link key={l.href} href={l.href} onClick={enterApp(l.href)}>
                   {l.label}
                 </Link>
               ))}
@@ -255,8 +301,13 @@ export default function Story() {
             <p className="story-label story-end-season" data-rv style={{ transitionDelay: "420ms" }}>
               {END.season}
             </p>
-            <p className="story-end-credit" data-rv style={{ transitionDelay: "520ms" }}>
-              A KR8TIV AI product · MIT ·{" "}
+            <div className="story-kr8tiv" data-rv style={{ transitionDelay: "500ms" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={withBase("/kr8tiv-badge.png")} alt="KR8TIV AI" />
+              <span>A KR8TIV AI product</span>
+            </div>
+            <p className="story-end-credit" data-rv style={{ transitionDelay: "580ms" }}>
+              MIT ·{" "}
               <a href={END.creditsUrl} target="_blank" rel="noreferrer">
                 scene inspired by MengTo&apos;s kage (credited)
               </a>

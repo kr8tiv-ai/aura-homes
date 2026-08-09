@@ -3,14 +3,29 @@
 @tailwind utilities;
 
 :root {
-  --aura-bg: #050807;
-  --aura-panel: #0b1210;
-  --aura-text: #e7ece9;
-  --aura-emerald: #10b981;
-  --aura-teal: #2dd4bf;
-  --aura-violet: #8b5cf6;
-  --aura-lime: #a3e635;
-  --aura-border: rgba(16, 185, 129, 0.18);
+  /* Light, paper-ground system (Aug 2026 pivot) — ink on paper, emerald as
+     THE accent, violet rationed to on-chain surfaces. */
+  --aura-bg: #fafaf9;
+  --aura-panel: #ffffff;
+  --aura-text: #1a1d1b;
+  --aura-emerald: #087a55;
+  --aura-teal: #0f766e;
+  --aura-violet: #7c3aed;
+  --aura-lime: #4d7c0f;
+  --aura-border: rgba(26, 29, 27, 0.12);
+  /* story palette lives at :root so fixed chrome outside .story-scope
+     (the floating header) resolves the same inks */
+  --st-ink: #12241c;
+  --st-ink-dim: #33493d;
+  --st-emerald: #087a55;
+  --st-teal: #0f766e;
+  --st-violet: #7c3aed;
+  --st-lime: #4d7c0f;
+  --st-scrim: 238, 244, 240;
+  --st-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --st-display-font: "Space Grotesk Variable", "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --st-body-font: "Manrope Variable", "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --st-mono-font: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, monospace;
 }
 
 body {
@@ -19,13 +34,20 @@ body {
   font-feature-settings: "ss01";
 }
 
+@layer base {
+  h1, h2, h3 {
+    font-family: var(--st-display-font);
+  }
+}
+
 @layer components {
   .aura-label {
-    @apply text-xs uppercase tracking-label text-aura-emerald;
+    @apply text-xs font-mono uppercase tracking-label text-aura-emerald;
   }
   .aura-panel {
-    @apply bg-aura-panel border rounded-lg;
+    @apply bg-aura-panel border rounded-xl;
     border-color: var(--aura-border);
+    box-shadow: 0 1px 2px rgba(26, 29, 27, 0.04), 0 8px 24px rgba(26, 29, 27, 0.04);
   }
   .aura-hairline {
     border-color: var(--aura-border);
@@ -37,14 +59,6 @@ body {
    boreal daylight, ink text, the same emerald/teal/violet accents. */
 
 .story-scope {
-  --st-ink: #12241c;
-  --st-ink-dim: #48604f;
-  --st-emerald: #0b8f66;
-  --st-teal: #0f766e;
-  --st-violet: #7c3aed;
-  --st-lime: #4d7c0f;
-  --st-scrim: 238, 244, 240;
-  --st-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
   color: var(--st-ink);
   font-feature-settings: "ss01";
@@ -58,6 +72,18 @@ body {
     radial-gradient(120% 60% at 78% -5%, rgba(255, 236, 198, 0.75), rgba(255, 236, 198, 0) 60%),
     linear-gradient(165deg, rgba(16, 185, 129, 0.1), rgba(45, 212, 191, 0.06) 34%, rgba(139, 92, 246, 0.04) 52%, rgba(45, 212, 191, 0) 70%),
     linear-gradient(#eef4f0 0%, #e3eee7 45%, #d5e5db 100%);
+}
+
+/* dusk arrives as the journey ends — driven by --st-dusk from the rig */
+.story-sky::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: var(--st-dusk, 0);
+  background:
+    radial-gradient(110% 55% at 22% 0%, rgba(255, 178, 107, 0.4), rgba(255, 178, 107, 0) 60%),
+    linear-gradient(160deg, rgba(139, 92, 246, 0.12), rgba(45, 212, 191, 0.08) 45%, rgba(255, 196, 141, 0.16) 100%),
+    linear-gradient(#efe4d5 0%, #ecdccb 50%, #e2d4c2 100%);
 }
 
 .story-grain {
@@ -88,32 +114,87 @@ body {
 .story-accent-lime .story-label { color: var(--st-lime); }
 
 .story-display {
-  font-weight: 300;
+  font-family: var(--st-display-font);
+  font-weight: 490;
   font-size: clamp(2rem, 4.6vw, 3.4rem);
-  line-height: 1.08;
-  letter-spacing: -0.015em;
+  line-height: 1.06;
+  letter-spacing: -0.022em;
   margin-top: 1.1rem;
   color: var(--st-ink);
 }
 
 .story-display-xl {
   font-size: clamp(2.6rem, 6.4vw, 5rem);
+  letter-spacing: -0.034em;
+  line-height: 1.02;
+  font-weight: 520;
 }
 
 .story-sub,
 .story-body {
   margin-top: 1.35rem;
-  max-width: 26rem;
-  font-size: 1.02rem;
-  line-height: 1.75;
+  max-width: 27rem;
+  font-family: var(--st-body-font);
+  font-size: 1.05rem;
+  font-weight: 440;
+  letter-spacing: -0.006em;
+  line-height: 1.7;
   color: var(--st-ink-dim);
 }
 
 .story-sub { max-width: 30rem; }
 
+/* labels and data speak JetBrains Mono; lockups speak Space Grotesk */
+.story-label,
+.story-band-scale,
+.story-band-nums,
+.story-mline-node em,
+.story-mline-note,
+.story-cue,
+.story-rail button span,
+.story-end-links a,
+.story-end-season,
+.story-chrome nav a {
+  font-family: var(--st-mono-font);
+}
+.story-label,
+.story-cue,
+.story-rail button span,
+.story-end-links a,
+.story-end-season,
+.story-chrome nav a {
+  letter-spacing: 0.14em;
+}
+.story-band-basis,
+.story-end-credit {
+  font-family: var(--st-body-font);
+}
+.story-chrome .story-chrome-mark,
+.story-wordmark {
+  font-family: var(--st-display-font);
+}
+
+.story-mark {
+  width: 54px;
+  height: auto;
+  margin-bottom: 1.1rem;
+  display: block;
+}
+.story-mark-end {
+  width: 62px;
+  margin: 0 auto 1.2rem;
+}
+
 /* ---- word-mask reveals (visible by default; JS arms the animation) ---- */
 
-.story-wmask { display: inline-block; overflow: hidden; vertical-align: bottom; }
+.story-wmask {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+  /* room for descenders inside the mask — g, y, p were being sheared off */
+  padding-bottom: 0.16em;
+  margin-bottom: -0.16em;
+}
 .story-w { display: inline-block; }
 
 .story-js .story-w {
@@ -153,7 +234,13 @@ body {
   position: relative;
 }
 
-.story-hero-inner { max-width: 46rem; }
+.story-hero-inner {
+  max-width: 46rem;
+  padding: 2.4rem 2.6rem;
+  margin-left: -2.6rem;
+  border-radius: 1.5rem;
+  background: radial-gradient(115% 115% at 32% 30%, rgba(var(--st-scrim), 0.85), rgba(var(--st-scrim), 0.5) 60%, rgba(var(--st-scrim), 0));
+}
 
 .story-cue {
   position: absolute;
@@ -195,6 +282,18 @@ body {
 .story-side-left { justify-content: flex-start; }
 .story-side-right { justify-content: flex-end; }
 
+.story-beat,
+.story-hero,
+.story-end {
+  pointer-events: none;
+}
+.story-copy,
+.story-hero-inner,
+.story-end-inner,
+.story-cue {
+  pointer-events: auto;
+}
+
 .story-copy {
   position: sticky;
   top: 22vh;
@@ -202,7 +301,90 @@ body {
   max-width: 27rem;
   padding: 2.2rem 2.4rem;
   border-radius: 1.25rem;
-  background: radial-gradient(130% 130% at 35% 25%, rgba(var(--st-scrim), 0.88), rgba(var(--st-scrim), 0.55) 62%, rgba(var(--st-scrim), 0));
+  background: radial-gradient(130% 130% at 35% 25%, rgba(var(--st-scrim), 0.9), rgba(var(--st-scrim), 0.58) 62%, rgba(var(--st-scrim), 0));
+  transition: transform 0.6s var(--st-ease-out);
+}
+.story-copy:hover {
+  transform: translateY(-4px);
+}
+.story-copy .story-label {
+  transition: filter 0.4s, letter-spacing 0.5s var(--st-ease-out);
+}
+.story-copy:hover .story-label {
+  filter: brightness(1.3);
+  letter-spacing: 0.27em;
+}
+
+/* ---- in-scene hotspots ---- */
+
+.story-hotspot {
+  position: relative;
+  width: 0;
+  height: 0;
+}
+.story-hotspot button {
+  position: absolute;
+  left: -11px;
+  top: -11px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(11, 143, 102, 0.9);
+  background: rgba(238, 244, 240, 0.55);
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.4s var(--st-ease-out), background 0.3s;
+}
+.story-hotspot button i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: var(--st-emerald);
+  display: block;
+}
+.story-hotspot button:hover,
+.story-hotspot.on button {
+  transform: scale(1.25);
+  background: rgba(238, 244, 240, 0.92);
+}
+.story-hotspot-chip {
+  position: absolute;
+  left: -120px;
+  bottom: 22px;
+  width: 240px;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.7rem;
+  background: rgba(238, 244, 240, 0.95);
+  box-shadow: 0 6px 24px rgba(18, 36, 28, 0.12);
+  opacity: 0;
+  transform: translateY(6px);
+  pointer-events: none;
+  transition: opacity 0.35s, transform 0.45s var(--st-ease-out);
+  font-family: var(--st-body-font);
+  text-align: left;
+}
+.story-hotspot.on .story-hotspot-chip {
+  opacity: 1;
+  transform: none;
+}
+.story-hotspot-chip strong {
+  display: block;
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--st-emerald);
+  font-weight: 600;
+}
+.story-hotspot-chip span {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--st-ink-dim);
 }
 
 /* ---- budget band ---- */
@@ -212,9 +394,9 @@ body {
   display: flex;
   align-items: baseline;
   gap: 0.5rem;
-  font-weight: 275;
+  font-weight: 430;
   font-size: clamp(1.9rem, 3.4vw, 2.7rem);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.03em;
   color: var(--st-ink);
   font-variant-numeric: tabular-nums;
 }
@@ -286,6 +468,64 @@ body {
   color: var(--st-ink-dim);
 }
 
+/* ---- story -> app CTAs and the leave veil ---- */
+
+.story-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 1.7rem;
+  padding: 0.72rem 1.35rem;
+  border-radius: 999px;
+  border: 1px solid rgba(11, 143, 102, 0.55);
+  font-family: var(--st-mono-font);
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--st-ink);
+  background: rgba(var(--st-scrim), 0.6);
+  transition: border-color 0.3s, background 0.3s, transform 0.5s var(--st-ease-out);
+}
+.story-cta i {
+  font-style: normal;
+  transition: transform 0.45s var(--st-ease-out);
+}
+.story-cta:hover {
+  border-color: var(--st-emerald);
+  background: rgba(var(--st-scrim), 0.92);
+  transform: translateY(-2px);
+}
+.story-cta:hover i {
+  transform: translateX(4px);
+}
+.story-cta-primary {
+  border-color: transparent;
+  background: var(--st-ink);
+  color: #eef4f0;
+}
+.story-cta-primary:hover {
+  background: #0b1a13;
+  border-color: transparent;
+}
+
+.story-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  /* dip to the app's paper ground — the story hands over to the tool */
+  background: #fafaf9;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+.story-veil.on {
+  opacity: 1;
+  pointer-events: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .story-veil { transition: none; }
+}
+
 /* ---- progress rail ---- */
 
 .story-rail {
@@ -349,7 +589,12 @@ body {
   text-align: center;
   padding: 6rem 1.5rem;
 }
-.story-end-inner { max-width: 44rem; }
+.story-end-inner {
+  max-width: 44rem;
+  padding: 3rem 3.2rem;
+  border-radius: 1.75rem;
+  background: radial-gradient(105% 105% at 50% 45%, rgba(var(--st-scrim), 0.9), rgba(var(--st-scrim), 0.6) 62%, rgba(var(--st-scrim), 0));
+}
 .story-wordmark {
   font-size: 0.95rem;
   letter-spacing: 0.3em;
@@ -389,6 +634,27 @@ body {
   margin-top: 2.8rem;
   color: var(--st-ink-dim);
 }
+/* KR8TIV lockup — badge at text height, per BRAND.md section 10 */
+.story-kr8tiv {
+  margin-top: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+}
+.story-kr8tiv img {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: block;
+}
+.story-kr8tiv span {
+  font-family: var(--st-mono-font);
+  font-size: 0.66rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--st-ink);
+}
 .story-end-credit {
   margin-top: 1rem;
   font-size: 0.72rem;
@@ -412,8 +678,11 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.2rem clamp(1.5rem, 4vw, 3rem);
+  padding: 1.2rem clamp(1.5rem, 4vw, 3rem) 2.2rem;
+  background: linear-gradient(rgba(238, 244, 240, 0.85), rgba(238, 244, 240, 0.4) 55%, rgba(238, 244, 240, 0));
+  pointer-events: none;
 }
+.story-chrome a { pointer-events: auto; }
 .story-chrome a {
   color: var(--st-ink);
 }

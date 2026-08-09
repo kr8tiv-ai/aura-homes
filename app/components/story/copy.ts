@@ -13,7 +13,7 @@ export type Beat = {
 export const HERO = {
   label: "Off-grid, on-chain",
   heading: "Design it. Fund it. Build it.",
-  sub: "A small eco home in the trees — designed by an agent, funded in USDC on X Layer, built in Alberta.",
+  sub: "Aura Homes is the agent that takes you from USDC on X Layer to the keys of an off-grid eco home — land, design, budget, escrow, and build, orchestrated end to end.",
   cue: "Scroll",
 } as const;
 
@@ -63,14 +63,18 @@ export const BEATS: Beat[] = [
 export const END = {
   tagline: "From USDC on X Layer to the keys of an off-grid eco home",
   season: "BuildX AI Season 2026",
+  /* The app is the destination: one primary door, the stages as side doors. */
+  cta: { href: "/dashboard", label: "Open the build dashboard" },
   links: [
     { href: "/land", label: "Land" },
     { href: "/design", label: "Design" },
     { href: "/budget", label: "Budget" },
     { href: "/escrow", label: "Escrow" },
-    { href: "/dashboard", label: "Dashboard" },
     { href: "/overview", label: "Overview" },
   ],
   creditsUrl:
     "https://github.com/kr8tiv-ai/aura-homes/blob/main/docs/CREDITS.md",
 } as const;
+
+/* In-scene CTA surfaced at the deck/hot-tub pause (beat 5). */
+export const BUILD_CTA = { href: "/dashboard", label: "Step inside the dashboard" } as const;

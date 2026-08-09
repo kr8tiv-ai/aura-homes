@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import "@fontsource-variable/space-grotesk";
+import "@fontsource-variable/manrope";
+import "@fontsource-variable/jetbrains-mono";
 import "./globals.css";
 import { Providers } from "./providers";
 import SiteShell from "../components/SiteShell";
@@ -8,22 +11,22 @@ const DESCRIPTION =
   "From USDC on X Layer to the keys of an off-grid eco home. Land, design, budget, escrow, and build — orchestrated end-to-end by AI, in Alberta first.";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://kr8tiv-ai.github.io"),
+  metadataBase: new URL("https://aurahomes.fun"),
   title: TITLE,
   description: DESCRIPTION,
   openGraph: {
     title: TITLE,
     description: DESCRIPTION,
     type: "website",
-    url: "/aura-homes/",
+    url: "/",
     siteName: "Aura Homes",
-    images: [{ url: "/aura-homes/social-card.png", width: 1200, height: 630, alt: "Aura Homes" }],
+    images: [{ url: "/social-card.png", width: 1200, height: 630, alt: "Aura Homes" }],
   },
   twitter: {
     card: "summary_large_image",
     title: TITLE,
     description: DESCRIPTION,
-    images: ["/aura-homes/social-card.png"],
+    images: ["/social-card.png"],
   },
 };
 

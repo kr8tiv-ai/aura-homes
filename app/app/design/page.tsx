@@ -47,7 +47,7 @@ export default function DesignPage() {
   return (
     <div className="py-16">
       <p className="aura-label mb-4">Design questionnaire</p>
-      <h1 className="text-3xl font-semibold">Tell Aura about your build</h1>
+      <h1 className="font-display text-[2.35rem] font-medium leading-[1.08] tracking-[-0.025em]">Tell Aura about your build</h1>
 
       <div className="mt-10 flex flex-wrap gap-2">
         {steps.map((name, i) => (
@@ -57,7 +57,7 @@ export default function DesignPage() {
             className={`rounded-md border px-4 py-2 text-xs uppercase tracking-label transition-colors ${
               i === step
                 ? "border-aura-emerald text-aura-emerald"
-                : "aura-hairline text-aura-text/50 hover:text-aura-text"
+                : "aura-hairline text-aura-text/70 hover:text-aura-text"
             }`}
           >
             {name}
@@ -223,7 +223,7 @@ export default function DesignPage() {
           <button
             onClick={generate}
             disabled={busy}
-            className="rounded-md bg-aura-emerald px-6 py-2.5 text-xs font-medium uppercase tracking-label text-aura-bg disabled:opacity-50"
+            className="rounded-full bg-aura-ink px-6 py-2.5 font-mono text-xs font-medium uppercase tracking-label text-aura-paper disabled:opacity-50"
           >
             {busy ? "Generating" : "Generate design"}
           </button>
@@ -303,11 +303,11 @@ function Toggle({
       type="button"
       onClick={() => onChange(!checked)}
       className={`flex items-center justify-between rounded-md border px-4 py-3 text-left text-sm transition-colors ${
-        checked ? "border-aura-emerald text-aura-text" : "aura-hairline text-aura-text/50"
+        checked ? "border-aura-emerald text-aura-text" : "aura-hairline text-aura-text/70"
       }`}
     >
       <span className="uppercase tracking-label text-xs">{label}</span>
-      <span className={`text-xs ${checked ? "text-aura-lime" : "text-aura-text/40"}`}>
+      <span className={`text-xs ${checked ? "text-aura-lime" : "text-aura-text/65"}`}>
         {checked ? "On" : "Off"}
       </span>
     </button>

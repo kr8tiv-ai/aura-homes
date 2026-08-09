@@ -29,7 +29,7 @@ export default function OverviewPage() {
       <div className="mt-10 flex gap-4">
         <Link
           href="/design"
-          className="rounded-md bg-aura-emerald px-6 py-3 text-sm font-medium uppercase tracking-label text-aura-bg transition-opacity hover:opacity-90"
+          className="rounded-full bg-aura-ink px-6 py-3 font-mono text-sm font-medium uppercase tracking-label text-aura-paper transition-opacity hover:opacity-85"
         >
           Start a design
         </Link>
@@ -41,19 +41,19 @@ export default function OverviewPage() {
         </Link>
       </div>
 
-      <div className="mt-28 grid gap-px overflow-hidden rounded-lg border aura-hairline bg-[rgba(16,185,129,0.18)] md:grid-cols-5">
+      <div className="mt-28 grid gap-px overflow-hidden rounded-lg border aura-hairline bg-[rgba(26,29,27,0.12)] md:grid-cols-5">
         {pipeline.map((p) => (
           <div key={p.step} className="bg-aura-panel p-8">
             <p className="text-xs text-aura-violet">{p.step}</p>
             <p className="mt-3 text-sm font-semibold uppercase tracking-label text-aura-text">
               {p.name}
             </p>
-            <p className="mt-3 text-sm leading-relaxed text-aura-text/60">{p.detail}</p>
+            <p className="mt-3 text-sm leading-relaxed text-aura-text/75">{p.detail}</p>
           </div>
         ))}
       </div>
 
-      <p className="mt-16 text-sm text-aura-text/60">
+      <p className="mt-16 text-sm text-aura-text/75">
         Prefer the full story?{" "}
         <Link href="/" className="text-aura-emerald underline underline-offset-4">
           Watch the scroll tour

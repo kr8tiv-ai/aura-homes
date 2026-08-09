@@ -41,13 +41,13 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <header className="border-b aura-hairline">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
-          <Link href="/" className="text-sm font-semibold tracking-label uppercase">
+        <div className="mx-auto flex max-w-5xl flex-col gap-3 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+          <Link href="/" className="font-display text-sm font-semibold tracking-label uppercase">
             Aura <span className="text-aura-emerald">Homes</span>
           </Link>
-          <nav className="flex gap-8">
+          <nav className="flex flex-wrap gap-x-6 gap-y-2 sm:gap-8">
             {NAV.map((item) => (
-              <Link key={item.href} href={item.href} className="aura-label transition-colors hover:text-aura-lime">
+              <Link key={item.href} href={item.href} className="aura-label transition-colors hover:text-aura-emerald">
                 {item.label}
               </Link>
             ))}
@@ -56,7 +56,7 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
       </header>
       <main className="mx-auto max-w-5xl px-6">{children}</main>
       <footer className="mt-24 border-t aura-hairline">
-        <div className="mx-auto max-w-5xl px-6 py-8 text-xs uppercase tracking-label text-aura-text/50">
+        <div className="mx-auto max-w-5xl px-6 py-8 text-xs uppercase tracking-label text-aura-text/70">
           A KR8TIV AI product &middot; Open source (MIT)
         </div>
       </footer>

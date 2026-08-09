@@ -51,8 +51,8 @@ export default function DashboardPage() {
       <div className="flex flex-wrap items-end justify-between gap-6">
         <div>
           <p className="aura-label mb-4">Owner dashboard</p>
-          <h1 className="text-3xl font-semibold">{d.projectName}</h1>
-          <p className="mt-3 text-sm text-aura-text/60">{d.parcel}</p>
+          <h1 className="font-display text-[2.35rem] font-medium leading-[1.08] tracking-[-0.025em]">{d.projectName}</h1>
+          <p className="mt-3 text-[0.95rem] leading-[1.6] text-aura-text/75">{d.parcel}</p>
         </div>
         <p className="text-xs uppercase tracking-label text-aura-violet">
           Preview data — live journey state lands with the Aura Brain service
@@ -60,12 +60,12 @@ export default function DashboardPage() {
       </div>
 
       {/* Stage tracker */}
-      <div className="mt-10 grid gap-px overflow-hidden rounded-lg border aura-hairline bg-[rgba(16,185,129,0.18)] md:grid-cols-5">
+      <div className="mt-10 grid gap-px overflow-hidden rounded-lg border aura-hairline bg-[rgba(26,29,27,0.12)] md:grid-cols-5">
         {d.stages.map((stage, i) => {
           const state = i < currentIdx ? "done" : i === currentIdx ? "current" : "ahead";
           return (
             <div key={stage} className="bg-aura-panel p-5">
-              <p className="text-xs tabular-nums text-aura-violet">
+              <p className="font-mono text-xs tabular-nums text-aura-emerald">
                 {String(i + 1).padStart(2, "0")}
               </p>
               <p
@@ -74,12 +74,12 @@ export default function DashboardPage() {
                     ? "text-aura-emerald"
                     : state === "current"
                       ? "text-aura-lime"
-                      : "text-aura-text/40"
+                      : "text-aura-text/65"
                 }`}
               >
                 {stage}
               </p>
-              <p className="mt-2 text-xs uppercase tracking-label text-aura-text/40">
+              <p className="mt-2 text-xs uppercase tracking-label text-aura-text/65">
                 {state === "done" ? "Complete" : state === "current" ? "In progress" : "Ahead"}
               </p>
             </div>
@@ -99,8 +99,8 @@ export default function DashboardPage() {
               Open escrow
             </Link>
           </div>
-          <p className="mt-5 text-3xl font-semibold tabular-nums">{cad(totalCad)}</p>
-          <p className="mt-1 text-xs text-aura-text/50">
+          <p className="mt-5 font-display text-[2.35rem] font-medium leading-[1.08] tracking-[-0.02em] tabular-nums">{cad(totalCad)}</p>
+          <p className="mt-1 text-xs text-aura-text/70">
             Total milestone value (MID budget, excl. land) — 10 percent statutory holdback on
             every release
           </p>
@@ -109,21 +109,21 @@ export default function DashboardPage() {
               { label: "Funded to escrow", value: fundedCad, tone: "text-aura-teal" },
               { label: "Released to builder (net)", value: releasedNetCad, tone: "text-aura-lime" },
               { label: "Holdback retained", value: holdbackRetainedCad, tone: "text-aura-violet" },
-              { label: "Awaiting funding", value: awaitingCad, tone: "text-aura-text/50" },
+              { label: "Awaiting funding", value: awaitingCad, tone: "text-aura-text/70" },
             ].map((row) => (
               <div key={row.label} className="flex items-center justify-between gap-4">
-                <dt className="text-aura-text/60">{row.label}</dt>
+                <dt className="text-aura-text/75">{row.label}</dt>
                 <dd className={`tabular-nums ${row.tone}`}>{cad(row.value)}</dd>
               </div>
             ))}
           </dl>
-          <div className="mt-6 h-1.5 overflow-hidden rounded-full bg-aura-bg">
+          <div className="mt-6 h-1.5 overflow-hidden rounded-full bg-[rgba(26,29,27,0.08)]">
             <div
-              className="h-full rounded-full bg-aura-emerald"
+              className="h-full rounded-full bg-aura-emerald-bright"
               style={{ width: `${Math.round((fundedCad / totalCad) * 100)}%` }}
             />
           </div>
-          <p className="mt-2 text-xs text-aura-text/40">
+          <p className="mt-2 text-xs text-aura-text/65">
             {Math.round((fundedCad / totalCad) * 100)} percent of the build funded in native USDC
             on X Layer
           </p>
@@ -133,10 +133,10 @@ export default function DashboardPage() {
         <section className="aura-panel p-6">
           <h2 className="aura-label">Email digest preview</h2>
           <div className="mt-5 rounded-lg border aura-hairline bg-aura-bg p-5">
-            <p className="text-xs uppercase tracking-label text-aura-text/40">
+            <p className="text-xs uppercase tracking-label text-aura-text/65">
               From Aura Brain &middot; {d.digest.period}
             </p>
-            <p className="mt-2 text-lg font-semibold">{d.digest.subject}</p>
+            <p className="mt-2 font-display text-[1.2rem] font-medium tracking-[-0.01em]">{d.digest.subject}</p>
             <div className="mt-4 space-y-3 text-sm leading-relaxed">
               <p>
                 <span className="text-aura-emerald">What moved.</span>{" "}
@@ -152,7 +152,7 @@ export default function DashboardPage() {
               </p>
             </div>
           </div>
-          <p className="mt-4 text-xs text-aura-text/40">
+          <p className="mt-4 text-xs text-aura-text/65">
             Sent weekly and on every material state change. Email delivery is integration-pending;
             this preview renders the exact template.
           </p>
@@ -177,20 +177,20 @@ export default function DashboardPage() {
                     Slip
                   </span>
                 ) : (
-                  <span className="text-[10px] uppercase tracking-label text-aura-text/40">
+                  <span className="text-[10px] uppercase tracking-label text-aura-text/65">
                     Next
                   </span>
                 )}
               </div>
               <div className="min-w-[220px] flex-1">
                 <p className="text-sm font-semibold">{action.title}</p>
-                <p className="mt-1 text-xs leading-relaxed text-aura-text/50">{action.detail}</p>
+                <p className="mt-1 text-xs leading-relaxed text-aura-text/70">{action.detail}</p>
               </div>
               <div className="text-right text-xs">
-                <p className="uppercase tracking-label text-aura-text/40">{action.owner}</p>
+                <p className="uppercase tracking-label text-aura-text/65">{action.owner}</p>
                 <p
                   className={`mt-1 ${
-                    action.due === "Overdue" ? "text-aura-violet" : "text-aura-text/60"
+                    action.due === "Overdue" ? "text-aura-violet" : "text-aura-text/75"
                   }`}
                 >
                   {action.due}
@@ -199,7 +199,7 @@ export default function DashboardPage() {
             </div>
           ))}
         </div>
-        <p className="mt-3 text-xs text-aura-text/40">
+        <p className="mt-3 text-xs text-aura-text/65">
           Slip detection runs on the deterministic journey state — the Aura Brain flags stalled
           steps before they cost weeks (see docs/AI-BRAIN.md).
         </p>
@@ -228,17 +228,17 @@ export default function DashboardPage() {
                     <p>
                       <span className="text-aura-text/80">{category}</span>
                       {actual && (
-                        <span className="ml-3 text-xs text-aura-text/40">{actual.note}</span>
+                        <span className="ml-3 text-xs text-aura-text/65">{actual.note}</span>
                       )}
                     </p>
-                    <p className="tabular-nums text-xs text-aura-text/60">
-                      <span className={actualCad > 0 ? "text-aura-teal" : "text-aura-text/40"}>
+                    <p className="tabular-nums text-xs text-aura-text/75">
+                      <span className={actualCad > 0 ? "text-aura-teal" : "text-aura-text/65"}>
                         {cad(actualCad)}
                       </span>{" "}
                       / {cad(midCad)}
                     </p>
                   </div>
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-aura-bg">
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[rgba(26,29,27,0.08)]">
                     <div
                       className={`h-full rounded-full ${
                         actualCad > midCad ? "bg-aura-violet" : "bg-aura-teal"
@@ -250,7 +250,7 @@ export default function DashboardPage() {
               );
             })}
           </div>
-          <p className="mt-6 text-xs text-aura-text/40">
+          <p className="mt-6 text-xs text-aura-text/65">
             Actuals are committed spend to date against the MID budget column. Categories not yet
             started show zero — honest numbers, no smoothing.
           </p>

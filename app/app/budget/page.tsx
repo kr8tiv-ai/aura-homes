@@ -7,8 +7,8 @@ export default function BudgetPage() {
   return (
     <div className="py-16">
       <p className="aura-label mb-4">Alberta cost model</p>
-      <h1 className="text-3xl font-semibold">Build budget</h1>
-      <p className="mt-3 max-w-xl text-sm text-aura-text/60">
+      <h1 className="font-display text-[2.35rem] font-medium leading-[1.08] tracking-[-0.025em]">Build budget</h1>
+      <p className="mt-4 max-w-xl text-[0.95rem] leading-[1.65] text-aura-text/75">
         Researched LOW / MID / HIGH ranges in CAD, excluding land. Every line has an
         in-province supply path.
       </p>
