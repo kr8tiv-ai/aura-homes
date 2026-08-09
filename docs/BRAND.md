@@ -89,7 +89,34 @@ KR8TIV AI products share one silhouette, one dark ground, one voice — and are 
 
 The system rule: **silhouette constant, world inside it changes.** Aura Homes may borrow teal (water systems) and lime (land) as minor notes precisely because they are the siblings' leads — the family palette is one continuous aurora, sampled at different bands. What no sibling may do is change the silhouette, the dark ground, or the voice.
 
-## 8. Sources
+## 8. Motion
+
+Motion is part of the brand, and it has the same rule as everything else: **restraint is the premium signal.** The reference bar is the scroll-story craft of MengTo's kage page (credited in [CREDITS.md](CREDITS.md)) — we take the *vocabulary* of that work (scroll-linked camera on damped springs, one subject held in frame while the story moves around it, copy that pins and dissolves instead of sliding), never its writing or its brand feel.
+
+- **One subject, one camera.** Story pages orbit and approach a single hero object (the home). No parallax confetti, no elements flying in from screen edges.
+- **Damped, never bouncy.** Spring easing with high damping; nothing overshoots more than it settles. If an easing draws attention to itself, it's wrong.
+- **Scroll owns the timeline.** The user's thumb is the scrubber; nothing auto-plays except ambient drift (mist, smoke wisps) at amplitudes under ~4px equivalent.
+- **Copy behaves like signage:** fades in place, holds, fades. It never moves along a path.
+- **Light tells the story arc** — cool dawn (LAND) warming toward hearth-warm dusk (BUILD) is the permitted dramatic device; hue shifts stay inside the palette.
+- **Respect is non-negotiable:** `prefers-reduced-motion` gets a still composition of equal beauty; WebGL-absent gets a static hero, never a blank.
+- Duration discipline: micro-interactions 150–250 ms; scene transitions 600–900 ms of scroll distance, not time.
+
+## 9. Co-branding — the KR8TIV AI lockup
+
+Aura Homes is **A KR8TIV AI PRODUCT** and says so in exactly one way:
+
+- The line "A KR8TIV AI PRODUCT" in tracked caps, off-white, with the circular KR8TIV badge (the silver-wave avatar, circle-cropped, 2px emerald ring) at text height beside it — as built in `assets/social-card.png` and the hero footer.
+- The badge never exceeds the height of two lines of the text it accompanies; KR8TIV's blue-wave palette stays inside the badge circle and never bleeds into Aura surfaces.
+- Order of precedence on any asset: Aura mark leads, KR8TIV badge closes. Never side-by-side at equal size — this is a product-of relationship, not a partnership lockup.
+
+## 10. Preview & social assets
+
+- **Repo social card** (`assets/social-card.png`, 1280×640): mark left, wordmark + tagline right, chip row (event · track · license), divider, KR8TIV lockup + repo URL. This is the template for every future card — swap the chip row per context.
+- Chips are outlined (2px, 19px radius), never filled; one emerald, one violet, one neutral — maximum three.
+- The Pages site serves the same card as `og:image`; any new deployable page inherits it unless it earns its own.
+- Favicon/avatar: the mark on `#050807`, centered, ~8% padding (`assets/aura-homes-avatar.png`).
+
+## 11. Sources
 
 Color psychology of green shades (emerald = wealth/sophistication + nature; forest = tranquility; sage = wellness): [Becky Lord, Colour Psychology: Green](https://beckylord.co.uk/colour-psychology-chapter-3-green/) · [Icons8, Ultimate green color guide](https://icons8.com/blog/articles/green-color-guide/) · [Iron Dragon Design, Green Colour Psychology in Branding](https://www.irondragondesign.com/green-colour-psychology-in-branding/) · [The Karma Works, Green Branding Colors](https://thekarmaworks.com/green-branding-colors/) · [Berger, Color psychology of green](https://www.berger.team/en/branding/farbpsychologie-gruen-natur-wachstum-und-wohlstand-als-beruhigende-kraft/)
 
