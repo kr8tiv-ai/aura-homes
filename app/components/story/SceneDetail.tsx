@@ -506,7 +506,163 @@ function GrassFieldLegacy({ frozen }: { frozen: boolean }) {
   return <instancedMesh ref={mesh} args={[geo, mat, GRASS_COUNT]} receiveShadow />;
 }
 
-function GrassField({ frozen, count }: { frozen: boolean; count: number }) {
+/* ================= GRASS v4 — the reference implementation =============
+   Built from three open-source references Matt supplied (all credited in
+   docs/CREDITS.md):
+
+     · muratkamci/snakey-locomotion (MIT) — the load-bearing one. Supplied
+       the InstancedBufferGeometry + compact per-instance attribute layout,
+       the 4-segment blade tapering to a tip, layered gust+ripple noise wind,
+       the quadratic Bezier bend anchored at the root, the tip gradient, the
+       backlit translucency and specular glint, and — the single fix my three
+       earlier attempts were missing — WIDTH THAT GROWS WITH DISTANCE to kill
+       shimmer, paired with a per-blade randomised distance dissolve.
+     · aleksandargjoreski.dev "Trimming my Grass Shader" — the performance
+       doctrine: drop InstancedMesh for InstancedBufferGeometry so you stop
+       paying 16 floats of instanceMatrix per blade, thin stochastically with
+       distance, and reject blades below a scale threshold before they reach
+       the vertex stage.
+     · thebuggeddev/football — endless-grassland framing.
+
+   WHY THE EARLIER ATTEMPTS FAILED, and what changed:
+   they were too SPARSE. 2,400 then 6,000 blades over a 12-22 unit ring is
+   roughly 3-6 blades per square metre, so every blade read as a separate
+   object and aliased into a dark speck. The references run ~49 blades/m2
+   (16,000 per 18m tile). At that density blades stop being objects and
+   become a surface. Density plus distance-widening is the whole trick.
+=================================================================== */
+
+const GRASS_SEGS = 4;
+
+function grassBladeGeometry(instances: number) {
+  const pos: number[] = [];
+  const uvs: number[] = [];
+  const idx: number[] = [];
+  for (let i = 0; i <= GRASS_SEGS; i++) {
+    const t = i / GRASS_SEGS;
+    if (i === GRASS_SEGS) {
+      pos.push(0, t, 0);
+      uvs.push(0.5, t);
+    } else {
+      pos.push(-0.5, t, 0, 0.5, t, 0);
+      uvs.push(0, t, 1, t);
+    }
+  }
+  for (let i = 0; i < GRASS_SEGS - 1; i++) {
+    const a = i * 2;
+    idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+  }
+  const last = (GRASS_SEGS - 1) * 2;
+  idx.push(last, last + 1, last + 2);
+
+  const g = new THREE.InstancedBufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+  g.setIndex(idx);
+  g.instanceCount = instances;
+  return g;
+}
+
+const GRASS_VERT = /* glsl */ `
+precision highp float;
+attribute vec2 aOffset;   // world x,z
+attribute vec4 aRand;     // rot, height, width, fadeSeed
+uniform float uTime;
+uniform vec2  uWindDir;
+uniform vec3  uCamPos;
+uniform float uFadeStart;
+uniform float uFadeEnd;
+varying float vT;
+varying float vFade;
+varying vec3  vN;
+varying float vHue;
+
+float h21(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7))) * 43758.5453); }
+float vnoise(vec2 p){
+  vec2 i = floor(p), f = fract(p);
+  vec2 u = f*f*(3.0-2.0*f);
+  return mix(mix(h21(i), h21(i+vec2(1,0)), u.x),
+             mix(h21(i+vec2(0,1)), h21(i+vec2(1,1)), u.x), u.y);
+}
+
+void main(){
+  vT = uv.y;
+  vHue = aRand.w;
+  vec3 base = vec3(aOffset.x, 0.0, aOffset.y);
+
+  float dist = distance(base, uCamPos);
+  float fade = 1.0 - smoothstep(uFadeStart, uFadeEnd, dist);
+  // per-blade randomised dissolve so the field thins out instead of
+  // ending on a visible line (stochastic thinning)
+  vFade = smoothstep(aRand.w * 0.85, aRand.w * 0.85 + 0.15, fade);
+
+  float bh = aRand.y;
+  // WIDTH GROWS WITH DISTANCE — a blade narrower than a pixel can only
+  // shimmer. This is what stops the meadow reading as speckle.
+  float bw = aRand.z * (1.0 + dist * 0.035);
+
+  // layered wind: slow gust front + fast ripple + per-blade flutter
+  float gust   = vnoise(base.xz * 0.06 + uWindDir * uTime * 0.5);
+  float ripple = vnoise(base.xz * 0.40 + uWindDir * uTime * 2.2);
+  float wind = gust * 0.8 + ripple * 0.35 + 0.15 * sin(uTime * 2.0 + aRand.w * 6.2831);
+
+  float c = cos(aRand.x), s = sin(aRand.x);
+  vec3 p = position;
+  p.x *= bw;
+  p.y *= bh;
+
+  // quadratic Bezier bend — root pinned, curvature grows toward the tip
+  float t = uv.y;
+  float bend = wind * 0.55 * bh;
+  vec2 dir = normalize(uWindDir + vec2(0.0001));
+  float curve = t * t;                 // 0 at root -> 1 at tip
+  p.xz += dir * bend * curve;
+  p.y  -= abs(bend) * curve * 0.35;    // keep blade length as it leans
+
+  // yaw the blade
+  vec3 rp = vec3(p.x * c - p.z * s, p.y, p.x * s + p.z * c);
+  vec3 world = base + rp;
+
+  // fade by collapsing to the root, so culled blades cost no fragments
+  world = mix(base, world, vFade);
+
+  vN = normalize(vec3(dir.x * curve * 0.6, 1.0, dir.y * curve * 0.6));
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(world, 1.0);
+}
+`;
+
+const GRASS_FRAG = /* glsl */ `
+precision highp float;
+uniform vec3 uColRoot;
+uniform vec3 uColTip;
+uniform vec3 uSunDir;
+uniform vec3 uSunCol;
+uniform float uNight;
+varying float vT;
+varying float vFade;
+varying vec3  vN;
+varying float vHue;
+
+void main(){
+  if (vFade < 0.02) discard;
+  vec3 col = mix(uColRoot, uColTip, pow(vT, 1.4));
+  // per-blade hue variation so the field is never one flat green
+  col *= vec3(0.94 + vHue * 0.12, 0.97 + vHue * 0.07, 0.9 + vHue * 0.16);
+
+  vec3 N = normalize(vN);
+  float ndl = max(dot(N, uSunDir), 0.0);
+  vec3 lit = col * (0.42 + 0.72 * ndl * ndl) * uSunCol;
+  // backlit translucency — the cue that sells grass as thin and living
+  float back = pow(max(dot(-normalize(vec3(0.0,-0.4,1.0)), uSunDir), 0.0), 3.0);
+  lit += col * back * 0.28 * vT;
+  lit = mix(lit, lit * vec3(0.32, 0.38, 0.52), uNight);
+
+  gl_FragColor = vec4(lit, 1.0);
+  #include <colorspace_fragment>
+}
+`;
+
+function GrassFieldOld({ frozen, count }: { frozen: boolean; count: number }) {
   const mesh = useRef<THREE.InstancedMesh>(null);
   const shaderRef = useRef<{ uniforms: Record<string, { value: unknown }> } | null>(null);
   const geo = useMemo(() => bladeGeometry(), []);
@@ -605,6 +761,82 @@ function GrassField({ frozen, count }: { frozen: boolean; count: number }) {
   });
 
   return <instancedMesh ref={mesh} args={[geo, mat, count]} />;
+}
+
+function GrassField({
+  frozen,
+  count,
+  night,
+}: {
+  frozen: boolean;
+  count: number;
+  night: number;
+}) {
+  const matRef = useRef<THREE.ShaderMaterial>(null);
+  const { camera } = useThree();
+
+  /* Placement. Same exclusion zones as before — nothing grows through the
+     deck, the walkway corridor or the tub pad — but the ring is tighter and
+     far denser, which is the whole correction. */
+  const { geo, mat } = useMemo(() => {
+    const offs = new Float32Array(count * 2);
+    const rnds = new Float32Array(count * 4);
+    let n = 0;
+    for (let i = 0; n < count && i < count * 4; i++) {
+      const a = rand(i, 21) * Math.PI * 2;
+      const r = 5.4 + Math.sqrt(rand(i, 22)) * 15;
+      const x = Math.cos(a) * r;
+      const z = Math.sin(a) * r;
+      if (Math.abs(x) < 4.6 && z > -3.6 && z < 7.0) continue;
+      if (x > 2.6 && x < 7.4 && z > 3.4 && z < 7.2) continue;
+      const y = terrainH(x, z);
+      if (y > 3.2) continue;
+      offs[n * 2] = x;
+      offs[n * 2 + 1] = z;
+      rnds[n * 4] = rand(i, 23) * Math.PI * 2; // yaw
+      rnds[n * 4 + 1] = 0.17 + rand(i, 24) * 0.2; // height
+      rnds[n * 4 + 2] = 0.028 + rand(i, 25) * 0.022; // width
+      rnds[n * 4 + 3] = rand(i, 26); // fade seed / hue
+      n++;
+    }
+    const g = grassBladeGeometry(n);
+    g.setAttribute("aOffset", new THREE.InstancedBufferAttribute(offs.slice(0, n * 2), 2));
+    g.setAttribute("aRand", new THREE.InstancedBufferAttribute(rnds.slice(0, n * 4), 4));
+    g.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0.3, 0), 24);
+
+    const m = new THREE.ShaderMaterial({
+      vertexShader: GRASS_VERT,
+      fragmentShader: GRASS_FRAG,
+      side: THREE.DoubleSide,
+      uniforms: {
+        uTime: { value: 0 },
+        uWindDir: { value: new THREE.Vector2(0.82, 0.57) },
+        uCamPos: { value: new THREE.Vector3() },
+        uFadeStart: { value: 17 },
+        uFadeEnd: { value: 26 },
+        uColRoot: { value: new THREE.Color("#6f9455") },
+        uColTip: { value: new THREE.Color("#c2d98f") },
+        uSunDir: { value: new THREE.Vector3(16, 26, 12).normalize() },
+        uSunCol: { value: new THREE.Color("#fff5e2") },
+        uNight: { value: 0 },
+      },
+    });
+    return { geo: g, mat: m };
+  }, [count]);
+
+  useFrame(({ clock }) => {
+    const m = matRef.current;
+    if (!m) return;
+    if (!frozen) m.uniforms.uTime.value = clock.elapsedTime;
+    (m.uniforms.uCamPos.value as THREE.Vector3).copy(camera.position);
+    m.uniforms.uNight.value = night;
+  });
+
+  return (
+    <mesh geometry={geo} frustumCulled>
+      <primitive object={mat} ref={matRef} attach="material" />
+    </mesh>
+  );
 }
 
 /* ========================== ENTRANCE STEPS ==========================
@@ -1022,10 +1254,18 @@ export default function SceneDetail({
 
      `GrassField` and `bladeGeometry` are kept in the file, working and
      documented, so that decision can be revisited without redoing research. */
+  /* Density, not count, is what makes grass read. The reference runs ~49
+     blades/m2; this ring is ~660 m2, so 34k desktop lands in the same place.
+     Mobile draws the meadow a few centimetres across, so a third of that is
+     indistinguishable and much kinder to the GPU. */
+  const { size } = useThree();
+  const grassCount = size.width < 820 ? 18000 : 34000;
+
   return (
     <group>
       <SnowRange night={night} />
       <Clouds frozen={frozen} />
+      <GrassField frozen={frozen} count={grassCount} night={night} />
       <EntranceSteps glassRail={glassRail} />
       <Hammock frozen={frozen} />
       <NetLounge />

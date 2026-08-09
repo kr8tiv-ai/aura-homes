@@ -44,11 +44,28 @@ That was a payload decision first: a single good grass or tree pack is
 2–10 MB with textures, and this page has a payload budget. It also means
 there is no licence to track and no upstream that can move or change terms.
 
-### Grass research (studied; the implementation is not currently mounted)
+### Grass — the shipped implementation and its sources
 
-Three grass implementations were built and rejected — see the note in
-`SceneDetail.tsx` for why. No code was copied from any of these, but the
-technique came from them and the credit is owed regardless:
+The meadow in `SceneDetail.tsx` is a synthesis of three open-source
+references. No files were copied; the geometry layout, the wind model and the
+distance handling come from them and the credit is owed in full:
+
+| Source | Licence | What was taken |
+|---|---|---|
+| **[muratkamci/snakey-locomotion](https://github.com/muratkamci/snakey-locomotion)** | **MIT** | The load-bearing reference. `InstancedBufferGeometry` with compact per-instance attributes (`aOffset` vec2, `aRand` vec4) instead of a per-blade matrix; the 4-segment blade tapering to a tip; layered gust + ripple value-noise wind; the quadratic-Bézier bend pinned at the root; the `pow(vT, 1.4)` tip gradient; backlit translucency and specular glint; and **blade width that grows with camera distance** to kill shimmer, paired with a per-blade randomised distance dissolve. |
+| **[Aleksandar Gjoreski — *Trimming my Grass Shader*](https://aleksandargjoreski.dev/blog/trimming-my-grass-shader/)** | article | The performance doctrine: drop `InstancedMesh` for `InstancedBufferGeometry` so you stop paying 16 floats of `instanceMatrix` per blade (he measured 67 MB saved), thin stochastically with distance, and reject blades below a scale threshold before they reach the vertex stage. |
+| **[thebuggeddev/football](https://github.com/thebuggeddev/football)** | — | Endless-grassland framing and density expectations for a Three.js field. |
+
+**The correction those references produced.** Three earlier attempts here were
+too *sparse* — 2,400 then 6,000 blades over a 12–22 m ring is roughly 3–6
+blades per square metre, so every blade read as a separate object and aliased
+into a dark speck. The references run ~49 blades/m² (16,000 per 18 m tile). At
+that density blades stop being objects and become a surface. Density, plus
+widening blades with distance, was the whole fix.
+
+### Earlier grass research (studied during the rejected attempts)
+
+No code was copied from these either, but they shaped the approach:
 
 - **[Codrops — *How to Make The Fluffiest Grass With Three.js*](https://tympanus.net/codrops/2025/02/04/how-to-make-the-fluffiest-grass-with-three-js/)**
   — chunked `InstancedMesh`, three LOD levels, base→tip colour lerp along
