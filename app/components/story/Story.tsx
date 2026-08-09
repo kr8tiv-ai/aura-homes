@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { HERO, BEATS, END, BUILD_CTA } from "./copy";
 import { withBase } from "../../lib/basePath";
+import { EnterGate, StoryHUD, Tracer, useForestAudio, WithXLayerLinks } from "./StoryChrome";
 
 const StoryCanvas = dynamic(() => import("./StoryCanvas"), { ssr: false });
 
@@ -81,6 +82,28 @@ export default function Story() {
   const [leaving, setLeaving] = useState(false);
   const activeRef = useRef(0);
   const router = useRouter();
+
+  const [entered, setEntered] = useState(false);
+  const [night, setNight] = useState(false);
+  const audio = useForestAudio();
+
+  /* The gate's click is the audio gesture. Entering silently still enters —
+     the sound button in the HUD stays available either way. */
+  const handleEnter = useCallback(
+    (withSound: boolean) => {
+      setEntered(true);
+      document.documentElement.classList.remove("story-gated");
+      if (withSound) audio.start();
+    },
+    [audio]
+  );
+
+  /* Lock the page behind the gate so the story can't be scrolled past it. */
+  useEffect(() => {
+    if (entered) return;
+    document.documentElement.classList.add("story-gated");
+    return () => document.documentElement.classList.remove("story-gated");
+  }, [entered]);
 
   /* Story -> app: dip to the app's dark ground, then route. The scene
      doesn't hard-cut — the world fades and the tool takes over. */
@@ -184,11 +207,15 @@ export default function Story() {
   };
 
   return (
-    <div className="story-scope">
+    <div className={`story-scope${night ? " night" : ""}`}>
       <div className="story-sky" aria-hidden />
-      {reduced !== null && <StoryCanvas progressRef={progressRef} reduced={reduced} />}
+      {reduced !== null && <StoryCanvas progressRef={progressRef} reduced={reduced} night={night} />}
       <div className="story-grain" aria-hidden />
       <div className={`story-veil${leaving ? " on" : ""}`} aria-hidden />
+
+      {audio.element}
+      <EnterGate onEnter={handleEnter} entered={entered} />
+      <StoryHUD night={night} onNight={() => setNight((n) => !n)} sound={audio.on} onSound={audio.toggle} />
 
       {/* progress rail */}
       <nav className="story-rail" aria-label="Story progress">
@@ -222,7 +249,7 @@ export default function Story() {
             </p>
             <Reveal as="h1" className="story-display story-display-xl" text={HERO.heading} />
             <p className="story-sub" data-rv style={{ transitionDelay: "420ms" }}>
-              {HERO.sub}
+              <WithXLayerLinks text={HERO.sub} />
             </p>
           </div>
           <div className="story-cue" data-rv style={{ transitionDelay: "700ms" }}>
@@ -242,12 +269,13 @@ export default function Story() {
             className={`story-beat story-side-${b.side}`}
           >
             <div className={`story-copy story-rv-group story-accent-${b.accent}`}>
+              <Tracer />
               <p className="story-label" data-rv>
                 {b.label}
               </p>
               <Reveal className="story-display" text={b.heading} />
               <p className="story-body" data-rv style={{ transitionDelay: "260ms" }}>
-                {b.body}
+                <WithXLayerLinks text={b.body} />
               </p>
               {b.id === "budget" && <BudgetBand />}
               {b.id === "escrow" && <EscrowLine />}

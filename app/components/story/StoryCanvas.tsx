@@ -11,9 +11,11 @@ import StillScene from "./StillScene";
 export default function StoryCanvas({
   progressRef,
   reduced,
+  night = false,
 }: {
   progressRef: React.MutableRefObject<number>;
   reduced: boolean;
+  night?: boolean;
 }) {
   const [webgl, setWebgl] = useState<boolean | null>(null);
 
@@ -46,7 +48,7 @@ export default function StoryCanvas({
       aria-hidden
     >
       <Suspense fallback={null}>
-        <Scene progressRef={progressRef} reduced={reduced} />
+        <Scene progressRef={progressRef} reduced={reduced} night={night} />
       </Suspense>
     </Canvas>
   );

@@ -6,6 +6,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useGLTF, Sparkles, Html, Environment, Lightformer } from "@react-three/drei";
 import { EffectComposer, Bloom, Vignette, Noise } from "@react-three/postprocessing";
 import { withBase } from "../../lib/basePath";
+import SceneDetail from "./SceneDetail";
 
 /* ------------------------------------------------------------------ */
 /* One continuous camera journey (kage-inspired motion, ours in every  */
@@ -23,8 +24,9 @@ const smoothstep = (a: number, b: number, x: number) => {
 };
 const near = (prog: number, k: number, width = 0.85) => smoothstep(0, 1, clamp01(1 - Math.abs(prog - k) / width));
 
-/* Deterministic terrain height — shared by the mesh, the props, and the rig. */
-function terrainH(x: number, z: number): number {
+/* Deterministic terrain height — shared by the mesh, the props, and the rig.
+   Exported so the detail layer plants on exactly the same ground. */
+export function terrainH(x: number, z: number): number {
   const r = Math.hypot(x, z);
   const ridge =
     4.6 *
@@ -135,13 +137,60 @@ function useArchGlass() {
   }, []);
 }
 
-/** Cheap glass — railings, walkway, deck panel. Transparent + reflective. */
-function useCheapGlass() {
+/* ---------------------------------------------------------------------
+   GLASS, AND THE BRIDGE FLICKER
+
+   The walkway to the tub used to strobe as you approached it. Two separate
+   bugs stacked, and both had to go:
+
+   1. SORT THRASH. One shared material with `depthWrite:false` meant every
+      glass surface — walkway deck, its two rails, the deck panel, the deck
+      rails — landed in three's transparent bucket and got re-sorted by
+      centroid distance EVERY frame. Walking the bridge swept the camera
+      through the point where those centroids swap, so the order flipped
+      back and forth and the panels visibly popped over each other.
+   2. Z-FIGHTING. The walkway glass spanned y 0.385–0.455 and its steel
+      frame 0.335–0.385 — coplanar to the micron at 0.385. The deck panel
+      (0.40–0.48) and its frame (0.35–0.41) actually interpenetrated.
+
+   The fix is to stop treating structural glass and balustrade glass as the
+   same thing. Floors are walked on and read as solid: they write depth and
+   carry a pinned renderOrder, so their order is deterministic instead of
+   camera-dependent. Rails are thin and must layer, so they keep depthWrite
+   off — but they sit in a later renderOrder band, so they always resolve
+   after the floors rather than racing them. polygonOffset pushes the glass
+   a hair off any frame it shares a plane with, and the frames below were
+   dropped to leave real air between the surfaces.
+--------------------------------------------------------------------- */
+
+/** Structural glass — walkway deck, deck floor panel. Writes depth. */
+function useGlassFloor() {
   return useMemo(
     () =>
       new THREE.MeshPhysicalMaterial({
         transparent: true,
-        opacity: 0.22,
+        opacity: 0.34,
+        roughness: 0.05,
+        metalness: 0,
+        color: new THREE.Color("#dcf5ec"),
+        envMapIntensity: 1.5,
+        side: THREE.DoubleSide,
+        depthWrite: true,
+        polygonOffset: true,
+        polygonOffsetFactor: -2,
+        polygonOffsetUnits: -2,
+      }),
+    []
+  );
+}
+
+/** Balustrade glass — rails only. Thin, layered, never writes depth. */
+function useGlassRail() {
+  return useMemo(
+    () =>
+      new THREE.MeshPhysicalMaterial({
+        transparent: true,
+        opacity: 0.2,
         roughness: 0.05,
         metalness: 0,
         color: new THREE.Color("#dcf5ec"),
@@ -152,6 +201,10 @@ function useCheapGlass() {
     []
   );
 }
+
+/* Deterministic transparent ordering. Floors resolve before rails, always. */
+const RO_GLASS_FLOOR = 10;
+const RO_GLASS_RAIL = 20;
 
 /* ----------------------------- terrain ------------------------------ */
 
@@ -352,7 +405,7 @@ function GableGlass({ z, mat }: { z: number; mat: THREE.Material }) {
   return <mesh geometry={geo} material={mat} position={[0, 0, z]} />;
 }
 
-function AFrameHome({ dusk, archGlass, cheapGlass }: { dusk: Dusk; archGlass: THREE.Material; cheapGlass: THREE.Material }) {
+function AFrameHome({ dusk, archGlass, glassRoof }: { dusk: Dusk; archGlass: THREE.Material; glassRoof: THREE.Material }) {
   const lamp = useRef<THREE.PointLight>(null);
   const pendant = useRef<THREE.MeshStandardMaterial>(null);
   useLayoutEffect(
@@ -383,19 +436,52 @@ function AFrameHome({ dusk, archGlass, cheapGlass }: { dusk: Dusk; archGlass: TH
         )
       )}
 
-      {/* roof panes — dark standing seam */}
-      {[1, -1].map((s) => (
-        <mesh
-          key={s}
-          castShadow
-          receiveShadow
-          position={[(s * EAVE) / 2, (RIDGE_H + EAVE_H) / 2, 0]}
-          rotation={[0, 0, s * ROOF_A]}
-        >
-          <boxGeometry args={[0.16, SLOPE_L + 0.5, 6.9]} />
-          <meshStandardMaterial color="#242a27" roughness={0.5} metalness={0.35} flatShading />
-        </mesh>
-      ))}
+      {/* Roof panes — dark standing seam. The WEST slope (s = -1) carries a
+          glazed band: the solid pane is split fore and aft and a run of
+          skylight glass sits between them, so the loft gets the afternoon
+          sun without touching the east slope's shading or the silhouette. */}
+      {[1, -1].map((s) =>
+        s === 1 ? (
+          <mesh
+            key={s}
+            castShadow
+            receiveShadow
+            position={[(s * EAVE) / 2, (RIDGE_H + EAVE_H) / 2, 0]}
+            rotation={[0, 0, s * ROOF_A]}
+          >
+            <boxGeometry args={[0.16, SLOPE_L + 0.5, 6.9]} />
+            <meshStandardMaterial color="#242a27" roughness={0.5} metalness={0.35} flatShading />
+          </mesh>
+        ) : (
+          <group key={s} position={[(s * EAVE) / 2, (RIDGE_H + EAVE_H) / 2, 0]} rotation={[0, 0, s * ROOF_A]}>
+            {/* solid roof fore and aft of the glazed run */}
+            {([[0, 2.53, 1.84], [0, -2.53, 1.84]] as [number, number, number][]).map(([x, z, d], i) => (
+              <mesh key={i} castShadow receiveShadow position={[x, 0, z]}>
+                <boxGeometry args={[0.16, SLOPE_L + 0.5, d]} />
+                <meshStandardMaterial color="#242a27" roughness={0.5} metalness={0.35} flatShading />
+              </mesh>
+            ))}
+            {/* the glazing itself, inset so the seam frames read proud of it */}
+            <mesh material={glassRoof} position={[0, 0, 0]} renderOrder={RO_GLASS_FLOOR}>
+              <boxGeometry args={[0.1, SLOPE_L + 0.36, 3.2]} />
+            </mesh>
+            {/* glazing bars across the run */}
+            {[-1.5, -0.75, 0, 0.75, 1.5].map((z, i) => (
+              <mesh key={`gb${i}`} position={[0.04, 0, z]} castShadow>
+                <boxGeometry args={[0.11, SLOPE_L + 0.4, 0.07]} />
+                <meshStandardMaterial color={mullion} roughness={0.6} metalness={0.3} />
+              </mesh>
+            ))}
+            {/* head and sill flashing */}
+            {[[0, (SLOPE_L + 0.36) / 2], [0, -(SLOPE_L + 0.36) / 2]].map(([x, y], i) => (
+              <mesh key={`fl${i}`} position={[0.03, y, 0]} castShadow>
+                <boxGeometry args={[0.14, 0.1, 3.3]} />
+                <meshStandardMaterial color="#1c211f" roughness={0.5} metalness={0.4} />
+              </mesh>
+            ))}
+          </group>
+        )
+      )}
       {/* ridge cap */}
       <mesh castShadow position={[0, RIDGE_H + 0.06, 0]}>
         <boxGeometry args={[0.3, 0.12, 6.9]} />
@@ -506,7 +592,7 @@ function GlassRailRun({
   const cz = (from[1] + to[1]) / 2;
   return (
     <group position={[cx, base, cz]} rotation={[0, ang, 0]}>
-      <mesh material={mat} position={[0, h / 2, 0]}>
+      <mesh material={mat} position={[0, h / 2, 0]} renderOrder={RO_GLASS_RAIL}>
         <boxGeometry args={[0.05, h, len]} />
       </mesh>
       <mesh position={[0, h + 0.03, 0]} castShadow>
@@ -517,7 +603,7 @@ function GlassRailRun({
   );
 }
 
-function Deck({ cheapGlass }: { cheapGlass: THREE.Material }) {
+function Deck({ glassFloor, glassRail }: { glassFloor: THREE.Material; glassRail: THREE.Material }) {
   const cedar = ["#a97e57", "#9b7350", "#b0855e"];
   const planks = [];
   for (let i = 0; i < 6; i++) {
@@ -543,19 +629,21 @@ function Deck({ cheapGlass }: { cheapGlass: THREE.Material }) {
           <meshStandardMaterial color="#5a4632" roughness={0.9} flatShading />
         </mesh>
       ))}
-      {/* glass-floored section, east side, feeding the walkway */}
-      <mesh material={cheapGlass} position={[2.4, 0.44, 4.6]}>
+      {/* glass-floored section, east side, feeding the walkway.
+          Frame dropped to 0.345 (top 0.37) so it clears the glass underside
+          at 0.40 — they used to interpenetrate between 0.40 and 0.41. */}
+      <mesh material={glassFloor} position={[2.4, 0.44, 4.6]} renderOrder={RO_GLASS_FLOOR}>
         <boxGeometry args={[2.1, 0.08, 2.85]} />
       </mesh>
       {/* frame under glass */}
-      <mesh castShadow position={[2.4, 0.38, 4.6]}>
-        <boxGeometry args={[2.2, 0.06, 2.95]} />
+      <mesh castShadow position={[2.4, 0.345, 4.6]}>
+        <boxGeometry args={[2.2, 0.05, 2.95]} />
         <meshStandardMaterial color="#5d6663" roughness={0.5} metalness={0.5} />
       </mesh>
       {/* glass railings: front edge with a gap for the steps, west edge */}
-      <GlassRailRun from={[-3.6, 6.05]} to={[-1.1, 6.05]} mat={cheapGlass} />
-      <GlassRailRun from={[1.2, 6.05]} to={[3.45, 6.05]} mat={cheapGlass} />
-      <GlassRailRun from={[-3.6, 3.15]} to={[-3.6, 6.05]} mat={cheapGlass} />
+      <GlassRailRun from={[-3.6, 6.05]} to={[-1.1, 6.05]} mat={glassRail} />
+      <GlassRailRun from={[1.2, 6.05]} to={[3.45, 6.05]} mat={glassRail} />
+      <GlassRailRun from={[-3.6, 3.15]} to={[-3.6, 6.05]} mat={glassRail} />
       {/* steps to the meadow */}
       {[0, 1, 2].map((i) => (
         <mesh key={i} castShadow receiveShadow position={[0.05, 0.34 - i * 0.13, 6.35 + i * 0.34]}>
@@ -567,7 +655,7 @@ function Deck({ cheapGlass }: { cheapGlass: THREE.Material }) {
   );
 }
 
-function Walkway({ cheapGlass }: { cheapGlass: THREE.Material }) {
+function Walkway({ glassFloor, glassRail }: { glassFloor: THREE.Material; glassRail: THREE.Material }) {
   // deck east edge (3.45, 4.6) -> tub platform (5.9, 5.4)
   const from: [number, number] = [3.45, 4.65];
   const to: [number, number] = [5.9, 5.35];
@@ -578,10 +666,14 @@ function Walkway({ cheapGlass }: { cheapGlass: THREE.Material }) {
   return (
     <group>
       <group position={[cx, 0.42, cz]} rotation={[0, ang, 0]}>
-        <mesh material={cheapGlass} position={[0, 0, 0]}>
+        {/* THE BRIDGE. Glass underside sits at 0.385; the frame top used to
+            land on exactly 0.385 — coplanar, and the pair z-fought every time
+            the camera came near. Frame dropped to -0.085 (top 0.395 - 0.06 =
+            0.335 world) leaving 5cm of air. */}
+        <mesh material={glassFloor} position={[0, 0, 0]} renderOrder={RO_GLASS_FLOOR}>
           <boxGeometry args={[1.0, 0.07, len + 0.4]} />
         </mesh>
-        <mesh castShadow position={[0, -0.06, 0]}>
+        <mesh castShadow position={[0, -0.085, 0]}>
           <boxGeometry args={[1.08, 0.05, len + 0.5]} />
           <meshStandardMaterial color="#5d6663" roughness={0.5} metalness={0.5} />
         </mesh>
@@ -593,8 +685,8 @@ function Walkway({ cheapGlass }: { cheapGlass: THREE.Material }) {
           <meshStandardMaterial color="#848c85" roughness={0.95} flatShading />
         </mesh>
       ))}
-      <GlassRailRun from={[from[0] - 0.35, from[1] + 0.42]} to={[to[0] - 0.35, to[1] + 0.42]} h={0.62} base={0.45} mat={cheapGlass} />
-      <GlassRailRun from={[from[0] + 0.38, from[1] - 0.48]} to={[to[0] + 0.38, to[1] - 0.48]} h={0.62} base={0.45} mat={cheapGlass} />
+      <GlassRailRun from={[from[0] - 0.35, from[1] + 0.42]} to={[to[0] - 0.35, to[1] + 0.42]} h={0.62} base={0.45} mat={glassRail} />
+      <GlassRailRun from={[from[0] + 0.38, from[1] - 0.48]} to={[to[0] + 0.38, to[1] - 0.48]} h={0.62} base={0.45} mat={glassRail} />
     </group>
   );
 }
@@ -1108,13 +1200,44 @@ function Forest({ frozen }: { frozen: boolean }) {
   const tealClones = useNormalizedClones(teal.scene, 4.3, TEAL_PINES);
   const rockClones = useNormalizedClones(rocks.scene, 1.4, ROCKS);
 
+  /* Wind + cursor. The original sway was 0.006 rad — about a third of a
+     degree, which is real but invisible. This keeps the same gentle base and
+     adds a slow GUST envelope on top, so the stand breathes rather than
+     ticking like a metronome. The cursor is raycast to the ground once a
+     frame (a maths plane, not geometry) and trees within a few metres lean
+     away from it, which is what makes the canopy feel touchable. */
+  const { camera, pointer } = useThree();
+  const _ray = useMemo(() => new THREE.Raycaster(), []);
+  const _plane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), []);
+  const _hit = useMemo(() => new THREE.Vector3(), []);
+  const _has = useRef(false);
+
   useFrame(({ clock }) => {
     if (frozen) return;
     const t = clock.elapsedTime;
+    _ray.setFromCamera(pointer, camera);
+    _has.current = !!_ray.ray.intersectPlane(_plane, _hit);
+    // gust envelope: 0.55..1.0, drifting slowly across the whole stand
+    const gust = 0.55 + 0.45 * (0.5 + 0.5 * Math.sin(t * 0.23));
     sway.current.forEach((g, i) => {
       if (!g) return;
-      g.rotation.z = Math.sin(t * 0.4 + i * 1.7) * 0.006;
-      g.rotation.x = Math.cos(t * 0.33 + i * 2.3) * 0.005;
+      const base = Math.sin(t * 0.55 + i * 1.7) * 0.019 + Math.sin(t * 1.31 + i * 0.7) * 0.007;
+      const cross = Math.cos(t * 0.42 + i * 2.3) * 0.014;
+      let leanZ = 0;
+      let leanX = 0;
+      if (_has.current) {
+        const dx = g.position.x - _hit.x;
+        const dz = g.position.z - _hit.z;
+        const d = Math.hypot(dx, dz);
+        const push = Math.max(0, 1 - d / 5.5);
+        if (push > 0) {
+          const k = push * push * 0.09;
+          leanZ = (dx / (d || 1)) * k;
+          leanX = -(dz / (d || 1)) * k;
+        }
+      }
+      g.rotation.z = base * gust + leanZ;
+      g.rotation.x = cross * gust + leanX;
     });
   });
 
@@ -1345,7 +1468,45 @@ function CameraRig({ progressRef, reduced }: { progressRef: React.MutableRefObje
 
 /* ------------------------- atmosphere / light ------------------------ */
 
-function LightArc({ progressRef, reduced, dusk }: { progressRef: React.MutableRefObject<number>; reduced: boolean; dusk: Dusk }) {
+/* Night sky. One Points cloud on a dome, built once, opacity-faded by the
+   night amount so switching modes costs nothing but a uniform. */
+function StarField({ amount }: { amount: number }) {
+  const geo = useMemo(() => {
+    const N = 700;
+    const pos = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) {
+      const s = Math.sin(i * 91.7) * 43758.5453;
+      const a = (s - Math.floor(s)) * Math.PI * 2;
+      const t = Math.sin(i * 33.1) * 43758.5453;
+      const el = 0.08 + (t - Math.floor(t)) * 0.72;
+      const r = 190;
+      pos[i * 3] = Math.cos(a) * Math.cos(el) * r;
+      pos[i * 3 + 1] = Math.sin(el) * r;
+      pos[i * 3 + 2] = Math.sin(a) * Math.cos(el) * r;
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    return g;
+  }, []);
+  if (amount < 0.02) return null;
+  return (
+    <points geometry={geo} renderOrder={-11}>
+      <pointsMaterial size={1.15} sizeAttenuation color="#dfe9f5" transparent opacity={amount * 0.95} fog={false} />
+    </points>
+  );
+}
+
+function LightArc({
+  progressRef,
+  reduced,
+  dusk,
+  night = 0,
+}: {
+  progressRef: React.MutableRefObject<number>;
+  reduced: boolean;
+  dusk: Dusk;
+  night?: number;
+}) {
   const sun = useRef<THREE.DirectionalLight>(null);
   const hemi = useRef<THREE.HemisphereLight>(null);
   const { scene } = useThree();
@@ -1366,25 +1527,40 @@ function LightArc({ progressRef, reduced, dusk }: { progressRef: React.MutableRe
     }),
     []
   );
+  const nights = useMemo(
+    () => ({
+      sunP: new THREE.Vector3(-14, 30, -10), // moon
+      sunC: new THREE.Color("#9fb6d8"),
+      fogC: new THREE.Color("#161f2b"),
+    }),
+    []
+  );
   const _c = useMemo(() => new THREE.Color(), []);
   const _v = useMemo(() => new THREE.Vector3(), []);
 
   useFrame((state, dt) => {
     const target = reduced ? 6 : progressRef.current;
     rig.current.smooth = reduced ? 6 : THREE.MathUtils.damp(rig.current.smooth, target, 5, Math.min(dt, 1 / 20));
-    const d = smoothstep(4.0, 6.0, rig.current.smooth);
+    /* The scroll dusk arc and the night toggle compose rather than compete:
+       night FLOORS the arc at full, so flipping to night at the top of the
+       page lands in the same warm-then-dark place the journey would have. */
+    const d = Math.max(smoothstep(4.0, 6.0, rig.current.smooth), night);
     dusk.set(d);
     if (sun.current) {
       _v.lerpVectors(cools.sunP, warms.sunP, d);
+      // moon rides higher and colder than the setting sun
+      _v.lerp(nights.sunP, night);
       sun.current.position.copy(_v);
       _c.lerpColors(cools.sunC, warms.sunC, d);
+      _c.lerp(nights.sunC, night);
       sun.current.color.copy(_c);
-      sun.current.intensity = 2.6 - d * 0.9;
+      sun.current.intensity = (2.6 - d * 0.9) * (1 - night * 0.82);
     }
-    if (hemi.current) hemi.current.intensity = 0.5 - d * 0.18;
+    if (hemi.current) hemi.current.intensity = (0.5 - d * 0.18) * (1 - night * 0.72);
     const fog = scene.fog as THREE.Fog | null;
     if (fog) {
       _c.lerpColors(cools.fogC, warms.fogC, d);
+      _c.lerp(nights.fogC, night);
       fog.color.copy(_c);
     }
   });
@@ -1419,17 +1595,37 @@ function LightArc({ progressRef, reduced, dusk }: { progressRef: React.MutableRe
 export default function Scene({
   progressRef,
   reduced,
+  night = false,
 }: {
   progressRef: React.MutableRefObject<number>;
   reduced: boolean;
+  night?: boolean;
 }) {
   const dusk = useDuskRegistry();
   const archGlass = useArchGlass();
-  const cheapGlass = useCheapGlass();
+  const glassFloor = useGlassFloor();
+  const glassRail = useGlassRail();
+
+  /* Night is a target the whole scene damps toward rather than a hard swap,
+     so the toggle reads as the sun going down instead of a light switch.
+     The scroll-driven dusk arc still runs underneath it — night simply
+     floors it at full, which is why the two never fight. */
+  const nightRef = useRef(0);
+  const [nightAmt, setNightAmt] = useState(0);
+  useFrame((_, dt) => {
+    const target = night ? 1 : 0;
+    const v = THREE.MathUtils.damp(nightRef.current, target, 2.2, Math.min(dt, 1 / 20));
+    if (Math.abs(v - nightRef.current) > 0.0005) {
+      nightRef.current = v;
+      setNightAmt(Number(v.toFixed(3)));
+      document.documentElement.style.setProperty("--st-night", v.toFixed(3));
+    }
+  });
+
   return (
     <>
       <fog attach="fog" args={["#e3ede7", 30, 88]} />
-      <LightArc progressRef={progressRef} reduced={reduced} dusk={dusk} />
+      <LightArc progressRef={progressRef} reduced={reduced} dusk={dusk} night={nightAmt} />
 
       <Environment resolution={64} frames={1}>
         <mesh scale={90}>
@@ -1440,13 +1636,20 @@ export default function Scene({
         <Lightformer intensity={1.2} position={[-8, 6, -6]} scale={[10, 4, 1]} color="#d9f4ea" />
       </Environment>
 
+      {/* Stars — only ever built once, faded in by the night amount. */}
+      <StarField amount={nightAmt} />
+
       <Terrain />
       <Forest frozen={reduced} />
       <Props dusk={dusk} />
 
-      <AFrameHome dusk={dusk} archGlass={archGlass} cheapGlass={cheapGlass} />
-      <Deck cheapGlass={cheapGlass} />
-      <Walkway cheapGlass={cheapGlass} />
+      <AFrameHome dusk={dusk} archGlass={archGlass} glassRoof={glassFloor} />
+      <Deck glassFloor={glassFloor} glassRail={glassRail} />
+      <Walkway glassFloor={glassFloor} glassRail={glassRail} />
+
+      {/* The additive detail layer — mountains, clouds, grass, steps,
+          hammock, netting, wildlife, outdoor lighting, tub steam. */}
+      <SceneDetail frozen={reduced} night={nightAmt} glassRail={glassRail} />
       <HotTub position={[5.9, 0, 5.4]} dusk={dusk} />
       <FirePit dusk={dusk} />
       <Bench position={[8.6, terrainH(8.6, 18.0) - 0.14, 18.0]} rotY={Math.PI * 1.12} />
