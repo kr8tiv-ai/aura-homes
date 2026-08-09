@@ -1,50 +1,38 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import "./globals.css";
 import { Providers } from "./providers";
+import SiteShell from "../components/SiteShell";
+
+const TITLE = "Aura Homes — AI-designed off-grid eco homes, funded in USDC on X Layer";
+const DESCRIPTION =
+  "From USDC on X Layer to the keys of an off-grid eco home. Land, design, budget, escrow, and build — orchestrated end-to-end by AI, in Alberta first.";
 
 export const metadata: Metadata = {
-  title: "Aura Homes",
-  description: "AI-designed off-grid eco homes on X Layer, paid in USDC.",
+  metadataBase: new URL("https://kr8tiv-ai.github.io"),
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    type: "website",
+    url: "/aura-homes/",
+    siteName: "Aura Homes",
+    images: [{ url: "/aura-homes/social-card.png", width: 1200, height: 630, alt: "Aura Homes" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+    images: ["/aura-homes/social-card.png"],
+  },
 };
-
-const nav = [
-  { href: "/land", label: "Land" },
-  { href: "/design", label: "Design" },
-  { href: "/budget", label: "Budget" },
-  { href: "/escrow", label: "Escrow" },
-  { href: "/dashboard", label: "Dashboard" },
-] as const;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body className="min-h-screen antialiased font-sans">
         <Providers>
-          <header className="border-b aura-hairline">
-            <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
-              <Link href="/" className="text-sm font-semibold tracking-label uppercase">
-                Aura <span className="text-aura-emerald">Homes</span>
-              </Link>
-              <nav className="flex gap-8">
-                {nav.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="aura-label transition-colors hover:text-aura-lime"
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </nav>
-            </div>
-          </header>
-          <main className="mx-auto max-w-5xl px-6">{children}</main>
-          <footer className="mt-24 border-t aura-hairline">
-            <div className="mx-auto max-w-5xl px-6 py-8 text-xs uppercase tracking-label text-aura-text/50">
-              A KR8TIV AI product &middot; Open source (MIT)
-            </div>
-          </footer>
+          <SiteShell>{children}</SiteShell>
         </Providers>
       </body>
     </html>

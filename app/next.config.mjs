@@ -4,6 +4,7 @@ const ghPages = process.env.GH_PAGES === "1";
 
 const nextConfig = {
   reactStrictMode: true,
+  env: { NEXT_PUBLIC_BASE_PATH: ghPages ? "/aura-homes" : "" },
   ...(ghPages
     ? {
         output: "export",
