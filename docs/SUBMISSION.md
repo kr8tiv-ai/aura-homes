@@ -41,7 +41,7 @@ Everything is open source (MIT) from the first commit, including the research th
 
 **X Layer integration:** native USDC escrow + registry contracts on testnet 1952 and mainnet 196; Circle CCTP on-ramp path documented for Canadian users (Wealthsimple/Kraken/Coinbase → Base → X Layer); x402/OKX Agent Payments Protocol metering on agent endpoints; account abstraction roadmap on X Layer's documented Particle + Safe stack.
 
-**Links:** GitHub: https://github.com/kr8tiv-ai/aura-homes · Demo: (hosted URL) · Video: (link) · X: (handle) · Contracts: (OKLink tx links)
+**Links:** GitHub: https://github.com/kr8tiv-ai/aura-homes · Demo: **https://kr8tiv-ai.github.io/aura-homes/** (live) · Video: (link) · X: (handle) · Contracts: (OKLink tx links — pending faucet)
 
 **Team:** Matt Aurora Ventures (KR8TIV AI) — solo founder building with AI agents, in the open.
 

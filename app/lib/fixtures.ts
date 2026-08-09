@@ -90,6 +90,77 @@ export const milestonesFixture: MilestoneFixture[] = [
   },
 ];
 
+// ---------------------------------------------------------------- slips
+
+/**
+ * Slips raised by the Aura Brain for this journey. The shape mirrors Slip in
+ * agent/src/brain/slips.ts (the source of truth); the values are a snapshot of
+ * the brain's output (agent/out/slips.json) for agent/samples/journey.sample.json,
+ * run 2026-08-09. Replace with a live journey_status read once the brain
+ * service is hosted.
+ */
+export type SlipSeverity = "nudge" | "warn" | "critical";
+
+export interface SlipFixture {
+  ruleId: string;
+  severity: SlipSeverity;
+  message: string;
+  suggestedAction: string;
+}
+
+export const slipsFixture: SlipFixture[] = [
+  {
+    ruleId: "sip-kit-unordered",
+    severity: "critical",
+    message:
+      "Drawings were approved 9 days ago and the SIP kit is still unordered. Panel lead time is 12-20 weeks from approved drawings, so every idle day pushes lock-up by a day.",
+    suggestedAction: "Place the SIP kit order with the panel plant.",
+  },
+  {
+    ruleId: "holdback-maturity",
+    severity: "warn",
+    message:
+      "Milestone 1 (Design, engineering & permits) holdback of $1,200 became releasable on 2026-08-04 — the 60-day statutory holdback period has run and it is still held.",
+    suggestedAction: "Release the matured holdback on milestone 1 to the builder.",
+  },
+  {
+    ruleId: "escrow-milestone-stale",
+    severity: "warn",
+    message:
+      "Milestone 2 (Site prep & foundation) was approved by the builder 7 days ago and is still waiting on the owner's approval before the release can execute.",
+    suggestedAction: "Get the owner's approval (or a dispute) on milestone 2 so the release can execute.",
+  },
+  {
+    ruleId: "waiting-escalation",
+    severity: "warn",
+    message:
+      "Waiting on the supplier for 14 days: final SIP kit quote from the panel plant. No movement recorded.",
+    suggestedAction: "Follow up with the supplier on: final SIP kit quote from the panel plant.",
+  },
+];
+
+/** Who acts on a slip, for the dashboard's owner column. */
+const slipOwner: Record<string, string> = {
+  "sip-kit-unordered": "You",
+  "holdback-maturity": "You",
+  "escrow-milestone-stale": "You",
+  "waiting-escalation": "Supplier",
+  "permit-unsubmitted": "You",
+  "winter-window": "Builder",
+};
+
+/** Maps a brain slip into the dashboard's next-action card shape. */
+export function slipToNextAction(slip: SlipFixture): NextActionFixture {
+  return {
+    id: slip.ruleId,
+    title: slip.suggestedAction,
+    detail: slip.message,
+    owner: slipOwner[slip.ruleId] ?? "You",
+    due: slip.severity === "critical" ? "Overdue" : slip.severity === "warn" ? "This week" : "Note",
+    slip: true,
+  };
+}
+
 // ---------------------------------------------------------------- dashboard
 
 export type PipelineStage = "LAND" | "DESIGN" | "BUDGET" | "ESCROW" | "BUILD";
@@ -128,16 +199,9 @@ export const dashboardFixture = {
     { category: "Site", actualCad: 8650, note: "Driveway and clearing complete" },
     { category: "Foundation", actualCad: 4200, note: "Screw-pile deposit paid" },
   ] as CategoryActualFixture[],
+  // Non-slip actions only; slipped steps come from slipsFixture (the Aura
+  // Brain's output) and are merged in by the dashboard page.
   nextActions: [
-    {
-      id: "sip-order",
-      title: "Order the SIP shell kit",
-      slip: true,
-      detail:
-        "SIP kit unordered 9 days after drawings approved — the 12-20 week panel lead time is burning while nothing is in the fabrication queue.",
-      owner: "You",
-      due: "Overdue",
-    },
     {
       id: "fund-m3",
       title: "Fund milestone 03 — SIP shell & envelope",

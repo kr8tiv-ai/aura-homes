@@ -1,0 +1,73 @@
+{
+  "buildId": "aura-pilot-01",
+  "projectName": "Aura Pilot Build 01",
+  "parcel": "37 Aspen Road, Lac Ste. Anne County (Agricultural district)",
+  "stage": "escrow",
+  "substeps": {
+    "land": [
+      { "id": "district-check", "label": "District minimum dwelling size verified (Agricultural, 592 sqft)", "status": "done", "completedISO": "2026-05-28T00:00:00Z" },
+      { "id": "close", "label": "Parcel closed — USDC converted, title registered", "status": "done", "completedISO": "2026-06-10T00:00:00Z" }
+    ],
+    "design": [
+      { "id": "questionnaire", "label": "Design questionnaire completed", "status": "done", "completedISO": "2026-07-02T00:00:00Z" },
+      { "id": "design-package", "label": "Review-ready design package finished by residential designer", "status": "done", "completedISO": "2026-07-24T00:00:00Z" },
+      { "id": "drawings-approved", "label": "Drawings approved", "status": "done", "completedISO": "2026-07-31T00:00:00Z" }
+    ],
+    "budget": [
+      { "id": "budget-locked", "label": "LOW/MID/HIGH budget locked (MID $301,280 ex-land)", "status": "done", "completedISO": "2026-07-18T00:00:00Z" }
+    ],
+    "escrow": [
+      { "id": "fund-m1", "label": "Fund milestone 01 — design, engineering, and permits", "status": "done", "completedISO": "2026-06-03T00:00:00Z" },
+      { "id": "fund-m2", "label": "Fund milestone 02 — site prep and foundation", "status": "done", "completedISO": "2026-08-02T00:00:00Z" },
+      { "id": "sip-quote", "label": "Confirm the SIP kit quote", "status": "waitingOn", "waitingOn": { "who": "supplier", "what": "final SIP kit quote from the panel plant", "sinceISO": "2026-07-26T00:00:00Z" } },
+      { "id": "fund-m3", "label": "Fund milestone 03 — SIP shell and envelope ($77,000)", "status": "active" }
+    ],
+    "build": [
+      { "id": "site-prep", "label": "Driveway and site clearing complete", "status": "done", "completedISO": "2026-08-04T00:00:00Z" },
+      { "id": "foundation", "label": "Screw-pile foundation installation", "status": "active" },
+      { "id": "sip-erection", "label": "SIP shell erection to lock-up", "status": "pending" },
+      { "id": "systems", "label": "Off-grid systems — solar, water with AWG module, septic", "status": "pending" },
+      { "id": "completion", "label": "Interior fit-out and final inspection", "status": "pending" }
+    ]
+  },
+  "blockers": [],
+  "escrow": {
+    "holdbackRateBps": 1000,
+    "holdbackPeriodDays": 60,
+    "milestones": [
+      {
+        "index": 0,
+        "name": "Design, engineering & permits",
+        "amountCad": 12000,
+        "holdbackCad": 1200,
+        "status": "released",
+        "approvals": { "owner": "2026-06-04T00:00:00Z", "builder": "2026-06-04T00:00:00Z" },
+        "releasedISO": "2026-06-05T00:00:00Z",
+        "holdbackReleased": false
+      },
+      {
+        "index": 1,
+        "name": "Site prep & foundation",
+        "amountCad": 18000,
+        "holdbackCad": 1800,
+        "status": "funded",
+        "approvals": { "builder": "2026-08-02T00:00:00Z" }
+      },
+      { "index": 2, "name": "SIP shell & envelope", "amountCad": 77000, "holdbackCad": 7700, "status": "awaitingFunding" },
+      { "index": 3, "name": "Off-grid systems", "amountCad": 113000, "holdbackCad": 11300, "status": "awaitingFunding" },
+      { "index": 4, "name": "Interior & completion", "amountCad": 81280, "holdbackCad": 8128, "status": "awaitingFunding" }
+    ]
+  },
+  "keyDates": {
+    "landClosedISO": "2026-06-10T00:00:00Z",
+    "designCompleteISO": "2026-07-24T00:00:00Z",
+    "drawingsApprovedISO": "2026-07-31T00:00:00Z",
+    "permitSubmittedISO": "2026-07-25T00:00:00Z",
+    "permitIssuedISO": "2026-08-03T00:00:00Z"
+  },
+  "emailPrefs": {
+    "weeklyDigest": true,
+    "materialChanges": true,
+    "address": "owner@example.com"
+  }
+}

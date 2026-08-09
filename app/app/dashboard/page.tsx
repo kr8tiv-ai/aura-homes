@@ -3,11 +3,14 @@ import {
   budgetFixture,
   dashboardFixture,
   milestonesFixture,
+  slipsFixture,
+  slipToNextAction,
 } from "@/lib/fixtures";
 
 // Owner dashboard for one build journey. Fixture-driven until the Aura Brain
 // journey-state service is hosted; every number reconciles with the budget and
-// milestone fixtures (MID $301,280 ex-land, 10% statutory holdback).
+// milestone fixtures (MID $301,280 ex-land, 10% statutory holdback). Slip cards
+// are the Aura Brain's own output (agent/src/brain/slips.ts via slipsFixture).
 
 const cad = (n: number) => `$${n.toLocaleString("en-CA")}`;
 
@@ -39,6 +42,9 @@ export default function DashboardPage() {
   const actualByCategory = new Map(d.actuals.map((a) => [a.category, a]));
 
   const currentIdx = d.stages.indexOf(d.currentStage);
+
+  // Brain-detected slips lead the list, then the routine next actions.
+  const nextActions = [...slipsFixture.map(slipToNextAction), ...d.nextActions];
 
   return (
     <div className="py-16">
@@ -157,7 +163,7 @@ export default function DashboardPage() {
       <section className="mt-12">
         <h2 className="aura-label">Next actions</h2>
         <div className="mt-5 space-y-4">
-          {d.nextActions.map((action) => (
+          {nextActions.map((action) => (
             <div
               key={action.id}
               className={`aura-panel flex flex-wrap items-start gap-5 p-6 ${

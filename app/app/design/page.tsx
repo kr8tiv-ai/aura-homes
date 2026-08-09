@@ -1,9 +1,10 @@
 "use client";
 
 // Questionnaire wizard shell. All answers live in one state object shaped like
-// the aura-architect Questionnaire; "Generate design" calls the stub API route.
+// the aura-architect Questionnaire; "Generate design" runs the client-side stub.
 
 import { useState } from "react";
+import { designFixture } from "@/lib/fixtures";
 
 const steps = ["Land", "Home size & style", "Energy", "Water", "Extras"] as const;
 
@@ -35,19 +36,12 @@ export default function DesignPage() {
   async function generate() {
     setBusy(true);
     setResult(null);
-    try {
-      const res = await fetch("/api/design", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(state),
-      });
-      const data = await res.json();
-      setResult(data.narrative ?? JSON.stringify(data, null, 2));
-    } catch {
-      setResult("Design service unavailable. Try again.");
-    } finally {
-      setBusy(false);
-    }
+    // Static-export build: the design stub runs client-side so the hosted demo
+    // needs no server. The real pipeline lives in agent/ (aura-architect).
+    await new Promise((r) => setTimeout(r, 400));
+    const data = { ...designFixture, questionnaire: state };
+    setResult(data.narrative ?? JSON.stringify(data, null, 2));
+    setBusy(false);
   }
 
   return (

@@ -1,5 +1,9 @@
 # Deployments
 
+## Hosted web demo — GitHub Pages (decision 2026-08-09)
+
+**LIVE: [https://kr8tiv-ai.github.io/aura-homes/](https://kr8tiv-ai.github.io/aura-homes/)** — all five pipeline pages verified serving (200): landing, /land, /design, /budget, /escrow, plus /dashboard. Ships from the `gh-pages` branch (static export: `GH_PAGES=1 npm run build` in `app/`, output pushed to the branch — no workflow file, no server). The Hostinger API token on this machine is expired (401 — re-mint is a founder task, tracked in OPEN-QUESTIONS); if re-minted later a custom domain can front this, but Pages is fully sufficient for judging.
+
 ## X Layer Testnet (chain 1952) — READY, awaiting 0.2 OKB
 
 | | |
