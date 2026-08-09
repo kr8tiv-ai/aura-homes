@@ -5,6 +5,7 @@
 ## Checklist
 
 **Matt-only (nobody else can do these):**
+- [ ] **30 seconds: fund the testnet deployer.** Open [the faucet](https://web3.okx.com/xlayer/faucet/xlayerfaucet), paste `0x831Fb0C6f8A96dE7c7253bF76C98a780d6E0f260`, Get 0.2 OKB, solve the captcha (it's CAPTCHA-gated — agents won't do captchas). Everything after that is one command — see [DEPLOYMENTS.md](DEPLOYMENTS.md).
 - [ ] Create the dedicated X account — recommended handle **@AuraHomesAI** (fallbacks: @AuraHomesHQ, @BuildAuraHomes). Avatar: `assets/aura-homes-avatar.png`. Bio below.
 - [ ] Post build-in-public updates every 1–2 days through Aug 21 (drafts below) — judges explicitly weigh an *active* account.
 - [ ] Submit the Google Form (answers below) once the demo link is live.
