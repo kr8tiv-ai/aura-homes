@@ -11,3 +11,4 @@
 | 5 | Pilot county for the worked demo example | Lac Ste. Anne (cheapest verified land, the district-minimum trap makes the best demo moment) with Leduc as the permit-friendly contrast | Both are in the data already |
 | 6 | ANTHROPIC_API_KEY for the hosted demo's live AI mode | Offline deterministic fallback ships either way; live mode flips on when a key is provided | Demo never breaks without it |
 | 7 | Escrow arbiter identity for the demo | A project-held second wallet labels "Arbiter (demo)" | Real arbiter selection (inspector? lawyer?) is a Phase 1 design question with legal input |
+| 8 | Token trading pair — founder's dictation said "paired with SpaceX"; we've assumed this meant **paired with USDC** (an LP pair on X Layer). Confirm. | token/USDC pair assumed throughout TOKEN-DESIGNS.md | Token itself is a post-hackathon decision |

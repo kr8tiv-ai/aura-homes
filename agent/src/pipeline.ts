@@ -18,16 +18,18 @@ import {
 
 /**
  * Built-in defaults matching the Alberta research baseline:
- * 800 sqft off-grid SIP home LOW $185K / MID $290K / HIGH $465K excluding land.
+ * 800 sqft off-grid SIP home LOW ~$199K / MID ~$301K / HIGH ~$444K excluding land
+ * (data/alberta/cost-model.json is authoritative; these built-ins are the offline fallback).
  */
 export const DEFAULT_COST_MODEL: AlbertaCostModel = {
-  baseHome: { referenceSqft: 800, low: 185_000, mid: 290_000, high: 465_000 },
+  baseHome: { referenceSqft: 800, low: 199_100, mid: 301_280, high: 443_900 },
   landLacSteAnne: { low: 75_000, high: 200_000 },
   screwPiles: { low: 6_000, high: 15_000 },
   sipShellKitAndErection: { low: 30_000, high: 55_000 },
   solarBattery: { low: 35_000, high: 70_000 },
   cistern: { low: 8_000, high: 15_000 },
   well: { low: 10_000, high: 18_000 },
+  awgSupplement: { low: 3_500, mid: 5_000, high: 8_000 },
   septic: { low: 10_000, high: 25_000 },
   woodStoveInstalled: { low: 2_500, high: 4_000 },
   woodFiredHotTub: { low: 4_000, high: 12_000 },
@@ -156,12 +158,13 @@ export function designBriefToBudget(
 /**
  * Budget built from the checked-in research file (data/alberta/cost-model.json).
  *
- * Follows the file's totalsRule exactly: totals = sum of non-optional line
- * items x (1 + contingencyPct), optional lines excluded, land excluded from
- * ex-land totals. The file's contingencyPct governs — a questionnaire
+ * Follows the file's totalsRule exactly: totals = sum of line items x
+ * (1 + contingencyPct), land excluded from ex-land totals. No line is
+ * optional — the AWG summer water module is standard on every Aura home
+ * (founder mandate). The file's contingencyPct governs — a questionnaire
  * contingency override is deliberately ignored here so agent output equals the
- * published totals to the dollar (ex-land 195,250 / 295,680 / 434,700 at
- * reference size with the full non-optional line set).
+ * published totals to the dollar (ex-land 199,100 / 301,280 / 443,900 at
+ * reference size with the full line set).
  */
 function budgetFromRepoModel(
   brief: Omit<DesignBrief, "narrative" | "narrativeSource">,
@@ -190,8 +193,9 @@ function budgetFromRepoModel(
 
   const lines: BudgetLine[] = [];
   for (const item of model.lineItems) {
-    // Questionnaire-driven inclusion rules.
-    if (item.key === "awgSupplement" && q.water.source !== "awgSupplement") continue;
+    // Questionnaire-driven inclusion rules. Note: awgSupplement is NEVER
+    // skipped — the AWG summer water module is standard on every Aura home
+    // (founder mandate; cistern/well still carries winter).
     if (item.key === "hotTubDeck" && !q.extras.hotTub && !q.extras.deck) continue;
 
     const s = scaledKeys.has(item.key) ? scale : 1;
@@ -284,15 +288,16 @@ function budgetFromDefaults(
   if (q.water.source === "well") {
     push("water", "Water", "Drilled well, pump, and pressure system", model.well);
   } else {
-    push(
-      "water",
-      "Water",
-      q.water.source === "awgSupplement"
-        ? "Cistern + atmospheric water generator supplement"
-        : "Buried cistern + delivery setup",
-      model.cistern
-    );
+    push("water", "Water", "Buried cistern + delivery setup", model.cistern);
   }
+  // AWG summer water module — standard on every Aura home (founder mandate);
+  // summer producer plumbed into the cistern loop, cistern/well carries winter.
+  push(
+    "awgSupplement",
+    "Water",
+    "AWG summer water module (standard on every Aura home)",
+    model.awgSupplement
+  );
   push("septic", "Septic", `Septic system (${q.water.septic})`, model.septic);
 
   if (q.energy.woodStove) {
@@ -308,7 +313,7 @@ function budgetFromDefaults(
   });
 
   // Interior fit-out is the remainder that reconciles component lines with the
-  // whole-home anchor (LOW 185K / MID 290K / HIGH 465K at reference size).
+  // whole-home anchor (LOW ~199K / MID ~301K / HIGH ~444K at reference size).
   const anchor: BudgetTotals = {
     lowCad: round(model.baseHome.low * scale),
     midCad: round(model.baseHome.mid * scale),

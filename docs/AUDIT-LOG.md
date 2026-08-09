@@ -94,4 +94,54 @@ Pipeline stages (VISION.md:26–34):
 
 ---
 
-*Next audit: append `## Audit #2 — <date>` below this line. Do not edit Audit #1.*
+## Audit #2 — 2026-08-09 (comment coverage)
+
+**Method:** every founder instruction from the build session (23 items), graded against the repo as it runs — fresh context, adversarial. Verification performed this pass: `npx hardhat test` (**10 passing**, output captured), `agent: npm run demo` (**runs**; land verdicts include the district-minimum rejection; budget prints **LOW $199,100 / MID $301,280 / HIGH $443,900** — reconciles to the dollar with cost-model.json, sums re-checked by hand: 181,000×1.10 / 269,000×1.12 / 386,000×1.15), `git log` + `git ls-remote` (1 commit, authored Matt-Aurora-Ventures + Co-Authored-By Claude, **pushed to github.com/kr8tiv-ai/aura-homes**), live testnet RPC read (`eth_chainId` = **1952** confirmed; deployer `0x831F…f260` **nonce 0, balance 0 OKB — NOT deployed**), logo PNG inspected visually (aurora-over-treeline fill, real), scheduled-task registry listed (**no recurring Aura audit job exists**). Audit #1's top fixes are verifiably applied: demo script exists, deploy.js exists, LAND is in the app (`app/app/land/page.tsx`, `agent/src/parcels.ts`), all five constraint checks are in `pipeline.ts` (district min, FDWR, aquifer→cistern, winter battery floor + mandatory generator, SIP chase freeze), sample questionnaire says **592** sqft, totals reconcile everywhere.
+
+### Scorecard — 23 founder instructions
+
+**DONE 15 · IN-REPO-AS-PLAN 5 · GAP 3**
+
+| # | Instruction | Grade | Evidence |
+|---|---|---|---|
+| 1 | Eco-home AI ground-to-finish, SIPs, smaller architectural, glass where earned | **DONE** | 5-stage pipeline in code (agent/src/pipeline.ts, parcels.ts; 7 app routes built in .next); SIP specs + FDWR check + quint-pane supplier; README "Why SIPs" |
+| 2 | USDC on X Layer pays for everything; bridges; crypto loans taught in-app | **IN-REPO-AS-PLAN** | Escrow real + tested; CCTP/bridge path documented (README mermaid, ARCHITECTURE); **loans teaching: suppliers.json:60–61 (Aave V3, Ledn) but zero app surface renders it** |
+| 3 | AWG every house, connected; solar; wood stoves; hot tub + deck every home | **DONE** | cost-model.json:18 "standard on every Aura home… plumbed into the cistern loop"; hotTubDeck line + pipeline inclusion; solar-only collided with December physics — collision honestly recorded (FEASIBILITY §1) with generator route, per the never-impossible rule |
+| 4 | Off-grid everything, sewage/greywater eco-first, grid-connect option | **GAP (greywater only)** | Septic/Ecoflo + grid-optional done (cost-model.json:19, README); **greywater still only a legality footnote — no product option, no data line, no roadmap owner** (Audit #1 flagged it; still unaddressed) |
+| 5 | LAND first-class: find, filter, acquire with USDC | **DONE** | agent/src/parcels.ts filters (district min, aquifer, grid, septic) verified running; app /land page; acquisition path documented (convert-then-close); listing *discovery* is roadmap, labeled as such |
+| 6 | Alberta pilot, Alberta-first, cut all middlemen | **DONE** | suppliers.json per-entry `albertaLocal` + basis; ALBERTA-PLAYBOOK; no-middlemen principle in budget engine |
+| 7 | One-click feel, normie-usable, ridiculously affordable USDC fee | **IN-REPO-AS-PLAN** | Normie framing shipped (CAD everywhere, card-first door); fee is policy only (OPEN-QUESTIONS #4: free during hackathon); AA = Phase 1 |
+| 8 | kr8tiv-ai/aura-homes, MIT from first commit, authorship, hackathon README | **DONE** | Remote verified live with commit a8a7048 (correct author + co-author); LICENSE MIT; README hackathon section + badges. **Flag: ~15 files of post-commit fixes are uncommitted/unpushed — GitHub currently shows the pre-fix repo, including the broken demo script Audit #1 found** |
+| 9 | Recolored aura family logo, KR8TIV family design, Tesla/Apple bar, researched BRAND.md | **DONE** | Logo inspected: family silhouette, aurora-over-conifers fill; BRAND.md is real research (Aesop/BCG/Phantom findings, cited sources, honest secondary-source caveat), not filler; "A KR8TIV AI product" in README |
+| 10 | Feasibility study — brutal, never "impossible" | **DONE** | FEASIBILITY.md; every risk row has a "route through" |
+| 11 | Honest hackathon win assessment | **DONE** | FEASIBILITY §1: 1-in-26 base odds, "top-3 genuinely achievable… a win is not promised" |
+| 12 | Submission package ready ASAP | **DONE** | SUBMISSION.md: form answers, tweet, bio, post drafts, demo script, checklist; demo/video links blocked on deploy (see #16) |
+| 13 | Groundwork for lesser AI | **DONE** | AI-HANDOFF.md with never-un-learn ledger; its commands now actually run |
+| 14 | Token: both paths open, launchpad research, burns, team %, funding-only, invisible, 5 designs, token/USDC pair | **DONE** | TOKEN-RESEARCH.md (launchpads incl. PotatoSwap/X Mint, burn respect/punish list, costs measured live); TOKEN-DESIGNS.md: 5 scored architectures, invisibility-first, vested team 10–15%, USDC pair assumed + flagged for confirmation (OPEN-QUESTIONS #8) |
+| 15 | Recurring vision-audit agent loop with authority | **GAP (recurrence)** | AUDIT-LOG.md exists, append-only, authority written into ROADMAP/GRAPH-ENGINEERING — but only Audit #1 preceded this pass and **no recurring mechanism exists** (scheduled-task registry checked: nothing for Aura). A loop that has to be manually remembered is not a loop |
+| 16 | Testnet deploy BEFORE submission | **IN-REPO-AS-PLAN — behind schedule** | Hard evidence: deployer nonce 0, 0 OKB, no contract addresses anywhere in repo, task open. Vehicle is ready (scripts/deploy.js, `npm run deploy:testnet`, chain 1952 verified live this pass). ROADMAP D1–2 says this is due *now*; blocker is only faucet OKB |
+| 17 | Graph-engineering doctrine adopted | **DONE** | GRAPH-ENGINEERING.md; anchors genuinely enforced (this audit ran them); applied to product + sessions |
+| 18 | AI management brain, slip-catching, email, cost-honest models | **IN-REPO-AS-PLAN** | AI-BRAIN.md (tiered T0/T1/T2, distill-later, MCP-first); dashboard renders slip flags + digest preview honestly labeled fixture; no brain service code — owner: ROADMAP Phase 1 |
+| 19 | Card-first, Visa buys crypto in-flow, ignore the OKX-Canada gap | **IN-REPO-AS-PLAN** | Card-first is the doctrine everywhere and the escrow page ships the card door as "Recommended" with an honest "integration pending" disabled state; live on-ramp = Phase 1 with named vendors |
+| 20 | Wealthsimple truth, respectful, real alternatives | **DONE** | README honesty table + FAQ, FEASIBILITY §1, AI-HANDOFF correction; "integrate Wealthsimple the day they ship crypto collateral" is exactly the respectful framing |
+| 21 | README ~4x, maximum why, beautiful graphics | **DONE** | 330 lines; hero/pipeline/budget-bands/escrow-flow PNGs + mermaid; problem/why-Alberta/why-SIPs/FAQ depth; graphics referenced files all exist |
+| 22 | Full app + dashboard; both audiences first-class | **DONE (thin, honest)** | 7 routes incl. /dashboard (escrow position, digest, slips, budget-vs-actual) all present in the production build; escrow page offers card AND wallet doors; fixtures labeled as fixtures |
+| 23 | Everything audited continuously; keep building | **GAP (same mechanism as #15)** | Building continued (audit-#1 fixes verifiably landed); "continuously" is currently a manual habit, not a mechanism |
+
+### The GAP list, with fixes
+
+1. **Greywater (instr. 4)** — the one vision word with zero product surface two audits running. Fix: add a `greywater` option to the wastewater model (`agent/src/types.ts` + a cost-model.json line for the legal subsurface-drip reuse path FEASIBILITY §4.5 already identifies, with basis), and a sentence in ALBERTA-PLAYBOOK's sewage menu. ~1 hour.
+2. **Recurring audit loop (instr. 15/23)** — create the actual recurrence: a scheduled task (or sprint-workflow cron) that re-runs a fresh-context vision auditor every 48h through Aug 21 and appends Audit #N here. Until then the "standing checker node" exists only when someone remembers it.
+3. **Crypto-loan teaching in-app (instr. 2 sub-gap)** — suppliers.json's financing entries (Aave V3 on X Layer, Ledn) are rendered nowhere. Fix: a small "Financing, honestly" panel on /budget or /escrow reading the financing category from the directory. ~1 hour, and it closes the last "taught in-app" verb.
+
+### Flags (not gaps, but act today)
+
+- **Push the fixes.** ~15 modified files (README, pipeline.ts, escrow page, samples…) are local-only; the public GitHub repo still contains the broken `npm run demo` and 4-stage pipeline Audit #1 caught. One commit erases the gap between the repo's truth and GitHub's.
+- **Deploy is the critical path** (instr. 16): claim faucet OKB for `0x831Fb0C6f8A96dE7c7253bF76C98a780d6E0f260` and run `npm run deploy:testnet` — everything downstream (hosted demo, video, submission links, X posts 2/4) queues behind it, and D1–2 is already today.
+- Minor: `pipeline.ts` DEFAULT_COST_MODEL doc-comment still cites the retired $185K/$290K/$465K baseline (the repo model overrides it at runtime, but the comment is the exact stale-number pattern Audit #1 existed to kill).
+
+**Verdict:** 15 of 23 founder instructions are done with evidence, 5 are honestly planned with owners, 3 have gaps — and the three gaps are all small (greywater data line, an actual audit cron, one financing panel). The dangerous items from Audit #1 (arithmetic, LAND, broken commands, missing checks) are verifiably fixed and verified by execution this pass. The two things standing between this repo and its own claims are operational, not creative: **push the commit, deploy to 1952.**
+
+---
+
+*Next audit: append `## Audit #3 — <date>` below this line. Do not edit prior audits.*

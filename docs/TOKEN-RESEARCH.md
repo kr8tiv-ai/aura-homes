@@ -120,3 +120,5 @@ Brief and honest:
 - Same week, all free: OKLink logo/info submission, `okx/xlayer-tokenlist` PR, OKX Wallet logo suggestion. Token is tradeable in OKX DEX the moment the pool exists.
 - Turn on the burn loop: X% of app revenue auto-buys and burns AURA per epoch; in-app services optionally settle by atomic USDC→AURA→burn behind Particle AA. Publish the burn dashboard from day one.
 - Total incremental cash cost of a professional-looking launch: **$0.02 gas + $0–5K LP + ~$2–5K legal**; add a real audit (~$5K entry-tier) only when custom swap/burn/escrow contracts hold user funds.
+
+*Follow-up: five concrete invisible-token architectures (mechanics, AA layer, legal posture, scores, one recommendation) are designed in [TOKEN-DESIGNS.md](TOKEN-DESIGNS.md).*

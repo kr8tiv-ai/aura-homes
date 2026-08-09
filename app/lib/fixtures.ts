@@ -27,12 +27,13 @@ export const budgetFixture: {
     { id: "mechanical", category: "Mechanical", item: "HRV, plumbing, electrical, wood stove + WETT", lowCad: 22000, midCad: 30000, highCad: 40000 },
     { id: "solar", category: "Energy", item: "Off-grid solar 8-12kW + 20-40kWh battery + generator", lowCad: 35000, midCad: 48000, highCad: 70000 },
     { id: "water", category: "Water", item: "Buried cistern (or well)", lowCad: 8000, midCad: 12000, highCad: 18000 },
+    { id: "awgSupplement", category: "Water", item: "AWG summer water module (standard on every home)", lowCad: 3500, midCad: 5000, highCad: 8000 },
     { id: "septic", category: "Septic", item: "Private sewage (septic field or biofilter)", lowCad: 12000, midCad: 18000, highCad: 28000 },
     { id: "hotTubDeck", category: "Extras", item: "Wood-fired hot tub + deck", lowCad: 8000, midCad: 14000, highCad: 22000 },
     { id: "permitsSoft", category: "Soft costs", item: "Permits, design, engineering, insurance", lowCad: 8000, midCad: 12000, highCad: 18000 },
-    { id: "contingency", category: "Contingency", item: "Contingency (10-15%)", lowCad: 17750, midCad: 31680, highCad: 56700 },
+    { id: "contingency", category: "Contingency", item: "Contingency (10-15%)", lowCad: 18100, midCad: 32280, highCad: 57900 },
   ],
-  total: { lowCad: 195250, midCad: 295680, highCad: 434700 },
+  total: { lowCad: 199100, midCad: 301280, highCad: 443900 },
 };
 
 export type MilestoneStatus = "Released" | "Funded" | "Awaiting funding";
@@ -74,20 +75,95 @@ export const milestonesFixture: MilestoneFixture[] = [
   {
     index: 3,
     name: "Off-grid systems",
-    description: "Solar + battery, water, septic, mechanical",
-    amountCad: 108000,
-    holdbackCad: 10800,
+    description: "Solar + battery, water with AWG module, septic, mechanical",
+    amountCad: 113000,
+    holdbackCad: 11300,
     status: "Awaiting funding",
   },
   {
     index: 4,
     name: "Interior & completion",
     description: "Fit-out, extras, deficiency list, final inspection",
-    amountCad: 80680,
-    holdbackCad: 8068,
+    amountCad: 81280,
+    holdbackCad: 8128,
     status: "Awaiting funding",
   },
 ];
+
+// ---------------------------------------------------------------- dashboard
+
+export type PipelineStage = "LAND" | "DESIGN" | "BUDGET" | "ESCROW" | "BUILD";
+
+export interface NextActionFixture {
+  id: string;
+  title: string;
+  detail: string;
+  owner: string;
+  due: string;
+  /** True when the Aura Brain's slip detection raised this item. */
+  slip: boolean;
+}
+
+/** Actual spend committed to date per budget category (CAD). */
+export interface CategoryActualFixture {
+  category: string;
+  actualCad: number;
+  note: string;
+}
+
+/**
+ * Owner-dashboard fixture for one build journey (Aura Pilot Build 01).
+ * Mirrors the Aura Brain journey state (docs/AI-BRAIN.md): deterministic
+ * state + slip detection; the numbers reconcile with budgetFixture and
+ * milestonesFixture above.
+ */
+export const dashboardFixture = {
+  projectName: "Aura Pilot Build 01",
+  parcel: "37 Aspen Road, Lac Ste. Anne County (Agricultural district)",
+  stages: ["LAND", "DESIGN", "BUDGET", "ESCROW", "BUILD"] as PipelineStage[],
+  currentStage: "ESCROW" as PipelineStage,
+  /** Committed spend to date by category; categories without a row are at $0. */
+  actuals: [
+    { category: "Soft costs", actualCad: 11420, note: "Permits issued, drawings stamped" },
+    { category: "Site", actualCad: 8650, note: "Driveway and clearing complete" },
+    { category: "Foundation", actualCad: 4200, note: "Screw-pile deposit paid" },
+  ] as CategoryActualFixture[],
+  nextActions: [
+    {
+      id: "sip-order",
+      title: "Order the SIP shell kit",
+      slip: true,
+      detail:
+        "SIP kit unordered 9 days after drawings approved — the 12-20 week panel lead time is burning while nothing is in the fabrication queue.",
+      owner: "You",
+      due: "Overdue",
+    },
+    {
+      id: "fund-m3",
+      title: "Fund milestone 03 — SIP shell & envelope",
+      slip: false,
+      detail: "$77,000 to escrow so the shell contract can be signed against funded milestones.",
+      owner: "You",
+      due: "Before kit order",
+    },
+    {
+      id: "pile-install",
+      title: "Confirm screw-pile install date",
+      slip: false,
+      detail: "Installer holds a tentative week; confirm so site prep and pile crew land together.",
+      owner: "Installer",
+      due: "This week",
+    },
+  ] as NextActionFixture[],
+  digest: {
+    subject: "Your weekly build update",
+    period: "Week of Aug 3-9",
+    moved: "Development and building permits issued. Site clearing finished; driveway is in.",
+    blocked: "SIP kit order — flagged 9 days idle against a 12-20 week lead time.",
+    moneyPosition:
+      "$30,000 funded to escrow, $10,800 released to the builder, $1,200 held back under the statutory holdback.",
+  },
+};
 
 /** Fixture served by POST /api/design until the aura-architect service is hosted. */
 export const designFixture = {

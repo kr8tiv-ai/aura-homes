@@ -6,9 +6,9 @@
 
 1. **[VISION.md](VISION.md) is the brief.** Audit your own output against it. If your work drifts from the vision, your work is wrong. If the vision collides with verified reality, don't silently comply OR silently ignore — record the collision honestly in FEASIBILITY.md the way the AWG and Wealthsimple corrections are recorded, and route around it.
 2. **Never un-learn the corrections.** These were expensively verified; do not "helpfully" reintroduce them:
-   - AWG is a summer supplement in Alberta, never the primary water plan (physics: condenser cutoff ~15°C/30% RH; outdoor winter output is zero).
-   - Wealthsimple has NO crypto-backed loans. Aave V3 on X Layer and Ledn are the real lending answers.
-   - OKX exchange is unavailable to Canadians. On-ramp is Wealthsimple/Kraken/Coinbase → Base → CCTP.
+   - AWG is **standard on every Aura home** (founder mandate) but never the primary water plan — it's the summer producer plumbed into the cistern loop (physics: condenser cutoff ~15°C/30% RH; outdoor winter output is zero).
+   - Wealthsimple has NO crypto-backed loans (re-verified Aug 2026: its portfolio line of credit is securities-only). Aave V3 on X Layer and Ledn are the real lending answers; integrate Wealthsimple the day they ship crypto collateral.
+   - OKX exchange is unavailable to Canadians — and the product answer is **card-first**: an in-flow fiat on-ramp (MoonPay/Transak class) sells USDC to Visa payers so users never need any exchange. Crypto-natives: Wealthsimple/Kraken/Coinbase → Base → CCTP.
    - Native USDC only: mainnet `0xB6CEceAB302E2E4948951eE7843FC24E92933061`, testnet `0xDec90b78111Ba2fc6FC6d84d8B9ec159A2d4b9B3`. Never USDC.e.
    - Testnet chain ID is **1952** (legacy docs say 195). Verify `eth_chainId` before deploying.
    - No architect needed for Alberta houses; trusses need P.Eng (via the truss plant); septic and solar wiring are licensed work; drywall goes over interior SIP faces regardless.

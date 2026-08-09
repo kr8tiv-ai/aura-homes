@@ -7,7 +7,10 @@ export type SepticType =
   | "tankAndField"
   | "mound"
   | "holdingTank"
-  | "packagedTreatment";
+  | "packagedTreatment"
+  // Eco flagship: Ecoflo-class biofilter with subsurface drip dispersal of the
+  // treated effluent — the one legal greywater-reuse path in Alberta (SOP 8.5).
+  | "biofilterDrip";
 
 export type HomeStyle =
   | "modernCabin"
@@ -198,6 +201,8 @@ export interface AlbertaCostModel {
   solarBattery: CostRange; // 8-12 kW / 20-40 kWh package
   cistern: CostRange;
   well: CostRange;
+  /** AWG summer water module — standard on every Aura home (founder mandate). */
+  awgSupplement: CostRange;
   septic: CostRange;
   woodStoveInstalled: CostRange; // includes WETT inspection
   woodFiredHotTub: CostRange;
@@ -216,6 +221,7 @@ export interface RepoCostModelLineItem {
   mid: number;
   high: number;
   basis?: string;
+  /** Legacy schema field — no current line is optional (AWG is standard on every home). */
   optional?: boolean;
   ownerBuildable?: boolean;
   ownerNote?: string;

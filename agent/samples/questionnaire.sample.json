@@ -27,7 +27,7 @@
     "woodStove": true
   },
   "water": {
-    "source": "cistern",
+    "source": "awgSupplement",
     "cisternLitres": 11000,
     "septic": "tankAndField"
   },

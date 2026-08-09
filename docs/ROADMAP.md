@@ -19,7 +19,7 @@
 - Independent escrow audit (US$15–60K — grant applications: X Layer ecosystem, OKX accelerator pipeline).
 - One real pilot: a Lac Ste. Anne–ring parcel, documented publicly end-to-end — the land filter, the district check, the designer handoff, the SIP order, the escrow draws. The pilot IS the marketing.
 - Partner bench signed: residential designer, P.Eng, Insulspan/EnerSmart quote pipeline, 2 solar installers, 2 septic designers, McLeod Law.
-- Account abstraction (Particle + Safe on X Layer) — invisible wallets; fiat on-ramp partner; CAD display everywhere.
+- Account abstraction (Particle + Safe on X Layer) — invisible wallets; **card-first on-ramp integration** (MoonPay/Transak/Banxa evaluation: X Layer support, Canadian card success rates, KYC depth) so a Visa is all anyone needs; CAD display everywhere.
 - The Aura Brain, phase 1 (per [AI-BRAIN.md](AI-BRAIN.md)): journey state machine + MCP server extraction + email digests + slip-rule library + outcome logging.
 
 ## Phase 2 — product (2027)

@@ -51,6 +51,7 @@ Next.js (app router, TypeScript, Tailwind). Design language: `#050807` ground, e
 
 ## Payments & fees
 
+- **Card-first onboarding:** the primary user has no crypto — Visa/Mastercard in, an integrated fiat on-ramp (MoonPay/Transak/Banxa/Onramper class) mints USDC toward the escrow (direct to X Layer where supported, else Base + CCTP under the hood). No exchange account required, ever. BYO-USDC remains the second door.
 - Build funding: USDC milestone escrow (above).
 - Platform fee: "ridiculously affordable" — x402-family metered micropayments on agent runs (OKX Agent Payments Protocol, which settles on X Layer, is the integration target); free during the hackathon.
 - Third-party services (design tools, energy modeling): paid per-use in USDC through the same rails — the agent buys what it needs.
