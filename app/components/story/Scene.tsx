@@ -1200,19 +1200,33 @@ function Forest({ frozen }: { frozen: boolean }) {
   const tealClones = useNormalizedClones(teal.scene, 4.3, TEAL_PINES);
   const rockClones = useNormalizedClones(rocks.scene, 1.4, ROCKS);
 
-  /* REVERTED 2026-08-09 to the original gentle sway. The amplified version
-     rotated on BOTH z and x, and rotation.x tilts a tree toward and away
-     from the camera — which reads as the whole canopy bobbing up and down
-     rather than bending in wind. Proper side-to-side vertex-shader bend,
-     anchored at the trunk, is being rebuilt separately; until then this is
-     the version that looked right. */
+  /* WIND v2 — a single direction, so trees BEND instead of bobbing.
+     v1's mistake was driving rotation.z and rotation.x from two independent
+     sine waves with different phases. rotation.x tips a tree toward and away
+     from the camera, and when it is out of phase with the sideways lean the
+     canopy appears to bob up and down rather than lean in a breeze.
+     Real wind has one direction at a time. Here one scalar `lean` — slow
+     sway plus a rolling gust front plus a small per-tree offset — is
+     projected onto the two axes through a FIXED wind heading, so every tree
+     leans the same way at the same moment and the stand moves as a stand.
+     The clone groups are already planted with their origin at the trunk
+     base, so rotating the group is a trunk-anchored bend. */
+  const WIND_DIR = 0.62; // heading in radians, blowing across the meadow
+  const wcos = Math.cos(WIND_DIR);
+  const wsin = Math.sin(WIND_DIR);
+
   useFrame(({ clock }) => {
     if (frozen) return;
     const t = clock.elapsedTime;
     sway.current.forEach((g, i) => {
       if (!g) return;
-      g.rotation.z = Math.sin(t * 0.4 + i * 1.7) * 0.006;
-      g.rotation.x = Math.cos(t * 0.33 + i * 2.3) * 0.005;
+      const phase = i * 0.7;
+      const slow = Math.sin(t * 0.42 + phase) * 0.5 + 0.5; // 0..1
+      const gustFront = Math.sin(t * 0.85 - g.position.x * 0.12 - g.position.z * 0.09);
+      const gust = Math.max(0, gustFront) * 0.55;
+      const lean = (0.007 + slow * 0.005 + gust * 0.011) * 1.0;
+      g.rotation.z = -lean * wcos;
+      g.rotation.x = lean * wsin;
     });
   });
 

@@ -37,7 +37,12 @@ export default function StoryCanvas({
       shadows
       dpr={[1, 1.75]}
       frameloop={reduced ? "demand" : "always"}
-      camera={{ fov: 38, near: 0.3, far: 140, position: [-4.5, 5.4, 17.5] }}
+      /* far was 140 — the mountain range sits well beyond that and was being
+         clipped into a grey slab across the sky. 260 clears the range from
+         every camera beat while keeping the near/far ratio modest enough not
+         to cost depth precision (0.3/260 ≈ 870, vs 467 before) — which
+         matters, because coplanar glass on the deck is only just resolved. */
+      camera={{ fov: 38, near: 0.4, far: 260, position: [-4.5, 5.4, 17.5] }}
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       onCreated={({ gl }) => {
         gl.setClearColor(0x000000, 0);

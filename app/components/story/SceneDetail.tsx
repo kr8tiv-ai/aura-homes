@@ -57,6 +57,45 @@ function useGradientSprite(stops: [number, string][]) {
    way a real range does at 40km.
 =================================================================== */
 
+/* ---- ridged fractal noise, the standard mountain primitive ----
+   value noise + a ridge fold (1 - |n|), squared to sharpen, summed over
+   octaves with each octave's amplitude modulated by the last. This is what
+   gives real ranges their branching crests instead of rolling dunes. */
+function hash2(x: number, y: number) {
+  const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+  return s - Math.floor(s);
+}
+function vnoise(x: number, y: number) {
+  const ix = Math.floor(x);
+  const iy = Math.floor(y);
+  const fx = x - ix;
+  const fy = y - iy;
+  const ux = fx * fx * (3 - 2 * fx);
+  const uy = fy * fy * (3 - 2 * fy);
+  const a = hash2(ix, iy);
+  const b = hash2(ix + 1, iy);
+  const c = hash2(ix, iy + 1);
+  const d = hash2(ix + 1, iy + 1);
+  return a * (1 - ux) * (1 - uy) + b * ux * (1 - uy) + c * (1 - ux) * uy + d * ux * uy;
+}
+function ridged(x: number, y: number, octaves = 5) {
+  let sum = 0;
+  let freq = 1;
+  let amp = 0.5;
+  let prev = 1;
+  for (let o = 0; o < octaves; o++) {
+    let n = vnoise(x * freq, y * freq);
+    n = 1 - Math.abs(n * 2 - 1);
+    n *= n;
+    n *= prev;
+    prev = n;
+    sum += n * amp;
+    freq *= 2.07;
+    amp *= 0.5;
+  }
+  return sum;
+}
+
 function ridgeGeometry(seed: number, width: number, height: number, segs: number, jag: number) {
   const g = new THREE.PlaneGeometry(width, height, segs, 1);
   const p = g.attributes.position as THREE.BufferAttribute;
@@ -77,6 +116,101 @@ function ridgeGeometry(seed: number, width: number, height: number, segs: number
   }
   g.computeVertexNormals();
   return g;
+}
+
+/* ---- REAL RANGE: a displaced heightfield with a snow line ----
+   The first attempt was a flat cutout with a sine silhouette — no relief, no
+   shading, so it read as a grey smear and Matt was right to call it
+   unrecognisable. This is actual terrain: a ridged-fractal heightfield lit by
+   the scene's own sun, with snow assigned by ALTITUDE modulated by SLOPE, so
+   steep faces stay rock and shoulders hold snow — which is the cue that makes
+   a peak look like a peak. Aerial perspective is baked into the vertex
+   colours (blend toward sky with distance) because fog can't reach out here. */
+function SnowRange({ night }: { night: number }) {
+  const geo = useMemo(() => {
+    /* D was 300 centred at -145, so the front edge reached z=+5 — level with
+       the house — and the range filled the whole upper frame as a grey slab.
+       A backdrop needs to be a BAND, well behind the treeline, not a plain
+       that starts underfoot. */
+    const W = 900;
+    const D = 110;
+    const SX = 240;
+    const SZ = 26;
+    const g = new THREE.PlaneGeometry(W, D, SX, SZ);
+    g.rotateX(-Math.PI / 2);
+    const p = g.attributes.position as THREE.BufferAttribute;
+    const sky = new THREE.Color("#d9e6ee");
+    const rock = new THREE.Color("#5d6f80");
+    const rockHi = new THREE.Color("#7f909e");
+    const snow = new THREE.Color("#f7fbfd");
+    const tree = new THREE.Color("#4a6355");
+    const tmp = new THREE.Color();
+    const cols = new Float32Array(p.count * 3);
+
+    // pass 1 — height
+    for (let i = 0; i < p.count; i++) {
+      const x = p.getX(i);
+      const z = p.getZ(i);
+      // ridges run along X; depth falls away so the back is taller
+      const depth = (z + D / 2) / D; // 0 front .. 1 back
+      const rid = ridged(x * 0.0075 + 11.3, z * 0.011 + 4.1, 5);
+      const macro = 0.45 + 0.55 * vnoise(x * 0.0022 + 2.7, z * 0.004 + 9.4);
+      /* 55, not 150. At ~150 units out a 150-unit peak subtends about 45° and
+         swallows the sky; 55 subtends roughly 20°, which is what a real range
+         looks like from a valley floor. */
+      let h = rid * macro * 55 * (0.42 + depth * 0.9);
+      // pull the very front edge down to the ground so it never floats
+      h *= Math.min(1, Math.max(0, (depth - 0.02) / 0.22));
+      p.setY(i, h);
+    }
+    g.computeVertexNormals();
+
+    // pass 2 — colour by altitude, slope and distance
+    const n = g.attributes.normal as THREE.BufferAttribute;
+    let maxH = 1;
+    for (let i = 0; i < p.count; i++) maxH = Math.max(maxH, p.getY(i));
+    for (let i = 0; i < p.count; i++) {
+      const y = p.getY(i);
+      const z = p.getZ(i);
+      const alt = y / maxH;
+      const slope = 1 - Math.abs(n.getY(i)); // 0 flat .. 1 vertical
+      // snow above the line, but shed off anything steep
+      const line = 0.46 + vnoise(p.getX(i) * 0.02, z * 0.02) * 0.1;
+      let snowAmt = clamp01((alt - line) / 0.2) * clamp01(1 - (slope - 0.34) / 0.34);
+      snowAmt = clamp01(snowAmt);
+      const treeAmt = clamp01((0.24 - alt) / 0.2);
+      tmp.copy(rock).lerp(rockHi, clamp01(alt * 1.5));
+      tmp.lerp(tree, treeAmt * 0.75);
+      tmp.lerp(snow, snowAmt);
+      /* Bake the sun term into the colour and draw unlit. A backdrop lit by
+         the scene's directional light turns its whole north face black, which
+         is what put a grey slab across the sky. Baking it means the peaks get
+         their light-and-shade — the thing that actually makes them read as
+         3D — with no lighting cost and no unlit backfaces. */
+      const nx = n.getX(i);
+      const ny = n.getY(i);
+      const nz = n.getZ(i);
+      const shade = clamp01((nx * 0.44 + ny * 0.78 + nz * 0.44) * 0.62 + 0.52);
+      tmp.multiplyScalar(0.66 + shade * 0.46);
+      // aerial perspective: the far rank washes into the sky
+      const depth = (z + D / 2) / D;
+      tmp.lerp(sky, 0.2 + depth * 0.4);
+      cols[i * 3] = tmp.r;
+      cols[i * 3 + 1] = tmp.g;
+      cols[i * 3 + 2] = tmp.b;
+    }
+    g.setAttribute("color", new THREE.BufferAttribute(cols, 3));
+    return g;
+  }, []);
+
+  /* z places the front rank ~110 units out — behind every tree in the stand
+     (the furthest sits at z≈30) and inside the 260 far plane from all seven
+     camera beats. */
+  return (
+    <mesh geometry={geo} position={[0, -9, -172]} renderOrder={-10} frustumCulled={false}>
+      <meshBasicMaterial vertexColors fog={false} color={new THREE.Color().setScalar(1 - night * 0.62)} />
+    </mesh>
+  );
 }
 
 function MountainRange() {
@@ -194,9 +328,67 @@ function Clouds({ frozen }: { frozen: boolean }) {
    the shader as a single uniform; blades within ~2 units bend away from it.
 =================================================================== */
 
+/* ================== GRASS v2 — blades that actually bend ==============
+   v1 was one triangle per blade. A triangle has no interior vertices, so it
+   cannot bend — it can only rotate about its base, which on screen is exactly
+   the "triangles flip-flopping" Matt saw. It also cost more than it should
+   have: double-sided, shadow-receiving, and frustumCulled disabled.
+
+   v2 follows the approach the three.js grass community has converged on
+   (Codrops' fluffy-grass write-up, James Smyth's BotW-style blades, and the
+   MIT procedural-grass-threejs repo — all credited in docs/CREDITS.md):
+
+     · 7 vertices per blade — a tapered strip of 5 triangles, so the blade has
+       a spine that can curve
+     · displacement scaled by height along the blade (0 at the root), which
+       anchors the bend at the ground the way a real stem is anchored
+     · THREE layered wind frequencies: a slow global sway the whole field
+       shares, medium gust fronts that visibly roll across the meadow, and a
+       high-frequency per-blade flutter
+     · base→tip colour gradient
+     · radial density falloff and a real bounding sphere so it frustum-culls
+
+   All wind is in the vertex shader. Zero per-frame JavaScript.
+=================================================================== */
+
+const BLADE_SEGS = 3; // 3 segments -> 7 verts, 5 triangles
+
+function bladeGeometry() {
+  const pos: number[] = [];
+  const uvs: number[] = [];
+  const idx: number[] = [];
+  for (let i = 0; i <= BLADE_SEGS; i++) {
+    const t = i / BLADE_SEGS;
+    // taper to a point at the tip
+    const w = 0.5 * (1 - t) * (1 - t * 0.35);
+    if (i === BLADE_SEGS) {
+      pos.push(0, t, 0);
+      uvs.push(0.5, t);
+    } else {
+      pos.push(-w, t, 0, w, t, 0);
+      uvs.push(0, t, 1, t);
+    }
+  }
+  for (let i = 0; i < BLADE_SEGS - 1; i++) {
+    const a = i * 2;
+    idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+  }
+  const last = (BLADE_SEGS - 1) * 2;
+  idx.push(last, last + 1, last + 2); // tip triangle
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+  g.setIndex(idx);
+  // normals face up so the field lights as one surface (see v1 post-mortem)
+  const nrm = new Float32Array((pos.length / 3) * 3);
+  for (let i = 0; i < pos.length / 3; i++) nrm[i * 3 + 1] = 1;
+  g.setAttribute("normal", new THREE.BufferAttribute(nrm, 3));
+  return g;
+}
+
 const GRASS_COUNT = 2400;
 
-function GrassField({ frozen }: { frozen: boolean }) {
+function GrassFieldLegacy({ frozen }: { frozen: boolean }) {
   const mesh = useRef<THREE.InstancedMesh>(null);
   const shaderRef = useRef<{ uniforms: Record<string, { value: unknown }> } | null>(null);
   const { camera, pointer } = useThree();
@@ -312,6 +504,107 @@ function GrassField({ frozen }: { frozen: boolean }) {
   });
 
   return <instancedMesh ref={mesh} args={[geo, mat, GRASS_COUNT]} receiveShadow />;
+}
+
+function GrassField({ frozen, count }: { frozen: boolean; count: number }) {
+  const mesh = useRef<THREE.InstancedMesh>(null);
+  const shaderRef = useRef<{ uniforms: Record<string, { value: unknown }> } | null>(null);
+  const geo = useMemo(() => bladeGeometry(), []);
+
+  const mat = useMemo(() => {
+    const m = new THREE.MeshLambertMaterial({
+      color: 0xffffff,
+      side: THREE.DoubleSide,
+      vertexColors: true,
+    });
+    m.onBeforeCompile = (shader) => {
+      shader.uniforms.uTime = { value: 0 };
+      shader.vertexShader =
+        "uniform float uTime;\nvarying float vH;\n" +
+        shader.vertexShader
+          .replace(
+            "#include <begin_vertex>",
+            `#include <begin_vertex>
+             float h = uv.y;              // 0 at root, 1 at tip
+             vH = h;
+             vec3 ip = vec3(instanceMatrix[3][0], instanceMatrix[3][1], instanceMatrix[3][2]);
+
+             // 1. global sway — the whole meadow leans together, slowly
+             float sway = sin(uTime * 0.55 + ip.x * 0.045 + ip.z * 0.03) * 0.5;
+             // 2. gust fronts — medium-frequency waves rolling across it
+             float gust = sin(uTime * 1.15 - ip.x * 0.22 - ip.z * 0.16);
+             gust = smoothstep(0.15, 1.0, gust) * 0.85;
+             // 3. flutter — high frequency, per blade
+             float flut = sin(uTime * 4.1 + ip.x * 2.3 + ip.z * 1.7) * 0.14;
+
+             float amt = (sway + gust + flut) * 0.16;
+             // bend scaled by height^1.6 -> anchored at the root, curves at the tip
+             float bend = pow(h, 1.6);
+             transformed.x += amt * bend;
+             transformed.z += amt * bend * 0.55;
+             // shorten as it leans so the blade keeps its length
+             transformed.y -= abs(amt) * bend * 0.28;
+            `
+          );
+      shaderRef.current = shader as unknown as { uniforms: Record<string, { value: unknown }> };
+    };
+    return m;
+  }, []);
+
+  useLayoutEffect(() => {
+    const m = mesh.current;
+    if (!m) return;
+    const dummy = new THREE.Object3D();
+    /* LIGHTER than the terrain underneath (#8db284–#b7c489), not darker.
+       Grass darker than its ground reads as debris scattered on a lawn; the
+       eye expects blade tips to catch light. This was the single biggest
+       reason both earlier attempts looked like shards. */
+    const base = new THREE.Color("#93b47e");
+    const tip = new THREE.Color("#cfe0a8");
+    const c = new Float32Array(count * 3);
+    const col = new THREE.Color();
+    let n = 0;
+    for (let i = 0; n < count && i < count * 5; i++) {
+      const a = rand(i, 11) * Math.PI * 2;
+      /* Concentrated where the camera actually flies. The journey stays
+         inside ~14 units of the home, so a 22-unit carpet spent most of its
+         blades where they are sub-pixel and only ever contributed aliasing. */
+      const r = 5.6 + Math.pow(rand(i, 12), 0.5) * 12;
+      const x = Math.cos(a) * r;
+      const z = Math.sin(a) * r;
+      if (Math.abs(x) < 4.6 && z > -3.6 && z < 7.0) continue;
+      if (x > 2.6 && x < 7.4 && z > 3.4 && z < 7.2) continue;
+      const y = terrainH(x, z);
+      if (y > 3.4) continue;
+      const h = 0.16 + rand(i, 13) * 0.16;
+      dummy.position.set(x, y - 0.02, z);
+      dummy.rotation.set(0, rand(i, 14) * Math.PI * 2, 0);
+      /* The blade geometry is 1.0 wide at the base, so this scale IS the
+         blade width in metres. v2 shipped 0.5–0.78 — half-metre blades. */
+      dummy.scale.set(0.05 + rand(i, 15) * 0.045, h, 1);
+      dummy.updateMatrix();
+      m.setMatrixAt(n, dummy.matrix);
+      col.copy(base).lerp(tip, rand(i, 16));
+      c[n * 3] = col.r;
+      c[n * 3 + 1] = col.g;
+      c[n * 3 + 2] = col.b;
+      n++;
+    }
+    m.count = n;
+    m.instanceMatrix.needsUpdate = true;
+    m.geometry.setAttribute("color", new THREE.InstancedBufferAttribute(c, 3));
+    // a real bounding sphere, so this DOES frustum-cull (v1 disabled culling)
+    m.geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0.4, 0), 20);
+    m.frustumCulled = true;
+  }, [count]);
+
+  useFrame(({ clock }) => {
+    const s = shaderRef.current;
+    if (!s || frozen) return;
+    (s.uniforms.uTime as { value: number }).value = clock.elapsedTime;
+  });
+
+  return <instancedMesh ref={mesh} args={[geo, mat, count]} />;
 }
 
 /* ========================== ENTRANCE STEPS ==========================
@@ -703,16 +996,35 @@ export default function SceneDetail({
   night: number;
   glassRail: THREE.Material;
 }) {
-  /* REVERTED 2026-08-09. The grass and the mountain bands shipped and made
-     the scene worse, not better — the grass was a field of single triangles
-     flip-flopping in the wind (one triangle cannot bend, so it can only
-     rotate, which is exactly what it looked like) and it cost real frame
-     time; the ridge bands never read as mountains at any distance. Both are
-     pulled from the mount rather than deleted, so the rebuild in progress
-     has something to diff against. Everything else here — steps, hammock,
-     net lounge, wildlife, bollard lighting, steam, clouds — stays. */
+  /* Blade budget by device. A phone draws the whole meadow a few centimetres
+     across, so blades past a few thousand are texels it physically cannot
+     resolve — and it is the device least able to afford them. */
+  /* GRASS IS OFF, and this is a considered verdict rather than a punt.
+
+     Three implementations were built and shot: single-triangle blades, then
+     proper 7-vertex bending blades with three-layer vertex-shader wind, then
+     the same tuned right down to 5-9 cm wide, 6,000 instances, coloured
+     LIGHTER than the terrain. All three read as dark speckle on the meadow
+     in the render, and all three looked worse than the clean vertex-coloured
+     ground this scene already had.
+
+     The reason is the art direction, not the shader. This world is large
+     flat-shaded low-poly forms, and the camera flies 5-15 m above a meadow
+     it crosses in seven beats. At that distance an individual blade covers
+     about a pixel, so it can only ever alias — it adds noise, not texture.
+     Per-blade grass belongs to a camera that gets down into it.
+
+     What WOULD work here, if it is wanted: treat the meadow as a SURFACE,
+     not a population — a detail/noise texture on the terrain material with
+     the same three-layer wind panning through its UVs, which stays coherent
+     at any distance and costs one texture fetch. That is a different
+     feature and it should be built deliberately, not smuggled in here.
+
+     `GrassField` and `bladeGeometry` are kept in the file, working and
+     documented, so that decision can be revisited without redoing research. */
   return (
     <group>
+      <SnowRange night={night} />
       <Clouds frozen={frozen} />
       <EntranceSteps glassRail={glassRail} />
       <Hammock frozen={frozen} />
