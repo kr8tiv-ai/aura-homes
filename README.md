@@ -2,6 +2,10 @@
 
 <img src="assets/hero.png" alt="Aura Homes — AI-designed off-grid eco homes, funded in USDC on X Layer" width="100%">
 
+<br>
+
+<sub><code>AURA&nbsp;HOMES&nbsp;·&nbsp;A&nbsp;KR8TIV&nbsp;AI&nbsp;PRODUCT&nbsp;·&nbsp;ALBERTA&nbsp;PILOT</code></sub>
+
 ### From USDC on X Layer to the keys of an off-grid eco home.
 
 **Aura Homes is an AI agent that orchestrates the entire journey — find the land, design the home, price it from real local suppliers, fund it in escrow, build it with local trades — with no middlemen, no black boxes, and nothing hidden.** Alberta pilot. Open source from the first commit.
@@ -19,15 +23,22 @@
 
 </div>
 
----
+<div align="center"><img src="assets/section-rule.png" alt="" width="88%"></div>
 
+<br>
+
+<sub><code>01&nbsp;·&nbsp;OVERVIEW</code></sub>
 ## The idea, said plainly
 
 Building an eco home today means being your own general contractor across twenty industries that don't talk to each other: land agents, county planners, designers, engineers, panel plants, solar installers, septic designers, water haulers, WETT inspectors, lawyers. Every gap between them costs money and kills dreams. Meanwhile "AI + real estate" produces chatbots, and "crypto + real estate" produces tokens of houses nobody builds.
 
 **Aura Homes is the orchestration layer that was missing.** One agent process:
 
-<img src="assets/pipeline.png" alt="The five-stage pipeline: LAND, DESIGN, BUDGET, ESCROW, BUILD" width="100%">
+<div align="center">
+<img src="assets/pipeline.png" alt="The five-stage pipeline: LAND, DESIGN, BUDGET, ESCROW, BUILD" width="94%">
+<br>
+<sub><code>FIG.&nbsp;1</code>&nbsp;&nbsp;The five-stage pipeline — one agent process from land to keys.</sub>
+</div>
 
 1. **LAND** — the agent finds and filters parcels against the things that actually kill small-home builds: district minimum-dwelling-size bylaws, aquifer reliability, power-line distance, septic soils. Then it walks the acquisition with crypto-fluent, licensed Alberta professionals. USDC in, title out.
 2. **DESIGN** — an AI architect turns a questionnaire into a **review-ready design package** for a SIP-built small home: floor plan, 3D massing, energy pre-check, and a code-constraint report (NBC Part 9, climate zone 7A, glazing ratios). In Alberta no architect stamp is needed for a house — a local designer finishes the permit set, truss engineering ships stamped from the truss plant. Honest labels only: we say *review-ready*, because "AI permit-ready drawings" don't exist anywhere and we won't pretend.
@@ -37,6 +48,9 @@ Building an eco home today means being your own general contractor across twenty
 
 Off-grid everything, grid-optional forever. Solar with honest winter math. Wood heat with WETT inspection. Eco septic (Ecoflo biofilter) where soils allow. Atmospheric water generation **standard on every home** — plumbed in as the summer producer, while the cistern carries winter. **And no conventional concrete**: every Aura home stands on protected driven screw piles instead of poured foundations — nothing curing in the ground, no cement leachate near the water table — with hemp-lime (hempcrete) as the preferred material anywhere mass is genuinely needed, and poly tanks over precast below grade. The quiet win: in Alberta, piles are also the *cheaper* foundation ($6–15K vs $25–45K poured) — see [the foundations research](docs/research/FOUNDATIONS-NO-CONCRETE.md). And nobody needs to own crypto to start: **pay by Visa** and the app converts to USDC in-flow; bring your own USDC if you're already on-chain. The feasibility study tells the truth about every one of these tradeoffs: **[docs/FEASIBILITY.md](docs/FEASIBILITY.md)**.
 
+<br>
+
+<sub><code>02&nbsp;·&nbsp;THE&nbsp;PROBLEM</code></sub>
 ## The problem — why building an eco home is broken
 
 The numbers behind the sentence "every gap costs money and kills dreams," from the 300-source research sweep behind [docs/FEASIBILITY.md](docs/FEASIBILITY.md):
@@ -49,6 +63,9 @@ The numbers behind the sentence "every gap costs money and kills dreams," from t
 
 None of these problems is a technology miracle. Every one is an orchestration problem. That is the product.
 
+<br>
+
+<sub><code>03&nbsp;·&nbsp;WHY&nbsp;ALBERTA</code></sub>
 ## Why Alberta first
 
 Alberta is not just where this project lives — it is objectively the easiest jurisdiction in Canada to do exactly this, for five researched reasons ([docs/ALBERTA-PLAYBOOK.md](docs/ALBERTA-PLAYBOOK.md)):
@@ -61,6 +78,9 @@ Alberta is not just where this project lives — it is objectively the easiest j
 
 Canada-first ordering after the pilot is a data problem, not a rewrite: the architecture keeps provincial rules in [data/alberta/](data/alberta/), and `data/bc/`, `data/sk/` are roadmap expansion packs.
 
+<br>
+
+<sub><code>04&nbsp;·&nbsp;WHY&nbsp;SIPS</code></sub>
 ## Why SIPs
 
 Structural insulated panels — foam cores laminated between OSB skins, cut to the design at the plant — are the build system, chosen for reasons the data supports:
@@ -72,6 +92,9 @@ Structural insulated panels — foam cores laminated between OSB skins, cut to t
 - **The honest lead time: 12–20 weeks** from approved drawings to panels on a truck. No platform magic shortens a panel plant's queue. Aura's speed claim is design-to-contract speed — the months of fumbling before drawings exist — never build speed. The app schedules the build *around* the lead time (order panels before the screw piles go in, not after).
 - **The failure modes are known, so they're encoded.** Electrical chases are frozen at fabrication (change orders after cutting are real money). No plumbing in exterior SIP walls, ever. Joints get continuous sealant plus interior seam tape plus a vented over-roof — the Juneau ridge-rot episode is the reason, and it lives in the design rules. Drywall goes over interior faces regardless (15-minute fire barrier). These constraints are in the AI's catalog rules, not in a PDF nobody reads.
 
+<br>
+
+<sub><code>05&nbsp;·&nbsp;WHY&nbsp;OFF-GRID</code></sub>
 ## Why off-grid — with the physics told honestly
 
 Every number here is the planning number, not the brochure number.
@@ -84,6 +107,9 @@ Every number here is the planning number, not the brochure number.
 
 **Grid-optional forever.** Every home is designed to connect later under Alberta's Micro-generation Regulation *if* a line passes the property — which is why the LAND stage runs the FortisAlberta service estimator before you buy, not after.
 
+<br>
+
+<sub><code>06&nbsp;·&nbsp;THE&nbsp;MONEY&nbsp;RAIL</code></sub>
 ## Why USDC on X Layer
 
 The money rail was chosen on compliance and timing, not vibes:
@@ -101,14 +127,29 @@ flowchart LR
     D -->|convert-then-close<br/>licensed AB professionals| E["Land title · trades paid · keys"]
 ```
 
+<div align="center"><sub><code>FIG.&nbsp;2</code>&nbsp;&nbsp;Two doors into one escrow — card CAD or native USDC, converging on X Layer.</sub></div>
+
 - **The last mile is CAD, and licensed humans close.** Alberta lawyers cannot hold crypto in trust; the proven pattern (an $800K-in-BTC Calgary purchase closed by Greater Property Group, with McLeod Law taking crypto for fees) is convert-then-close. Every crypto payment is a CRA barter disposition at CAD fair market value — the app's ledger exports that bookkeeping automatically, turning a tax nuisance into a feature. Stablecoin dispositions ≈ nil gain, one more reason USDC-first is the tax-clean route.
 - **The agent-payments fit.** OKX shipped its Agent Payments Protocol (x402 family) in April 2026, settling on X Layer. Aura's platform fee is an x402-style micro-fee on design runs — "ridiculously affordable" is a founder requirement, so the fee is sized as cost recovery for frontier-model inference, not as margin.
 
+<br>
+
+<sub><code>07&nbsp;·&nbsp;THE&nbsp;FIVE&nbsp;STAGES</code></sub>
 ## The five stages, deeper
 
-Each stage below states plainly what runs today in this repo versus what is roadmap. The pipeline is typed end-to-end (`Questionnaire → DesignBrief → Budget → MilestoneSchedule` in [agent/src/types.ts](agent/src/types.ts)) so stages can deepen independently.
+Each stage below states plainly what runs today in this repo versus what is roadmap. The pipeline is typed end-to-end (`Questionnaire → DesignBrief → Budget → MilestoneSchedule` in [agent/src/types.ts](agent/src/types.ts)) so stages can deepen independently. At a glance:
+
+| | Stage | Real today | Roadmap |
+|--:|---|---|---|
+| `01` | **LAND** | parcel-verdict engine over structured county data | live listings, district-table lookups, the watching agent |
+| `02` | **DESIGN** | AI design brief + code-constraint report, offline fallback | IFC export, in-browser 3D, HOT2000 handoff |
+| `03` | **BUDGET** | full line-item table, reconciles to the JSON model | live quote ingestion, invoice learning loop |
+| `04` | **ESCROW** | both contracts written and tested | testnet → mainnet deploy, audit, FINTRAC MSB, account abstraction |
+| `05` | **BUILD** | sequenced milestone plan + playbook knowledge | journey brain: slip-catching, nudges, inspector-linked draws |
 
 ### 01 · LAND
+
+<sub><code>IN</code>&nbsp;&nbsp;parcel shortlist&nbsp;&nbsp;→&nbsp;&nbsp;<code>OUT</code>&nbsp;&nbsp;pass/fail verdicts with reasons</sub>
 
 **What it does:** takes a shortlist of parcels and runs the kill-shot filters *in order of expense saved*: district minimum dwelling size (the 592 vs 1,076 sqft trap), aquifer reliability (well vs cistern country), FortisAlberta line proximity (grid-optional feasibility), septic soil suitability, and the GST trap (bare land from a corporation or subdivider carries 5% GST; from an individual it is generally exempt — a $10,000 swing on a $200,000 parcel that depends on who the seller is). Then the acquisition path: USDC converted through a registered exchange, closing through crypto-fluent licensed professionals. The app orchestrates; licensed humans convey title.
 
@@ -117,12 +158,16 @@ Each stage below states plainly what runs today in this repo versus what is road
 
 ### 02 · DESIGN
 
+<sub><code>IN</code>&nbsp;&nbsp;questionnaire + parcel constraints&nbsp;&nbsp;→&nbsp;&nbsp;<code>OUT</code>&nbsp;&nbsp;review-ready design package</sub>
+
 **What it does:** a questionnaire (size, style, energy, water, extras) feeds the AI architect, which reasons over a parametric catalog of SIP-buildable forms and emits a design brief with a floor plan, 3D massing, an energy pre-check, and a code-constraint report: Part 9 applicability, climate zone 7A assemblies, the district's minimum dwelling size, and FDWR (glazing over 22% of wall area kicks a design out of the prescriptive path into paid energy modeling — the catalog respects the ratio and compensates feature walls with triple-pane, up to quint-pane from Duxton).
 
 **Real today:** the Claude-powered design node (with a deterministic offline fallback so the demo runs without keys) produces the brief and constraint report from the sample questionnaire (`agent/out/design-brief.json`).
 **Roadmap:** IFC export via IfcOpenShell, in-browser 3D via That Open Company, HOT2000 handoff for the 9.36 performance path, and Hypar integration for parametric variants. The label stays **review-ready design package** at every depth — a designer finishes the permit set, and no roadmap item changes that sentence.
 
 ### 03 · BUDGET
+
+<sub><code>IN</code>&nbsp;&nbsp;design brief&nbsp;&nbsp;→&nbsp;&nbsp;<code>OUT</code>&nbsp;&nbsp;line-item budget, LOW/MID/HIGH with sources</sub>
 
 **What it does:** prices the design line-by-line from [data/alberta/cost-model.json](data/alberta/cost-model.json) — every line carries LOW/MID/HIGH, a sourcing basis, an owner-buildable flag, and an in-province supplier from [data/alberta/suppliers.json](data/alberta/suppliers.json). No middlemen: panels from the plant, windows from the manufacturer, solar from the installer-distributor.
 
@@ -131,6 +176,8 @@ Each stage below states plainly what runs today in this repo versus what is road
 
 ### 04 · ESCROW
 
+<sub><code>IN</code>&nbsp;&nbsp;budget milestones&nbsp;&nbsp;→&nbsp;&nbsp;<code>OUT</code>&nbsp;&nbsp;funded escrow + on-chain build record</sub>
+
 **What it does:** the buyer funds milestones in native USDC into [`AuraBuildEscrow`](contracts/contracts/AuraBuildEscrow.sol). Releases are 2-of-3 (homeowner, builder, arbiter) — a builder never approves their own milestone alone. On every release the contract retains **10%** as Alberta's statutory holdback and starts the lien-period timer; the holdback releases separately when the timer expires. [`AuraBuildRegistry`](contracts/contracts/AuraBuildRegistry.sol) mints one record per build and appends a milestone entry on each completion — a non-financial NFT, deliberately (see FAQ).
 
 **Real today:** both contracts, written and tested (`npx hardhat test` — passing output is the anchor, never "should pass").
@@ -138,14 +185,23 @@ Each stage below states plainly what runs today in this repo versus what is road
 
 ### 05 · BUILD
 
+<sub><code>IN</code>&nbsp;&nbsp;milestone schedule&nbsp;&nbsp;→&nbsp;&nbsp;<code>OUT</code>&nbsp;&nbsp;permits, shell, systems, keys</sub>
+
 **What it does:** turns the schedule into an orchestrated checklist with the dependencies encoded: development permit → Owner Builder Authorization → building and trade permits (pulling the homeowner-legal ones yourself, hiring licensed trades where the law requires — solar wiring, septic, gas final) → SIP order placed *early* against the 12–20 week lead → screw piles (winter-installable, no 28-day cure, $6,000–$15,000) → shell in days → mechanical, septic, solar → wood stove with WETT inspection → hot tub on a sub-24" deck (no permit needed at that height). Each completed milestone updates the on-chain record.
 
 **Real today:** the milestone scheduler emits the sequenced plan (`agent/out/milestones.json` from `npm run demo`); the checklist knowledge lives in the playbook.
 **Roadmap:** the full Aura Brain journey loop below — slip-catching, nudges, email digests, inspector-linked escrow draws.
 
+<br>
+
+<sub><code>08&nbsp;·&nbsp;THE&nbsp;ECONOMICS</code></sub>
 ## The economics — exact numbers, computed
 
-<img src="assets/budget-bands.png" alt="Budget bands: LOW $199,100 · MID $301,280 · HIGH $443,900 ex-land, versus a builder-delivered $450K–$650K" width="100%">
+<div align="center">
+<img src="assets/budget-bands.png" alt="Budget bands: LOW $199,100 · MID $301,280 · HIGH $443,900 ex-land, versus a builder-delivered $450K–$650K" width="94%">
+<br>
+<sub><code>FIG.&nbsp;3</code>&nbsp;&nbsp;Budget bands for the 800 sqft reference build, ex-land — computed line-by-line, not quoted.</sub>
+</div>
 
 Reference build: 800 sqft off-grid SIP home within about an hour of Edmonton. Every line from [data/alberta/cost-model.json](data/alberta/cost-model.json) with its basis — these are researched ranges, not quotes, and the JSON is the single source of truth the app, the docs, and this README all read.
 
@@ -172,9 +228,16 @@ The totals rule is frozen: *totals = Σ line items × (1 + contingency), land ex
 
 For comparison, a conventional builder delivers the same home at **$450,000–$650,000 ex-land** ($250–$450/sqft hard costs plus 25–40% soft). The owner-builder path saves $150,000–$250,000 in exchange for 12–24 months of sweat — a trade the app makes explicit, never glosses.
 
+<br>
+
+<sub><code>09&nbsp;·&nbsp;THE&nbsp;ESCROW</code></sub>
 ## Escrow and the 10% holdback, for a normal person
 
-<img src="assets/escrow-flow.png" alt="Escrow flow: buyer funds via Visa or USDC, AuraBuildEscrow releases 90% per approved milestone and retains a 10% statutory holdback until the lien period expires" width="100%">
+<div align="center">
+<img src="assets/escrow-flow.png" alt="Escrow flow: buyer funds via Visa or USDC, AuraBuildEscrow releases 90% per approved milestone and retains a 10% statutory holdback until the lien period expires" width="94%">
+<br>
+<sub><code>FIG.&nbsp;4</code>&nbsp;&nbsp;Milestone escrow with Alberta's statutory 10% holdback enforced in contract state.</sub>
+</div>
 
 If you have never bought construction before, here is the problem escrow solves: **paying a builder up front is how people get robbed, and builders doing work unpaid is how builders go broke.** The traditional answer is progress draws held by a lawyer or lender. Aura's answer is the same idea with the trust moved into inspectable code:
 
@@ -186,6 +249,9 @@ If you have never bought construction before, here is the problem escrow solves:
 
 What this is not: it is not a lawyer, a title transfer, or a warranty. Land closes through licensed Alberta professionals; the contract holds and releases construction funds and keeps the record straight.
 
+<br>
+
+<sub><code>10&nbsp;·&nbsp;THE&nbsp;BRAIN</code></sub>
 ## The Aura Brain
 
 The management layer is not a feature bolted onto an app — the app is a client of a persistent per-journey AI. Full design in [docs/AI-BRAIN.md](docs/AI-BRAIN.md); the shape:
@@ -196,6 +262,9 @@ The management layer is not a feature bolted onto an app — the app is a client
 - **Cost-honest model strategy**, because "AI-run" dies at scale if every turn hits a frontier API: Tier 0 is code (state machine, budget math, slip rules — a model deciding what a rule can decide is waste), Tier 1 is a small open-weight model with RAG over this repo's own corpus, Tier 2 is Claude for the judgment nodes, prompt-cached and schema-forced — and the x402 usage fee is sized to cover exactly that tier. Fine-tuning waits until ~thousands of real transcripts exist to distill from; pretraining is never.
 - **MCP-first interface:** the brain ships as an MCP server (`journey_status`, `next_actions`, `check_parcel`, `escrow_status`, …) so the web app, Claude, and the OKX agent ecosystem are all just clients.
 
+<br>
+
+<sub><code>11&nbsp;·&nbsp;THE&nbsp;METHOD</code></sub>
 ## Built as a graph
 
 This repo is itself built the way the product works — by AI agents run as a dependency graph, under [docs/GRAPH-ENGINEERING.md](docs/GRAPH-ENGINEERING.md). The rules that matter most:
@@ -207,18 +276,30 @@ This repo is itself built the way the product works — by AI agents run as a de
 
 The product inherits the same shape: the five stages have real edges (each consumes the previous stage's artifact), the work inside each stage fans out, and the escrow's 2-of-3 is itself a checker-separation pattern with the on-chain balance as the anchor.
 
+<br>
+
+<sub><code>12&nbsp;·&nbsp;THE&nbsp;BRAND</code></sub>
 ## The brand
 
 The full researched rationale is in **[docs/BRAND.md](docs/BRAND.md)** — why emerald (the one green that signals both "sustainable" and "worth $300,000"), why the near-black ground, why the violet is rationed to on-chain surfaces, why the mark is the KR8TIV aura silhouette refilled with an aurora over a treeline, and why the strongest brands in every adjacent category — Aesop, Arc'teryx, Patagonia, and the crypto products normies actually trust — all converge on the same rule this repo runs on: **restraint is the premium signal, and honesty is the trust argument.** House style in one line: dark aurora ground, tracked-caps labels, sentence-case body, ranges over point estimates, no exclamation marks, no crypto-glow, no AI slop.
 
+<br>
+
+<sub><code>13&nbsp;·&nbsp;THE&nbsp;FIELD</code></sub>
 ## Why this doesn't exist yet
 
 After a 300-source research sweep: **nobody combines AI home design + crypto rails + off-grid eco fulfillment.** Propy closes sales of existing homes. RealT and Lofty fractionalize rentals. Higharc sells to production builders. Welcome Homes is US-only and fiat-only. Atmos raised $20M for "design online, we build it" and died in 2025. The unclaimed ground is the *agent that orchestrates the physical world* — and agent-payments infrastructure (native USDC on X Layer, launched **August 6, 2026**; OKX's Agent Payments Protocol, April 2026) just made it buildable. Full competitive teardown in the [feasibility study](docs/FEASIBILITY.md#7-what-we-do-not-build-integrate-instead).
 
+<br>
+
+<sub><code>14&nbsp;·&nbsp;THE&nbsp;HACKATHON</code></sub>
 ## The hackathon
 
 This repo is Aura Homes' entry in the **[OKX BuildX AI Season Hackathon](https://web3.okx.com/xlayer/build-x-hackathon)** (Aug 7–21, 2026) — AI-powered onchain applications on X Layer, up to 300K USDT, AI-RWA track. Contracts deploy to X Layer testnet (chain 1952) during the event and mainnet (chain 196) after. Submission package, demo script, and the judge-facing pitch live in **[docs/SUBMISSION.md](docs/SUBMISSION.md)**.
 
+<br>
+
+<sub><code>15&nbsp;·&nbsp;HONESTY</code></sub>
 ## Honesty policy
 
 No black boxes, and no selective memory. Research that contradicted the founding assumptions is published, not buried — each collision is recorded in [docs/FEASIBILITY.md](docs/FEASIBILITY.md) and frozen as a never-un-learn correction in [docs/AI-HANDOFF.md](docs/AI-HANDOFF.md):
@@ -231,6 +312,11 @@ No black boxes, and no selective memory. Research that contradicted the founding
 
 The same policy runs forward: negative findings get published, unverifiable numbers get labeled, and every price is a range with a basis. The product is stronger for it, and it is also simply the only defensible way to sell someone a house.
 
+<div align="center"><img src="assets/section-rule.png" alt="" width="88%"></div>
+
+<br>
+
+<sub><code>16&nbsp;·&nbsp;FAQ</code></sub>
 ## FAQ
 
 **Do I need to own crypto?**
@@ -275,6 +361,9 @@ The hackathon demo runs on testnet and custodies nothing. Before any production 
 **Why should I trust an AI with a house?**
 You shouldn't, blindly — that is why the architecture never asks you to. The AI orchestrates; licensed humans stamp, install, inspect, and close at every legally-required boundary; deterministic code computes the money; the contract enforces the holdback; and every claim in the repo traces to a source you can check. The honesty policy above is the trust model.
 
+<br>
+
+<sub><code>17&nbsp;·&nbsp;REPO&nbsp;MAP</code></sub>
 ## Repo map
 
 | Path | What it is |
@@ -296,6 +385,9 @@ You shouldn't, blindly — that is why the architecture never asks you to. The A
 | [data/alberta/](data/alberta/) | The researched cost model and no-middlemen supplier directory |
 | [assets/](assets/) | The mark, hero, and README graphics — generated, in the house style |
 
+<br>
+
+<sub><code>18&nbsp;·&nbsp;RUN&nbsp;IT</code></sub>
 ## Run it
 
 ```bash
@@ -308,6 +400,9 @@ cd ../contracts && npm install && npx hardhat test
 cd ../app && npm install && npm run dev
 ```
 
+<br>
+
+<sub><code>19&nbsp;·&nbsp;CONTRIBUTE</code></sub>
 ## Contribute
 
 This is deliberately the software that would otherwise take five years to exist. It gets built in the open, in slices, and it needs people — Solidity reviewers, Alberta designers and safety-codes brains, IFC/BIM engineers, off-grid installers who'll sanity-check numbers, and anyone who wants normal people to be able to build eco homes.
@@ -323,8 +418,9 @@ Concrete first issues, in rising order of effort:
 
 House rules for contributions: every claim needs a basis, ranges beat point estimates, negative findings are welcome in the docs (that is the brand), and the frozen anchors in [docs/GRAPH-ENGINEERING.md](docs/GRAPH-ENGINEERING.md) — tested output, reconciled totals, live chain reads — apply to everyone, human or AI.
 
----
-
 <div align="center">
+
+<img src="assets/section-rule.png" alt="" width="88%">
+
 <sub>Authored by <a href="https://github.com/Matt-Aurora-Ventures">Matt Aurora Ventures</a> · co-authored with Claude (Fable 5) · MIT · <b>A KR8TIV AI product</b></sub>
 </div>

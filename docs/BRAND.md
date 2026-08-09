@@ -45,10 +45,16 @@ Do not redraw the silhouette, add glow, outline it, or set it on a light ground 
 
 ## 4. Typography
 
-- **Faces:** the app uses the system humanist sans stack; rendered brand assets use **Segoe UI** (Light/Semilight for display, Semibold for labels) — chosen because it is genuinely available at render time on our pipeline, ages well, and has the quiet geometry of the register we want. If the app later adopts a licensed face, it must be a humanist sans of equal restraint (Inter, Söhne class), swapped everywhere at once.
-- **Display:** large sizes go *lighter*, never bolder. Weight at scale is the AI-slop tell.
-- **Labels:** UPPERCASE, letter-spaced (tracking ≈ 0.15–0.25em), small, in an accent or dim tone. This is the house signature — the "tracked caps label" — used for section eyebrows, stage names, and data labels.
-- **Body:** sentence case, generous line height, off-white, never justified.
+*Rewritten August 2026, founder-approved. The type system is now a three-face pairing, adopted from the presentation reference documented in section 8 — all three faces are released under the SIL Open Font License 1.1, so they are free for commercial use, self-hosting, and embedding in rendered assets, with no attribution requirement on our surfaces.*
+
+| Role | Face | Weights | How it is used |
+|---|---|---|---|
+| **Display** | [Space Grotesk](https://fonts.google.com/specimen/Space+Grotesk) (variable, 300–700) | 500–620 at scale | Headlines and stage names. Large sizes get **tight negative tracking** (≈ −0.02em at h2 scale up to −0.06em at hero scale) and tight leading (≈ 0.85–0.95). Confident medium weight, never black/heavy — weight-at-scale is still the AI-slop tell. Headlines are sentence case and may end in a period. |
+| **Body / UI** | [Manrope](https://fonts.google.com/specimen/Manrope) (variable, 200–800) | 400 body, 600–650 buttons and small labels | All prose and interface text. Sentence case, generous line height, off-white on the dark ground, never justified. |
+| **Labels / data** | [JetBrains Mono](https://www.jetbrains.com/lp/mono/) (variable, 100–800) | 400–500 | The house signature — the **tracked caps label** — is now set in mono: UPPERCASE, letter-spaced ≈ 0.15–0.25em, small (10–12px equivalent), in an accent or dim tone. Section eyebrows, figure tags (`FIG. 1`), stage numbers (`01`), data labels, and code. Mono is also the face for numbers in dense tables. |
+
+- **Fallback stack:** `"Space Grotesk", "Segoe UI", system-ui, sans-serif` for display; `Manrope, "Segoe UI", system-ui, sans-serif` for body; `"JetBrains Mono", Consolas, monospace` for labels. Segoe UI (the previous brand face) remains the render-time fallback on pipelines where the webfonts are not installed — assets rendered before this change do not need regeneration.
+- **The section-kicker pattern:** a section opens with a mono kicker — number in accent, tracked-caps label in dim, hairline rule running to the margin (`01 RESULTS ————`) — then the display headline. This is the load-bearing typographic move; see section 8.
 - **Numbers:** tabular figures where columns exist; a number always carries its unit and its basis.
 
 ## 5. Voice
@@ -89,7 +95,32 @@ KR8TIV AI products share one silhouette, one dark ground, one voice — and are 
 
 The system rule: **silhouette constant, world inside it changes.** Aura Homes may borrow teal (water systems) and lime (land) as minor notes precisely because they are the siblings' leads — the family palette is one continuous aurora, sampled at different bands. What no sibling may do is change the silhouette, the dark ground, or the voice.
 
-## 8. Motion
+## 8. Design inspiration — the WorldClaw rhythm
+
+*Added August 2026, after the founder reviewed Tencent's [Hunyuan3D-WorldClaw project page](https://tencent-hunyuan.github.io/Hunyuan3D-WorldClaw/) and approved adopting its presentation system. Credit where due: that page is the layout, rhythm, and typography reference for how Aura Homes presents itself — repo README, docs, and (gently) the site. It is **inspiration for structure and craft only**: our palette, mark, and voice do not move (see the boundary list below). The page's demo media is Tencent's and is never reused here; its fonts are OFL-licensed, so adopting the pairing is legally clean (see section 4 and the [WorldClaw research note](research/WORLDCLAW.md)).*
+
+What we adopt — the vocabulary, translated to our dark aurora ground:
+
+- **Numbered-section kickers.** Every major section opens `01 LABEL` — mono number in accent, tracked-caps mono label in dim, hairline rule to the margin — then the display headline. Content becomes navigable the way a paper is.
+- **Asymmetric headline pairing.** Big display statement left, short supporting prose right (or below at readme widths), top-aligned. The headline asserts; the paragraph substantiates. Never two competing columns of equal weight.
+- **Whitespace as the section boundary.** Bands of generous vertical space separated by full-width hairlines — not boxes, not background-color blocks. (This was already rule one of section 6; WorldClaw shows how far to push the vertical scale.)
+- **Media as framed evidence.** Images and video sit in consistently framed cards: rounded corners (~18–26px), a 1px hairline border at ~11–22% ink opacity, soft long-throw shadow, never bare or edge-to-edge. Every figure carries a mono tag and caption (`FIG. 1` + one dim sentence). Grouped media gets a small accent tick + mono group label. Tiles in a set carry small numbered chips (`01`, `02`).
+- **The spec-ledger.** Technical content presented as tiny mono `IN` / `OUT` rows and small capability grids (three cells, hairline top rules, mono tag + bold term + dim description) — WorldClaw's presentation of a pipeline is the cleanest we have seen, and ours is also a pipeline.
+- **Two pill buttons, one solid, one outlined.** Primary action solid ink with a circular icon; secondary outlined hairline. Maximum two.
+
+The boundary — what does **not** move, in the same breath:
+
+| Theirs (stays theirs) | Ours (stays ours) |
+|---|---|
+| Warm paper ground `#f1efe8`, warm ink | Dark aurora ground `#050807`, off-white text |
+| Vermilion `#c8512f` accent | Emerald `#10b981` / `#34d399` leading, violet rationed to chain surfaces |
+| Their green `#45a870` group labels | Teal `#2dd4bf` for secondary/system labels |
+| WorldClaw wordmark energy | The KR8TIV aura mark, untouched (section 3) |
+| Research-lab neutrality | Our voice: ranges, published limitations, no exclamation marks (section 5) |
+
+Rule of thumb for any new surface: **their skeleton, our skin.** If a change would survive with the palette swapped back to paper-and-vermilion, it is structure and welcome; if it only works by importing their colors or replacing our mark, it is off-brand.
+
+## 9. Motion
 
 Motion is part of the brand, and it has the same rule as everything else: **restraint is the premium signal.** The reference bar is the scroll-story craft of MengTo's kage page (credited in [CREDITS.md](CREDITS.md)) — we take the *vocabulary* of that work (scroll-linked camera on damped springs, one subject held in frame while the story moves around it, copy that pins and dissolves instead of sliding), never its writing or its brand feel.
 
@@ -101,7 +132,7 @@ Motion is part of the brand, and it has the same rule as everything else: **rest
 - **Respect is non-negotiable:** `prefers-reduced-motion` gets a still composition of equal beauty; WebGL-absent gets a static hero, never a blank.
 - Duration discipline: micro-interactions 150–250 ms; scene transitions 600–900 ms of scroll distance, not time.
 
-## 9. Co-branding — the KR8TIV AI lockup
+## 10. Co-branding — the KR8TIV AI lockup
 
 Aura Homes is **A KR8TIV AI PRODUCT** and says so in exactly one way:
 
@@ -109,14 +140,14 @@ Aura Homes is **A KR8TIV AI PRODUCT** and says so in exactly one way:
 - The badge never exceeds the height of two lines of the text it accompanies; KR8TIV's blue-wave palette stays inside the badge circle and never bleeds into Aura surfaces.
 - Order of precedence on any asset: Aura mark leads, KR8TIV badge closes. Never side-by-side at equal size — this is a product-of relationship, not a partnership lockup.
 
-## 10. Preview & social assets
+## 11. Preview & social assets
 
 - **Repo social card** (`assets/social-card.png`, 1280×640): mark left, wordmark + tagline right, chip row (event · track · license), divider, KR8TIV lockup + repo URL. This is the template for every future card — swap the chip row per context.
 - Chips are outlined (2px, 19px radius), never filled; one emerald, one violet, one neutral — maximum three.
 - The Pages site serves the same card as `og:image`; any new deployable page inherits it unless it earns its own.
 - Favicon/avatar: the mark on `#050807`, centered, ~8% padding (`assets/aura-homes-avatar.png`).
 
-## 11. Sources
+## 12. Sources
 
 Color psychology of green shades (emerald = wealth/sophistication + nature; forest = tranquility; sage = wellness): [Becky Lord, Colour Psychology: Green](https://beckylord.co.uk/colour-psychology-chapter-3-green/) · [Icons8, Ultimate green color guide](https://icons8.com/blog/articles/green-color-guide/) · [Iron Dragon Design, Green Colour Psychology in Branding](https://www.irondragondesign.com/green-colour-psychology-in-branding/) · [The Karma Works, Green Branding Colors](https://thekarmaworks.com/green-branding-colors/) · [Berger, Color psychology of green](https://www.berger.team/en/branding/farbpsychologie-gruen-natur-wachstum-und-wohlstand-als-beruhigende-kraft/)
 
@@ -125,5 +156,7 @@ Premium restraint and quiet luxury (Aesop non-accommodation; BCG retention data;
 Crypto brands that don't look like crypto (Phantom consumer-app restraint; Coinbase/Uniswap minimalism): [925 Studios, Phantom Wallet Design Breakdown](https://www.925studios.co/blog/phantom-wallet-design-breakdown) · [Azuro Digital, Best Crypto Website Designs](https://azurodigital.com/crypto-website-examples/)
 
 README craft (detailed READMEs get ~50% more contributions; hero + badges + visuals + honest structure): [matiassingers/awesome-readme](https://github.com/matiassingers/awesome-readme) · [Eddie Jaoude, What makes a great repo README](https://eddiejaoude.substack.com/p/what-makes-a-great-github-repo-readme) · [dev.to, README templates used by top repos](https://dev.to/belal_zahran/the-github-readme-template-that-gets-stars-used-by-top-repos-4hi7)
+
+Presentation rhythm and type pairing (section 8): [Tencent Hunyuan3D-WorldClaw project page](https://tencent-hunyuan.github.io/Hunyuan3D-WorldClaw/) — studied live August 2026 (typography, section kickers, media framing, spec-ledger patterns); fonts verified as Space Grotesk / Manrope / JetBrains Mono via computed styles, all SIL OFL 1.1. License findings on WorldClaw itself: [research/WORLDCLAW.md](research/WORLDCLAW.md).
 
 *Third-party figures above (BCG retention, luxury-consumer surveys, wallet drop-off rates) are as reported by the cited secondary sources, not independently verified — cite them as such.*
