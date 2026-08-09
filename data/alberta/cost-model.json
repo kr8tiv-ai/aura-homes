@@ -8,7 +8,7 @@
   "lineItems": [
     { "key": "land", "label": "Land (1-5 acres)", "low": 75000, "mid": 150000, "high": 350000, "basis": "Live realtor.ca listings Aug 2026: Lac Ste. Anne County $75K-$199K bare parcels (75 active listings); Sturgeon 38 listings pricier; Leduc dearest", "ownerBuildable": false },
     { "key": "siteWork", "label": "Driveway, clearing, site prep", "low": 4500, "mid": 8000, "high": 12000, "basis": "100-ft gravel drive $4-10/sqft + clearing", "ownerBuildable": true },
-    { "key": "foundation", "label": "Screw-pile foundation (16-24 piles)", "low": 6000, "mid": 10000, "high": 15000, "basis": "$300-$900/pile installed, Edmonton screw-pile firms; winter-installable, no 28-day cure; concrete alternative $25K-$45K; NO-CONCRETE STANDARD (founder mandate): hot-dip galvanized screw piles, AC228 polymer-coated where near high water table; grouted/pulldown pile variants prohibited (portland grout column); mandate also prefers poly over precast-concrete cistern/septic tanks (~$0 delta, screw-anchor tie-downs not concrete ballast on wet sites); see docs/research/FOUNDATIONS-NO-CONCRETE.md", "ownerBuildable": false },
+    { "key": "foundation", "label": "Screw-pile foundation (16-24 piles)", "low": 6000, "mid": 10000, "high": 15000, "basis": "$300-$900/pile installed, Edmonton screw-pile firms; winter-installable, no 28-day cure; concrete alternative $25K-$45K; NO-CONCRETE STANDARD (founder mandate): hot-dip galvanized screw piles, AC228 polymer-coated where near high water table; grouted/pulldown pile variants prohibited (portland grout column); mandate also prefers poly over precast-concrete cistern/septic tanks (~$0 delta, screw-anchor tie-downs not concrete ballast on wet sites); screw piles are a Part 4 (non-prescriptive) element: P.Eng-stamped foundation plans + post-install field verification letter are legally mandatory before occupancy (founder's research notebook, Aug 2026 - Calgary guide, County of Minburn); see docs/research/FOUNDATIONS-NO-CONCRETE.md", "ownerBuildable": false },
     { "key": "sipShell", "label": "SIP shell kit + erection", "low": 30000, "mid": 45000, "high": 55000, "basis": "Complete engineered shell $50-$100/sqft small-build premium; EcoPrefabs 448sqft weathertight anchor $28K; quotes required from EnerSmart/Insulspan/Premier - none publish pricing; shell contains zero concrete; hempcrete (hemp-lime, cement-free binder) is NON-structural wall infill only - a roadmap alternative via ABC alternative-solution path (no CCMC listing; JBF Airdrie blocks ~$30-35/sqft wall), never a foundation/slab substitute; see docs/research/FOUNDATIONS-NO-CONCRETE.md", "ownerBuildable": true, "ownerNote": "2-3 people + telehandler, small-format panels only; shell in days" },
     { "key": "roofWindowsDoors", "label": "Metal roof, triple-pane windows, doors, siding", "low": 22000, "mid": 32000, "high": 45000, "basis": "Metal roof $8-15/sqft; triple-pane $900-$1,800/window x ~8 (zone 7A spec); Lux Calgary / All Weather Edmonton / Duxton Winnipeg", "ownerBuildable": true },
     { "key": "interior", "label": "Interior fit-out (kitchen, bath, drywall, floor)", "low": 22000, "mid": 35000, "high": 55000, "basis": "Drywall REQUIRED over interior SIP faces (15-min fire barrier); IKEA-grade kitchen $6-18K; 3-pc bath $12-25K", "ownerBuildable": true },
@@ -25,6 +25,23 @@
   "totalsExLand": { "low": 199100, "mid": 301280, "high": 443900 },
   "totalsIncLand": { "low": 274100, "mid": 451280, "high": 793900 },
   "builderComparison": { "low": 450000, "high": 650000, "basis": "Same home builder-delivered ex-land at $250-450/sqft hard + 25-40% soft; owner-builder saves 30-40% ($150-250K) for 12-24 months of labour" },
+  "unbudgetedItemsIdentified": [
+    {
+      "item": "Elevated-floor assembly over unheated space",
+      "why": "A screw-pile home's floor is legally a 'floor over unheated space' under 9.36 zone 7A: RSI 5.02 (R-28.5) minimum. A 6.5in SIP floor fails; budget 8.25-10.25in floor SIPs (or added polyiso), pile-cap thermal breaks (4x-thickness rule or engineered break pads), a continuous under-floor air barrier taped to the wall barrier (wind-washing defense), and heat-traced, insulated, boxed plumbing chases through open -30/-40C air - the single biggest physical risk of the elevated design. None of these are separately priced in current lines.",
+      "source": "Founder's research notebook, Aug 2026 (9.36 prescriptive tables + elevated screw-pile SIP catalog lock-ins); amounts TBD before next quote pass"
+    },
+    {
+      "item": "P.Eng stamp for screw-pile foundation plans",
+      "why": "Legally mandatory (Part 4 element) - stamped plans plus post-install field verification letter before occupancy. Currently assumed inside the permitsSoft range but never priced as its own line; flag so it cannot be silently squeezed out.",
+      "source": "Founder's research notebook, Aug 2026 (Calgary screw-pile guide; County of Minburn); spot-checked consistent with existing engineerTouchpoints entry"
+    },
+    {
+      "item": "Deeper pile driving on wind-washed bare soil",
+      "why": "Wind strips the insulating snow blanket under an elevated home, so bare soil beneath it freezes DEEPER than frost-depth models assume; drive piles 2-3 ft below the local frost line as the safety margin. Adds per-pile depth cost not in the $300-900/pile range basis.",
+      "source": "Founder's research notebook, Aug 2026 (U of A/NRC frost research + snow-cover dominance finding)"
+    }
+  ],
   "regulatory": {
     "architectRequired": false,
     "architectBasis": "Alberta Architects Act exempts 1-4 unit dwellings of any size; Part 9 NBC 2023 Alberta Edition governs",
