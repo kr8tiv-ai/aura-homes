@@ -44,7 +44,36 @@ That was a payload decision first: a single good grass or tree pack is
 2–10 MB with textures, and this page has a payload budget. It also means
 there is no licence to track and no upstream that can move or change terms.
 
-Two techniques are owed credit even though no code was copied:
+### Grass research (studied; the implementation is not currently mounted)
+
+Three grass implementations were built and rejected — see the note in
+`SceneDetail.tsx` for why. No code was copied from any of these, but the
+technique came from them and the credit is owed regardless:
+
+- **[Codrops — *How to Make The Fluffiest Grass With Three.js*](https://tympanus.net/codrops/2025/02/04/how-to-make-the-fluffiest-grass-with-three-js/)**
+  — chunked `InstancedMesh`, three LOD levels, base→tip colour lerp along
+  `uv.y`, sine wind modulated by a scrolling noise texture.
+- **[CK42BB/procedural-grass-threejs](https://github.com/CK42BB/procedural-grass-threejs)** — **MIT**
+  — tapered triangle strips on a quadratic Bezier, the three-layer wind model
+  (global sway / gust fronts / per-blade turbulence) computed entirely in the
+  vertex shader, and distance-based LOD rings.
+- **[James Smyth — *Breath of the Wild style grass in Three.js*](https://smythdesign.com/blog/stylized-grass-webgl/)**
+  — the 5-vertex blade layout and using height along the blade to scale
+  displacement so the bend is anchored at the root.
+- **[Nitash-Biswas/grass-shader-glsl](https://github.com/Nitash-Biswas/grass-shader-glsl)**
+  — R3F + custom GLSL instancing reference.
+
+### Mountains
+
+The snow-capped range is **procedural, not a downloaded model** — a ridged
+fractal heightfield with the snow line assigned by altitude modulated by
+slope, sun shading baked into vertex colours, and aerial perspective blended
+by depth. Poly Haven's model catalogue (CC0) was checked first and carries
+props and rocks rather than terrain or ranges, so there was nothing to
+source; a mountain range is also geometry a heightfield generates better
+than a mesh download ships.
+
+Two further techniques are owed credit even though no code was copied:
 
 - **Instanced grass with vertex-shader wind** — the general approach is the
   one demonstrated in the [three.js examples](https://threejs.org/examples/)
