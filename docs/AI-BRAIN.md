@@ -10,6 +10,24 @@
 4. **Email updates, always.** Every material state change and a weekly digest per build: what moved, what's blocked, what's next, money position (escrow funded/released/held back). Transactional email via a commodity provider (Resend/SES class); templates live in the repo; users control frequency. The email IS the product for the 95% of days a user doesn't open the app.
 5. **It learns.** Every completed stage logs predicted-vs-actual (budget line vs invoice, estimated vs real permit turnaround, lead-time vs delivery). The deltas feed back into `data/alberta/cost-model.json` ranges and the guidance copy. Learning is from *outcomes* (anchors that can't argue back — see [GRAPH-ENGINEERING.md](GRAPH-ENGINEERING.md)), never from the model grading its own advice.
 
+## Memory — the journey remembers
+
+*Adopted discipline: ["Memory Engineering: The Discipline That Decides Whether Your AI Agent Has a Past"](https://x.com/0xWast3/status/2084625810112032849) by [@0xWast3](https://x.com/0xWast3) (Aug 2026), applied per journey in `agent/src/brain/memory.ts`. The premise: re-reading a transcript is not memory — memory is its own architecture that decides deliberately what a system carries forward and what it lets go. Run the narrated pipeline with `npm run memory`; agents reach it through the `journey_memory` MCP tool.*
+
+**The five stages**, mapped to our code (the article's names in parentheses):
+
+1. **Capture** — a rejection-first filter. The test: would this still be true and useful in three months? Transient moods, session mechanics, questions, and hedged maybes never reach the store; preference and constraint language becomes a **durable** fact; date-bound facts become **expiring** facts with an `expiresISO`. Most of what gets said is rejected by default — a system that captures indiscriminately rebuilds the replay-everything problem it was meant to solve.
+2. **Consolidate** — every captured fact resolves against the live store as `insert`, `merge`, `supersede`, or `skip`. A rephrased preference merges and reinforces the existing entry (raising confidence, slowing decay) instead of piling up as a duplicate row; ten mentions collapse into one confident fact, not ten competing ones.
+3. **Retrieve** — contextual and stage-aware, never exhaustive. LAND surfaces parcel constraints, ESCROW surfaces money preferences, and a free-text query ranks by relevance, confidence, and recency. Twenty marginal memories bury the two that matter, so irrelevant facts never surface regardless of confidence.
+4. **Update (the article's Reconcile)** — contradictions never coexist silently. A same-subject contradiction (a changed number, a reversed preference, explicit change-of-mind language) supersedes the old fact: the newest statement wins, and the old fact is kept — marked `supersededBy` and invisible to retrieval — until the forget pass. When a lower-confidence statement overturns a higher-confidence fact, the result carries a conflict note to surface to the owner rather than trusting silently (the article's `flag_conflict` branch).
+5. **Forget (the article's Decay)** — aggressive, but with a grace window. Expired and superseded facts stop retrieving immediately and are dropped for good 14 days later. A store that never forgets becomes indistinguishable from one that remembers nothing well.
+
+**Our two classes.** `durable` — preferences, constraints, and stable facts ("prefers DIY where legal", "hard budget ceiling", "never plumbing in exterior walls"). `expiring` — true only until a date ("the county office is closed until Sep 2"), carrying `expiresISO`.
+
+**What gets captured, and the privacy rule.** Only outcome facts and stated preferences, as single sentences — never raw transcripts, never conversation logs. This is the same boundary as the learning loop above: the store holds what the owner asserted and what verifiably happened, not how the conversation went. Rejected statements are not stored anywhere.
+
+**Where it plugs in.** `getGuidance` accepts a memory store and re-ranks the next actions (a remembered DIY preference pulls owner-doable paths up); `renderDigest` weaves remembered facts into the weekly email and checks the remembered budget ceiling against the milestone total, flagging a breach; `advanceJourney` events can carry `userStatements` that flow through capture and consolidation via `advanceJourneyWithMemory`. All pure functions with injectable clocks; persistence is one JSON file per `buildId` under `agent/out/memory/`.
+
 ## Model strategy — the cost-honest answer
 
 The instinct "train our own model so API costs don't eat us" is half right. The 2026 engineering answer is a **three-tier brain**, cheapest tier first:

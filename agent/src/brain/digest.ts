@@ -2,6 +2,7 @@
 // Premium plain design per docs/BRAND.md: dark ground, one dominant accent,
 // tracked-caps labels, no exclamation marks, no emoji, ranges with a basis.
 
+import { liveFacts, MemoryStore, parseMoneyCad, retrieve } from "./memory";
 import { Slip } from "./slips";
 import {
   daysSince,
@@ -43,6 +44,44 @@ interface DigestModel {
   money: Array<{ label: string; value: string }>;
   moneyLine: string;
   stageLine: string;
+  /** Present when a memory store was supplied: facts remembered for this stage. */
+  remembered?: string[];
+  /** A remembered budget ceiling checked against the milestone total. */
+  budgetFlag?: string;
+  budgetExceeded?: boolean;
+}
+
+const CEILING_LANGUAGE = /\b(ceiling|cap|limit|max|no more than|exceed|all[- ]?in)\b/i;
+
+function memoryModel(
+  state: JourneyState,
+  memory: MemoryStore,
+  now: Date
+): Pick<DigestModel, "remembered" | "budgetFlag" | "budgetExceeded"> {
+  const facts = retrieve(state.stage, memory, now, 4);
+  const remembered = facts.map((f) =>
+    f.class === "expiring" && f.expiresISO
+      ? `${f.content} (holds until ${f.expiresISO.slice(0, 10)})`
+      : f.content
+  );
+
+  const ceilingFact = liveFacts(memory, now)
+    .filter(
+      (f) =>
+        f.subject === "budget" &&
+        parseMoneyCad(f.content) !== null &&
+        CEILING_LANGUAGE.test(f.content)
+    )
+    .sort((a, b) => b.confidence - a.confidence || b.sourceISO.localeCompare(a.sourceISO))[0];
+
+  if (!ceilingFact) return { remembered };
+  const ceiling = parseMoneyCad(ceilingFact.content) as number;
+  const total = escrowPosition(state.escrow).totalCad;
+  const budgetExceeded = total > ceiling;
+  const budgetFlag = budgetExceeded
+    ? `Remembered budget ceiling ${cad(ceiling)} — the ${cad(total)} milestone total EXCEEDS it by ${cad(total - ceiling)}.`
+    : `Remembered budget ceiling ${cad(ceiling)} — the ${cad(total)} milestone total sits inside it.`;
+  return { remembered, budgetFlag, budgetExceeded };
 }
 
 function buildModel(state: JourneyState, now: Date): DigestModel {
@@ -81,8 +120,15 @@ function buildModel(state: JourneyState, now: Date): DigestModel {
   return { moved, next, money, moneyLine, stageLine };
 }
 
-export function renderDigest(state: JourneyState, slips: Slip[], now: Date = new Date()): Digest {
-  const m = buildModel(state, now);
+export function renderDigest(
+  state: JourneyState,
+  slips: Slip[],
+  now: Date = new Date(),
+  memory?: MemoryStore
+): Digest {
+  const m: DigestModel = memory
+    ? { ...buildModel(state, now), ...memoryModel(state, memory, now) }
+    : buildModel(state, now);
   const subject = `Your build update — ${state.projectName}`;
 
   // ---------------------------------------------------------------- plain text
@@ -96,7 +142,14 @@ export function renderDigest(state: JourneyState, slips: Slip[], now: Date = new
   lines.push("");
   lines.push("MONEY POSITION");
   for (const row of m.money) lines.push(`  ${row.label}: ${row.value}`);
+  if (m.budgetFlag) lines.push(`  ${m.budgetExceeded ? "[FLAG] " : ""}${m.budgetFlag}`);
   lines.push("");
+  if (m.remembered) {
+    lines.push("REMEMBERED");
+    if (m.remembered.length === 0) lines.push("  Nothing remembered for this stage yet.");
+    for (const item of m.remembered) lines.push(`  - ${item}`);
+    lines.push("");
+  }
   lines.push("WHAT'S NEXT");
   if (m.next.length === 0) lines.push("  Nothing queued — the journey is fully complete.");
   for (const item of m.next) lines.push(`  - ${item}`);
@@ -171,8 +224,12 @@ export function renderDigest(state: JourneyState, slips: Slip[], now: Date = new
     ${section(
       "Money position",
       `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${moneyRows}</table>` +
+        (m.budgetFlag
+          ? `<p style="margin:8px 0 0;font-size:13px;line-height:1.5;color:${m.budgetExceeded ? VIOLET : TEAL};">${esc(m.budgetFlag)}</p>`
+          : "") +
         `<p style="margin:8px 0 0;font-size:12px;color:${DIM};line-height:1.5;">Milestone escrow in native USDC on X Layer; 10 percent statutory holdback retained on every release, releasable after ${state.escrow.holdbackPeriodDays} days.</p>`
     )}
+    ${m.remembered ? section("Remembered", listItems(m.remembered, "Nothing remembered for this stage yet.")) : ""}
     ${section("What's next", listItems(m.next, "Nothing queued — the journey is fully complete."))}
     ${section(`Flagged (${slips.length})`, slipBlocks, slips.length > 0 ? VIOLET : DIM)}
     <tr>

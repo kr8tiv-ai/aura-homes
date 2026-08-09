@@ -62,6 +62,7 @@ Everything is open source (MIT) from the first commit, including the research th
 3. "Our AI just rejected a parcel: the district bylaw demands 1,076 sqft minimum and the design was 800. That check costs nothing in our app. Finding out after buying the land costs you the land."
 4. "Native USDC landed on X Layer 72 hours before we started building on it. Timing is a feature."
 5. "Honesty corner: atmospheric water generators produce ZERO litres outdoors in an Alberta winter. Physics. Ours ship as a summer module while the cistern does the real work — and we published the math."
+6. (Credit post — founder requested) "Our landing page's scroll-story motion owes its inspiration to the beautiful work of @MengTo (kage). Rebuilt from scratch in our own stack and branding — credited in the repo. Craft recognizes craft."
 
 ## 90-second demo script
 

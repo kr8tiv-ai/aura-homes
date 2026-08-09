@@ -22,6 +22,7 @@ const EXPECTED_TOOLS = [
   "digest_preview",
   "supplier_directory",
   "alberta_fact",
+  "journey_memory",
 ];
 
 let failures = 0;

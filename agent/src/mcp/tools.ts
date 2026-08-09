@@ -19,6 +19,15 @@ import {
   designBriefToBudget,
   questionnaireToDesignBrief,
 } from "../pipeline";
+import {
+  absorb,
+  forget,
+  liveFacts,
+  loadMemory,
+  memoryPath,
+  retrieveScored,
+  saveMemory,
+} from "../brain/memory";
 import { isRepoCostModel } from "../types";
 import { ALBERTA_FACTS, FACTS_DISCLAIMER, findFacts } from "./facts";
 import {
@@ -501,6 +510,67 @@ const albertaFact = defineTool(
   }
 );
 
+const journeyMemory = defineTool(
+  "journey_memory",
+  "Per-build memory engineering (the five-stage pipeline from @0xWast3's Memory Engineering: " +
+    "capture -> consolidate -> retrieve -> supersede -> forget). Pass statements to run them through " +
+    "the rejection-first capture filter into the build's JSON store (agent/out/memory); pass query " +
+    "and/or stage for ranked retrieval of live facts (LAND surfaces parcel constraints, ESCROW money " +
+    "preferences); runForget prunes expired and superseded facts past the grace window. Stores " +
+    "single-sentence facts only, never transcripts.",
+  z.object({
+    buildId: z
+      .string()
+      .optional()
+      .describe('Journey build id; defaults to "aura-pilot-01" (the bundled sample journey)'),
+    statements: z
+      .array(z.string())
+      .optional()
+      .describe("Owner statements to capture and consolidate (most will be rejected — by design)"),
+    query: z.string().optional().describe("Free-text retrieval query"),
+    stage: z
+      .enum(["land", "design", "budget", "escrow", "build"])
+      .optional()
+      .describe("Stage-aware retrieval; ignored when query is given"),
+    runForget: z
+      .boolean()
+      .optional()
+      .describe("Drop expired and superseded facts past the 14-day grace window"),
+    nowISO: nowISOSchema,
+  }),
+  (args) => {
+    const now = parseNow(args.nowISO);
+    const buildId = args.buildId ?? "aura-pilot-01";
+    let store = loadMemory(buildId);
+    const out: Record<string, unknown> = { buildId, storePath: memoryPath(buildId) };
+    let mutated = false;
+
+    if (args.statements && args.statements.length > 0) {
+      const absorbed = absorb(store, args.statements, { nowISO: now.toISOString() });
+      store = absorbed.store;
+      out.absorbed = absorbed.log;
+      mutated = true;
+    }
+    if (args.runForget) {
+      const result = forget(store, now);
+      store = result.store;
+      out.forgotten = result.dropped.map((f) => ({ id: f.id, content: f.content }));
+      mutated = mutated || result.dropped.length > 0;
+    }
+    if (args.query || args.stage) {
+      out.retrieved = retrieveScored(args.query ?? (args.stage as string), store, now).map((r) => ({
+        score: Number(r.score.toFixed(3)),
+        ...r.fact,
+      }));
+    }
+    if (mutated) saveMemory(store);
+
+    out.factCount = store.facts.length;
+    out.liveFactCount = liveFacts(store, now).length;
+    return out;
+  }
+);
+
 export const TOOLS: ToolDef[] = [
   checkParcel,
   generateDesignBrief,
@@ -512,4 +582,5 @@ export const TOOLS: ToolDef[] = [
   digestPreview,
   supplierDirectory,
   albertaFact,
+  journeyMemory,
 ];

@@ -13,19 +13,27 @@ import {
   Substep,
 } from "./types";
 
+import { AbsorbEntry, absorb, MemoryStore, retrieve, sharedTokenCount } from "./memory";
+
 export * from "./types";
 export { detectSlips, Slip, SlipSeverity } from "./slips";
 export { renderDigest, Digest } from "./digest";
+export * from "./memory";
 
 // ---------------------------------------------------------------- events
 
+/**
+ * Journey events. Any event may carry userStatements — things the owner said
+ * around the event — which advanceJourneyWithMemory runs through the memory
+ * pipeline (capture -> consolidate); advanceJourney itself ignores them.
+ */
 export type JourneyEvent =
-  | { type: "stageCompleted"; stage: Stage; atISO?: string }
-  | { type: "substepDone"; stage: Stage; substepId: string; atISO?: string }
-  | { type: "escrowFunded"; milestoneIndex: number; atISO?: string }
-  | { type: "milestoneApproved"; milestoneIndex: number; by: "owner" | "builder"; atISO?: string }
-  | { type: "milestoneReleased"; milestoneIndex: number; atISO?: string }
-  | { type: "dateRecorded"; key: keyof KeyDates; iso: string };
+  | { type: "stageCompleted"; stage: Stage; atISO?: string; userStatements?: string[] }
+  | { type: "substepDone"; stage: Stage; substepId: string; atISO?: string; userStatements?: string[] }
+  | { type: "escrowFunded"; milestoneIndex: number; atISO?: string; userStatements?: string[] }
+  | { type: "milestoneApproved"; milestoneIndex: number; by: "owner" | "builder"; atISO?: string; userStatements?: string[] }
+  | { type: "milestoneReleased"; milestoneIndex: number; atISO?: string; userStatements?: string[] }
+  | { type: "dateRecorded"; key: keyof KeyDates; iso: string; userStatements?: string[] };
 
 const nextStage = (stage: Stage): Stage =>
   STAGE_ORDER[Math.min(STAGE_ORDER.indexOf(stage) + 1, STAGE_ORDER.length - 1)];
@@ -99,6 +107,35 @@ export function advanceJourney(state: JourneyState, event: JourneyEvent): Journe
     case "dateRecorded":
       return { ...state, keyDates: { ...state.keyDates, [event.key]: event.iso } };
   }
+}
+
+export interface MemoryAdvance {
+  state: JourneyState;
+  memory: MemoryStore;
+  /** What the memory pipeline did with each userStatement on the event. */
+  memoryLog: AbsorbEntry[];
+}
+
+/**
+ * advanceJourney plus memory: applies the event to the journey state, then
+ * runs any userStatements it carries through capture -> consolidate. Pure —
+ * returns new state and a new store, touching neither input.
+ */
+export function advanceJourneyWithMemory(
+  state: JourneyState,
+  event: JourneyEvent,
+  memory: MemoryStore,
+  now: Date = new Date()
+): MemoryAdvance {
+  const nextState = advanceJourney(state, event);
+  if (!event.userStatements || event.userStatements.length === 0) {
+    return { state: nextState, memory, memoryLog: [] };
+  }
+  const { store, log } = absorb(memory, event.userStatements, {
+    nowISO: now.toISOString(),
+    stage: state.stage,
+  });
+  return { state: nextState, memory: store, memoryLog: log };
 }
 
 // ---------------------------------------------------------------- guidance
@@ -256,20 +293,55 @@ const GUIDANCE: Record<Stage, GuidanceEntry[]> = {
   ],
 };
 
+const PREFERS_DIY = /\b(diy|myself|self[- ]?build|owner[- ]?build\w*|own hands|do the work)\b/i;
+const PREFERS_HIRING = /\b(hire|contract(or)?|hand (it )?off)\b/i;
+
 /**
  * The next 3 actions for this journey: current-stage guidance first (filtered
- * by state), then the following stage's if fewer than 3 apply.
+ * by state), then the following stage's if fewer than 3 apply. When a memory
+ * store is passed, durable facts retrieved for the current stage re-rank the
+ * candidates — a remembered DIY preference pulls owner-doable actions up, a
+ * hire-it-out preference pulls professional actions up, and token overlap with
+ * any remembered fact nudges the matching action. Without memory the behaviour
+ * is byte-identical to before.
  */
-export function getGuidance(state: JourneyState): GuidanceItem[] {
+export function getGuidance(
+  state: JourneyState,
+  memory?: MemoryStore,
+  now: Date = new Date()
+): GuidanceItem[] {
+  const wanted = memory ? 6 : 3; // with memory, gather a wider slate to re-rank
   const items: GuidanceItem[] = [];
   const startIdx = STAGE_ORDER.indexOf(state.stage);
-  for (let i = startIdx; i < STAGE_ORDER.length && items.length < 3; i++) {
+  for (let i = startIdx; i < STAGE_ORDER.length && items.length < wanted; i++) {
     for (const entry of GUIDANCE[STAGE_ORDER[i]]) {
-      if (items.length >= 3) break;
+      if (items.length >= wanted) break;
       if (entry.when && !entry.when(state)) continue;
       const { when, ...item } = entry;
       items.push(item);
     }
   }
-  return items;
+  if (!memory) return items;
+
+  const facts = retrieve(state.stage, memory, now).filter((f) => f.class === "durable");
+  if (facts.length === 0) return items.slice(0, 3);
+
+  const boost = (item: GuidanceItem): number => {
+    let b = 0;
+    for (const f of facts) {
+      if (f.subject === "diy") {
+        const diy = PREFERS_DIY.test(f.content) && !PREFERS_HIRING.test(f.content);
+        if (diy && item.who === "owner") b += 2;
+        if (!diy && item.who === "pro") b += 2;
+      }
+      b += 0.4 * sharedTokenCount(f.content, `${item.action} ${item.why}`);
+    }
+    return b;
+  };
+
+  return items
+    .map((item, index) => ({ item, index, b: boost(item) }))
+    .sort((x, y) => y.b - x.b || x.index - y.index) // stable: original order breaks ties
+    .slice(0, 3)
+    .map((x) => x.item);
 }
