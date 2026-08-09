@@ -1,0 +1,54 @@
+[
+  {
+    "id": "lsa-aspen-road",
+    "name": "37 Aspen Road",
+    "county": "Lac Ste. Anne County",
+    "district": "Agricultural",
+    "priceCad": 75000,
+    "minDwellingSizeSqft": 592,
+    "aquifer": "unreliable",
+    "gridDistanceKm": 0.3,
+    "septicSoils": true,
+    "acreage": 3.1,
+    "basis": "realtor.ca Aug 2026; Lac Ste. Anne Agricultural district minimum 592 sqft (land-use bylaw)"
+  },
+  {
+    "id": "lsa-lakeside-estates",
+    "name": "Lakeside Estates",
+    "county": "Lac Ste. Anne County",
+    "district": "Country Residential",
+    "priceCad": 199900,
+    "minDwellingSizeSqft": 1076,
+    "aquifer": "reliable",
+    "gridDistanceKm": 0.1,
+    "septicSoils": true,
+    "acreage": 1.2,
+    "basis": "realtor.ca Aug 2026; Country Residential district minimum 1,076 sqft (land-use bylaw)"
+  },
+  {
+    "id": "lsa-twp572-hwy33",
+    "name": "Twp Rd 572 / Hwy 33",
+    "county": "Lac Ste. Anne County",
+    "district": "Agricultural",
+    "priceCad": 107000,
+    "minDwellingSizeSqft": 592,
+    "aquifer": "unknown",
+    "gridDistanceKm": 2.5,
+    "septicSoils": true,
+    "acreage": 4.6,
+    "basis": "realtor.ca Aug 2026; Agricultural district minimum 592 sqft (land-use bylaw)"
+  },
+  {
+    "id": "sturgeon-range-rd",
+    "name": "Range Rd 264, Sturgeon County",
+    "county": "Sturgeon County",
+    "district": "Agriculture",
+    "priceCad": 150000,
+    "minDwellingSizeSqft": null,
+    "aquifer": "reliable",
+    "gridDistanceKm": 0.8,
+    "septicSoils": false,
+    "acreage": 5.0,
+    "basis": "realtor.ca Aug 2026 (Sturgeon pricier than Lac Ste. Anne); district minimum NOT yet verified against Sturgeon LUB"
+  }
+]

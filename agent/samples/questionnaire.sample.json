@@ -1,0 +1,40 @@
+{
+  "projectName": "Aura Pilot Build 01",
+  "parcel": {
+    "county": "Lac Ste. Anne County",
+    "district": "Agricultural",
+    "minDwellingSizeSqft": 592,
+    "acreage": 3.1,
+    "aquifer": "unreliable",
+    "gridDistanceKm": 0.3,
+    "septicSoils": true,
+    "gridPowerAtLine": false,
+    "landBudgetCad": { "low": 75000, "high": 200000 }
+  },
+  "home": {
+    "sizeSqft": 800,
+    "style": "modernCabin",
+    "storeys": 1,
+    "bedrooms": 2,
+    "bathrooms": 1,
+    "glazingRatio": 0.22
+  },
+  "energy": {
+    "solarKw": 10,
+    "batteryKwh": 30,
+    "backupGenerator": true,
+    "generatorKw": 8,
+    "woodStove": true
+  },
+  "water": {
+    "source": "cistern",
+    "cisternLitres": 11000,
+    "septic": "tankAndField"
+  },
+  "extras": {
+    "hotTub": true,
+    "deck": true,
+    "deckSqft": 240,
+    "hrv": true
+  }
+}

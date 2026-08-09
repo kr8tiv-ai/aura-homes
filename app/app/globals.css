@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --aura-bg: #050807;
+  --aura-panel: #0b1210;
+  --aura-text: #e7ece9;
+  --aura-emerald: #10b981;
+  --aura-teal: #2dd4bf;
+  --aura-violet: #8b5cf6;
+  --aura-lime: #a3e635;
+  --aura-border: rgba(16, 185, 129, 0.18);
+}
+
+body {
+  background-color: var(--aura-bg);
+  color: var(--aura-text);
+  font-feature-settings: "ss01";
+}
+
+@layer components {
+  .aura-label {
+    @apply text-xs uppercase tracking-label text-aura-emerald;
+  }
+  .aura-panel {
+    @apply bg-aura-panel border rounded-lg;
+    border-color: var(--aura-border);
+  }
+  .aura-hairline {
+    border-color: var(--aura-border);
+  }
+}

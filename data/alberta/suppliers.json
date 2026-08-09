@@ -1,0 +1,66 @@
+{
+  "$schema": "aura-homes supplier directory v1",
+  "principle": "Alberta-first, direct-from-supplier, no middlemen. Out-of-province only where no Alberta supply exists.",
+  "asOf": "2026-08",
+  "categories": {
+    "sip": [
+      { "name": "Insulspan (PFB/Carlisle)", "location": "Calgary AB", "note": "CCMC 13016-R listed - the painless Alberta permit path", "url": "https://www.insulspan.com", "albertaLocal": true },
+      { "name": "EnerSmart Building Systems", "location": "Cochrane/Claresholm AB", "note": "In-province SIP manufacturer, all of Western Canada; 0-30% envelope premium vs stick", "url": "https://enersmartsystems.com", "albertaLocal": true },
+      { "name": "Premier SIPS", "location": "Calgary AB (sales)", "note": "Largest SIP maker in North America; confirm freight from PNW plants", "url": "https://premiersips.com", "albertaLocal": true },
+      { "name": "Thermapan", "location": "Fort Erie ON", "note": "Fallback - freight penalty", "url": "https://thermapan.com", "albertaLocal": false }
+    ],
+    "foundation": [
+      { "name": "Screw Piles Edmonton / Edmonton Screw Pile Pros", "location": "Edmonton AB", "note": "$300-900/pile installed; winter-installable", "albertaLocal": true }
+    ],
+    "solar": [
+      { "name": "Dandelion Renewables", "location": "Edmonton AB", "note": "Off-grid specialists since 2012; 15-page load/design reports", "url": "https://dandelionrenewables.com", "albertaLocal": true },
+      { "name": "Kuby Renewable Energy", "location": "Edmonton AB", "note": "Grid-tie + off-grid + storage", "url": "https://kubyenergy.ca", "albertaLocal": true },
+      { "name": "SkyFire Energy", "location": "Calgary + Edmonton AB", "note": "Large installer, battery/backup", "url": "https://skyfireenergy.com", "albertaLocal": true },
+      { "name": "Charge Solar", "location": "Edmonton + Calgary warehouses", "note": "Victron, Enphase, Fronius distribution in-province", "url": "https://chargesolar.ca", "albertaLocal": true },
+      { "name": "HES PV", "location": "Edmonton + Calgary warehouses", "note": "Canada's largest solar distributor", "url": "https://hespv.ca", "albertaLocal": true },
+      { "name": "Solar Super Store", "location": "8315 Davies Rd NW Edmonton", "note": "Walk-in off-grid parts", "albertaLocal": true }
+    ],
+    "water": [
+      { "name": "Tanks-A-Lot / Westcon Precast", "location": "Alberta", "note": "Cistern tanks, precast; bury ~5ft for freeze protection", "albertaLocal": true },
+      { "name": "H2Bros Ltd.", "location": "Beaumont/Leduc/Nisku AB", "note": "Potable hauling, 12,000L loads, 780-666-9794", "albertaLocal": true },
+      { "name": "West Imperial Water Hauling", "location": "Edmonton region", "note": "15,000L loads", "albertaLocal": true },
+      { "name": "Evjen Water Hauling", "location": "Stony Plain/Spruce Grove AB", "albertaLocal": true }
+    ],
+    "septic": [
+      { "name": "S.A.C. Septic Solutions", "location": "Edmonton region", "note": "Serves Lac Ste. Anne, Parkland, Sturgeon, Strathcona", "albertaLocal": true },
+      { "name": "Ground Effects Septic & Excavating", "location": "Parkland County AB", "albertaLocal": true },
+      { "name": "Advanced Septic Services", "location": "Sherwood Park AB", "albertaLocal": true },
+      { "name": "Wastewater Solutions", "location": "Greater Edmonton", "albertaLocal": true },
+      { "name": "Premier Tech (Ecoflo biofilter)", "location": "QC, Alberta installer network (Soilworx Calgary factory-trained)", "note": "NSF 40/BNQ certified zero-energy peat/coco biofilter - the eco headline option", "albertaLocal": false }
+    ],
+    "windows": [
+      { "name": "Lux Windows", "location": "Calgary AB", "note": "Alberta manufacturer, triple-pane", "albertaLocal": true },
+      { "name": "All Weather Windows", "location": "Edmonton AB", "note": "Alberta's largest window manufacturer", "albertaLocal": true },
+      { "name": "Duxton Windows", "location": "Winnipeg MB (AB dealers)", "note": "Fiberglass frames to quint-pane for feature glazing", "albertaLocal": false }
+    ],
+    "stoves": [
+      { "name": "Drolet (Escape 1200 / Deco Nano)", "location": "QC, sold via Canadian Tire/Home Depot AB", "note": "EPA 2020, rated 1,200 sqft, 1.8 g/h", "albertaLocal": false },
+      { "name": "Pacific Energy True North", "location": "BC, AB hearth dealers", "albertaLocal": false }
+    ],
+    "hotTubs": [
+      { "name": "Backcountry Recreation", "location": "BC, $199 Canada-wide depot shipping", "note": "Budget tier from ~$4K CAD", "albertaLocal": false },
+      { "name": "AlumiTubs", "location": "Gibsons BC, free Canada shipping", "note": "-44C cold-tested, 25-yr warranty, $10-13.5K", "albertaLocal": false },
+      { "name": "Goodland", "location": "Canada", "note": "Design-tier (yakisugi/brass/oak) - aesthetic flagship", "albertaLocal": false }
+    ],
+    "permits": [
+      { "name": "Leduc County Safety Codes", "location": "Nisku AB", "note": "Issues own permits in-house; dev permit $231; homeowner trade permits explicitly allowed; safetycodes@leduc-county.com 780-770-9322", "albertaLocal": true },
+      { "name": "Superior Safety Codes Inc.", "location": "Edmonton AB", "note": "Accredited agency province-wide; free permit handbook", "albertaLocal": true },
+      { "name": "The Inspections Group Inc.", "location": "Edmonton AB", "note": "Accredited agency, 5 disciplines", "albertaLocal": true }
+    ],
+    "cryptoRails": [
+      { "name": "Wealthsimple Crypto", "location": "Toronto (serves AB)", "note": "USDC at 0% trading fee (its only zero-fee pair); withdraws on Ethereum/Base/Solana; NO crypto-backed loans", "albertaLocal": false },
+      { "name": "Kraken Canada", "location": "CSA restricted dealer", "note": "USDC/CAD spot pair; free Interac deposits - primary CAD off-ramp", "albertaLocal": false },
+      { "name": "Coinbase Canada", "location": "CSA restricted dealer", "note": "Interac CAD, USDC, Base withdrawals", "albertaLocal": false },
+      { "name": "NDAX", "location": "Calgary AB", "note": "The one Alberta-headquartered CSA-registered exchange - verify USDC support", "albertaLocal": true },
+      { "name": "Aave V3 on X Layer", "location": "on-chain", "note": "Live since 2026-03, ~$85M TVL - the compliant crypto-backed borrowing answer (NOT Wealthsimple, which offers no crypto loans)", "albertaLocal": false },
+      { "name": "Ledn", "location": "Toronto", "note": "BTC-collateral loans disbursed in USDC/CAD", "albertaLocal": false },
+      { "name": "McLeod Law LLP", "location": "Calgary AB", "note": "Crypto-experienced real-estate law; fees payable in crypto", "albertaLocal": true },
+      { "name": "Greater Property Group", "location": "Calgary/Edmonton AB", "note": "Closed the $800K-BTC Calgary home purchase - crypto-fluent brokerage", "albertaLocal": true }
+    ]
+  }
+}
