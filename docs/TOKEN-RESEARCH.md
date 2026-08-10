@@ -122,3 +122,7 @@ Brief and honest:
 - Total incremental cash cost of a professional-looking launch: **$0.02 gas + $0–5K LP + ~$2–5K legal**; add a real audit (~$5K entry-tier) only when custom swap/burn/escrow contracts hold user funds.
 
 *Follow-up: five concrete invisible-token architectures (mechanics, AA layer, legal posture, scores, one recommendation) are designed in [TOKEN-DESIGNS.md](TOKEN-DESIGNS.md).*
+
+## The token has a name: HOMES (Aug 10, 2026)
+
+The founder has named the token: **HOMES**. It will launch on X Layer as part of the phased rollout ([ROADMAP.md](ROADMAP.md) Arc 3), and its utility is deliberately TBD — it will be decided later and announced as a rollout phase of its own. Everything above stands unchanged: no token for the hackathon, the burn-on-usage app-credit direction remains the leading design, Canadian securities counsel per CSA SN 46-308 comes before any launch or liquidity event, and the pair remains native USDC. Where earlier sections and [TOKEN-DESIGNS.md](TOKEN-DESIGNS.md) use "AURA" as the ticker placeholder, read HOMES.

@@ -1,20 +1,31 @@
 # Roadmap
 
-> ### ⚠️ TWO NUMBERING SCHEMES — read this first
->
-> **[PHASED-ROADMAP.md](PHASED-ROADMAP.md) is the founder's commercial roadmap and the shared plan.** It numbers phases by *what a customer can buy*:
->
-> | | Founder's phase | One line |
-> |---|---|---|
-> | **1** | Buy the home in USDC | A real retailer that accepts USDC, a real catalog, and a chatbot we author that guides the buyer end to end. Hackathon MVP. |
-> | **2** | Buy the land too, and customize | Land purchased via X Layer / OKX bridges and on-ramps; buy *or* customize, through a retailer **or** an AI app. |
-> | **3** | Increasingly automated | Toward the full one-click, A-to-Z design + build orchestration. |
->
-> **This file** numbers phases by *engineering timeline* (Phase 0 = the 12-day sprint, Phase 1 = proof, and so on). The two are mapped against each other in [PHASED-ROADMAP.md § Mapping](PHASED-ROADMAP.md). When someone says "Phase 1" without qualifying it, they almost always mean the founder's Phase 1 — the USDC buy flow.
->
-> **Sequencing rule, set by the founder Aug 9 2026:** the **live-site fix comes first** — deploy, mobile layout, grass/trees/mountains — and the phases get built once aurahomes.fun is presentable. The immediate build targets after that are the **Phase-1 chatbot and the USDC purchase flow**.
+*The rollout is a designed three-arc story, settled by the founder Aug 10, 2026: ship the hackathon MVP, grow it into the Locality Hub, and announce the HOMES token now while deliberately defining it later. Every earlier verified line item survives below, reorganized under the arc it serves — nothing was deleted, only re-homed.*
 
-## Phase 0 — the 12-day sprint (Aug 9 → Aug 21, 2026) · hackathon
+> **On numbering:** [PHASED-ROADMAP.md](PHASED-ROADMAP.md) remains the founder's commercial roadmap — its Phase 1 is the USDC buy flow, Phase 2 adds land and customization, Phase 3 is increasing automation — and its § Mapping table reconciles those phases against this file's earlier engineering numbering (Phase 0 = the 12-day sprint, Phase 1 = proof, and so on). The three arcs below are now the primary framing of this file: Arc 1 contains the founder's Phase 1 and the old engineering Phase 0; Arc 2 contains the founder's Phases 2–3 and the old engineering Phases 1–3; Arc 3 is the token, previously a Phase 2 line item. When someone says "Phase 1" without qualifying it, they almost always mean the founder's Phase 1 — the USDC buy flow, which lives inside Arc 1.
+
+---
+
+## Arc 1 — the hackathon MVP (now → Aug 21, 2026)
+
+**The sentence:** buy a home with USDC on X Layer, with an agent that directs you to the land.
+
+The escrow and registry contracts, the land-filter agent, and the live 3D site at [aurahomes.fun](https://aurahomes.fun) are this arc. Honest status, because the roadmap is never written in the present tense for unbuilt things:
+
+**Real today (Aug 10, 2026):**
+
+- `AuraBuildEscrow` and `AuraBuildRegistry` are written and pass 10/10 tests (`npx hardhat test`) — but they are **not yet deployed**. The testnet-1952 deploy is human-gated on a faucet captcha, a 30-second Matt-only step.
+- The agent pipeline (questionnaire → design brief → budget → milestone schedule) runs offline and reconciles to the dollar against `cost-model.json`.
+- The 3D site is live at aurahomes.fun.
+
+**Demo or simulated, and labeled as such:**
+
+- x402 settlement on the design endpoint is simulated — the metering demo runs, but no real settlement occurs.
+- The escrow UI runs on fixtures until the contracts reach testnet.
+
+**Sequencing rule, set by the founder Aug 9, 2026:** the live-site fix comes first — deploy, mobile layout, grass/trees/mountains — and the arc gets built once aurahomes.fun is presentable. The immediate build targets after that are the concierge chatbot and the USDC purchase flow.
+
+### The 12-day sprint (Aug 9 → Aug 21, 2026)
 
 | Days | Ship |
 |---|---|
@@ -27,7 +38,15 @@
 
 **Matt-only:** create the X account, KYC at prize time, submit the form, post the tweet. Everything else is AI-executable — see [AI-HANDOFF.md](AI-HANDOFF.md).
 
-## Phase 1 — proof (Sep–Dec 2026)
+---
+
+## Arc 2 — the Locality Hub (after the hackathon)
+
+The founder's frame, kept in his own words: **a giant hub with bridges across.** Design your own home — eco-only: SIP sandwich panels, solar setups. Source all materials locally. Source contractors. Choose to buy or to build. A vendor directory purchasable in USDC, with bridge-in guidance where vendors take CAD. Pay contractors. Inventory management. Build tracking. Latest-technology discovery. Rolled out locality by locality — Alberta counties first, per the existing pilot data (Lac Ste. Anne for the district-minimum demo case, Leduc as the permit-friendly contrast, Parkland and Sturgeon next in the land-data licensing queue).
+
+Everything the earlier proof and product phases committed to lands inside this arc, in the same order.
+
+### Proof (Sep–Dec 2026)
 
 - FINTRAC MSB analysis + registration path (8–16 weeks, free) before any custodial mainnet flow.
 - Independent escrow audit (US$15–60K — grant applications: X Layer ecosystem, OKX accelerator pipeline).
@@ -39,15 +58,29 @@
 - **Compliance-scorecard hero demo** *(founder's research notebook, Aug 2026)*: IFC model in → deterministic rule run → **4-verdict scorecard** (COMPLIANT / NON_COMPLIANT / REVIEW_REQUIRED / UNCERTAIN; missing data is always REVIEW_REQUIRED, never an error) → sealed permit package out via the Notarius/P.Tech rail. Minimal credible recipe: LLM structured-output parsing of 9.36/bylaws → IfcOpenShell targeted extraction → deterministic Python rule loop → GeoPandas/Shapely setbacks → gated review UI with professional override. Citable stat sheet for the pitch: permit review 73→32.5 days (Honolulu CivCheck pilot), 87%/92% accuracy (Seattle), neuro-symbolic 95.8% translation / 98.3% executability vs 72.3% LLM-only, 90% coding-effort cut, code updates 68h→4.2h.
 - **Real land-module data stack** *(founder's research notebook, Aug 2026)*: license **Altalis Cadastral + Title/ETM for Parkland + Sturgeon first**; free **RITL encumbrances via Open Data Areas Alberta** (ingest as interest-based features, never title-by-title, with a manual-title-search fallback flag); Edmonton Socrata zoning; free Base Features + LiDAR DEMs. Screening pipeline: CRS-normalize → hard exclusions (floodplain/wetland/slope/crown/easement) → **negative-buffer setbacks with a zero-buildable-envelope guard** → weighted ranking → sticky compliance states with immutable audit records. Add AVPA overlays and straddle-parcel handling to the filter list.
 
-## Phase 2 — product (2027)
+### Product (2027)
 
 - QCAD corridor when TD custody ships (one-hop CAD settlement).
-- Token decision per [TOKEN-RESEARCH.md](TOKEN-RESEARCH.md): if yes — burn-on-usage app credit, invisible to users, funding-only, after Canadian securities advice; launch cost on X Layer is pennies, so the decision is purely legal/strategic, never technical.
 - Design depth: IFC export (IfcOpenShell), HOT2000 handoff for 9.36 performance path, Hypar integration for parametric variants.
 - Expansion packs: `data/bc/`, `data/sk/` — the architecture makes a new province a data problem, not a rewrite.
+- Hub build-out, translating the founder's frame into line items: the eco-only design studio (SIP sandwich panels, solar setups) as the front door to buy-vs-build; the vendor directory purchasable in USDC, with bridge-in guidance (CCTP via Base) where vendors take CAD; contractor payments on the escrow rail; inventory management and ordering against real lead times; build tracking on the registry record; and a latest-technology discovery feed so the catalog never fossilizes. Each locality ships as a data pack plus a verified local supplier and contractor bench — the same structure the Alberta pilot proves.
 
-## Phase 3 — the five-year software, early (2028+)
+### The horizon — the five-year software (2028+)
 
 The full agent: watches land listings and flags underpriced suitable parcels; negotiates supplier quotes; schedules trades against SIP lead times and frost windows; files permit applications the counties accept digitally; streams escrow draws against inspector sign-offs; hands every owner a complete as-built + tax ledger. Aura Homes as the operating system for small-scale eco construction — open source, so builders adopt it instead of fearing it.
+
+---
+
+## Arc 3 — the HOMES token (announced now, defined later)
+
+A token named **HOMES** will launch on X Layer as part of this phased rollout. That is the whole announcement, deliberately.
+
+- **Utility is TBD, on purpose.** It will be decided later and announced as a rollout phase of its own — not retrofitted into Arc 1 or Arc 2.
+- **The hackathon ships no token.** That decision is unchanged: judges in 2026 discount bolt-on tokens, and the securities analysis has not moved.
+- **The working direction remains burn-on-usage app credit, invisible to users** — per [TOKEN-RESEARCH.md](TOKEN-RESEARCH.md), with five candidate architectures already designed and scored in [TOKEN-DESIGNS.md](TOKEN-DESIGNS.md). Launch cost on X Layer is pennies (≈ $0.013 measured, Aug 9, 2026), so the decision is purely legal and strategic, never technical.
+- **Canadian securities counsel per CSA SN 46-308 comes before any launch or liquidity event.** Substance over form: a token sold to raise funds is presumptively a security, and no utility label changes that.
+- Pair assumption: HOMES/native-USDC on X Layer — see [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) #8; the founder's "paired with SpaceX" dictation still awaits confirmation.
+
+---
 
 *Reassessed continuously against [VISION.md](VISION.md) — the audit loop has authority to flag drift.*
