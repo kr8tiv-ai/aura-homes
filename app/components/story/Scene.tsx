@@ -1321,19 +1321,37 @@ function Forest({ frozen }: { frozen: boolean }) {
   const sway = useRef<THREE.Group[]>([]);
 
   useLayoutEffect(() => {
+    /* The GLTF pines shipped glossy: env-map specular painted white glints
+       across every canopy facet, which paled the stands toward the grass's
+       yellow-green — from the trailhead the treeline read as a row of giant
+       blades. Matte them fully, mute the env reflection, and deepen the
+       green a step darker and cooler than any blade tip so the two
+       silhouettes separate by VALUE, not just shape. */
     pines.scene.traverse((o) => {
       const m = o as THREE.Mesh;
       if (m.isMesh) {
         const mat = m.material as THREE.MeshStandardMaterial;
-        if (mat.name === "Green") mat.color.set("#3f7048");
+        if (mat.name === "Green") mat.color.set("#356247");
         if (mat.name === "Wood") mat.color.set("#5d4030");
+        mat.roughness = 1;
+        mat.metalness = 0;
+        mat.envMapIntensity = 0.3;
+      }
+    });
+    teal.scene.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (m.isMesh) {
+        const mat = m.material as THREE.MeshStandardMaterial;
+        mat.roughness = 1;
+        mat.metalness = 0;
+        mat.envMapIntensity = 0.35;
       }
     });
     rocks.scene.traverse((o) => {
       const m = o as THREE.Mesh;
       if (m.isMesh) (m.material as THREE.MeshStandardMaterial).color.set("#828d84");
     });
-  }, [pines.scene, rocks.scene]);
+  }, [pines.scene, teal.scene, rocks.scene]);
 
   const patchClones = useNormalizedClones(pines.scene, 5.2, PATCHES);
   const tealClones = useNormalizedClones(teal.scene, 4.3, TEAL_PINES);
