@@ -18,7 +18,7 @@
 
 | Days | Ship |
 |---|---|
-| 1–2 | Contracts tested + deployed to testnet 1952 · faucet OKB claimed daily from day one · @AuraHomes X account live, first build-in-public post |
+| 1–2 | Contracts tested + deployed to testnet 1952 · faucet OKB claimed daily from day one · @AuraHomesAI X account live, first build-in-public post |
 | 3–5 | Pipeline demo: LAND filter (district minimums, aquifer, grid distance) → questionnaire → AI design brief → 3-home SIP catalog with 3D massing → live Alberta budget |
 | 6–8 | Escrow UI on testnet: fund → approve → release with visible 10% holdback → holdback timer · AuraBuildRegistry mint per build · x402/OKX-APP metered fee on the design endpoint |
 | 9–10 | Polish to premium · hosted deploy · 90-second demo video, every figure captured live |

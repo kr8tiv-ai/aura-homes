@@ -120,7 +120,7 @@ Prefab manufacturing (partner: Alberta SIP plants; Honomobo exists in Edmonton a
 
 ## 9. The 12-day sprint (Aug 9 → Aug 21)
 
-- **D1–2**: contracts final + tested; deploy to testnet 1952; claim faucet OKB daily from day one; create @AuraHomes X account; first build-in-public post tagging progress.
+- **D1–2**: contracts final + tested; deploy to testnet 1952; claim faucet OKB daily from day one; create @AuraHomesAI X account (canonical handle per [SUBMISSION.md](SUBMISSION.md); fallbacks @AuraHomesHQ / @BuildAuraHomes); first build-in-public post tagging progress.
 - **D3–5**: app pipeline demo — questionnaire → design brief (Claude) → 3-home catalog with 3D massing → live budget from cost-model.json.
 - **D6–8**: escrow UI wired to testnet (fund → milestone approve → release with 10% holdback visibly retained → holdback timer); AuraBuildRegistry NFT minted per build; OKX APP/x402 usage-fee demo on the design endpoint.
 - **D9–10**: polish to Tesla-grade; hosted deploy; 90-second demo video (every figure captured live).

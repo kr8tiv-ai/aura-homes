@@ -244,4 +244,66 @@ Pipeline stages (VISION.md:26–34):
 
 ---
 
-*Next audit: append `## Audit #5 — <date>` below this line. Do not edit prior audits.*
+## Audit #5 — 2026-08-10 (scheduled)
+
+**Method:** fresh-context scheduled pass. Every anchor executed, every live claim fetched over the wire, nothing accepted from docs. Note: a live agent is mid-flight on `app/components/story/SceneDetail.tsx` (grass v8, uncommitted, mtime 07:56 UTC) — both app builds below compiled the working tree *including* that change and passed, so the anchor is green with the in-flight work present. Per convention this audit did not touch `app\`.
+
+**Anchors — ALL GREEN, executed this pass:**
+- contracts `npx hardhat test` — **10 passing (21s)**: escrow happy path, holdback-maturity revert, 2-of-3, arbiter tie-break, cancel/refund, custom bps; registry mint + permissions.
+- agent `npm run demo` — **LOW $199,100 / MID $301,280 / HIGH $443,900 ex-land**, equal to `cost-model.json` `totalsExLand` to the dollar. Re-derived from the raw lines this pass: the 12 non-land items sum to 181,000 / 269,000 / 386,000; ×(1.10 / 1.12 / 1.15) → exactly the published totals; `totalsIncLand` = ex-land + the land line (75/150/350K) = 274,100 / 451,280 / 793,900, exact. Lakeside Estates **REJECT** intact (1,076 vs 800 sqft, district-not-county wording); 2 constraint notes.
+- agent `npm run brain` — 4 slips (1 CRITICAL), reconciling digest; `npm run memory` — **MEMORY DEMO PASSED**; `npm run mcp:smoke` — **SMOKE PASSED**, 402 on eip155:1952 / native testnet USDC `0xDec9…b9B3` / $0.01 / honest simulated-settlement receipt.
+- app `npm run build` — ✓ 10/10 static pages, 8 routes. `GH_PAGES=1 npm run build` — exit 0, `out/` 75 files, `CNAME` = aurahomes.fun, `out/social-card.png` = the light card.
+- git — `main` == `origin/main` (0/0) @ `15b8c6a`; **all commits authored `Matt-Aurora-Ventures <lucidbloks@gmail.com>`**; repo public, MIT, 11 topics, 6 open issues. Working tree **not clean**: the live agent's `SceneDetail.tsx` plus this audit's three doc edits. Nothing pushed (per standing rule).
+- Live: **7/7 pages 200** at aurahomes.fun; Pages is **current** — `enter.mp4` serves at byte-identical 3,605,816, last successful Pages deploy 05:07 UTC today.
+- Live chain: `eth_chainId` **0x7a0 (1952)**; deployer `0x831F…f260` **balance 0x0, nonce 0x0**.
+
+**Audit #4's open items — 3 of 5 resolved:**
+| # | Item | Status |
+|---|---|---|
+| 1 | Story.tsx budget basis 780 → 800 sqft | **RESOLVED** — `Story.tsx:104` reads "800 sq ft"; commit `cea6364` |
+| 2 | Live og:image still the dark pre-flip card | **RESOLVED end-to-end** — `app/public/social-card.png` is now SHA-identical (`86865D2F…`) to `assets/site-card.png`, 1200×630 matching the declared dims; fetched from aurahomes.fun and **inspected visually: it is the light paper card** |
+| 3 | No `theme-color` meta emitted | **STILL OPEN** (minor) — absent from `layout.tsx` and from the served HTML |
+| 4 | Testnet deploy | **STILL OPEN** — human-gated on the faucet captcha; nonce 0 / 0 OKB re-verified live |
+| 5 | @AuraHomesAI uncreated | **STILL OPEN** — `x.com/AuraHomesAI` → 404 |
+
+**New contradictions found:**
+1. **A settled fact regressed.** `docs/research/MARKET-AND-USDC-FEASIBILITY.md:133` (added Aug 9, commit `52c8319`) asserted under the words *"Chain facts, verified"* that X Layer **"runs Polygon CDK as a zkEVM L2"** with **"~2s blocks"**. Audit #1 (contradiction #10) already settled this the other way, and `TOKEN-RESEARCH.md:38` + `hardhat.config.js:12` both record the **migration to OP Stack**. Verified live rather than by citation: the OP Stack predeploys `0x4200…0015` / `0x4200…0016` / `0x4200…000F` all carry code, all with identical EIP-1967 `Proxy` bytecode (the OP Stack uniform-predeploy signature), while control addresses — including the non-standard `0x4200…9999` — return `0x`, so the probe can fail and didn't. Measured block time **1.000 s/block** over both 1,000- and 10,000-block windows. **Fixed this pass** with the evidence recorded inline.
+2. **Registry status vocabulary disagrees with the contract.** `PHASED-ROADMAP.md:78` specifies the NFT lifecycle as **Reserved → Contracted → UnderConstruction → Complete**; `AuraBuildRegistry.sol:16–20` is **Designed → Funded → UnderConstruction → Complete**, and `SUBMISSION.md:32` matches the contract. PHASED-ROADMAP is the outlier, and the enum change is not listed in its own "What's needed" table. **OPEN — product decision, deliberately not resolved by this loop.** Fix: either add the enum change to the Phase-1 contract work or restate line 78 in the shipped vocabulary.
+3. **Two canonical 90-second demo scripts now exist.** `SUBMISSION.md:69` (questionnaire → design + budget → escrow → roadmap) vs `PHASED-ROADMAP.md:88` (chatbot → parcel rejection → BUY in USDC → registry flip → refund window). The pivot did not update the doc judges actually read. **OPEN.** Fix: pick one and make SUBMISSION.md agree with it.
+4. **X handle drift** — `@AuraHomes` in `ROADMAP.md:21` and `FEASIBILITY.md:123` against canonical `@AuraHomesAI` in six other places, on an account that does not exist yet and is about to be created from these instructions. **Fixed this pass** (both → `@AuraHomesAI`, with the fallbacks named).
+
+**New gap — the Aug 9 pivot has no code behind it (the material finding).** Commit `b8d8bba` made `PHASED-ROADMAP.md` "the shared plan", re-cutting the hackathon MVP's front door to **retailer catalog + AI chatbot concierge + BUY button**, explicitly replacing questionnaire-first. With 11 days left, none of that front door exists: a grep of `app\` for `chatbot|concierge|catalog|reservation|Boxabl` returns **zero hits**; there is no three-home catalog; and the escrow has no reservation-deposit or cooling-off refund window (only the 2-of-3 `cancel()`). The live front door is still the questionnaire-first 3D story plus /land /design /budget /escrow /dashboard /overview. To its credit PHASED-ROADMAP's "What's needed" table states all of this honestly, so this is **IN-REPO-AS-PLAN, not an inflated claim** — but the project now carries two plans describing two different products, and the demo script in the newer one cannot currently be filmed. **This is the single largest drift risk on the board.** Fix: the founder picks one front door this week; if the pivot stands, SUBMISSION.md and the demo script move with it and the catalog + concierge + refund window become the only feature work.
+
+**VISION.md scorecard — 16 requirements (1–15 plus 6b): DONE 11 · IN-REPO-AS-PLAN 4 · GAP 1**
+
+| # | Requirement | Grade | Evidence |
+|---|---|---|---|
+| 1 | Eco-home AI, ground to finish | IN-REPO-AS-PLAN | `pipeline.ts` runs LAND→DESIGN→BUDGET→milestones end to end; BUILD orchestration is docs only |
+| 2 | SIP construction | DONE | cost-model SIP lines; chase-freeze constraint fires in the demo |
+| 3 | Crypto-native USDC funding | IN-REPO-AS-PLAN | escrow 10/10 tested, correct native-USDC addresses, x402 metering — but settlement is simulated and nothing is deployed |
+| 4 | LAND first-class | DONE | `parcels.ts` implements all four filters; /land live; REJECT fires |
+| 5 | AI is the architect | DONE (as corrected) | `claude.ts` + pipeline produce a **review-ready package**; the legal correction is honored throughout |
+| 6 | Off-grid, AWG standard | DONE | AWG is a non-optional cost line; winter-solar-floor check raises battery 30→42 kWh |
+| 6b | No-concrete foundations | DONE | screw piles in cost model; FOUNDATIONS-NO-CONCRETE.md; VISION:17 |
+| 7 | Lifestyle layer | DONE | hot tub + deck in the cost model and in the 3D scene |
+| 8 | One-click, card-first | IN-REPO-AS-PLAN | `/escrow` renders the card-first choice with an explicit "on-ramp pending, not live yet" — honest, not integrated |
+| 9 | Alberta pilot | DONE | playbook, suppliers.json, verified Parkland/Sturgeon minimums |
+| 10 | Radically open | DONE | public MIT repo, 6 open issues, this log published |
+| 11 | Ridiculously affordable | DONE (as designed) | $0.01 x402 tier |
+| 12 | KR8TIV brand, light-first | DONE | BRAND v3; light card verified live by eye |
+| 13 | Hackathon vehicle | **GAP** | contracts undeployed (nonce 0), X account 404, video unmade — all human-gated |
+| 14 | Built to be continued | DONE | AI-HANDOFF + GRAPH-ENGINEERING + this log + MASTER BRIEF |
+| 15 | The app runs on AI | DONE | brain / memory / slips / digest all execute green |
+
+**Hackathon clock: 11 days 9 hours to Aug 21, 2026 23:59 UTC.** Critical path per SUBMISSION.md: testnet deploy **BLOCKED** on a 30-second captcha (unchanged for four consecutive audits — this is now the longest-standing item in the log); hosted demo **DONE** (7/7 live, Pages current); 90s video **BLOCKED** on both the deploy and the unresolved front-door question; X account **NOT STARTED**, and "judges weigh an *active* account" means the cost of the delay compounds daily; Google Form **pre-written, awaiting links**. Verdict: **on track only if the faucet is claimed this week** — every remaining build gate queues behind it.
+
+**Fixes applied this pass (docs only):** MARKET-AND-USDC-FEASIBILITY.md:133 CDK→OP Stack + 2s→1s with live evidence; ROADMAP.md:21 and FEASIBILITY.md:123 @AuraHomes→@AuraHomesAI. Nothing in `app\`, `agent\`, `contracts\`, or `data\` was modified; cost-model arithmetic re-verified untouched after the edits.
+
+**State of the project (3 lines):**
+The machine is sound — every anchor green, the money reconciles to the dollar from raw line items, the live site is current, and Audit #4's two app-layer misses are genuinely closed.
+The danger has moved from execution to direction: an Aug 9 pivot re-cut the hackathon front door in a doc, nothing was built behind it, and the submission package still describes the old product.
+Eleven days out, the two things that decide this are both one decision each — claim the faucet, and pick which front door ships.
+
+---
+
+*Next audit: append `## Audit #6 — <date>` below this line. Do not edit prior audits.*

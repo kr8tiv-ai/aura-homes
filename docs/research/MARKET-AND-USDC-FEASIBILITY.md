@@ -130,7 +130,9 @@ Also settled by this sweep, and worth keeping: **the MVP's RWA stays a non-finan
 
 ### 2.3 A USDC flow on X Layer, concretely
 
-Chain facts, verified: X Layer runs **Polygon CDK as a zkEVM L2**, **OKB** as gas token, **~2s blocks**, **sub-cent fees (often <$0.001)**, mainnet **196** / testnet **1952**. EVM-equivalent — Hardhat/Foundry unmodified.
+Chain facts, verified: X Layer **launched on Polygon CDK (zkEVM) and has since migrated to the OP Stack** — see [TOKEN-RESEARCH.md](../TOKEN-RESEARCH.md) ("Manual launch path + costs") and `contracts/hardhat.config.js:12`; **OKB** as gas token, **~1s blocks**, **sub-cent fees (often <$0.001)**, mainnet **196** / testnet **1952**. EVM-equivalent — Hardhat/Foundry unmodified.
+
+> *Corrected in Audit #5 (Aug 10, 2026): this line previously asserted "runs Polygon CDK as a zkEVM L2" and "~2s blocks" as verified fact. Both were stale. Verified live against `https://testrpc.xlayer.tech/terigon`: the OP Stack predeploys `0x4200…0015` / `0x4200…0016` / `0x4200…000F` all carry code (identical EIP-1967 `Proxy` bytecode — the OP Stack predeploy signature), while control addresses including `0x4200…9999` return `0x`; measured block time is 1.000 s/block over both 1,000- and 10,000-block windows. `eth_chainId` = `0x7a0` (1952).*
 
 **The decisive recent fact: Circle launched native USDC + CCTP on X Layer on August 6–7, 2026** — replacing the bridged `USDC.e`. Native USDC is issued by Circle directly, not wrapped. Mainnet `0xB6CEceAB302E2E4948951eE7843FC24E92933061`, testnet `0xDec90b78111Ba2fc6FC6d84d8B9ec159A2d4b9B3`. **Three USDC variants circulate on X Layer; pointing at the wrong one strands funds.** Aura started building 72 hours after that launch — that timing is a legitimate, checkable "first real-economy integration" claim.
 
