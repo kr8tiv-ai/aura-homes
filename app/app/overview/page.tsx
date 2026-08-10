@@ -1,4 +1,5 @@
 import Link from "next/link";
+import RevealWords from "@/components/RevealWords";
 
 // The site tells the same rollout story as docs/ROADMAP.md — three arcs,
 // honest labels on every one. If the roadmap changes, this page changes.
@@ -72,9 +73,11 @@ export default function OverviewPage() {
       {/* ---- the rollout: the same three arcs as docs/ROADMAP.md ---- */}
       <div className="mt-28">
         <p className="aura-label">The rollout</p>
-        <h2 className="mt-3 max-w-2xl text-3xl font-semibold leading-snug">
-          One story, three arcs — each one ships whole, not sliced.
-        </h2>
+        <RevealWords
+          as="h2"
+          text="One story, three arcs — each one ships whole, not sliced."
+          className="mt-3 max-w-2xl text-3xl font-semibold leading-snug"
+        />
         <div className="mt-10 grid gap-6 md:grid-cols-3">
           {arcs.map((a) => (
             <article key={a.n} className="aura-panel p-8">

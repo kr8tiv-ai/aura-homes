@@ -10,6 +10,7 @@
 
 import { useMemo, useState } from "react";
 import { budgetFixture, type OwnerBuildable } from "@/lib/fixtures";
+import RevealWords from "@/components/RevealWords";
 
 const cad = (n: number) => `$${n.toLocaleString("en-CA")}`;
 
@@ -64,7 +65,10 @@ export default function BudgetPage() {
   return (
     <div className="py-16">
       <p className="aura-label mb-4">Alberta cost model</p>
-      <h1 className="font-display text-[2.35rem] font-medium leading-[1.08] tracking-[-0.025em]">Build budget</h1>
+      <RevealWords
+        text="Build budget"
+        className="font-display text-[2.35rem] font-medium leading-[1.08] tracking-[-0.025em]"
+      />
       <p className="mt-4 max-w-xl text-[0.95rem] leading-[1.65] text-aura-text/75">
         Researched LOW / MID / HIGH ranges in CAD, excluding land. Every line has an
         in-province supply path — and a DIY-or-hire answer: {diyCount} lines are legally

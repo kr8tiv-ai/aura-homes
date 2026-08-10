@@ -3,10 +3,20 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { LazyMotion, MotionConfig } from "motion/react";
+import * as m from "motion/react-m";
 import CardFXLayer from "./CardFX";
+
+/* Async feature load: the domAnimation bundle becomes its own chunk and
+   never blocks first paint. `strict` makes any accidental use of the full
+   34kB `motion` component throw in development. reducedMotion="user"
+   disables transform animations (keeping opacity) under
+   prefers-reduced-motion — BRAND.md §8's "a still of equal beauty". */
+const loadDomAnimation = () => import("./motion-features").then((mod) => mod.default);
 
 const NAV = [
   { href: "/overview", label: "Overview" },
+  { href: "/concierge", label: "Concierge" },
   { href: "/land", label: "Land" },
   { href: "/design", label: "Design" },
   { href: "/budget", label: "Budget" },
@@ -94,39 +104,53 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isStory = pathname === "/";
 
-  if (isStory) {
-    return (
-      <>
-        <StoryHeader />
-        {children}
-        <CardFXLayer />
-      </>
-    );
-  }
-
   return (
-    <>
-      <CardFXLayer />
-      <header className="border-b aura-hairline">
-        <div className="mx-auto flex max-w-5xl flex-col gap-3 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
-          <Link href="/" className="font-display text-sm font-semibold tracking-label uppercase">
-            Aura <span className="text-aura-emerald">Homes</span>
-          </Link>
-          <nav className="flex flex-wrap gap-x-6 gap-y-2 sm:gap-8">
-            {NAV.map((item) => (
-              <Link key={item.href} href={item.href} className="aura-label transition-colors hover:text-aura-emerald">
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-      </header>
-      <main id="main" className="mx-auto max-w-5xl px-6">{children}</main>
-      <footer className="mt-24 border-t aura-hairline">
-        <div className="mx-auto max-w-5xl px-6 py-8 text-xs uppercase tracking-label text-aura-text/70">
-          A KR8TIV AI product &middot; Open source (MIT)
-        </div>
-      </footer>
-    </>
+    <LazyMotion features={loadDomAnimation} strict>
+      <MotionConfig reducedMotion="user">
+        {isStory ? (
+          <>
+            <StoryHeader />
+            {children}
+            <CardFXLayer />
+          </>
+        ) : (
+          <>
+            <CardFXLayer />
+            <header className="border-b aura-hairline">
+              <div className="mx-auto flex max-w-5xl flex-col gap-3 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+                <Link href="/" className="font-display text-sm font-semibold tracking-label uppercase">
+                  Aura <span className="text-aura-emerald">Homes</span>
+                </Link>
+                <nav className="flex flex-wrap gap-x-6 gap-y-2 sm:gap-8">
+                  {NAV.map((item) => (
+                    <Link key={item.href} href={item.href} className="aura-label transition-colors hover:text-aura-emerald">
+                      {item.label}
+                    </Link>
+                  ))}
+                </nav>
+              </div>
+            </header>
+            <main id="main" className="mx-auto max-w-5xl px-6">
+              {/* One tasteful entrance per route arrival: fade + 8px rise on
+                  the fluid-deceleration curve. Damped, never bouncy; under
+                  reduced motion MotionConfig strips the transform. */}
+              <m.div
+                key={pathname}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
+              >
+                {children}
+              </m.div>
+            </main>
+            <footer className="mt-24 border-t aura-hairline">
+              <div className="mx-auto max-w-5xl px-6 py-8 text-xs uppercase tracking-label text-aura-text/70">
+                A KR8TIV AI product &middot; Open source (MIT)
+              </div>
+            </footer>
+          </>
+        )}
+      </MotionConfig>
+    </LazyMotion>
   );
 }

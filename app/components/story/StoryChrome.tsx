@@ -126,7 +126,7 @@ export function EnterGate({
       )}
       <div className="story-gate-inner">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={withBase("/aura-mark.png")} alt="" className="story-gate-mark" />
+        <img src={withBase("/aura-mark.png")} alt="" className="story-gate-mark" width={160} height={160} />
         <h1 className="story-display story-gate-title">Aura Homes</h1>
         <p className="story-gate-sub">
           A journey from USDC on X Layer to the keys of an off-grid eco home.

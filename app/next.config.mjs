@@ -8,6 +8,10 @@ const basePath = process.env.BASE_PATH || "";
 
 const nextConfig = {
   reactStrictMode: true,
+  // The concierge pages import the agent's reducer/catalog/pipeline directly
+  // from ../agent/src (ONE source of truth — never a hand-mirrored copy), plus
+  // ../data and ../agent/samples. externalDir lets SWC compile those files.
+  experimental: { externalDir: true },
   env: { NEXT_PUBLIC_BASE_PATH: basePath },
   ...(ghPages
     ? {

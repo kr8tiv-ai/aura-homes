@@ -1,4 +1,5 @@
 import Link from "next/link";
+import RevealWords from "@/components/RevealWords";
 import {
   budgetFixture,
   dashboardFixture,
@@ -51,7 +52,10 @@ export default function DashboardPage() {
       <div className="flex flex-wrap items-end justify-between gap-6">
         <div>
           <p className="aura-label mb-4">Owner dashboard</p>
-          <h1 className="font-display text-[2.35rem] font-medium leading-[1.08] tracking-[-0.025em]">{d.projectName}</h1>
+          <RevealWords
+            text={d.projectName}
+            className="font-display text-[2.35rem] font-medium leading-[1.08] tracking-[-0.025em]"
+          />
           <p className="mt-3 text-[0.95rem] leading-[1.6] text-aura-text/75">{d.parcel}</p>
         </div>
         <p className="text-xs uppercase tracking-label text-aura-violet">

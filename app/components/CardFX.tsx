@@ -60,6 +60,7 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { frame, cancelFrame } from "motion/react";
 
 const SEL = ".aura-panel, [data-fx]";
 const MAX_TRACED = 14;
@@ -124,6 +125,8 @@ type Card = {
   visible: boolean;
   warm: number; // damped 0..1 — the hover coupling
   warmTarget: number;
+  /** rect + fade measured in frame.read; null = not drawable this frame */
+  m: { x: number; y: number; w: number; h: number; fade: number } | null;
 };
 
 /** Which vertical edges carry a visible border. No vertical border at all
@@ -248,7 +251,6 @@ export default function CardFXLayer() {
 
     // ---- card registry ----
     const cards = new Map<Element, Card>();
-    let raf = 0;
     let running = false;
     let lastT = 0;
 
@@ -284,6 +286,7 @@ export default function CardFXLayer() {
             visible: false,
             warm: 0,
             warmTarget: 0,
+            m: null,
           });
           io.observe(el);
         }
@@ -352,14 +355,37 @@ export default function CardFXLayer() {
       quad++;
     }
 
-    function frame(now: number) {
-      raf = 0;
+    /* ---- the two frame phases (Motion scheduler) ----
+       READ measures every drawable card's rect; RENDER computes and draws.
+       Story.tsx writes plate styles through frame.render too, so within a
+       single browser frame every DOM read happens before every DOM write —
+       the H10 forced-synchronous-layout is structurally gone. */
+    // function declarations, hoisted — maybeRun() can be reached from
+    // scan()/resize() before this point in the effect body
+    function readPhase() {
+      if (document.hidden) return;
+      cards.forEach((c) => {
+        c.m = null;
+        if (!c.visible) return;
+        const el = c.el;
+        // story plates fade via inline opacity/visibility — the stars
+        // follow the plate's own fade instead of lighting a ghost
+        if (el.style.visibility === "hidden") return;
+        const fade = el.style.opacity === "" ? 1 : parseFloat(el.style.opacity);
+        if (!(fade > 0.05)) return;
+        const rect = el.getBoundingClientRect();
+        if (rect.width < 40 || rect.height < 24) return;
+        c.m = { x: rect.left, y: rect.top, w: rect.width, h: rect.height, fade };
+      });
+    }
+
+    function renderPhase(info: { timestamp: number; delta: number }) {
       if (document.hidden) {
-        running = false;
         glc.clear(glc.COLOR_BUFFER_BIT);
+        stop();
         return;
       }
-      const t = now / 1000;
+      const t = info.timestamp / 1000;
       const dt = Math.min(0.05, lastT ? t - lastT : 1 / 60);
       lastT = t;
 
@@ -368,21 +394,13 @@ export default function CardFXLayer() {
       quad = 0;
       let headQuads = 0;
 
-      // pass 1: heads + halos (radial shader batch)
-      // pass 2 happens in the same fill loop — tails are appended after all
-      // heads by running the card loop twice with a flag.
+      // pass 0: heads + halos (radial shader batch); pass 1: tails — the
+      // same fill loop run twice so each batch is contiguous in the buffer.
       for (let pass = 0; pass < 2; pass++) {
         traced = 0;
         cards.forEach((c) => {
-          if (traced >= MAX_TRACED || !c.visible) return;
-          const el = c.el;
-          // story plates fade via inline opacity/visibility — the stars
-          // follow the plate's own fade instead of lighting a ghost
-          if (el.style.visibility === "hidden") return;
-          const fade = el.style.opacity === "" ? 1 : parseFloat(el.style.opacity);
-          if (!(fade > 0.05)) return;
-          const rect = el.getBoundingClientRect();
-          if (rect.width < 40 || rect.height < 24) return;
+          if (traced >= MAX_TRACED || !c.m) return;
+          const { x: rx, y: ry, w: rw, h: rh, fade } = c.m;
           traced++;
 
           // damp the hover warmth once, on the first pass only
@@ -395,9 +413,9 @@ export default function CardFXLayer() {
             if (c.warm > 0.01) anyWarm = true;
           }
 
-          const r = Math.min(c.radius, rect.width / 2, rect.height / 2);
-          const y0 = rect.top + r;
-          const y1 = rect.bottom - r;
+          const r = Math.min(c.radius, rw / 2, rh / 2);
+          const y0 = ry + r;
+          const y1 = ry + rh - r;
           const edgeLen = y1 - y0;
           if (edgeLen < MIN_EDGE) return;
 
@@ -405,7 +423,7 @@ export default function CardFXLayer() {
           const speed = (SPEED * (1 + 0.25 * c.warm)) / edgeLen;
 
           for (let e = 0; e < c.edges.length; e++) {
-            const x = c.edges[e].side === "l" ? rect.left + 0.5 : rect.right - 0.5;
+            const x = c.edges[e].side === "l" ? rx + 0.5 : rx + rw - 0.5;
             for (let s = 0; s < STARS_PER_EDGE; s++) {
               const u = (t * speed + c.phase + e * 0.25 + s * 0.5) % 1;
               const y = y0 + u * edgeLen;
@@ -474,15 +492,24 @@ export default function CardFXLayer() {
           if (uShape) glc.uniform1f(uShape, 1);
           glc.drawElements(glc.TRIANGLES, tailQuads * 6, glc.UNSIGNED_SHORT, headQuads * 6 * 2);
         }
-        raf = requestAnimationFrame(frame);
-      } else if (anyWarm) {
-        // nothing drawable but a hover is still settling — keep ticking so
-        // the warmth lands before the loop parks
-        raf = requestAnimationFrame(frame);
-      } else {
-        running = false; // idle: parked until maybeRun() wakes the loop
-        lastT = 0;
+      } else if (!anyWarm) {
+        // idle: park until maybeRun() wakes the loop. (While a hover is
+        // still settling the loop keeps ticking so the warmth lands.)
+        stop();
       }
+    }
+
+    function start() {
+      running = true;
+      lastT = 0;
+      frame.read(readPhase, true);
+      frame.render(renderPhase, true);
+    }
+    function stop() {
+      running = false;
+      lastT = 0;
+      cancelFrame(readPhase);
+      cancelFrame(renderPhase);
     }
 
     /* THE WAKE-UP (the v1 parking bug, ELEVATION-BRIEF section 5.1): the
@@ -496,11 +523,7 @@ export default function CardFXLayer() {
       cards.forEach((c) => {
         if (c.visible) any = true;
       });
-      if (any && !document.hidden && !raf) {
-        running = true;
-        lastT = 0;
-        raf = requestAnimationFrame(frame);
-      }
+      if (any && !document.hidden) start();
     }
     const onVis = () => maybeRun();
     document.addEventListener("visibilitychange", onVis);
@@ -526,7 +549,7 @@ export default function CardFXLayer() {
       mo.disconnect();
       io.disconnect();
       window.clearTimeout(scanTimer);
-      if (raf) cancelAnimationFrame(raf);
+      stop();
       /* Release the context explicitly: this effect re-runs per route and
          browsers evict the OLDEST context first — which would be the R3F
          story scene. */

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import RevealWords from "@/components/RevealWords";
 
 /* The FAQ, trimmed from README section 16 to the eight questions people
    actually ask first. Same voice as the rest of the house: plain answers,
@@ -53,7 +54,7 @@ export default function FaqPage() {
   return (
     <div className="py-24">
       <p className="aura-label mb-6">Questions, answered plainly</p>
-      <h1 className="max-w-3xl text-5xl font-semibold leading-tight md:text-6xl">FAQ</h1>
+      <RevealWords text="FAQ" className="max-w-3xl text-5xl font-semibold leading-tight md:text-6xl" />
       <p className="mt-6 max-w-xl text-lg text-aura-text/70">
         The eight questions people ask first — with the catches stated up front.
       </p>

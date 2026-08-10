@@ -1,11 +1,17 @@
 "use client";
 
-// LAND stage: filter real parcel listings against the design. The district
-// minimum rejection (Lakeside Estates at 1,076 sqft vs an 800 sqft design)
-// is the demo moment — bylaws bite at the district level, never the county.
+// LAND stage: filter real parcel listings against the design, using the
+// agent's OWN filter and parcel data (agent/src/parcels.ts +
+// agent/samples/parcels.sample.json, imported directly — the old hand-mirrored
+// copy in app/lib/parcels.ts is gone, so this page can never drift from the
+// agent). The district minimum rejection (Lakeside Estates at 1,076 sqft vs an
+// 800 sqft design) is the demo moment — bylaws bite at the district level,
+// never the county. BUY happens in the concierge, where the land gate binds it.
 
+import Link from "next/link";
 import { useState } from "react";
-import { filterParcels, sampleParcels } from "@/lib/parcels";
+import { filterParcels } from "@agent/parcels";
+import { BASE_QUESTIONNAIRE, PARCELS } from "@/lib/concierge";
 
 const cad = (n: number) => `$${n.toLocaleString("en-CA")}`;
 
@@ -14,9 +20,14 @@ export default function LandPage() {
   const [waterSource, setWaterSource] = useState<"cistern" | "well">("cistern");
 
   const size = Number.parseInt(sizeSqft, 10);
-  const results = Number.isFinite(size) && size > 0
-    ? filterParcels(sampleParcels, { sizeSqft: size, waterSource })
-    : [];
+  const results =
+    Number.isFinite(size) && size > 0
+      ? filterParcels(PARCELS, {
+          ...BASE_QUESTIONNAIRE,
+          home: { ...BASE_QUESTIONNAIRE.home, sizeSqft: size },
+          water: { ...BASE_QUESTIONNAIRE.water, source: waterSource },
+        })
+      : [];
   const passCount = results.filter((r) => r.verdict === "PASS").length;
 
   return (
@@ -25,7 +36,8 @@ export default function LandPage() {
       <h1 className="font-display text-[2.35rem] font-medium leading-[1.08] tracking-[-0.025em]">Find land that passes</h1>
       <p className="mt-4 max-w-xl text-[0.95rem] leading-[1.65] text-aura-text/75">
         Every parcel is checked against the district land-use bylaw, aquifer reliability,
-        grid distance, and septic soils before you spend a dollar on it.
+        grid distance, and septic soils before you spend a dollar on it. The same check gates
+        the BUY button in the concierge — a failing parcel cannot take a deposit.
       </p>
 
       <div className="aura-panel mt-10 flex flex-wrap items-end gap-6 p-6">
@@ -85,7 +97,7 @@ export default function LandPage() {
                 District minimum:{" "}
                 {parcel.minDwellingSizeSqft
                   ? `${parcel.minDwellingSizeSqft.toLocaleString("en-CA")} sqft`
-                  : "not verified"}
+                  : "not verified — unconfirmed against the bylaw"}
               </p>
               <p>Aquifer: {parcel.aquifer}</p>
               <p>Grid: ~{parcel.gridDistanceKm} km</p>
@@ -95,23 +107,30 @@ export default function LandPage() {
                 <li
                   key={i}
                   className={`text-sm leading-relaxed ${
-                    reason.startsWith("Rejected")
-                      ? "text-aura-violet"
-                      : "text-aura-text/70"
+                    /^rejected/i.test(reason) ? "text-aura-violet" : "text-aura-text/70"
                   }`}
                 >
                   {reason}
                 </li>
               ))}
             </ul>
+            <div className="mt-4">
+              <Link
+                href={`/concierge?parcel=${parcel.id}`}
+                className="inline-block rounded-md border aura-hairline px-4 py-2 text-xs font-medium uppercase tracking-label transition-colors hover:border-aura-emerald hover:text-aura-emerald"
+              >
+                Take this parcel to the concierge
+              </Link>
+            </div>
           </div>
         ))}
       </div>
 
       <p className="mt-8 text-xs text-aura-text/65">
         Sample listings researched Aug 2026 (realtor.ca). District minimums: Lac Ste. Anne
-        Agricultural 592 sqft, Country Residential 1,076 sqft — always verify the parcel
-        district before purchase.
+        Agricultural 592 sqft, Country Residential 1,076 sqft. The Sturgeon County parcel&rsquo;s
+        minimum is not yet verified against its land-use bylaw, and it is labeled that way rather
+        than guessed — always verify the parcel district before purchase.
       </p>
     </div>
   );

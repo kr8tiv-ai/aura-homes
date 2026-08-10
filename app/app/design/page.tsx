@@ -7,6 +7,7 @@
 // runs in agent/ (aura-architect), not in this hosted demo.
 
 import { useState } from "react";
+import RevealWords from "@/components/RevealWords";
 
 const REPO_AGENT = "https://github.com/kr8tiv-ai/aura-homes/tree/main/agent";
 
@@ -103,7 +104,10 @@ export default function DesignPage() {
   return (
     <div className="py-16">
       <p className="aura-label mb-4">Design questionnaire</p>
-      <h1 className="font-display text-[2.35rem] font-medium leading-[1.08] tracking-[-0.025em]">Tell Aura about your build</h1>
+      <RevealWords
+        text="Tell Aura about your build"
+        className="font-display text-[2.35rem] font-medium leading-[1.08] tracking-[-0.025em]"
+      />
       <p className="mt-4 max-w-xl text-sm leading-relaxed text-aura-text/70">
         Hosted demo: the brief is composed in your browser from your answers, as a reference. The
         full pipeline — bylaw checks, climate-zone constraints, and the costed model — runs in the

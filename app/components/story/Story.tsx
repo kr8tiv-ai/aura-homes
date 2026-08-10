@@ -3,6 +3,7 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import { frame, cancelFrame } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { HERO, BEATS, END, BUILD_CTA, type LedgerRow } from "./copy";
 import { withBase } from "../../lib/basePath";
@@ -228,7 +229,6 @@ export default function Story() {
   // and, in the same frame, the pinned plates' cross-fade.
   useEffect(() => {
     let anchors: number[] = [];
-    let raf = 0;
     const measure = () => {
       const vh = window.innerHeight;
       const max = Math.max(1, document.documentElement.scrollHeight - vh);
@@ -267,19 +267,23 @@ export default function Story() {
         if (o > 0.5) el.classList.add("rv-in");
       }
     };
+    /* The style WRITES go through Motion's frame.render so they land after
+       every frame.read in the same tick — CardFX measures card rects in
+       frame.read, and write-then-read across two plain rAFs forced a
+       synchronous layout on every scrolled frame (H10). Motion dedupes a
+       re-scheduled callback, so this also keeps the one-paint-per-frame
+       throttle the old inner rAF provided. progressRef is written
+       synchronously — the R3F camera must never wait a frame for it. */
+    const paintNow = () => paint(progressRef.current);
     const onScroll = () => {
-      if (raf) return;
-      raf = requestAnimationFrame(() => {
-        raf = 0;
-        const p = progressFor(window.scrollY);
-        progressRef.current = p;
-        paint(p);
-        const a = Math.round(p);
-        if (a !== activeRef.current) {
-          activeRef.current = a;
-          setActive(a);
-        }
-      });
+      const p = progressFor(window.scrollY);
+      progressRef.current = p;
+      frame.render(paintNow);
+      const a = Math.round(p);
+      if (a !== activeRef.current) {
+        activeRef.current = a;
+        setActive(a);
+      }
     };
     const onResize = () => {
       measure();
@@ -292,7 +296,7 @@ export default function Story() {
     return () => {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
-      if (raf) cancelAnimationFrame(raf);
+      cancelFrame(paintNow);
     };
   }, []);
 
@@ -405,7 +409,7 @@ export default function Story() {
         >
           <div className="story-hero-inner">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={withBase("/aura-mark.png")} alt="" className="story-mark" data-rv />
+            <img src={withBase("/aura-mark.png")} alt="" className="story-mark" data-rv width={160} height={160} />
             <Kicker n={HERO.n} label={HERO.label} delay={80} />
             <Reveal as="h1" className="story-display story-display-xl" text={HERO.heading} />
             <p className="story-sub" data-rv style={{ transitionDelay: "380ms" }}>
@@ -478,7 +482,7 @@ export default function Story() {
                   <p className="story-end-season">{END.season}</p>
                   <div className="story-kr8tiv">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={withBase("/kr8tiv-badge.png")} alt="" />
+                    <img src={withBase("/kr8tiv-badge.png")} alt="" width={72} height={72} />
                     <span>A KR8TIV AI product</span>
                   </div>
                   <p className="story-end-credit">
