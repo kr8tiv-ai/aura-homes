@@ -126,90 +126,107 @@ function ridgeGeometry(seed: number, width: number, height: number, segs: number
    steep faces stay rock and shoulders hold snow — which is the cue that makes
    a peak look like a peak. Aerial perspective is baked into the vertex
    colours (blend toward sky with distance) because fog can't reach out here. */
+/* Builds one range band. Parameterised (quality pass, Aug 9) so the backdrop
+   can carry TWO ranks — the mid range and a taller, hazier rank behind it —
+   because a single silhouette line is the thing that reads "backdrop": real
+   ranges layer, and the atmosphere between ranks is what gives the horizon
+   its depth. `seed` decorrelates the ridgelines; `wash` is how far the whole
+   rank has already dissolved toward sky. */
+function snowRangeGeometry(seed: number, W: number, D: number, SX: number, SZ: number, hMul: number, wash: number) {
+  const g = new THREE.PlaneGeometry(W, D, SX, SZ);
+  g.rotateX(-Math.PI / 2);
+  const p = g.attributes.position as THREE.BufferAttribute;
+  const sky = new THREE.Color("#d9e6ee");
+  const rock = new THREE.Color("#5d6f80");
+  const rockHi = new THREE.Color("#7f909e");
+  const snow = new THREE.Color("#f7fbfd");
+  const tree = new THREE.Color("#4a6355");
+  const tmp = new THREE.Color();
+  const cols = new Float32Array(p.count * 3);
+
+  // pass 1 — height
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i);
+    const z = p.getZ(i);
+    // ridges run along X; depth falls away so the back is taller
+    const depth = (z + D / 2) / D; // 0 front .. 1 back
+    const rid = ridged(x * 0.0075 + 11.3 + seed, z * 0.011 + 4.1 + seed * 0.7, 5);
+    const macro = 0.45 + 0.55 * vnoise(x * 0.0022 + 2.7 + seed, z * 0.004 + 9.4);
+    /* 55, not 150. At ~150 units out a 150-unit peak subtends about 45° and
+       swallows the sky; 55 subtends roughly 20°, which is what a real range
+       looks like from a valley floor. */
+    let h = rid * macro * 55 * hMul * (0.42 + depth * 0.9);
+    // pull the very front edge down to the ground so it never floats
+    h *= Math.min(1, Math.max(0, (depth - 0.02) / 0.22));
+    p.setY(i, h);
+  }
+  g.computeVertexNormals();
+
+  // pass 2 — colour by altitude, slope and distance
+  const n = g.attributes.normal as THREE.BufferAttribute;
+  let maxH = 1;
+  for (let i = 0; i < p.count; i++) maxH = Math.max(maxH, p.getY(i));
+  for (let i = 0; i < p.count; i++) {
+    const y = p.getY(i);
+    const z = p.getZ(i);
+    const alt = y / maxH;
+    const slope = 1 - Math.abs(n.getY(i)); // 0 flat .. 1 vertical
+    /* snow above the line, but shed off anything steep. Line noise runs at
+       0.16 amplitude (was 0.1) — a straight snow line is the one thing a
+       real range never has; cirques hold snow low and windward shoulders
+       blow clear high. */
+    const line = 0.46 + vnoise(p.getX(i) * 0.02 + seed, z * 0.02) * 0.16;
+    let snowAmt = clamp01((alt - line) / 0.2) * clamp01(1 - (slope - 0.34) / 0.34);
+    snowAmt = clamp01(snowAmt);
+    const treeAmt = clamp01((0.24 - alt) / 0.2);
+    tmp.copy(rock).lerp(rockHi, clamp01(alt * 1.5));
+    tmp.lerp(tree, treeAmt * 0.75);
+    tmp.lerp(snow, snowAmt);
+    /* Bake the sun term into the colour and draw unlit. A backdrop lit by
+       the scene's directional light turns its whole north face black, which
+       is what put a grey slab across the sky. Baking it means the peaks get
+       their light-and-shade — the thing that actually makes them read as
+       3D — with no lighting cost and no unlit backfaces. */
+    const nx = n.getX(i);
+    const ny = n.getY(i);
+    const nz = n.getZ(i);
+    const shade = clamp01((nx * 0.44 + ny * 0.78 + nz * 0.44) * 0.62 + 0.52);
+    tmp.multiplyScalar(0.66 + shade * 0.46);
+    // aerial perspective: the far rank washes into the sky
+    const depth = (z + D / 2) / D;
+    tmp.lerp(sky, Math.min(0.92, wash + depth * 0.4));
+    cols[i * 3] = tmp.r;
+    cols[i * 3 + 1] = tmp.g;
+    cols[i * 3 + 2] = tmp.b;
+  }
+  g.setAttribute("color", new THREE.BufferAttribute(cols, 3));
+  return g;
+}
+
 function SnowRange({ night }: { night: number }) {
-  const geo = useMemo(() => {
-    /* D was 300 centred at -145, so the front edge reached z=+5 — level with
-       the house — and the range filled the whole upper frame as a grey slab.
-       A backdrop needs to be a BAND, well behind the treeline, not a plain
-       that starts underfoot. */
-    const W = 900;
-    const D = 110;
-    const SX = 240;
-    const SZ = 26;
-    const g = new THREE.PlaneGeometry(W, D, SX, SZ);
-    g.rotateX(-Math.PI / 2);
-    const p = g.attributes.position as THREE.BufferAttribute;
-    const sky = new THREE.Color("#d9e6ee");
-    const rock = new THREE.Color("#5d6f80");
-    const rockHi = new THREE.Color("#7f909e");
-    const snow = new THREE.Color("#f7fbfd");
-    const tree = new THREE.Color("#4a6355");
-    const tmp = new THREE.Color();
-    const cols = new Float32Array(p.count * 3);
-
-    // pass 1 — height
-    for (let i = 0; i < p.count; i++) {
-      const x = p.getX(i);
-      const z = p.getZ(i);
-      // ridges run along X; depth falls away so the back is taller
-      const depth = (z + D / 2) / D; // 0 front .. 1 back
-      const rid = ridged(x * 0.0075 + 11.3, z * 0.011 + 4.1, 5);
-      const macro = 0.45 + 0.55 * vnoise(x * 0.0022 + 2.7, z * 0.004 + 9.4);
-      /* 55, not 150. At ~150 units out a 150-unit peak subtends about 45° and
-         swallows the sky; 55 subtends roughly 20°, which is what a real range
-         looks like from a valley floor. */
-      let h = rid * macro * 55 * (0.42 + depth * 0.9);
-      // pull the very front edge down to the ground so it never floats
-      h *= Math.min(1, Math.max(0, (depth - 0.02) / 0.22));
-      p.setY(i, h);
-    }
-    g.computeVertexNormals();
-
-    // pass 2 — colour by altitude, slope and distance
-    const n = g.attributes.normal as THREE.BufferAttribute;
-    let maxH = 1;
-    for (let i = 0; i < p.count; i++) maxH = Math.max(maxH, p.getY(i));
-    for (let i = 0; i < p.count; i++) {
-      const y = p.getY(i);
-      const z = p.getZ(i);
-      const alt = y / maxH;
-      const slope = 1 - Math.abs(n.getY(i)); // 0 flat .. 1 vertical
-      // snow above the line, but shed off anything steep
-      const line = 0.46 + vnoise(p.getX(i) * 0.02, z * 0.02) * 0.1;
-      let snowAmt = clamp01((alt - line) / 0.2) * clamp01(1 - (slope - 0.34) / 0.34);
-      snowAmt = clamp01(snowAmt);
-      const treeAmt = clamp01((0.24 - alt) / 0.2);
-      tmp.copy(rock).lerp(rockHi, clamp01(alt * 1.5));
-      tmp.lerp(tree, treeAmt * 0.75);
-      tmp.lerp(snow, snowAmt);
-      /* Bake the sun term into the colour and draw unlit. A backdrop lit by
-         the scene's directional light turns its whole north face black, which
-         is what put a grey slab across the sky. Baking it means the peaks get
-         their light-and-shade — the thing that actually makes them read as
-         3D — with no lighting cost and no unlit backfaces. */
-      const nx = n.getX(i);
-      const ny = n.getY(i);
-      const nz = n.getZ(i);
-      const shade = clamp01((nx * 0.44 + ny * 0.78 + nz * 0.44) * 0.62 + 0.52);
-      tmp.multiplyScalar(0.66 + shade * 0.46);
-      // aerial perspective: the far rank washes into the sky
-      const depth = (z + D / 2) / D;
-      tmp.lerp(sky, 0.2 + depth * 0.4);
-      cols[i * 3] = tmp.r;
-      cols[i * 3 + 1] = tmp.g;
-      cols[i * 3 + 2] = tmp.b;
-    }
-    g.setAttribute("color", new THREE.BufferAttribute(cols, 3));
-    return g;
-  }, []);
-
-  /* z places the front rank ~110 units out — behind every tree in the stand
-     (the furthest sits at z≈30) and inside the 260 far plane from all seven
-     camera beats. */
+  /* D was 300 centred at -145, so the front edge reached z=+5 — level with
+     the house — and the range filled the whole upper frame as a grey slab.
+     A backdrop needs to be a BAND, well behind the treeline, not a plain
+     that starts underfoot. */
+  const mid = useMemo(() => snowRangeGeometry(0, 900, 110, 240, 26, 1, 0.2), []);
+  /* The far rank: taller (its crests show in the mid range's saddles),
+     offset in x so peaks never align, coarser mesh (it resolves to a few
+     pixels of relief), and already 55% dissolved into sky — the haze
+     BETWEEN the ranks is the depth cue. ~4.8k triangles, one draw. */
+  const far = useMemo(() => snowRangeGeometry(37.4, 1150, 130, 150, 16, 1.55, 0.55), []);
+  const dim = 1 - night * 0.62;
   return (
-    <mesh geometry={geo} position={[0, -9, -172]} renderOrder={-10} frustumCulled={false}>
-      <meshBasicMaterial vertexColors fog={false} color={new THREE.Color().setScalar(1 - night * 0.62)} />
-    </mesh>
+    <>
+      <mesh geometry={far} position={[70, -13, -232]} renderOrder={-11} frustumCulled={false}>
+        <meshBasicMaterial vertexColors fog={false} color={new THREE.Color().setScalar(dim)} />
+      </mesh>
+      {/* z places the front rank ~110 units out — behind every tree in the
+          stand (the furthest sits at z≈30) and inside the 260 far plane from
+          all seven camera beats. */}
+      <mesh geometry={mid} position={[0, -9, -172]} renderOrder={-10} frustumCulled={false}>
+        <meshBasicMaterial vertexColors fog={false} color={new THREE.Color().setScalar(dim)} />
+      </mesh>
+    </>
   );
 }
 
@@ -358,6 +375,18 @@ function cloudGeometry(seed: number) {
 }
 
 function Clouds({ frozen, night }: { frozen: boolean; night: number }) {
+  /* Seven base volumes across fifteen instances (was four across thirteen)
+     — under seven, the eye finds the repeats. Roughly a quarter fly as
+     STRATUS: the same volume squashed flat and stretched wide, which is the
+     cheapest possible second cloud species and the one this sky was
+     missing; a real ceiling is never all cumulus. */
+  /* Quality-pass verdict, by screenshot (look-fix-look, three rounds): every
+     cloud experiment was REVERTED. 15 instances merged the band into one
+     pale ceiling; stratus slabs read as smears against the gradient sky;
+     and the wider 3-7 lobe spread made banks broad enough to bridge into
+     their neighbours over the trailhead. Thirteen distinct cumulus from
+     four volumes IS the founder-approved sky — the variety this pass owed
+     the frame came from the second mountain rank instead. */
   const geos = useMemo(() => [1, 2, 3, 4].map((s) => cloudGeometry(s)), []);
   const defs = useMemo(
     () =>

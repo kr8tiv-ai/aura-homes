@@ -95,9 +95,13 @@ body {
   position: fixed;
   inset: 0;
   z-index: -1;
+  /* quality pass, Aug 9: a faint cool horizon band under the warm zenith
+     glow — the two-temperature sky real ranges sit against. Subtle on
+     purpose; the gradation should be felt, not seen. */
   background:
     radial-gradient(120% 60% at 78% -5%, rgba(255, 240, 210, 0.7), rgba(255, 240, 210, 0) 60%),
-    linear-gradient(#eef4f0 0%, #e4eee8 45%, #d7e5dc 100%);
+    radial-gradient(150% 32% at 50% 103%, rgba(198, 216, 206, 0.5), rgba(198, 216, 206, 0) 74%),
+    linear-gradient(#edf3f2 0%, #e4eee8 46%, #d7e5dc 100%);
 }
 
 /* dusk arrives as the journey ends — driven by --st-dusk from the rig */

@@ -665,6 +665,24 @@ function GlassRailRun({
   );
 }
 
+/** Deterministic per-piece lumber/stone tone (quality pass, Aug 9). Real
+ *  wood varies piece to piece; a strict 3-colour rota reads as tiling the
+ *  moment two same-tone boards land side by side. Same board, same colour,
+ *  every load — no Math.random. */
+function pieceTone(base: string, i: number, dl = 0.05, dh = 0.012) {
+  const r1 = (() => {
+    const s = Math.sin(i * 127.1 + 71.7) * 43758.5453;
+    return s - Math.floor(s);
+  })();
+  const r2 = (() => {
+    const s = Math.sin(i * 311.7 + 13.9) * 43758.5453;
+    return s - Math.floor(s);
+  })();
+  const c = new THREE.Color(base);
+  c.offsetHSL((r2 - 0.5) * dh, 0, (r1 - 0.5) * dl);
+  return c;
+}
+
 function Deck({ glassFloor, glassRail }: { glassFloor: THREE.Material; glassRail: THREE.Material }) {
   const cedar = ["#a97e57", "#9b7350", "#b0855e"];
   const planks = [];
@@ -673,7 +691,7 @@ function Deck({ glassFloor, glassRail }: { glassFloor: THREE.Material; glassRail
     planks.push(
       <mesh key={i} castShadow receiveShadow position={[-1.15, 0.44, z]}>
         <boxGeometry args={[4.9, 0.09, 0.43]} />
-        <meshStandardMaterial color={cedar[i % 3]} roughness={0.85} flatShading />
+        <meshStandardMaterial color={pieceTone(cedar[i % 3], i)} roughness={0.85} flatShading />
       </mesh>
     );
   }
@@ -710,7 +728,7 @@ function Deck({ glassFloor, glassRail }: { glassFloor: THREE.Material; glassRail
       {[0, 1, 2].map((i) => (
         <mesh key={i} castShadow receiveShadow position={[0.05, 0.34 - i * 0.13, 6.35 + i * 0.34]}>
           <boxGeometry args={[2.1, 0.1, 0.34]} />
-          <meshStandardMaterial color={cedar[i % 3]} roughness={0.85} flatShading />
+          <meshStandardMaterial color={pieceTone(cedar[i % 3], i + 11)} roughness={0.85} flatShading />
         </mesh>
       ))}
     </group>
@@ -1160,10 +1178,12 @@ function Fence() {
   }
   return (
     <group>
+      {/* split rails silver unevenly in the weather — per-piece tone drift,
+          a touch wider than the deck's (fence lumber is never matched) */}
       {posts.map(([x, z], i) => (
         <mesh key={`p${i}`} castShadow position={[x, terrainH(x, z) + 0.42, z]}>
           <boxGeometry args={[0.11, 0.9, 0.11]} />
-          <meshStandardMaterial color="#84735e" roughness={0.95} flatShading />
+          <meshStandardMaterial color={pieceTone("#84735e", i + 29, 0.08)} roughness={0.95} flatShading />
         </mesh>
       ))}
       {rails.map(({ a, b }, i) => {
@@ -1177,7 +1197,7 @@ function Fence() {
           return (
             <mesh key={`r${i}-${j}`} castShadow position={[cx, cy, a[1]]} rotation={[0, 0, tilt]}>
               <boxGeometry args={[len + 0.15, 0.07, 0.07]} />
-              <meshStandardMaterial color="#8d7c66" roughness={0.95} flatShading />
+              <meshStandardMaterial color={pieceTone("#8d7c66", i * 2 + j + 53, 0.07)} roughness={0.95} flatShading />
             </mesh>
           );
         });
@@ -1200,7 +1220,8 @@ function PathStones() {
             rotation={[0, i * 1.3, 0]}
           >
             <cylinderGeometry args={[r, r + 0.05, 0.14, 7]} />
-            <meshStandardMaterial color="#9aa39b" roughness={0.95} flatShading />
+            {/* quarried stone is never one grey — per-slab value drift */}
+            <meshStandardMaterial color={pieceTone("#9aa39b", i + 83, 0.06, 0.006)} roughness={0.95} flatShading />
           </mesh>
         );
       })}
