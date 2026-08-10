@@ -23,6 +23,9 @@ const EXPECTED_TOOLS = [
   "supplier_directory",
   "alberta_fact",
   "journey_memory",
+  "concierge_start",
+  "concierge_send",
+  "concierge_state",
 ];
 
 let failures = 0;
@@ -84,6 +87,50 @@ async function freeMode(): Promise<void> {
   check(
     parcelRun.results.some((r) => r.verdict === "PASS"),
     "at least one parcel PASSes the same design"
+  );
+
+  // Concierge round-trip: start an order, choose the 800 sqft flagship, then
+  // select the Country Residential parcel — the land gate must REFUSE with
+  // the 1,076 sqft citation and disable the BUY control.
+  const started = resultJson(
+    await client.callTool({
+      name: "concierge_start",
+      arguments: { orderId: "smoke-concierge", nowISO: "2026-08-12T17:00:00Z" },
+    })
+  ) as { order?: { id: string; status: string } };
+  check(started.order?.status === "browsing", "concierge_start opens an order in browsing");
+
+  await client.callTool({
+    name: "concierge_send",
+    arguments: {
+      orderId: "smoke-concierge",
+      intent: { type: "selectHome", homeId: "aura-sip-800" },
+      nowISO: "2026-08-12T17:05:00Z",
+    },
+  });
+  const refusal = resultJson(
+    await client.callTool({
+      name: "concierge_send",
+      arguments: {
+        orderId: "smoke-concierge",
+        intent: { type: "selectParcel", parcelId: "lsa-lakeside-estates" },
+        nowISO: "2026-08-12T17:10:00Z",
+      },
+    })
+  ) as {
+    order?: { status: string };
+    reply?: string;
+    actions?: Array<{ type: string }>;
+  };
+  console.log(`concierge refusal -> status ${refusal.order?.status}`);
+  check(refusal.order?.status === "parcelRejected", "concierge order status is parcelRejected");
+  check(
+    !!refusal.reply?.includes("1,076") && !!refusal.reply?.includes("800"),
+    "concierge refusal cites 1,076 sqft minimum vs the 800 sqft design"
+  );
+  check(
+    !!refusal.actions?.some((a) => a.type === "disableBuy"),
+    "concierge refusal emits the disableBuy action (the land gate binds BUY)"
   );
 
   await client.close();

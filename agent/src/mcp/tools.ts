@@ -29,6 +29,11 @@ import {
   saveMemory,
 } from "../brain/memory";
 import { isRepoCostModel } from "../types";
+import { reduceWithAssist } from "../concierge/assist";
+import { PARTNER_STATE } from "../concierge/catalog";
+import { createOrder } from "../concierge/order";
+import { ConciergeContext, ConciergeIntent } from "../concierge/reducer";
+import { listOrders, loadOrder, orderPath, saveOrder } from "../concierge/store";
 import { ALBERTA_FACTS, FACTS_DISCLAIMER, findFacts } from "./facts";
 import {
   loadCostModel,
@@ -571,6 +576,122 @@ const journeyMemory = defineTool(
   }
 );
 
+// ---------------------------------------------------------------- concierge
+
+/** Typed user intents for the concierge reducer — mirrors ConciergeIntent. */
+const conciergeIntentSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("askAbout"), question: z.string() }),
+  z.object({ type: z.literal("listHomes") }),
+  z.object({ type: z.literal("listParcels") }),
+  z.object({ type: z.literal("selectHome"), homeId: z.string().describe('Catalog id, e.g. "aura-sip-800"') }),
+  z.object({ type: z.literal("selectParcel"), parcelId: z.string().describe('Parcel id, e.g. "lsa-lakeside-estates"') }),
+  z.object({ type: z.literal("requestQuote") }),
+  z.object({ type: z.literal("placeDeposit") }),
+  z.object({ type: z.literal("confirmDeposit"), txRef: z.string().optional() }),
+  z.object({ type: z.literal("requestRefund") }),
+  z.object({ type: z.literal("tick") }),
+  z.object({ type: z.literal("startBuild") }),
+]);
+
+/** Context for a reducer turn: bundled samples + the repo cost model. */
+function conciergeContext(now: Date): ConciergeContext {
+  const { model, extras } = loadCostModel();
+  return {
+    now,
+    parcels: loadSampleParcels(),
+    questionnaire: loadSampleQuestionnaire(),
+    costModel: model,
+    fileTotalsExLand: extras.totalsExLand,
+  };
+}
+
+const conciergeStart = defineTool(
+  "concierge_start",
+  "Opens a concierge purchase journey: a typed, serializable Order (append-only event log, " +
+    "injectable clock) that walks browsing -> parcel verdict (the land gate can REFUSE with the " +
+    "bylaw citation) -> home -> quote priced live from data/alberta/cost-model.json -> USDC " +
+    "reservation deposit -> refund window -> refunded or converted -> building. Returns the new " +
+    "order and the opening line. Orders persist under agent/out/concierge/.",
+  z.object({
+    orderId: z.string().optional().describe("Defaults to a timestamp-derived id"),
+    buyerName: z.string().optional(),
+    buyerWallet: z.string().optional().describe("Wallet that funds the deposit (escrow homeowner)"),
+    desiredSizeSqft: z.number().optional().describe("Design size for the land gate before a home is chosen (default 800)"),
+    nowISO: nowISOSchema,
+  }),
+  (args) => {
+    const now = parseNow(args.nowISO);
+    const order = createOrder({
+      id: args.orderId ?? `ord-${now.getTime().toString(36)}`,
+      now,
+      buyer: { name: args.buyerName, wallet: args.buyerWallet },
+      desiredSizeSqft: args.desiredSizeSqft,
+    });
+    saveOrder(order);
+    return {
+      order,
+      reply:
+        "Welcome to Aura. I take you from a question to a funded home — and I will refuse the " +
+        "order, with the bylaw citation, if the land cannot legally hold the home. Land first: " +
+        "ask me to list parcels, or tell me about the home you want. " + PARTNER_STATE.line,
+      storePath: orderPath(order.id),
+    };
+  }
+);
+
+const conciergeSend = defineTool(
+  "concierge_send",
+  "Sends one typed intent to a concierge order and returns { order, reply, actions }. " +
+    "Offline-deterministic: verdicts come from the parcel filter, quotes from the cost-model " +
+    "pipeline (totals reconcile to the file to the dollar), milestones carry the 10% statutory " +
+    "holdback. askAbout answers deterministically; with ANTHROPIC_API_KEY set the reply is " +
+    "model-written over the same facts (never required). The refusal path returns the district " +
+    "minimum citation plus constructive next steps.",
+  z.object({
+    orderId: z.string(),
+    intent: conciergeIntentSchema,
+    nowISO: nowISOSchema,
+  }),
+  async (args) => {
+    const order = loadOrder(args.orderId);
+    if (!order) {
+      throw new McpError(
+        ErrorCode.InvalidParams,
+        `No order "${args.orderId}" — call concierge_start first (known: ${listOrders()
+          .map((o) => o.id)
+          .join(", ") || "none"}).`
+      );
+    }
+    const now = parseNow(args.nowISO);
+    const result = await reduceWithAssist(order, args.intent as ConciergeIntent, conciergeContext(now));
+    saveOrder(result.order);
+    return {
+      order: result.order,
+      reply: result.reply,
+      replySource: result.replySource,
+      actions: result.actions,
+    };
+  }
+);
+
+const conciergeState = defineTool(
+  "concierge_state",
+  "Reads a concierge order (full state: status, home, parcel verdict with reasons, quote with " +
+    "reconciliation, deposit with refund deadline, append-only event log). Without orderId, " +
+    "lists all known orders.",
+  z.object({ orderId: z.string().optional() }),
+  (args) => {
+    if (!args.orderId) {
+      return { orders: listOrders() };
+    }
+    const order = loadOrder(args.orderId);
+    if (!order) {
+      throw new McpError(ErrorCode.InvalidParams, `No order "${args.orderId}".`);
+    }
+    return { order };
+  }
+);
+
 export const TOOLS: ToolDef[] = [
   checkParcel,
   generateDesignBrief,
@@ -583,4 +704,7 @@ export const TOOLS: ToolDef[] = [
   supplierDirectory,
   albertaFact,
   journeyMemory,
+  conciergeStart,
+  conciergeSend,
+  conciergeState,
 ];
