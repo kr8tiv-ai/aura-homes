@@ -408,7 +408,13 @@ Development permit vs building permit, minimum dwelling sizes, setbacks, overlay
 <sub><code>13&nbsp;·&nbsp;THE&nbsp;ROAD&nbsp;TO&nbsp;TRUE&nbsp;ONE-CLICK</code></sub>
 ## What "one click" becomes
 
-Today one click produces a complete costed plan. The destination is one click producing a *house*, with the platform carrying every step in between. The honest sequence, in the order that most reduces the chance of someone getting hurt:
+Today one click produces a complete costed plan. The destination is one click producing a *house*, with the platform carrying every step in between. The rollout is a designed three-arc story ([docs/ROADMAP.md](docs/ROADMAP.md)):
+
+> **Arc 1 — the hackathon MVP** *(now → Aug 21, 2026)*: buy a home with USDC on X Layer, with an agent that directs you to the land. The 3D site is live at aurahomes.fun; the contracts pass 10/10 tests and await a human-gated faucet step before testnet deploy.
+> **Arc 2 — the Locality Hub**: design an eco-only home (SIP sandwich panels, solar setups), source materials and contractors locally, choose buy-vs-build, a vendor directory purchasable in USDC, contractor payments, inventory, build tracking, and latest-technology discovery — rolled out locality by locality, Alberta counties first.
+> **Arc 3 — the HOMES token**: named now, launching on X Layer as part of the phased rollout; its utility will be announced as a phase of its own, after Canadian securities counsel ([docs/TOKEN-RESEARCH.md](docs/TOKEN-RESEARCH.md)).
+
+The honest sequence within those arcs, in the order that most reduces the chance of someone getting hurt:
 
 | Horizon | What lands | Why this order |
 |---|---|---|
@@ -518,6 +524,7 @@ You shouldn't, blindly — the architecture never asks you to. The AI orchestrat
 | [agent/](agent/) | `aura-architect` — the AI design/budget/milestone pipeline and the Brain MCP server |
 | [data/alberta/](data/alberta/) | The researched cost model and no-middlemen supplier directory |
 | [assets/](assets/) | The mark, hero, and README graphics — generated, in the house style |
+| [assets/brand-kit/](assets/brand-kit/) | The distilled brand kit — logo suite, palette + tokens, type specimen, card template ([docs/BRAND-KIT.md](docs/BRAND-KIT.md)) |
 
 <br>
 

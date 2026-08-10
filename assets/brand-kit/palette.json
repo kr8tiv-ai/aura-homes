@@ -1,0 +1,159 @@
+{
+  "$meta": {
+    "brand": "Aura Homes",
+    "source": "docs/BRAND.md v3 (light-first), verified against the CSS served at https://aurahomes.fun",
+    "verified": "2026-08",
+    "license": "Marks are the project's (MIT repo); fonts SIL OFL 1.1, vendored in assets/fonts/"
+  },
+  "color": {
+    "ground": [
+      {
+        "name": "paper",
+        "value": "#fafaf9",
+        "role": "every ground — warm paper white, never pure #fff"
+      },
+      {
+        "name": "panel",
+        "value": "#ffffff",
+        "role": "card / framed-media fill"
+      },
+      {
+        "name": "ink",
+        "value": "#171a18",
+        "role": "display + body text",
+        "aa": "16.79:1 on paper"
+      },
+      {
+        "name": "dim",
+        "value": "#5f6663",
+        "role": "secondary text, captions",
+        "aa": "5.64:1 on paper"
+      },
+      {
+        "name": "faint",
+        "value": "#9aa19d",
+        "role": "tertiary text, axis labels — decorative scale only",
+        "aa": "2.53:1 on paper"
+      },
+      {
+        "name": "hairline",
+        "value": "rgba(23,26,24,0.14)",
+        "role": "rules, borders — structure without boxes"
+      },
+      {
+        "name": "hairline-soft",
+        "value": "rgba(23,26,24,0.09)",
+        "role": "soft rules"
+      }
+    ],
+    "accent": [
+      {
+        "name": "emerald",
+        "value": "#10b981",
+        "role": "THE accent — fills, bars, rules, buttons; fails AA as text",
+        "aa": "2.43:1 on paper — fill only"
+      },
+      {
+        "name": "emerald-deep",
+        "value": "#047857",
+        "role": "emerald as body-scale text on light",
+        "aa": "5.25:1 on paper"
+      },
+      {
+        "name": "emerald-label",
+        "value": "#059669",
+        "role": "large display + tracked labels; never lighter than #0e9f6e",
+        "aa": "3.61:1 on paper — AA-large only"
+      }
+    ],
+    "context": [
+      {
+        "name": "violet",
+        "value": "#7c3aed",
+        "role": "on-chain surfaces only (escrow, registry) — text",
+        "aa": "5.46:1 on paper"
+      },
+      {
+        "name": "violet-fill",
+        "value": "#8b5cf6",
+        "role": "on-chain fills — never on a first-look surface"
+      },
+      {
+        "name": "teal",
+        "value": "#0f766e",
+        "role": "secondary system notes; bridge to Aura-H2O (BRAND.md fill-scale #0d9488)",
+        "aa": "5.24:1 on paper"
+      },
+      {
+        "name": "lime",
+        "value": "#4d7c0f",
+        "role": "land / growth notes; bridge to Aura-Farms",
+        "aa": "4.78:1 on paper"
+      }
+    ],
+    "aurora-band": {
+      "values": [
+        "#34d399",
+        "#2dd4bf",
+        "#8b5cf6"
+      ],
+      "rule": "inside media and the mark only — never as ground, never as text"
+    },
+    "chip": {
+      "name": "dark-chip",
+      "value": "#050807",
+      "role": "favicon / avatar only — an avatar is a contained shape"
+    }
+  },
+  "type": {
+    "display": {
+      "family": "Space Grotesk",
+      "weights": "500-620 (never heavy)",
+      "tracking": "-0.02em at h2 to -0.06em at hero",
+      "leading": "0.9-0.95",
+      "case": "sentence case; may end in a period"
+    },
+    "body": {
+      "family": "Manrope",
+      "weights": "400 body, 600-650 buttons",
+      "leading": "1.5-1.6",
+      "rules": "never justified"
+    },
+    "mono": {
+      "family": "JetBrains Mono",
+      "weights": "400-500",
+      "tracking": "+0.15em to +0.25em",
+      "size": "10-12px",
+      "role": "tracked caps labels, FIG. tags, tables, code; tabular figures in columns"
+    },
+    "scale": "modular ~1.33 between display steps"
+  },
+  "motion": {
+    "ease": "cubic-bezier(0.16, 1, 0.3, 1)",
+    "micro-interactions": "150-250ms",
+    "scene-transitions": "600-900ms of scroll distance, not time",
+    "rules": "damped, never bouncy; scroll owns the timeline; prefers-reduced-motion gets a still of equal beauty"
+  },
+  "logo": {
+    "masters": {
+      "light-native": "assets/aura-homes-logo-light.png",
+      "night": "assets/aura-homes-logo.png"
+    },
+    "rule": "never redraw the silhouette, never add glow, never outline it",
+    "variants": {
+      "logo-light": "light-native fill — leads everywhere on paper",
+      "logo-dark-context": "night fill — inside framed dark media only",
+      "logo-mono-ink": "single-color ink — print, embossing, single-color contexts on light",
+      "logo-mono-white": "single-color white — over photography and dark media",
+      "avatar-chip": "#050807 chip + night mark — favicon and avatars only"
+    }
+  },
+  "co-branding": {
+    "lockup": "A KR8TIV AI PRODUCT in tracked caps, circular badge at text height beside it",
+    "rule": "Aura mark leads, KR8TIV badge closes — never an equal-size partnership lockup"
+  },
+  "og": {
+    "github-social": "1280x640 (assets/social-card.png)",
+    "og-image": "1200x630 (assets/site-card.png)"
+  }
+}

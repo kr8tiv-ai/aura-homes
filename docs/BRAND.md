@@ -2,6 +2,8 @@
 
 *v3, August 2026. The founder pivoted the ground from dark aurora to paper white after living with the WorldClaw reference (§7): its light cleanliness is now the ground itself, not just the rhythm. The aurora survives — inside the mark and inside media, never as the page. The bar is still "Tesla/Apple level," which in practice means restraint. Sources at the bottom.*
 
+*Ready-to-use files: the distilled kit lives in [BRAND-KIT.md](BRAND-KIT.md) → [assets/brand-kit/](../assets/brand-kit/) — logo suite, palette, tokens, type specimen, and card template.*
+
 ## 1. The thesis: restraint is the premium signal
 
 Every brand studied for this system — Apple, Aesop, Patagonia, and the crypto products normal people actually trust — converges on one rule: **a brand that does not shout is signaling that it does not need to.** We ask a normal person to trust an AI and a blockchain with the largest purchase of their life; every pixel of noise spends trust we cannot afford. Honesty presented plainly outsells enthusiasm presented loudly — the Patagonia move.

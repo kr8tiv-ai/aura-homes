@@ -1,0 +1,49 @@
+/* Aura Homes — brand tokens (BRAND.md v3, light-first)
+ * Mirrors the :root served at https://aurahomes.fun (verified 2026-08),
+ * plus brand-level tokens from docs/BRAND.md that the site does not need.
+ * Fonts: Space Grotesk / Manrope / JetBrains Mono — all SIL OFL 1.1,
+ * variable TTFs vendored in assets/fonts/. */
+
+:root {
+  /* ---- ground & ink (as served) ---- */
+  --aura-bg: #fafaf9;            /* paper — every ground, never pure #fff */
+  --aura-panel: #fff;            /* card / framed-media fill */
+  --aura-text: #171a18;          /* ink */
+  --aura-border: rgba(23, 26, 24, 0.12);
+
+  --st-paper: #fafaf9;
+  --st-ink: #171a18;
+  --st-ink-dim: #5f6663;         /* secondary text */
+  --st-faint: #9aa19d;           /* tertiary text, axis labels */
+  --st-hair: rgba(23, 26, 24, 0.14);
+  --st-hair-soft: rgba(23, 26, 24, 0.09);
+
+  /* ---- the accent (as served) ---- */
+  --st-emerald: #10b981;         /* fills, bars, rules, buttons — fails AA as text */
+  --st-emerald-deep: #047857;    /* emerald as body text on light (AA) */
+  --st-emerald-label: #059669;   /* large display + tracked labels, never past #0e9f6e */
+  --aura-emerald: #047857;       /* the app's text-scale emerald */
+
+  /* ---- context accents, rationed (as served) ---- */
+  --st-violet: #7c3aed;          /* on-chain surfaces only — text scale */
+  --aura-violet: #7c3aed;
+  --st-teal: #0f766e;            /* secondary system notes (BRAND.md fill-scale: #0d9488) */
+  --aura-teal: #0f766e;
+  --st-lime: #4d7c0f;            /* land / growth notes */
+  --aura-lime: #4d7c0f;
+
+  /* ---- type (as served) ---- */
+  --st-display-font: "Space Grotesk Variable", "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --st-body-font: "Manrope Variable", "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --st-mono-font: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, monospace;
+
+  /* ---- motion (as served) ---- */
+  --st-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ---- brand-level tokens (BRAND.md v3 — not in the served sheet) ---- */
+  --brand-violet-fill: #8b5cf6;  /* on-chain fills */
+  --brand-chip: #050807;         /* favicon / avatar dark chip only */
+  --brand-aurora-1: #34d399;     /* aurora band — inside media and the mark only, */
+  --brand-aurora-2: #2dd4bf;     /*   never as ground, never as text            */
+  --brand-aurora-3: #8b5cf6;
+}
