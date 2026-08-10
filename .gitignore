@@ -12,3 +12,23 @@ typechain-types/
 *.log
 .DS_Store
 Thumbs.db
+
+# ── GSD baseline (auto-generated) ──
+.gsd
+.gsd-id
+.bg-shell/
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.code-workspace
+build/
+__pycache__/
+*.pyc
+.venv/
+venv/
+target/
+vendor/
+.cache/
+tmp/
