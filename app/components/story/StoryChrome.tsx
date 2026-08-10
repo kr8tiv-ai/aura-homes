@@ -149,6 +149,42 @@ export function EnterGate({
 
 /* ------------------------------- HUD -------------------------------- */
 
+/** Live stargazer count for the HUD star pill. Unauthenticated GitHub API
+ *  (60 req/hr/IP — fine per visitor), cached per session, and silent on
+ *  any failure: the pill simply shows no number, which is exactly the
+ *  pre-count design. */
+function useRepoStars() {
+  const [stars, setStars] = useState<number | null>(null);
+  useEffect(() => {
+    const KEY = "aura-gh-stars";
+    try {
+      const cached = sessionStorage.getItem(KEY);
+      if (cached !== null && Number.isFinite(Number(cached))) {
+        setStars(Number(cached));
+        return;
+      }
+    } catch {}
+    const ctl = new AbortController();
+    fetch("https://api.github.com/repos/kr8tiv-ai/aura-homes", {
+      signal: ctl.signal,
+      headers: { Accept: "application/vnd.github+json" },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        const n = j && typeof j.stargazers_count === "number" ? j.stargazers_count : null;
+        if (n !== null) {
+          setStars(n);
+          try {
+            sessionStorage.setItem(KEY, String(n));
+          } catch {}
+        }
+      })
+      .catch(() => {});
+    return () => ctl.abort();
+  }, []);
+  return stars;
+}
+
 export function StoryHUD({
   night,
   onNight,
@@ -160,8 +196,18 @@ export function StoryHUD({
   sound: boolean;
   onSound: () => void;
 }) {
+  const stars = useRepoStars();
+
   return (
     <div className="story-hud">
+      {/* Live star count in OUR design language (founder request, Aug 10).
+          The official ghbtns iframe was built and screenshotted first —
+          GitHub's rounded grey-gradient widget fought the square 2px mono
+          pill system no matter the chip under it, so per the agreed
+          fallback the count rides our own pill instead: fetched from the
+          GitHub API, session-cached, and shown only once it is non-zero (a
+          live "0" is anti-social-proof; the number appears when it helps).
+          Click lands on the repo star flow verified Aug 9. */}
       <a
         className="story-hud-btn story-hud-star"
         href={STAR_URL}
@@ -174,6 +220,11 @@ export function StoryHUD({
           <path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.58 1.11 6.47L12 17.45 6.19 20.5 7.3 14.03 2.6 9.45l6.5-.95z" />
         </svg>
         <span>Star the repo</span>
+        {stars !== null && stars > 0 && (
+          <em className="story-hud-count" aria-label={`${stars} stars`}>
+            {stars >= 1000 ? `${(stars / 1000).toFixed(1)}k` : stars}
+          </em>
+        )}
       </a>
 
       <button

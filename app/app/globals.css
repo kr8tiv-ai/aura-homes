@@ -837,6 +837,15 @@ html.story-gated body { overflow: hidden; }
 /* the star was #d9a300 gold — a colour that appears nowhere in the palette */
 .story-hud-star svg { color: var(--st-faint); }
 .story-hud-star:hover svg { color: var(--st-ink); }
+/* live star count on the star pill — mono, quiet, only when non-zero */
+.story-hud-count {
+  font-style: normal;
+  padding-left: 0.45rem;
+  margin-left: 0.1rem;
+  border-left: 1px solid var(--st-hair);
+  color: var(--st-emerald-deep);
+  font-variant-numeric: tabular-nums;
+}
 .story-hud-sr {
   position: absolute;
   width: 1px; height: 1px;
