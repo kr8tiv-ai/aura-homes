@@ -575,24 +575,71 @@ const G_PATH: [number, number][] = [
  * the filler layer runs a TIGHTER verge — short grass walks nearly to the
  * dirt, the way a real trodden line sits inside a short-grass shoulder,
  * which is what closed the pale bands either side of the path.
+ *
+ * `tight` (v8, the "no visible bare ground" round) extends that same idea to
+ * every built feature, not just the trail. The wide pads exist so TALL hero
+ * blades never lean into the fire ring or over the deck skirt — but the
+ * filler is 8-18 cm; it can stand a hand-span from the flames and under the
+ * chair seats the way a real camp lawn does. Shot evidence: the wide pads
+ * union into a ~4 m bare disc at the fire-pit lounge that fills the lower
+ * frame of beats 02-04 (s02/s03 bottom-left) and a pale skirt beside the
+ * house and the tub pad (s05/s06). Tight pads keep the blades out of the
+ * actual geometry (ring, slabs, walls) and hand the rest of the apron back
+ * to the short sward — zero new instances, the rejection sampler simply
+ * stops throwing these positions away.
  */
-function clearance(x: number, z: number, vergePad = 0.3, vergeFeather = 0.75): number {
+function clearance(
+  x: number,
+  z: number,
+  vergePad = 0.3,
+  vergeFeather = 0.75,
+  tight = false
+): number {
   const fade = (d: number, pad: number, feather: number) => clamp01((d - pad) / feather);
+  // [widePad, wideFeather, tightPad, tightFeather] per feature — wide keeps
+  // tall hero blades clear of the structures, tight lets the short filler
+  // hug them.
+  const P = (w0: number, w1: number, t0: number, t1: number) =>
+    tight ? ([t0, t1] as const) : ([w0, w1] as const);
   let c = 1;
   // the home
-  c = Math.min(c, fade(rectDist(x, z, -4.3, -3.4, 4.3, 3.4), 0.3, 1.2));
-  // deck + its skirt
-  c = Math.min(c, fade(rectDist(x, z, -3.9, 2.95, 3.6, 6.3), 0.28, 0.95));
-  // entrance steps down to the meadow
-  c = Math.min(c, fade(rectDist(x, z, -1.45, 6.3, 1.55, 8.7), 0.24, 0.7));
-  // glass walkway to the tub
-  c = Math.min(c, fade(segDist(x, z, 3.45, 4.65, 5.9, 5.35), 0.85, 0.8));
+  let p = P(0.3, 1.2, 0.12, 0.4);
+  c = Math.min(c, fade(rectDist(x, z, -4.3, -3.4, 4.3, 3.4), p[0], p[1]));
+  /* Deck + glass walkway: the deck FLOATS at 0.44 on point posts, skirt
+     bottom 0.17, plank underside 0.395; the walkway glass rides at 0.40.
+     From the beat-3/4 cameras the open south slot shows the ground UNDER
+     them — measured by back-projecting the bald pixels: the pale "L" at
+     s02-s04 is x -3..1, z 4.7-6.4, i.e. the under-deck apron, not the lawn.
+     Filler blades top out at 0.18 m (stem species x1.75 = 0.315) — all of
+     it clears the planks and the glass — so in tight mode these two
+     features simply do not clear grass at all: the slot fills with sward.
+     The hero layer keeps its wide pads (0.5 m blades would poke through). */
+  if (!tight) {
+    c = Math.min(c, fade(rectDist(x, z, -3.9, 2.95, 3.6, 6.3), 0.28, 0.95));
+    c = Math.min(c, fade(segDist(x, z, 3.45, 4.65, 5.9, 5.35), 0.85, 0.8));
+  }
+  /* Entrance steps: the wide rect ran z to 8.7, but the lowest tread ends at
+     z=7.2 — the extra 1.5 m was the bald strip at the foot of the steps in
+     s02. Tight hugs the real boxes (x -1.0..1.1, z 6.18..7.2, lowest tread
+     3 cm off the ground, so grass through the treads is a real risk INSIDE
+     the rect — keep the cut, just make it honest). */
+  p = tight ? ([0.12, 0.4] as const) : ([0.24, 0.7] as const);
+  c = Math.min(
+    c,
+    tight
+      ? fade(rectDist(x, z, -1.1, 6.15, 1.2, 7.3), p[0], p[1])
+      : fade(rectDist(x, z, -1.45, 6.3, 1.55, 8.7), p[0], p[1])
+  );
   // tub pad
-  c = Math.min(c, fade(Math.hypot(x - 5.9, z - 5.4), 1.4, 0.9));
-  // fire-pit lounge (ring, chairs, side table)
-  c = Math.min(c, fade(Math.hypot(x + 4.7, z - 6.5), 2.5, 1.5));
+  p = P(1.4, 0.9, 0.92, 0.5);
+  c = Math.min(c, fade(Math.hypot(x - 5.9, z - 5.4), p[0], p[1]));
+  // fire-pit lounge (ring, chairs, side table) — tight stays outside the
+  // ring itself but grows under and between the chairs
+  p = P(2.5, 1.5, 1.05, 0.6);
+  c = Math.min(c, fade(Math.hypot(x + 4.7, z - 6.5), p[0], p[1]));
   // the bench out in the east meadow
-  c = Math.min(c, fade(Math.hypot(x - 8.6, z - 18.0), 0.95, 0.8));
+  p = P(0.95, 0.8, 0.6, 0.5);
+  c = Math.min(c, fade(Math.hypot(x - 8.6, z - 18.0), p[0], p[1]));
   // the stepping-stone route
   let pd = Infinity;
   for (let i = 0; i < G_PATH.length - 1; i++) {
@@ -972,7 +1019,14 @@ function buildGrassTiles(budget: number, cfg: GrassLayerCfg) {
       dens *= Math.max(1 - smooth01(26, 36, Math.hypot(x, z)), corridor);
     }
     if (dens < 0.02 || rand(i, 43 + S) > dens) continue;
-    const clr = filler ? clearance(x, z, 0.22, 0.5) : clearance(x, z);
+    /* Filler clearance rides a sqrt: the apron rims plant at clearance
+       0.2-0.5, which is 2-9 cm of blade — and the shader's projected-height
+       gate (projH < 0.0052 screen fraction) deletes exactly those blades at
+       the 8-12 m the story cameras sit at, which is why the v8 rims still
+       read as scattered cones on pale ground. sqrt keeps zero at zero (no
+       blades in the fire ring or through the deck) but lifts the mid-band
+       (0.3 -> 0.55) past the gate, so the rim closes instead of dissolving. */
+    const clr = filler ? Math.sqrt(clearance(x, z, 0.22, 0.5, true)) : clearance(x, z);
     if (clr < 0.06) continue;
 
     const key = `${Math.floor(x / cfg.tile)},${Math.floor(z / cfg.tile)}`;
@@ -1002,7 +1056,11 @@ function buildGrassTiles(budget: number, cfg: GrassLayerCfg) {
         ? 0.08 + Math.pow(rand(i, 45 + S), 1.3) * 0.1
         : (0.176 + Math.pow(rand(i, 45 + S), 1.6) * 0.32) * (1 + far * 0.3), // height
       filler
-        ? 0.03 + rand(i, 46 + S) * 0.022 // filler runs a touch broader — it is coverage
+        ? /* v8: +15% width. The one lever that closes ground for ZERO extra
+             triangles — the near-camera band of the crest beat still showed
+             lawn between blades at v7 density, and the worst beat sits 50k
+             tris under the ceiling, so more instances was not the move. */
+          0.034 + rand(i, 46 + S) * 0.026
         : 0.026 + rand(i, 46 + S) * 0.018, // width — reference range, no far term
       rand(i, 47 + S) // fade seed
     );
