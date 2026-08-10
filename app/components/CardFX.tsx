@@ -1,158 +1,142 @@
 "use client";
 
 /* ---------------------------------------------------------------------
-   CARD FX — the founder's interactivity round (Aug 10, 2026).
+   CARD FX v2 — descending border stars (the founder's ask, verbatim:
+   "little stars of WebGL-accelerated lighting slowly moving down the
+   frame of the text boxes").
 
-   Two effects, applied consistently to every text box on the site (story
-   beat plates, the hero IN/OUT ledger, dashboard panels, stage-page
-   section cards, the FAQ):
+   WHAT DRAWS: per traced card, small emerald star points travel DOWN the
+   card's vertical border edges at a constant 42 px/s — a fixed SPEED, not
+   a fixed lap time, so a 300px card and an 800px card read the same. Each
+   star is a 3px head over a soft halo with a 26px emerald-to-teal comet
+   tail, fading in at the top corner and out at the bottom
+   (sin(pi*u)^0.7), alpha-only twinkle. Hovering the card is the
+   "activated responsiveness": brightness x1.6 and speed x1.25, damped
+   over ~600ms to match the CSS --fx-warm curve.
 
-   1. HOVER GLOW — pure CSS, in globals.css: a slow (~550 ms) emerald-
-      tinted text-shadow lift plus a faint border/background lift on the
-      box. Nothing here; see `.fx-card` styles.
+   WHICH EDGES: only edges that carry a VISIBLE border are traced — a star
+   travelling down bare paper is attached to nothing. Story plates have
+   exactly one border (the inner edge), so they get 2 stars on that edge;
+   .aura-panel has a full border and gets 2 per side. A card with no
+   vertical border at all (the hero ledger) traces both box edges, which
+   its hairline rules terminate. Border sides and corner radii are re-read
+   on resize — several radii are clamp()/vw-derived.
 
-   2. BORDER LIGHT TRACER — this file. A 2 px luminous point with a short
-      alpha-faded tail orbits each visible card's border on a slow loop
-      (~11 s per lap), emerald-to-teal inside the brand band.
+   WHY QUADS, NOT gl.POINTS (v1 used points):
+   - gl_PointSize is capped at 64 on Apple silicon and v1's halo was
+     22*dpr = 44px at dpr 2 — already in the danger zone;
+   - a point primitive is discarded WHOLE when its centre leaves the clip
+     volume, so sprites near the viewport edge pop instead of sliding off;
+   - a tail wants one stretched quad, not 30 stacked circles.
 
-   WHY ONE SHARED WEBGL CANVAS, not one per card: browsers cap live WebGL
-   contexts per page (typically 8-16, oldest evicted first) and the story
-   route already runs the R3F scene in one. A dozen per-card contexts
-   would evict the 3D world. So this is ONE fixed, pointer-events-none
-   canvas over the viewport, ONE context, and every visible card's tracer
-   is drawn into it as point sprites in screen space — a single
-   drawArrays(POINTS) per frame, a few hundred vertices, zero effect on
-   scroll (the buffer rebuild is microseconds and the fill is additive
-   points over a mostly-empty transparent canvas).
+   WHY ONE SHARED CANVAS: browsers cap live WebGL contexts (8-16, oldest
+   evicted first) and the story route already runs the R3F scene in one.
+   The cleanup releases this context explicitly (WEBGL_lose_context) so a
+   walk around the routes can never evict the story scene, and
+   webglcontextrestored rebuilds the program after a driver reset.
 
-   Why not CSS: a rotating conic-gradient border animates a custom
-   property, which repaints the card every frame on the main thread — it
-   is NOT compositor-only, and with a dozen cards it costs more than this
-   canvas does. The founder asked for WebGL; WebGL is also genuinely the
-   cheaper option here. (Honest tradeoff, measured with the harness.)
+   BLENDING: premultiplied source-over (ONE, ONE_MINUS_SRC_ALPHA). Never
+   additive — over #fafaf9 paper additive clamps to white and throws the
+   emerald away.
 
-   Restraint contract (BRAND.md collision, resolved by founder direction):
-   BRAND.md section 2 says "no glow anywhere" and round 1 removed an
-   earlier, louder tracer for exactly that rule. The founder explicitly
-   reinstated both effects on Aug 10, 2026 with restraint parameters —
-   whisper alpha, slow laps, hover-gated text glow — so the rule is now
-   "no glow LOUDER than this file", not "none". Do not crank these
-   numbers; the values ARE the approval.
+   RESTRAINT CONTRACT (BRAND.md section 2 collision, resolved by founder
+   direction): "no glow anywhere" was round 1's reading; the founder
+   explicitly reinstated the hover glow and the border lights on Aug 10,
+   2026 with restraint parameters. The values in this file — 0.42 peak
+   alpha, 42 px/s, 3px heads, 2 stars per traced edge — ARE the approval,
+   per MOTION-STACK-SPEC section 6.2. Do not crank them.
 
    Budget rules:
-   · only cards in the viewport are traced (IntersectionObserver);
-   · at most MAX_TRACED cards draw at once;
-   · prefers-reduced-motion disables the tracer entirely;
-   · coarse-pointer / no-hover devices (phones) skip it entirely — hover
-     doesn't exist there and the whisper isn't worth a battery tick.
+   - only cards in the viewport are traced (IntersectionObserver);
+   - at most MAX_TRACED cards, <= 4 stars each (56 stars worst case);
+   - canvas DPR capped at 1.5 — blurred sprites, nobody counts pixels;
+   - the rAF PARKS when nothing is drawable and no card is warm, and is
+     woken by scroll / IO / pointerover / visibilitychange. The wake from
+     scroll is load-bearing: the story plates live in a position:fixed
+     stage and never re-intersect, so IO alone cannot restart the loop
+     (the v1 bug that killed the stars at every beat boundary);
+   - prefers-reduced-motion or (any-hover: none) devices skip it entirely.
 --------------------------------------------------------------------- */
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 
 const SEL = ".aura-panel, [data-fx]";
-const LAP_S = 11; // seconds per lap
-const TAIL_PX = 120; // trail length along the border path
-const SAMPLES = 30; // sprites in the tail
 const MAX_TRACED = 14;
+const STARS_PER_EDGE = 2;
+const SPEED = 42; // px/s down the edge — constant SPEED, not duration
+const HEAD_PX = 9; // head quad size; the bright core inside reads ~3px
+const HALO_PX = 16; // soft halo quad under the head, alpha <= 0.07
+const TAIL_PX = 26; // comet tail length
+const TAIL_W = 3.2; // tail width
+const PEAK_A = 0.42; // peak head alpha at rest (v1's single light was 0.5)
+const MIN_EDGE = 80; // edges shorter than this read as noise, skip
+
+// premultiplied later; plain 0..1 rgb here
+const EMERALD = [16 / 255, 185 / 255, 129 / 255];
+const TEAL = [15 / 255, 118 / 255, 110 / 255];
 
 const VERT = `
 attribute vec2 aPos;
-attribute float aSize;
+attribute vec2 aUV;
 attribute vec4 aCol;
 uniform vec2 uRes;
+varying vec2 vUV;
 varying vec4 vCol;
 void main() {
   vec2 clip = (aPos / uRes) * 2.0 - 1.0;
   gl_Position = vec4(clip.x, -clip.y, 0.0, 1.0);
-  gl_PointSize = aSize;
+  vUV = aUV;
   vCol = aCol;
 }`;
 
 const FRAG = `
 precision mediump float;
+varying vec2 vUV;
 varying vec4 vCol;
+uniform float uShape; // 0 = head (radial), 1 = tail (comet)
 void main() {
-  float d = length(gl_PointCoord - 0.5) * 2.0;
-  float a = smoothstep(1.0, 0.0, d);
-  gl_FragColor = vCol * (a * a);
+  float a;
+  if (uShape < 0.5) {
+    /* Plateau core with a soft skirt. A pure smoothstep(1,0,d) squared
+       leaves only ~2px above 20% alpha inside a 9px quad — the approved
+       "3px head at 0.42" never actually reached the screen. The plateau
+       (full alpha inside d < 0.30, i.e. a ~2.7px core) makes the DRAWN
+       star match the approved numbers; the skirt keeps it soft. */
+    float d = length(vUV * 2.0 - 1.0);
+    a = smoothstep(1.0, 0.30, d);
+    a *= a;
+  } else {
+    float across = smoothstep(1.0, 0.0, abs(vUV.y * 2.0 - 1.0));
+    float along = pow(1.0 - vUV.x, 2.2);
+    a = across * along;
+  }
+  gl_FragColor = vCol * a;
 }`;
 
-/** Point at arc-length s (clockwise from the top-left corner's end) on a
- *  rounded rect of size w*h with corner radius r. Returns into `out`. */
-function pointOnPath(
-  w: number,
-  h: number,
-  r: number,
-  s: number,
-  out: { x: number; y: number }
-) {
-  const ew = Math.max(0, w - 2 * r);
-  const eh = Math.max(0, h - 2 * r);
-  const q = (Math.PI * r) / 2; // quarter-arc length
-  const P = 2 * ew + 2 * eh + 4 * q;
-  s = ((s % P) + P) % P;
-  // top edge
-  if (s < ew) {
-    out.x = r + s;
-    out.y = 0;
-    return;
-  }
-  s -= ew;
-  if (s < q) {
-    const a = s / r; // 0..pi/2
-    out.x = w - r + Math.sin(a) * r;
-    out.y = r - Math.cos(a) * r;
-    return;
-  }
-  s -= q;
-  if (s < eh) {
-    out.x = w;
-    out.y = r + s;
-    return;
-  }
-  s -= eh;
-  if (s < q) {
-    const a = s / r;
-    out.x = w - r + Math.cos(a) * r;
-    out.y = h - r + Math.sin(a) * r;
-    return;
-  }
-  s -= q;
-  if (s < ew) {
-    out.x = w - r - s;
-    out.y = h;
-    return;
-  }
-  s -= ew;
-  if (s < q) {
-    const a = s / r;
-    out.x = r - Math.sin(a) * r;
-    out.y = h - r + Math.cos(a) * r;
-    return;
-  }
-  s -= q;
-  if (s < eh) {
-    out.x = 0;
-    out.y = h - r - s;
-    return;
-  }
-  s -= eh;
-  const a = s / r;
-  out.x = r - Math.cos(a) * r;
-  out.y = r - Math.sin(a) * r;
-}
-
-function perimeter(w: number, h: number, r: number) {
-  return 2 * Math.max(0, w - 2 * r) + 2 * Math.max(0, h - 2 * r) + 2 * Math.PI * r;
-}
+type Edge = { side: "l" | "r" };
 
 type Card = {
   el: HTMLElement;
   radius: number;
-  phase: number; // 0..1 lap offset so cards never sync
+  edges: Edge[];
+  phase: number; // 0..1 stagger so neighbours never sync
   visible: boolean;
+  warm: number; // damped 0..1 — the hover coupling
+  warmTarget: number;
 };
+
+/** Which vertical edges carry a visible border. No vertical border at all
+ *  (the hero ledger) traces both box edges — its hairline rules terminate
+ *  there, so the edge is real to the eye. */
+function edgesFor(cs: CSSStyleDeclaration): Edge[] {
+  const l = (parseFloat(cs.borderLeftWidth) || 0) > 0;
+  const r = (parseFloat(cs.borderRightWidth) || 0) > 0;
+  if (l && r) return [{ side: "l" }, { side: "r" }];
+  if (l) return [{ side: "l" }];
+  if (r) return [{ side: "r" }];
+  return [{ side: "l" }, { side: "r" }];
+}
 
 export default function CardFXLayer() {
   const pathname = usePathname();
@@ -160,12 +144,9 @@ export default function CardFXLayer() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
-    /* any-hover, not hover: `hover`/`pointer` describe the PRIMARY pointer,
-       and on a Windows touchscreen laptop Chrome can call that pointer
-       coarse — which switched this whole file off with no visual trace.
-       `any-hover: none` is only true when NO attached pointer can hover, so
-       phones stay correctly excluded and trackpad sessions correctly in.
-       (ELEVATION-BRIEF §2.1, the H9 fix.) */
+    /* any-hover, not hover: the primary pointer on a Windows touchscreen
+       laptop can report coarse, which silently killed the whole layer.
+       Phones still answer any-hover:none and stay excluded. */
     const noHover = window.matchMedia("(any-hover: none)");
     if (reduced.matches || noHover.matches) return;
 
@@ -189,19 +170,45 @@ export default function CardFXLayer() {
     // hoisted function declarations below don't inherit the null-narrowing
     const glc: WebGLRenderingContext = gl;
 
-    /* ---- program ----
-       Factored into setupGL so a webglcontextrestored can rebuild it. A
-       driver reset used to leave a dead canvas: contextlost was handled but
-       nothing recompiled the program afterwards. */
-    const STRIDE = 7; // x, y, size, r, g, b, a
+    /* ---- geometry budget ----
+       per star: head + halo (radial batch) and one tail quad.
+       floats/vertex: x,y,u,v,r,g,b,a = 8. */
+    const STRIDE = 8;
+    const MAX_STARS = MAX_TRACED * 2 * STARS_PER_EDGE;
+    const MAX_QUADS = MAX_STARS * 3;
+    const data = new Float32Array(MAX_QUADS * 4 * STRIDE);
+    const indices = new Uint16Array(MAX_QUADS * 6);
+    for (let q = 0; q < MAX_QUADS; q++) {
+      const v = q * 4;
+      const o = q * 6;
+      indices[o] = v;
+      indices[o + 1] = v + 1;
+      indices[o + 2] = v + 2;
+      indices[o + 3] = v + 2;
+      indices[o + 4] = v + 1;
+      indices[o + 5] = v + 3;
+    }
+
+    /* ---- program, rebuildable for webglcontextrestored ---- */
     let uRes: WebGLUniformLocation | null = null;
+    let uShape: WebGLUniformLocation | null = null;
     let dpr = 1;
     const resize = () => {
-      dpr = Math.min(2, window.devicePixelRatio || 1);
+      /* DPR cap 1.5, not 2: these are blurred sprites — a 44% fill saving
+         on Retina that nobody can see. */
+      dpr = Math.min(1.5, window.devicePixelRatio || 1);
       canvas.width = Math.round(window.innerWidth * dpr);
       canvas.height = Math.round(window.innerHeight * dpr);
       glc.viewport(0, 0, canvas.width, canvas.height);
       if (uRes) glc.uniform2f(uRes, canvas.width, canvas.height);
+      /* border sides and corner radii go stale on resize — several radii
+         are clamp()/vw-derived */
+      cards.forEach((c) => {
+        const cs = window.getComputedStyle(c.el);
+        c.radius = Math.max(0, parseFloat(cs.borderTopLeftRadius) || 0);
+        c.edges = edgesFor(cs);
+      });
+      maybeRun();
     };
     const setupGL = () => {
       const mk = (type: number, src: string) => {
@@ -216,29 +223,37 @@ export default function CardFXLayer() {
       glc.linkProgram(prog);
       glc.useProgram(prog);
       uRes = glc.getUniformLocation(prog, "uRes");
+      uShape = glc.getUniformLocation(prog, "uShape");
       const aPos = glc.getAttribLocation(prog, "aPos");
-      const aSize = glc.getAttribLocation(prog, "aSize");
+      const aUV = glc.getAttribLocation(prog, "aUV");
       const aCol = glc.getAttribLocation(prog, "aCol");
-      const buf = glc.createBuffer();
-      glc.bindBuffer(glc.ARRAY_BUFFER, buf);
+      const vbuf = glc.createBuffer();
+      glc.bindBuffer(glc.ARRAY_BUFFER, vbuf);
       glc.enableVertexAttribArray(aPos);
-      glc.enableVertexAttribArray(aSize);
+      glc.enableVertexAttribArray(aUV);
       glc.enableVertexAttribArray(aCol);
       glc.vertexAttribPointer(aPos, 2, glc.FLOAT, false, STRIDE * 4, 0);
-      glc.vertexAttribPointer(aSize, 1, glc.FLOAT, false, STRIDE * 4, 2 * 4);
-      glc.vertexAttribPointer(aCol, 4, glc.FLOAT, false, STRIDE * 4, 3 * 4);
+      glc.vertexAttribPointer(aUV, 2, glc.FLOAT, false, STRIDE * 4, 2 * 4);
+      glc.vertexAttribPointer(aCol, 4, glc.FLOAT, false, STRIDE * 4, 4 * 4);
+      const ibuf = glc.createBuffer();
+      glc.bindBuffer(glc.ELEMENT_ARRAY_BUFFER, ibuf);
+      glc.bufferData(glc.ELEMENT_ARRAY_BUFFER, indices, glc.STATIC_DRAW);
       glc.enable(glc.BLEND);
+      /* premultiplied source-over — NEVER additive over paper (clamps to
+         white, throws the emerald away) */
       glc.blendFunc(glc.ONE, glc.ONE_MINUS_SRC_ALPHA);
       glc.clearColor(0, 0, 0, 0);
       resize();
     };
-    setupGL();
-    window.addEventListener("resize", resize);
 
     // ---- card registry ----
     const cards = new Map<Element, Card>();
     let raf = 0;
     let running = false;
+    let lastT = 0;
+
+    setupGL();
+    window.addEventListener("resize", resize);
 
     const io = new IntersectionObserver(
       (entries) => {
@@ -248,7 +263,7 @@ export default function CardFXLayer() {
         }
         maybeRun();
       },
-      { rootMargin: "48px" }
+      { rootMargin: "48px", threshold: 0 }
     );
 
     let scanTimer = 0;
@@ -260,14 +275,15 @@ export default function CardFXLayer() {
         idx++;
         if (!cards.has(el)) {
           const cs = window.getComputedStyle(el);
-          const radius = Math.max(0, parseFloat(cs.borderTopLeftRadius) || 0);
           cards.set(el, {
             el,
-            radius,
-            // deterministic offset per card — a fixed stride walks the
-            // phase circle so neighbours never orbit in step
+            radius: Math.max(0, parseFloat(cs.borderTopLeftRadius) || 0),
+            edges: edgesFor(cs),
+            // deterministic golden-ratio stride so neighbours never sync
             phase: (idx * 0.382) % 1,
             visible: false,
+            warm: 0,
+            warmTarget: 0,
           });
           io.observe(el);
         }
@@ -288,11 +304,53 @@ export default function CardFXLayer() {
     mo.observe(document.body, { childList: true, subtree: true });
     scan();
 
+    /* ---- hover coupling, no per-frame DOM reads: two delegated listeners
+       write a target; the frame loop damps toward it. */
+    const onOver = (e: Event) => {
+      const el = (e.target as Element)?.closest?.(SEL) as HTMLElement | null;
+      if (el && cards.has(el)) {
+        cards.get(el)!.warmTarget = 1;
+        maybeRun();
+      }
+    };
+    const onOut = (e: Event) => {
+      const el = (e.target as Element)?.closest?.(SEL) as HTMLElement | null;
+      if (el && cards.has(el)) cards.get(el)!.warmTarget = 0;
+    };
+    document.addEventListener("pointerover", onOver, { passive: true });
+    document.addEventListener("pointerout", onOut, { passive: true });
+
     // ---- draw loop ----
-    const pt = { x: 0, y: 0 };
-    // head + halo + tail sprites per card
-    const PER_CARD = SAMPLES + 1;
-    const data = new Float32Array(MAX_TRACED * PER_CARD * STRIDE);
+    let quad = 0; // running quad index into `data`
+
+    /** One axis-aligned quad. (x0,y0)-(x1,y1) box; UVs u0..u1 along x,
+     *  v0..v1 along y; premultiplied colour per end (cA at y1 end, cB at
+     *  y0 end) — for heads both ends match. */
+    function pushQuad(
+      x0: number,
+      y0: number,
+      x1: number,
+      y1: number,
+      u0: number,
+      v0: number,
+      u1: number,
+      v1: number,
+      rA: number, gA: number, bA: number, aA: number,
+      rB: number, gB: number, bB: number, aB: number
+    ) {
+      if (quad >= MAX_QUADS) return;
+      let o = quad * 4 * STRIDE;
+      // TL, TR, BL, BR — matches the static index pattern
+      data[o++] = x0; data[o++] = y0; data[o++] = u0; data[o++] = v0;
+      data[o++] = rB; data[o++] = gB; data[o++] = bB; data[o++] = aB;
+      data[o++] = x1; data[o++] = y0; data[o++] = u1; data[o++] = v0;
+      data[o++] = rB; data[o++] = gB; data[o++] = bB; data[o++] = aB;
+      data[o++] = x0; data[o++] = y1; data[o++] = u0; data[o++] = v1;
+      data[o++] = rA; data[o++] = gA; data[o++] = bA; data[o++] = aA;
+      data[o++] = x1; data[o++] = y1; data[o++] = u1; data[o++] = v1;
+      data[o++] = rA; data[o++] = gA; data[o++] = bA; data[o++] = aA;
+      quad++;
+    }
 
     function frame(now: number) {
       raf = 0;
@@ -302,78 +360,136 @@ export default function CardFXLayer() {
         return;
       }
       const t = now / 1000;
-      let n = 0; // sprite count
+      const dt = Math.min(0.05, lastT ? t - lastT : 1 / 60);
+      lastT = t;
+
+      let anyWarm = false;
       let traced = 0;
-      cards.forEach((c) => {
-        if (traced >= MAX_TRACED || !c.visible) return;
-        const el = c.el;
-        // story plates fade via inline opacity/visibility — the tracer
-        // follows the plate's own fade instead of orbiting a ghost
-        if (el.style.visibility === "hidden") return;
-        const fade = el.style.opacity === "" ? 1 : parseFloat(el.style.opacity);
-        if (!(fade > 0.05)) return;
-        const rect = el.getBoundingClientRect();
-        if (rect.width < 40 || rect.height < 24) return;
-        traced++;
-        const r = Math.min(c.radius, rect.width / 2, rect.height / 2);
-        const P = perimeter(rect.width, rect.height, r);
-        const head = ((t / LAP_S + c.phase) % 1) * P;
-        const spacing = TAIL_PX / (SAMPLES - 1);
-        for (let k = 0; k < SAMPLES; k++) {
-          const fall = 1 - k / SAMPLES;
-          pointOnPath(rect.width, rect.height, r, head - k * spacing, pt);
-          const x = (rect.left + pt.x) * dpr;
-          const y = (rect.top + pt.y) * dpr;
-          // emerald head -> teal tail, premultiplied, whisper alpha
-          const a = 0.5 * fall * fall * fade;
-          const mixT = 1 - fall;
-          const cr = (16 + (15 - 16) * mixT) / 255;
-          const cg = (185 + (118 - 185) * mixT) / 255;
-          const cb = (129 + (110 - 129) * mixT) / 255;
-          const o = n * STRIDE;
-          data[o] = x;
-          data[o + 1] = y;
-          data[o + 2] = (2 + 4.5 * fall * fall) * dpr;
-          data[o + 3] = cr * a;
-          data[o + 4] = cg * a;
-          data[o + 5] = cb * a;
-          data[o + 6] = a;
-          n++;
-        }
-        // soft halo under the head
-        pointOnPath(rect.width, rect.height, r, head, pt);
-        const o = n * STRIDE;
-        const ha = 0.085 * fade;
-        data[o] = (rect.left + pt.x) * dpr;
-        data[o + 1] = (rect.top + pt.y) * dpr;
-        data[o + 2] = 22 * dpr;
-        data[o + 3] = (16 / 255) * ha;
-        data[o + 4] = (185 / 255) * ha;
-        data[o + 5] = (129 / 255) * ha;
-        data[o + 6] = ha;
-        n++;
-      });
+      quad = 0;
+      let headQuads = 0;
+
+      // pass 1: heads + halos (radial shader batch)
+      // pass 2 happens in the same fill loop — tails are appended after all
+      // heads by running the card loop twice with a flag.
+      for (let pass = 0; pass < 2; pass++) {
+        traced = 0;
+        cards.forEach((c) => {
+          if (traced >= MAX_TRACED || !c.visible) return;
+          const el = c.el;
+          // story plates fade via inline opacity/visibility — the stars
+          // follow the plate's own fade instead of lighting a ghost
+          if (el.style.visibility === "hidden") return;
+          const fade = el.style.opacity === "" ? 1 : parseFloat(el.style.opacity);
+          if (!(fade > 0.05)) return;
+          const rect = el.getBoundingClientRect();
+          if (rect.width < 40 || rect.height < 24) return;
+          traced++;
+
+          // damp the hover warmth once, on the first pass only
+          if (pass === 0) {
+            const k =
+              c.warmTarget > c.warm
+                ? 1 - Math.exp(-dt / 0.24) // ~560ms settle, matches CSS
+                : 1 - Math.exp(-dt / 0.16); // ~380ms out
+            c.warm += (c.warmTarget - c.warm) * k;
+            if (c.warm > 0.01) anyWarm = true;
+          }
+
+          const r = Math.min(c.radius, rect.width / 2, rect.height / 2);
+          const y0 = rect.top + r;
+          const y1 = rect.bottom - r;
+          const edgeLen = y1 - y0;
+          if (edgeLen < MIN_EDGE) return;
+
+          const bright = 1 + 0.6 * c.warm;
+          const speed = (SPEED * (1 + 0.25 * c.warm)) / edgeLen;
+
+          for (let e = 0; e < c.edges.length; e++) {
+            const x = c.edges[e].side === "l" ? rect.left + 0.5 : rect.right - 0.5;
+            for (let s = 0; s < STARS_PER_EDGE; s++) {
+              const u = (t * speed + c.phase + e * 0.25 + s * 0.5) % 1;
+              const y = y0 + u * edgeLen;
+              // fade in at the top corner, out at the bottom — no pops
+              const env = Math.pow(Math.sin(Math.PI * u), 0.7);
+              // alpha-only twinkle: size flicker reads cheap, alpha reads
+              // like light
+              const tw = 0.85 + 0.15 * Math.sin(1.7 * t + 7 * (c.phase + e + s));
+              const a = PEAK_A * env * tw * fade * bright;
+              if (a < 0.004) continue;
+
+              const cx = x * dpr;
+              const cy = y * dpr;
+              if (pass === 0) {
+                // halo under the head
+                const ha = Math.min(0.07, 0.07 * env * fade * bright);
+                const hr = (HALO_PX / 2) * dpr;
+                pushQuad(
+                  cx - hr, cy - hr, cx + hr, cy + hr, 0, 0, 1, 1,
+                  EMERALD[0] * ha, EMERALD[1] * ha, EMERALD[2] * ha, ha,
+                  EMERALD[0] * ha, EMERALD[1] * ha, EMERALD[2] * ha, ha
+                );
+                // head core
+                const cr = (HEAD_PX / 2) * dpr;
+                pushQuad(
+                  cx - cr, cy - cr, cx + cr, cy + cr, 0, 0, 1, 1,
+                  EMERALD[0] * a, EMERALD[1] * a, EMERALD[2] * a, a,
+                  EMERALD[0] * a, EMERALD[1] * a, EMERALD[2] * a, a
+                );
+              } else {
+                /* comet tail: one stretched quad above the head (the star
+                   travels down, the light it was trails up). vUV.x is the
+                   along axis: 0 at the bright head end (bottom), 1 at the
+                   spent tail end (top). Emerald at the head end, teal at
+                   the tail end, interpolated per-vertex. */
+                const ta = a * 0.8;
+                const wr = (TAIL_W / 2) * dpr;
+                pushQuad(
+                  cx - wr, cy - TAIL_PX * dpr, cx + wr, cy,
+                  1, 0, 1, 1, // placeholder — u varies with y, set below
+                  EMERALD[0] * ta, EMERALD[1] * ta, EMERALD[2] * ta, ta,
+                  TEAL[0] * ta, TEAL[1] * ta, TEAL[2] * ta, ta
+                );
+                /* fix the along-axis UVs on the quad we just wrote: top
+                   vertices u=1 (tail end), bottom vertices u=0 (head end);
+                   v spans 0..1 across the width. */
+                const o = (quad - 1) * 4 * STRIDE;
+                data[o + 2] = 1; data[o + 3] = 0; // TL: along=1, across=0
+                data[o + STRIDE + 2] = 1; data[o + STRIDE + 3] = 1; // TR
+                data[o + 2 * STRIDE + 2] = 0; data[o + 2 * STRIDE + 3] = 0; // BL
+                data[o + 3 * STRIDE + 2] = 0; data[o + 3 * STRIDE + 3] = 1; // BR
+              }
+            }
+          }
+        });
+        if (pass === 0) headQuads = quad;
+      }
 
       glc.clear(glc.COLOR_BUFFER_BIT);
-      if (n > 0) {
-        glc.bufferData(glc.ARRAY_BUFFER, data.subarray(0, n * STRIDE), glc.DYNAMIC_DRAW);
-        glc.drawArrays(glc.POINTS, 0, n);
+      if (quad > 0) {
+        glc.bufferData(glc.ARRAY_BUFFER, data.subarray(0, quad * 4 * STRIDE), glc.DYNAMIC_DRAW);
+        if (uShape) glc.uniform1f(uShape, 0);
+        glc.drawElements(glc.TRIANGLES, headQuads * 6, glc.UNSIGNED_SHORT, 0);
+        const tailQuads = quad - headQuads;
+        if (tailQuads > 0) {
+          if (uShape) glc.uniform1f(uShape, 1);
+          glc.drawElements(glc.TRIANGLES, tailQuads * 6, glc.UNSIGNED_SHORT, headQuads * 6 * 2);
+        }
+        raf = requestAnimationFrame(frame);
+      } else if (anyWarm) {
+        // nothing drawable but a hover is still settling — keep ticking so
+        // the warmth lands before the loop parks
         raf = requestAnimationFrame(frame);
       } else {
-        running = false; // idle: no rAF until maybeRun() wakes the loop
+        running = false; // idle: parked until maybeRun() wakes the loop
+        lastT = 0;
       }
     }
 
-    /* THE PARKING BUG (ELEVATION-BRIEF §5.1). The idle park above is correct
-       and must stay — but the wake-up has to be REACHABLE. maybeRun used to
-       be called only from the IntersectionObserver, scan(), and
-       visibilitychange. On "/" the plates live in a position:fixed stage, so
-       they NEVER change intersection after mount — the first time every
-       plate was visibility:hidden (every beat boundary), n hit 0, running
-       went false, and nothing restarted the loop for the rest of the
-       session. Scroll is what changes the plates' inline visibility, so
-       scroll must also be a wake-up source. The wake is cheap: when there is
-       still nothing to draw, the loop parks itself again one frame later. */
+    /* THE WAKE-UP (the v1 parking bug, ELEVATION-BRIEF section 5.1): the
+       park above is correct — the wake has to be reachable. IO never
+       re-fires for plates inside the fixed stage, so scroll and pointerover
+       also wake the loop. A wake with nothing to draw parks again one frame
+       later; the cost is one no-op frame per scroll event while parked. */
     function maybeRun() {
       if (running) return;
       let any = false;
@@ -382,6 +498,7 @@ export default function CardFXLayer() {
       });
       if (any && !document.hidden && !raf) {
         running = true;
+        lastT = 0;
         raf = requestAnimationFrame(frame);
       }
     }
@@ -391,8 +508,6 @@ export default function CardFXLayer() {
     window.addEventListener("scroll", onScrollWake, { passive: true });
 
     const onLost = (e: Event) => e.preventDefault();
-    /* A driver reset fires contextlost; when the browser hands the context
-       back, rebuild the program or the canvas stays dead for the session. */
     const onRestored = () => {
       setupGL();
       maybeRun();
@@ -404,17 +519,17 @@ export default function CardFXLayer() {
       window.removeEventListener("resize", resize);
       window.removeEventListener("scroll", onScrollWake);
       document.removeEventListener("visibilitychange", onVis);
+      document.removeEventListener("pointerover", onOver);
+      document.removeEventListener("pointerout", onOut);
       canvas.removeEventListener("webglcontextlost", onLost);
       canvas.removeEventListener("webglcontextrestored", onRestored);
       mo.disconnect();
       io.disconnect();
       window.clearTimeout(scanTimer);
       if (raf) cancelAnimationFrame(raf);
-      /* Release the GL context explicitly. This effect re-runs per route
-         (keyed on pathname) and browsers cap live WebGL contexts at 8-16
-         with OLDEST EVICTED FIRST — without this, a walk around the site's
-         eight routes accumulated contexts until the browser evicted the R3F
-         story scene itself. (ELEVATION-BRIEF §5.2) */
+      /* Release the context explicitly: this effect re-runs per route and
+         browsers evict the OLDEST context first — which would be the R3F
+         story scene. */
       glc.getExtension("WEBGL_lose_context")?.loseContext();
       canvas.remove();
     };
