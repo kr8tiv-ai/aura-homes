@@ -439,6 +439,12 @@ export default function Story() {
                     <i aria-hidden>&rarr;</i>
                   </Link>
                 </div>
+                <p className="story-end-rollout" data-rv style={{ transitionDelay: "320ms" }}>
+                  {END.rollout.text}{" "}
+                  <Link href={END.rollout.href} onClick={enterApp(END.rollout.href)}>
+                    {END.rollout.label} &rarr;
+                  </Link>
+                </p>
               </div>
 
               <div className="story-end-side">

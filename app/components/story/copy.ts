@@ -101,6 +101,12 @@ export const END = {
   season: "BuildX AI Season 2026",
   /* The app is the destination: one primary door, the stages as side doors. */
   cta: { href: "/dashboard", label: "Open the build dashboard" },
+  /* One line of rollout honesty — the same three arcs as /overview and docs/ROADMAP.md. */
+  rollout: {
+    text: "Three arcs from here: the hackathon MVP live now, the Locality Hub next, and the HOMES token announced.",
+    href: "/overview",
+    label: "See the rollout",
+  },
   links: [
     { href: "/overview", label: "Overview" },
     { href: "/land", label: "Land" },

@@ -885,6 +885,21 @@ html.story-gated body { overflow: hidden; }
   font-size: clamp(1.6rem, 3.2vw, 2.6rem);
   max-width: 22ch;
 }
+.story-end-rollout {
+  margin-top: 1.15rem;
+  font-family: var(--st-body-font);
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--st-ink-dim);
+  max-width: 46ch;
+}
+.story-end-rollout a {
+  color: var(--st-emerald-deep);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+.story-end-rollout a:hover { color: var(--st-ink); }
 .story-end-side {
   border-left: 1px solid var(--st-hair);
   padding-left: clamp(1.4rem, 2.6vw, 2.6rem);
