@@ -11,12 +11,23 @@ const config: Config = {
         aura: {
           bg: "#fafaf9", // paper ground
           panel: "#ffffff", // cards
-          ink: "#1a1d1b", // primary text
+          ink: "#171a18", // primary text — BRAND.md section 2
           paper: "#fafaf9", // text on solid-ink surfaces
-          text: "#1a1d1b",
-          emerald: "#087a55", // accent for text/labels (AA small-text safe)
+          text: "#171a18",
+          dim: "#5f6663", // secondary text, captions
+          faint: "#9aa19d", // tertiary text, axis labels
+          /* BRAND.md section 2: emerald-deep #047857 is the AA body-scale
+             text shade; #059669 is the ceiling for large display and tracked
+             labels; #10b981 is THE accent as a MARK (bars, rules, fills).
+             The old token was #087a55, which is in none of those bands. */
+          emerald: "#047857",
+          "emerald-label": "#059669",
           "emerald-bright": "#10b981", // bars, rings, large numerals only
+          /* the palette teal is #0d9488; at small text sizes it is 3.2:1 on
+             paper, so the darker #0f766e stays the TEXT shade and #0d9488 is
+             reserved for marks. */
           teal: "#0f766e",
+          "teal-mark": "#0d9488",
           violet: "#7c3aed",
           lime: "#4d7c0f",
         },

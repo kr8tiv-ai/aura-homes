@@ -241,16 +241,8 @@ export function WithXLayerLinks({ text }: { text: string }) {
   );
 }
 
-/* --------------------------- text tracers --------------------------- */
-
-/* A light that walks the border of a copy block on hover. It is one SVG
-   rect with an animated dash offset — no canvas, no per-frame JS, and it
-   sits behind the text so it can never eat a click. */
-export function Tracer() {
-  return (
-    <svg className="story-tracer" aria-hidden preserveAspectRatio="none" viewBox="0 0 100 100">
-      <rect className="story-tracer-track" x="0.4" y="0.4" width="99.2" height="99.2" rx="1.6" vectorEffect="non-scaling-stroke" />
-      <rect className="story-tracer-run" x="0.4" y="0.4" width="99.2" height="99.2" rx="1.6" vectorEffect="non-scaling-stroke" />
-    </svg>
-  );
-}
+/* The hover "tracer" — an emerald light that walked the border of every copy
+   block, with a 5px drop-shadow on the stroke — was removed in round 1.
+   BRAND.md section 2 ends "no glow anywhere", and a crawling light on a
+   static page is exactly the easing that draws attention to itself that
+   section 8 forbids. Structure inside a plate is hairlines now. */
