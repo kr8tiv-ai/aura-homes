@@ -407,7 +407,8 @@ function Clouds({ frozen, night }: { frozen: boolean; night: number }) {
 }
 
 /* =============================== GRASS ==============================
-   GRASS v5 — a meadow, not a population of sticks.
+   GRASS v6 — a meadow, not a population of sticks. (v6: the founder's
+   x4-density two-layer round — see the layer comment above G_HERO.)
 
    WHAT CAME FROM WHERE (all credited in docs/CREDITS.md):
 
@@ -457,22 +458,39 @@ function Clouds({ frozen, night }: { frozen: boolean; night: number }) {
 
 /* Shared by the JS LOD trim and the GLSL fade — they MUST agree or blades
    pop at the truncation edge. */
-/* Ported from muratkamci/snakey-locomotion (MIT), which holds full density to
-   38 m and only then dissolves to 52 m. Ours used to start thinning at 11 m,
-   which is why the meadow read as sparse scatter: two thirds of every frame
-   was already past the fade. Density is what turns blades into a surface. */
-/* The reference holds to 38 m for a ground-level roaming camera. Our beats
-   never stare across more than ~24 m of meadow, so 27 m keeps every blade
-   the journey can resolve while returning ~90k triangles the 34 m horizon
-   was spending past the fog wash — measured at beat 1, 1.166M -> budget. */
-const G_NEAR = 27.0; // full density inside this radius
-const G_FAR = 46.0; // thinned to G_PMIN by here
-const G_PMIN = 0.06;
-const G_BAND = 0.16; // width of the smooth dissolve band, in seed space
-/* 4 m tiles put ~440 instanced draws in the trailhead frustum and the beat
-   over the 1000-call budget. 6 m tiles carry the same blades in ~45% the
-   draws; culling granularity is still far finer than a camera beat. */
-const G_TILE = 6.0;
+/* GRASS v6 — the founder's x4 round. "Grass x4, no ground visible, slightly
+   shorter." A naive x4 of the 7-tri hero blade is ~2.7M triangles — over
+   double the whole scene budget. The smart spend is TWO LAYERS:
+
+   · HERO layer — the full 4-segment, 7-triangle bending blade, ~1.6x the old
+     count. It owns the silhouette: wind, species, seed heads, tip glint.
+     Its full-density radius tightens 27 m -> 18 m to pay for the count —
+     density moved from the fog wash to where the camera actually looks.
+
+   · FILLER layer — a SINGLE-TRIANGLE blade at very high density, SHORT
+     (9-21 cm). It exists for exactly one job: closing the ground between
+     hero blades so no bare lawn reads anywhere near the camera. At that
+     height a bend has no visible mid-point, so the mid vertices would be
+     pure spend — one triangle is the whole blade. Its LOD dissolves it past
+     12-24 m, where the hero layer plus the darkened terrain take over.
+     1 tri and a near-only LOD is why x4 blades fits inside the budget.
+
+   All blade heights also dropped 20% ("a little less tall" — founder). */
+type GrassLayerCfg = {
+  near: number; // full density inside this radius
+  far: number; // thinned to pmin by here
+  pmin: number;
+  band: number; // width of the smooth dissolve band, in seed space
+  tile: number; // tile edge, metres
+  segs: number; // blade segments (4 = 7 tris, 2 = 3 tris)
+};
+
+/* 6 m hero tiles were ~45% the draws of 4 m tiles; 8 m buys the filler
+   layer's draws back again. Culling granularity stays far finer than a
+   camera beat. Filler tiles are bigger still — the layer is short-range, so
+   few of its tiles are ever in frustum at once. */
+export const G_HERO: GrassLayerCfg = { near: 14, far: 36, pmin: 0.05, band: 0.16, tile: 8, segs: 4 };
+export const G_FILL: GrassLayerCfg = { near: 12, far: 24, pmin: 0.0, band: 0.16, tile: 12, segs: 1 };
 
 const smooth01 = (a: number, b: number, x: number) => {
   const t = clamp01((x - a) / (b - a));
@@ -480,7 +498,8 @@ const smooth01 = (a: number, b: number, x: number) => {
 };
 
 /** Keep-fraction at a given camera distance. Mirrored exactly in GLSL. */
-const keepFraction = (d: number) => 1 + (G_PMIN - 1) * smooth01(G_NEAR, G_FAR, d);
+const keepFraction = (cfg: GrassLayerCfg, d: number) =>
+  1 + (cfg.pmin - 1) * smooth01(cfg.near, cfg.far, d);
 
 /* ---------------------- where grass may grow ---------------------- */
 
@@ -514,8 +533,14 @@ const G_PATH: [number, number][] = [
  * SHORTENS as it meets the deck, the walkway and the stones instead of being
  * stamped out along a hard edge — the single change that stops the meadow
  * looking like a texture with holes cut in it.
+ *
+ * `vergePad`/`vergeFeather` shape the mown strip along the walked trail.
+ * The hero layer keeps the wide mow (tall blades never lean over the line);
+ * the filler layer runs a TIGHTER verge — short grass walks nearly to the
+ * dirt, the way a real trodden line sits inside a short-grass shoulder,
+ * which is what closed the pale bands either side of the path.
  */
-function clearance(x: number, z: number): number {
+function clearance(x: number, z: number, vergePad = 0.3, vergeFeather = 0.75): number {
   const fade = (d: number, pad: number, feather: number) => clamp01((d - pad) / feather);
   let c = 1;
   // the home
@@ -543,7 +568,7 @@ function clearance(x: number, z: number): number {
      line goes to zero and feathers back up — but the old 0.42+1.15 m verge
      cut a 3 m swath that filled half the hero frame with bare lawn from the
      trailhead camera. A walked line through a meadow is narrow. */
-  c = Math.min(c, fade(pd, 0.3, 0.75));
+  c = Math.min(c, fade(pd, vergePad, vergeFeather));
   return c;
 }
 
@@ -578,9 +603,16 @@ function meadowDensity(x: number, z: number): number {
 /* Exported for Terrain() in Scene.tsx: the ground under the meadow darkens
    toward the sward's own shadow so a gap between blades reads as depth, not
    bare lawn (Codrops "fluffiest grass": match the terrain to the grass and
-   fake the occlusion with a dark base). */
+   fake the occlusion with a dark base).
+
+   clearance enters at pow 0.35, not linearly: the mown verge (clearance
+   0.3-0.7) is exactly where the grass is too short to close the ground, so
+   a linear term stripped the shadow from the one strip that needed it — the
+   pale shoulders flanking the trail at the trailhead beat. The soft power
+   keeps the sward shadow on the shoulders while true aprons (clearance 0 at
+   the deck, fire pit, and stones) still read walked and bright. */
 export function meadowShade(x: number, z: number): number {
-  return meadowDensity(x, z) * clearance(x, z);
+  return meadowDensity(x, z) * Math.pow(clearance(x, z), 0.35);
 }
 
 /* Exported for Terrain(): 0..1 trodden-earth factor along the walked route.
@@ -599,15 +631,15 @@ export function trailTrodden(x: number, z: number): number {
 
 /* --------------------------- the blade ---------------------------- */
 
-const G_SEGS = 4; // 9 verts, 7 triangles, no alpha anywhere
-
-function grassBlade() {
+/* segs=4: 9 verts, 7 triangles (hero). segs=1: 3 verts, 1 triangle (filler).
+   No alpha anywhere in either. */
+function grassBlade(segs: number) {
   const pos: number[] = [];
   const uvs: number[] = [];
   const idx: number[] = [];
-  for (let i = 0; i <= G_SEGS; i++) {
-    const t = i / G_SEGS;
-    if (i === G_SEGS) {
+  for (let i = 0; i <= segs; i++) {
+    const t = i / segs;
+    if (i === segs) {
       pos.push(0, t, 0);
       uvs.push(0.5, t);
     } else {
@@ -615,16 +647,16 @@ function grassBlade() {
       uvs.push(0, t, 1, t);
     }
   }
-  for (let i = 0; i < G_SEGS - 1; i++) {
+  for (let i = 0; i < segs - 1; i++) {
     const a = i * 2;
     idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
   }
-  const last = (G_SEGS - 1) * 2;
+  const last = (segs - 1) * 2;
   idx.push(last, last + 1, last + 2);
   return { pos: new Float32Array(pos), uvs: new Float32Array(uvs), idx: new Uint16Array(idx) };
 }
 
-const GRASS_VERT = /* glsl */ `
+const grassVert = (cfg: GrassLayerCfg) => /* glsl */ `
 precision highp float;
 
 attribute vec3 aPos;    // world x, terrain y, z — planted on the real ground
@@ -690,10 +722,10 @@ void main(){
      Keep-fraction falls with distance; a blade survives if its seed is under
      it. The test is a smooth band, not a step, so blades dissolve instead of
      popping and no hysteresis state is needed. */
-  float p = mix(1.0, ${G_PMIN.toFixed(3)}, smoothstep(${G_NEAR.toFixed(1)}, ${G_FAR.toFixed(1)}, dist));
+  float p = mix(1.0, ${cfg.pmin.toFixed(3)}, smoothstep(${cfg.near.toFixed(1)}, ${cfg.far.toFixed(1)}, dist));
   float projH = (aRand.y * aClear) * uProjScale / max(dist, 0.001);
   p *= smoothstep(0.0052, 0.023, projH);
-  float vis = 1.0 - smoothstep(p - ${G_BAND.toFixed(3)}, p, aRand.w);
+  float vis = 1.0 - smoothstep(p - ${cfg.band.toFixed(3)}, p, aRand.w);
   // never let a blade flash across the lens as the camera brushes past it
   vis *= smoothstep(0.18, 0.55, dist);
 
@@ -777,7 +809,7 @@ void main(){
   vNormal = nrm;
   vWorld = world;
   vHue = h21(floor(base.xz * 2.3) + 3.1);
-  vGround = groundColor(base.xz) * (1.0 - 0.18 * meadowD(base.xz));
+  vGround = groundColor(base.xz) * (1.0 - 0.22 * meadowD(base.xz));
   vSpecies = sp;
 
   gl_Position = projectionMatrix * viewMatrix * vec4(world, 1.0);
@@ -864,6 +896,7 @@ void main(){
 type GrassTile = {
   geo: THREE.InstancedBufferGeometry;
   cx: number;
+  cy: number;
   cz: number;
   radius: number;
   n: number;
@@ -871,22 +904,38 @@ type GrassTile = {
 
 /** Plant the meadow: rejection-sample the density mask, bucket into tiles,
  *  then sort each tile by fade seed so the LOD trim is invisible. */
-function buildGrassTiles(budget: number) {
-  const blade = grassBlade();
+function buildGrassTiles(budget: number, cfg: GrassLayerCfg) {
+  const blade = grassBlade(cfg.segs);
+  const filler = cfg.segs < 4;
+  /* Different salt base per layer so the filler never replants the hero
+     layer's exact positions — coincident roots would z-fight at the base. */
+  const S = filler ? 60 : 0;
   const cells = new Map<string, { pos: number[]; rnd: number[]; clr: number[] }>();
 
   const X0 = -46, X1 = 46, Z0 = -22, Z1 = 54;
   let placed = 0;
   const MAX_TRIES = budget * 9;
   for (let i = 0; i < MAX_TRIES && placed < budget; i++) {
-    const x = X0 + rand(i, 41) * (X1 - X0);
-    const z = Z0 + rand(i, 42) * (Z1 - Z0);
-    const dens = meadowDensity(x, z);
-    if (dens < 0.02 || rand(i, 43) > dens) continue;
-    const clr = clearance(x, z);
+    const x = X0 + rand(i, 41 + S) * (X1 - X0);
+    const z = Z0 + rand(i, 42 + S) * (Z1 - Z0);
+    let dens = meadowDensity(x, z);
+    /* The filler exists to close the ground the CAMERA can see. Its blades
+       dissolve past ~24 m of camera distance anyway, and the journey runs
+       the trail corridor down into the r<35 ring — so filler planted in the
+       far scatter would be instances that never draw. Concentrate it, but
+       KEEP the corridor: the first cut of this mask was radial-only, and the
+       trailhead beat sits at r~33 — it deleted the filler from the exact
+       ground the opening frame stares at. */
+    if (filler) {
+      const corridor =
+        (1 - smooth01(9, 18, Math.abs(x))) * smooth01(5.5, 11, z) * (1 - smooth01(33, 41, z));
+      dens *= Math.max(1 - smooth01(26, 36, Math.hypot(x, z)), corridor);
+    }
+    if (dens < 0.02 || rand(i, 43 + S) > dens) continue;
+    const clr = filler ? clearance(x, z, 0.22, 0.5) : clearance(x, z);
     if (clr < 0.06) continue;
 
-    const key = `${Math.floor(x / G_TILE)},${Math.floor(z / G_TILE)}`;
+    const key = `${Math.floor(x / cfg.tile)},${Math.floor(z / cfg.tile)}`;
     let c = cells.get(key);
     if (!c) {
       c = { pos: [], rnd: [], clr: [] };
@@ -905,13 +954,17 @@ function buildGrassTiles(budget: number) {
        triangles". The reference widens in ONE place only (the shader, at
        ~2%/m). Height keeps a mild far-boost so the far field holds mass. */
     c.rnd.push(
-      rand(i, 44) * Math.PI * 2, // yaw
-      /* 0.16-0.50 at 0.026-0.044 wide was ~1:8 — squat. The reference blade
-         is 0.35-0.75 at 0.03-0.05, ~1:12. Taller blades also close more of
-         the ground the founder can still see between clumps. */
-      (0.22 + Math.pow(rand(i, 45), 1.6) * 0.4) * (1 + far * 0.3), // height
-      0.026 + rand(i, 46) * 0.018, // width — reference range, no far term
-      rand(i, 47) // fade seed
+      rand(i, 44 + S) * Math.PI * 2, // yaw
+      /* Hero: the reference ~1:12 blade, then the founder's "a little less
+         tall" — the whole 0.22-0.62 band dropped 20% to 0.176-0.496.
+         Filler: 9-21 cm understorey whose only job is ground coverage. */
+      filler
+        ? 0.09 + Math.pow(rand(i, 45 + S), 1.3) * 0.12
+        : (0.176 + Math.pow(rand(i, 45 + S), 1.6) * 0.32) * (1 + far * 0.3), // height
+      filler
+        ? 0.03 + rand(i, 46 + S) * 0.022 // filler runs a touch broader — it is coverage
+        : 0.026 + rand(i, 46 + S) * 0.018, // width — reference range, no far term
+      rand(i, 47 + S) // fade seed
     );
     c.clr.push(clr);
     placed++;
@@ -957,7 +1010,7 @@ function buildGrassTiles(budget: number) {
     // and the bounding sphere has to be given in those same coords
     geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(cx, cy + 0.25, cz), radius);
 
-    tiles.push({ geo, cx, cz, radius, n });
+    tiles.push({ geo, cx, cy, cz, radius, n });
   });
   return tiles;
 }
@@ -977,22 +1030,24 @@ function GrassField({
   budget,
   night,
   dusk,
+  cfg,
 }: {
   frozen: boolean;
   budget: number;
   night: number;
   dusk: Dusk;
+  cfg: GrassLayerCfg;
 }) {
   const { camera } = useThree();
   const group = useRef<THREE.Group>(null);
   const meshes = useRef<THREE.Mesh[]>([]);
 
-  const tiles = useMemo(() => buildGrassTiles(budget), [budget]);
+  const tiles = useMemo(() => buildGrassTiles(budget, cfg), [budget, cfg]);
 
   const mat = useMemo(
     () =>
       new THREE.ShaderMaterial({
-        vertexShader: GRASS_VERT,
+        vertexShader: grassVert(cfg),
         fragmentShader: GRASS_FRAG,
         side: THREE.DoubleSide,
         uniforms: {
@@ -1017,7 +1072,7 @@ function GrassField({
           uNight: { value: 0 },
         },
       }),
-    []
+    [cfg]
   );
 
   /* The light arc owns the sun; grass just follows it, so the meadow warms
@@ -1062,15 +1117,29 @@ function GrassField({
 
     /* Per-tile LOD trim. Cost is a distance per tile per frame — nothing —
        and it is what turns "every blade, always" into "the blades you can
-       actually see". */
+       actually see".
+
+       Two v6 fixes, each worth six figures of submitted triangles per frame:
+       · 3D distance, not XZ. The crest beat flies ~12 m above the meadow;
+         in XZ the tiles under it read as distance 0 and submitted at full
+         count while the shader (true 3D distance) was fading them.
+       · pad 0.02, not the full fade band. Blades with seed >= p are fully
+         hidden by the shader, and the sort means truncating at ceil(p*n)
+         removes exactly those — the old +0.16 pad resubmitted 16% of every
+         far tile as degenerate zero-height triangles, forever. The small pad
+         only covers seed-uniformity noise at the truncation edge. */
     const cx = camera.position.x;
+    const cy = camera.position.y;
     const cz = camera.position.z;
     for (let i = 0; i < tiles.length; i++) {
       const t = tiles[i];
       const m = meshes.current[i];
       if (!m) continue;
-      const d = Math.max(0, Math.hypot(cx - t.cx, cz - t.cz) - t.radius);
-      const keep = Math.min(1, keepFraction(d) + G_BAND);
+      const dx = cx - t.cx;
+      const dy = cy - t.cy;
+      const dz = cz - t.cz;
+      const d = Math.max(0, Math.sqrt(dx * dx + dy * dy + dz * dz) - t.radius);
+      const keep = Math.min(1, keepFraction(cfg, d) + 0.02);
       const count = Math.ceil(keep * t.n);
       if (count < 2) {
         m.visible = false;
@@ -1606,13 +1675,21 @@ export default function SceneDetail({
      reading as separate objects and become a surface. 48k spread across this
      meadow was roughly a third of that, which is exactly why it read as
      sparse scatter no matter how good the blade itself was. */
-  const grassCount = size.width < 820 ? 34000 : 96000;
+  /* The founder's x4: 96k -> ~410k planted blades on desktop, split so the
+     triangles stay inside the ~1.3M worst-beat budget — 150k full 7-tri hero
+     blades (the silhouette) + 260k 3-tri short filler (the ground cover; see
+     the layer comment above G_HERO). Mobile keeps the same ~35% proportion
+     it always ran. */
+  const mobile = size.width < 820;
+  const heroCount = mobile ? 42000 : 120000;
+  const fillCount = mobile ? 81000 : 230000;
 
   return (
     <group>
       <SnowRange night={night} />
       <Clouds frozen={frozen} night={night} />
-      <GrassField frozen={frozen} budget={grassCount} night={night} dusk={dusk} />
+      <GrassField frozen={frozen} budget={heroCount} night={night} dusk={dusk} cfg={G_HERO} />
+      <GrassField frozen={frozen} budget={fillCount} night={night} dusk={dusk} cfg={G_FILL} />
       <Scrub />
       <EntranceSteps glassRail={glassRail} />
       <Hammock frozen={frozen} />

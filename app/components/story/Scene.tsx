@@ -272,8 +272,10 @@ function Terrain() {
          as fake AO). Gaps between blades then read as depth under the
          canopy instead of bare lawn. clearance() keeps the mown path, the
          deck aprons and the fire-pit ring at full lawn brightness, so the
-         walked places still read walked. GRASS_VERT.meadowD mirrors this. */
-      const shade = 1 - 0.18 * meadowShade(x, z);
+         walked places still read walked. grassVert's meadowD mirrors this —
+         0.22 here MUST match the 0.22 in vGround. (Deepened from 0.18 with
+         the v6 double-layer sward: a denser canopy throws a darker base.) */
+      const shade = 1 - 0.22 * meadowShade(x, z);
       colors[i * 3] = tmp.r * v * shade;
       colors[i * 3 + 1] = tmp.g * (1 + m * 0.055) * shade;
       colors[i * 3 + 2] = tmp.b * v * shade;
