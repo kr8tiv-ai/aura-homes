@@ -124,6 +124,36 @@ Two further techniques are owed credit even though no code was copied:
   lower-contrast, dissolving into the fog colour. Traditional matte-painting
   practice rather than any one source.
 
+## Design service — floor plans and renders (`design-api/`)
+
+The service generates plans **procedurally**, which sidesteps dataset
+licensing entirely. No third-party model weights, datasets or plan corpora are
+bundled. Sources evaluated, and the verdict on each:
+
+| Source | Licence | Verdict |
+|---|---|---|
+| **[ResPlan](https://github.com/m-agour/ResPlan)** — 17,000 vector residential floor plans | **Data CC BY 4.0 · Code MIT** | ✅ The only large, *commercially usable* vector plan corpus found. Not yet used; it is the priors base if proportion learning is ever added. |
+| **HouseDiffusion** (aminshabani) | **GPL-3.0**, trained on **RPLAN** (research-only) | ❌ **Blocked twice** — copyleft code and a non-commercial dataset. Recorded so nobody adopts it later assuming it was vetted. |
+| **[AI4SC/bim-diffusion-models](https://github.com/AI4SC)** | to verify | 🟡 Technique borrowed, not code: synthesise plans procedurally to avoid dataset licensing. That is what `services/layout.py` does. |
+| **[@thatopen/components](https://github.com/ThatOpen/engine_components)** | **MIT** | ✅ Recommended for the plan ↔ 3D toggle and in-browser DXF. Not yet mounted. |
+| **react-planner / Blueprint3D / architect3d** | MIT | 🔶 Geometry/state model studied; **not adopted** — react-planner's last release is ~6 years old. |
+| **[z-aqib/Floor-Plan-Generator-Using-AI](https://github.com/z-aqib/Floor-Plan-Generator-Using-AI)** · **[abdshomad/ai-floor-plan-generator](https://github.com/abdshomad/ai-floor-plan-generator)** · **[adrianhajdin/roomify](https://github.com/adrianhajdin/roomify)** | per repo — verify before reuse | 🔶 Reviewed as prior art for the questionnaire → plan → render shape. No code taken. |
+| **Planner 5D · Floorplanner · HomeByMe · PromeAI · Remodel AI · Krea · DecAI · Synapse AI · Floor-Plan.ai · Ideal House** | commercial SaaS | ⚠️ **Study the UX, do not integrate.** None expose a public self-serve API suitable for this flow; Planner 5D is the closest interaction reference. Full evaluation in [AI-TOOLS-RESEARCH.md](AI-TOOLS-RESEARCH.md). |
+
+**Libraries** — [svgwrite](https://github.com/mozman/svgwrite) (MIT) ·
+[ezdxf](https://github.com/mozman/ezdxf) (BSD-3-Clause) ·
+[CairoSVG](https://github.com/Kozea/CairoSVG) (LGPL-3.0, invoked as a separate
+process, not linked) · [FastAPI](https://github.com/fastapi/fastapi) (MIT) ·
+[Pydantic](https://github.com/pydantic/pydantic) (MIT) ·
+[httpx](https://github.com/encode/httpx) (BSD-3-Clause).
+
+**Image models — licence tripwire.** ControlNet code is Apache-2.0, but SD 3.5
+and Flux *checkpoints* ship under the **Stability AI Community License**, free
+commercially **only under US$1M annual revenue**. Default is
+`black-forest-labs/flux-schnell` (**Apache-2.0 weights**);
+`black-forest-labs/flux-dev` is **non-commercial and must not ship**. The note
+lives in code at `design-api/app/services/images.py`.
+
 ## Audio
 
 - **Forest ambience** (`app/public/audio/forest-ambience.mp3`) — carried over

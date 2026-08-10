@@ -4,6 +4,8 @@
 
 **Prepared:** August 9, 2026 · KR8TIV AI · Companion to [MARKET-AND-USDC-FEASIBILITY.md](MARKET-AND-USDC-FEASIBILITY.md) (market structure + the goods-vs-deeds legal split) and [../PHASED-ROADMAP.md](../PHASED-ROADMAP.md).
 
+**Governing constraint:** every payment on this page must be reachable **from a single X Layer USDC balance**. A seller who takes crypto is reached in **one CCTP hop** to the chain their processor settles on; a seller who doesn't is reached in **three** (CCTP → off-ramp → fiat invoice) — and for a Canadian buyer that off-ramp is **not OKX**, which takes no new Canadian registrations. Routing table and hop counts: [SUPPLY-CHAIN-CRYPTO-RAILS.md §1](SUPPLY-CHAIN-CRYPTO-RAILS.md). **The prize in every partner conversation is moving a counterparty to X Layer itself, which deletes the hop.**
+
 ---
 
 ## 0. The three findings that matter

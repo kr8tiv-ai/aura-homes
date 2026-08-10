@@ -26,6 +26,18 @@ Three facts make the retailer route the right Phase 1:
 
 And the fulfillment engine is already written. `AuraBuildEscrow` (milestones, 2-of-3 release, 10% Alberta statutory holdback with a maturity timer) and `AuraBuildRegistry` are not discarded by a buy button — **they become what the buy button is wired to.** Phase 1 is a re-cut, not a rebuild.
 
+### The governing constraint: one X Layer USDC balance
+
+**Everything must be achievable from a single X Layer USDC balance.** The user funds one number; every payment — home retailer, land, materials, trades, permit fees — is a *route out of it*. No second exchange account, no second chain to understand, no OKB (gasless USDC transfers via x402 are live in OKX Wallet).
+
+Three facts set the shape, and all of them are recent:
+
+- **Circle's CCTP went live on X Layer on August 7, 2026** — burn-and-mint **native** USDC, no wrapped IOU, 13+ chains, ~8–20s on the fast lane. That is the spine: call CCTP directly rather than depending on a third-party bridge.
+- **Nothing else settles on X Layer.** No gift-card service, no crypto card, no off-ramp. Bitrefill takes USDC on Ethereum/Solana/Polygon; Kraken on five chains, none of them X Layer. **One CCTP hop is structural — show it in the UI with its fee and time rather than pretending the balance teleports.**
+- **The cleanest exit is closed to our own users.** OKX exchange is the tidiest way from X Layer to fiat and it takes **no new Canadian registrations**. The Alberta route is CCTP → Base/Polygon → Kraken/Coinbase/Wealthsimple → CAD.
+
+So there are two rails worth optimising: **E5 — stay on X Layer** (zero hops; this is why the escrow lives here) and **E1 — CCTP** (one hop; everything else). Every counterparty onboarded onto X Layer deletes a hop permanently, which makes **"% of this build payable without leaving X Layer"** the metric worth tracking. Full routing table: [research/SUPPLY-CHAIN-CRYPTO-RAILS.md §1](research/SUPPLY-CHAIN-CRYPTO-RAILS.md).
+
 ### The legal split that makes it work
 
 The **home** is *goods* — a purchase order, settleable in USDC essentially today. The **land** is *a deed* in a government registry: lawyers, title insurance, FinCEN reporting on non-financed transfers to entities (effective March 1, 2026), and in Alberta lawyers cannot hold crypto in trust at all.
@@ -77,7 +89,8 @@ That sentence is the product strategy, the compliance answer, and the best line 
 **E. The record**
 - `AuraBuildRegistry` NFT per order: **Designed → Funded → UnderConstruction → Complete** (the contract's canonical `BuildStatus` enum — the vocabulary of record). An ownership/build **record**, never legal title.
 
-**F. The Supply Router — read-only panel** *(cheap, demoable, zero custody)*
+**F. The Supply Router + Route Planner — read-only panel** *(cheap, demoable, zero custody)*
+- **One balance in the UI: "Your X Layer USDC."** Every payment renders as its route — *X Layer → CCTP → Polygon → gift code* — with fee, time and **recourse** on each hop. Preference order **E5 (stay) → E1 (CCTP)**; never the canonical bridge silently.
 - Per budget line, show which rail buys it with crypto today: **DIRECT** (supplier accepts it) → **BRIDGE** (gift card / card, small tickets, no recourse) → **CONVERT** (USDC/CAD → wire, full recourse), each with its fee.
 - Name the real one: **[Kuby Renewable Energy](https://kuby.ca/) — Edmonton/Calgary/Lethbridge — accepts Bitcoin for solar systems *and* contracting**, which lands directly on the largest non-land line in an Aura build (~$48K MID).
 - Show the honest total: **roughly $50–60K of a $301K MID build has a real crypto rail today**; the rest converts. A stated number beats a vague claim, and it makes the routing product obvious. Detail in [research/SUPPLY-CHAIN-CRYPTO-RAILS.md](research/SUPPLY-CHAIN-CRYPTO-RAILS.md).
@@ -130,6 +143,7 @@ Free-form design. Land purchase. Fiat on-ramp integration. Account abstraction. 
 ### 2b — The land rail *(X Layer / OKX bridges)*
 
 - **Bridge in:** Circle CCTP to native USDC on X Layer; the crypto-native Canadian path is Wealthsimple (0%-fee USDC) → withdraw on Base → CCTP. OKX bridge and gasless x402 transfers for X Layer-native users.
+- **Bridge out (the constraint in practice):** the land deposit stays on X Layer; the *closing* leaves via **one CCTP hop** to Base/Polygon → Kraken/Coinbase/Wealthsimple → CAD → lawyer's trust. **Not OKX** — it takes no new Canadian registrations. Execute CCTP in-app so the user never opens a bridge UI.
 - **Deposit on-chain, closing off-chain.** Refundable land deposit escrowed in USDC; conveyance executed by a crypto-fluent Alberta lawyer, convert-then-close via Kraken USDC/CAD → trust account (Alberta lawyers cannot hold crypto in trust — this constraint is permanent until the rules change). On-chain record updated on title confirmation. **Never claim the chain holds title.**
 - **Land supply:** the parcel filter (Altalis cadastral + title, RITL encumbrances, Socrata zoning, LiDAR DEMs) plus crypto-ready listing feeds from Crypto Emporium and CryptoRealEstate.cc (2,200+ properties, 50+ countries) for buyers outside the pilot.
 - **Closing partner where licensing is required:** Propy is a US-licensed title company with USDC escrow and $5B of volume — partner, don't rebuild.

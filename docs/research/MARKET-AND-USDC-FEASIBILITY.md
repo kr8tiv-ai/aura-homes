@@ -2,6 +2,8 @@
 
 **Question asked:** can Phase 1 of Aura Homes be *"browse a pre-designed eco home, buy it (and/or the property) in USDC on X Layer"* — and is that a defensible product, not just a hackathon trick?
 
+**Governing constraint (added Aug 9, 2026):** every payment described here must be reachable **from a single X Layer USDC balance** — the escrow stays on X Layer (zero hops), everything off-chain leaves via **one Circle CCTP hop** (live on X Layer since Aug 7, 2026). Routing spine, exits and hop counts: [SUPPLY-CHAIN-CRYPTO-RAILS.md §1](SUPPLY-CHAIN-CRYPTO-RAILS.md).
+
 **Prepared:** August 9, 2026 · KR8TIV AI · Companion to [FEASIBILITY.md](../FEASIBILITY.md) (which covers Alberta construction, energy, water, septic and the crypto rails in depth — this document deliberately does **not** repeat it). Reference site studied at the founder's request: [bosz-houses.nl](https://www.bosz-houses.nl/en).
 
 ---
