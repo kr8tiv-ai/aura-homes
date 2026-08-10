@@ -39,6 +39,7 @@ const NATIVE_USDC = {
 
 const HOLDBACK_BPS = 1000; // 10% — Alberta Prompt Payment and Construction Lien Act model
 const HOLDBACK_PERIOD = 60 * 24 * 60 * 60; // 60 days, in seconds
+const REFUND_WINDOW = 14 * 24 * 60 * 60; // 14 days — reservation-deposit cooling-off window (v2)
 const STATUS_NAMES = ["Designed", "Funded", "UnderConstruction", "Complete"];
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..");
@@ -250,11 +251,13 @@ async function main() {
     arbiter.address,
     HOLDBACK_BPS,
     HOLDBACK_PERIOD,
+    REFUND_WINDOW,
   ]);
   await escrow.waitForDeployment();
   const escrowAddr = await escrow.getAddress();
   line("AuraBuildEscrow", escrowAddr);
   note(`holdback ${HOLDBACK_BPS / 100}% | lien period ${HOLDBACK_PERIOD / 86400} days | releases need 2-of-3`);
+  note(`reservation-deposit refund window ${REFUND_WINDOW / 86400} days (homeowner-only walk-away)`);
 
   const registry = await ethers.deployContract("AuraBuildRegistry");
   await registry.waitForDeployment();

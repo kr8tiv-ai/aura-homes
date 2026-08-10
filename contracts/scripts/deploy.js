@@ -5,6 +5,8 @@
 //   USDC         USDC address; defaults to native USDC per chain, or MockUSDC locally
 //   HOMEOWNER / BUILDER / ARBITER   escrow roles; default to the deployer (dev only)
 //   HOLDBACK_BPS / HOLDBACK_PERIOD  pass 0 or omit for defaults (10%, 60 days)
+//   REFUND_WINDOW                   reservation-deposit cooling-off window in seconds;
+//                                   pass 0 or omit for the default (14 days)
 
 const { ethers, network } = require("hardhat");
 
@@ -40,11 +42,13 @@ async function main() {
     process.env.ARBITER ?? deployer.address,
     Number(process.env.HOLDBACK_BPS ?? 0), // 0 -> default 1000 bps (10%)
     Number(process.env.HOLDBACK_PERIOD ?? 0), // 0 -> default 60 days
+    Number(process.env.REFUND_WINDOW ?? 0), // 0 -> default 14 days
   ]);
   await escrow.waitForDeployment();
   console.log(`AuraBuildEscrow:   ${await escrow.getAddress()}`);
   console.log(
-    `holdback: ${await escrow.holdbackBps()} bps, period ${await escrow.holdbackPeriod()} s`
+    `holdback: ${await escrow.holdbackBps()} bps, period ${await escrow.holdbackPeriod()} s, ` +
+      `refund window ${await escrow.refundWindow()} s`
   );
 }
 

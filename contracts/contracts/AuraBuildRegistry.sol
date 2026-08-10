@@ -13,6 +13,11 @@ interface IAuraBuildEscrow {
 ///         design hash, budget hash, escrow address, and lifecycle status.
 ///         Minting/updating is limited to the linked escrow's homeowner or a registrar.
 contract AuraBuildRegistry is ERC721, Ownable {
+    /// @notice Canonical build lifecycle, in order:
+    ///         Designed (0) -> Funded (1) -> UnderConstruction (2) -> Complete (3).
+    ///         This enum is the vocabulary of record — every doc and UI surface must use
+    ///         these exact names and indices. (Not "Reserved/Contracted": that older
+    ///         wording is superseded by this contract.)
     enum BuildStatus {
         Designed,
         Funded,
