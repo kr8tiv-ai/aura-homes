@@ -293,8 +293,14 @@ function Terrain() {
          roots sit a shade ABOVE the ground they grow from, and the gap
          reads as depth under the canopy. Deliberate offset, not drift. */
       const ms = meadowShade(x, z);
-      tmp.lerp(cSward, ms * 0.45);
-      const shade = 1 - 0.32 * ms;
+      /* Founder "smooth, no spacing" round: the ground under the meadow drops
+         deeper toward the sward's own shadow (hue 0.45->0.52, value 0.32->0.40)
+         so the pale terrain that used to peek between blades now reads as
+         understorey shadow. GRASS_VERT.vGround deepens in lockstep at ~3/4
+         strength so a blade root still sits a shade ABOVE the ground it grows
+         from — gaps are shadow, not soil, not bare lawn. */
+      tmp.lerp(cSward, ms * 0.55);
+      const shade = 1 - 0.44 * ms;
       colors[i * 3] = tmp.r * v * shade;
       colors[i * 3 + 1] = tmp.g * (1 + m * 0.055) * shade;
       colors[i * 3 + 2] = tmp.b * v * shade;

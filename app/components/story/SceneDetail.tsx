@@ -633,9 +633,13 @@ function clearance(
   // tub pad
   p = P(1.4, 0.9, 0.92, 0.5);
   c = Math.min(c, fade(Math.hypot(x - 5.9, z - 5.4), p[0], p[1]));
-  // fire-pit lounge (ring, chairs, side table) — tight stays outside the
-  // ring itself but grows under and between the chairs
-  p = P(2.5, 1.5, 1.05, 0.6);
+  // fire-pit lounge — the founder's "remove object borders" note: the old
+  // tight disc (1.05+0.6 ~= 1.65 m) bared the whole lounge and ringed the
+  // chairs. Short filler now grows under and between the chairs and right to
+  // the ring stones; only the flame core (0.5+0.45 ~= 0.95 m, ~ the stone
+  // ring) stays clear. Hero blades keep a wider berth so a 0.5 m blade never
+  // pokes through a chair seat.
+  p = P(1.3, 0.8, 0.5, 0.45);
   c = Math.min(c, fade(Math.hypot(x + 4.7, z - 6.5), p[0], p[1]));
   // the bench out in the east meadow
   p = P(0.95, 0.8, 0.6, 0.5);
@@ -822,7 +826,7 @@ void main(){
      popping and no hysteresis state is needed. */
   float p = mix(1.0, ${cfg.pmin.toFixed(3)}, smoothstep(${cfg.near.toFixed(1)}, ${cfg.far.toFixed(1)}, dist));
   float projH = (aRand.y * aClear) * uProjScale / max(dist, 0.001);
-  p *= smoothstep(0.0052, 0.023, projH);
+  p *= smoothstep(0.0040, 0.020, projH);
   float vis = 1.0 - smoothstep(p - ${cfg.band.toFixed(3)}, p, aRand.w);
   // never let a blade flash across the lens as the camera brushes past it
   vis *= smoothstep(0.18, 0.55, dist);
@@ -864,9 +868,12 @@ void main(){
   wind *= 0.55 + 0.95 * (front * uGust);
 
   // a small static lean per blade, seeded from world position, so the field
-  // is never uniform even when the air is still
+  // is never uniform even when the air is still. Founder "smooth carpet"
+  // round: the rest arch grows (0.03-0.19 -> 0.05-0.26) so blades lean and
+  // cover ground horizontally rather than standing as thin vertical spikes —
+  // the single change that turns a spiky sward into a lawn from a high camera.
   float la = h21(floor(base.xz * 3.7)) * 6.2831853;
-  vec2 rest = vec2(cos(la), sin(la)) * mix(0.03, 0.19, h21(base.xz * 1.9 + 7.0));
+  vec2 rest = vec2(cos(la), sin(la)) * mix(0.05, 0.26, h21(base.xz * 1.9 + 7.0));
   vec2 horiz = (rest + wd * wind * 0.45) * bendMul;
 
   // quadratic Bezier: root pinned at the ground, curvature grows to the tip
@@ -913,8 +920,8 @@ void main(){
      reads as shadow under the canopy, not soil. See the Terrain() comment
      in Scene.tsx; the two moves are calibrated together. */
   float md = meadowD(base.xz);
-  vGround = mix(groundColor(base.xz), vec3(0.0744, 0.1442, 0.0546), md * 0.35)
-          * (1.0 - 0.26 * md);
+  vGround = mix(groundColor(base.xz), vec3(0.0744, 0.1442, 0.0546), md * 0.45)
+          * (1.0 - 0.35 * md);
   vSpecies = sp;
 
   gl_Position = projectionMatrix * viewMatrix * vec4(world, 1.0);
@@ -1050,9 +1057,9 @@ function buildGrassTiles(budget: number, cfg: GrassLayerCfg) {
     if (filler) {
       const corridor =
         (1 - smooth01(9, 18, Math.abs(x))) * smooth01(5.5, 11, z) * (1 - smooth01(33, 41, z));
-      dens *= Math.max(1 - smooth01(20, 30, Math.hypot(x, z)), corridor);
-      const yard = 1 - smooth01(7, 15, Math.hypot(x, z - 3.6));
-      dens *= 1 + yard;
+      dens *= Math.max(1 - smooth01(18, 28, Math.hypot(x, z)), corridor);
+      const yard = 1 - smooth01(9, 20, Math.hypot(x, z - 3.6));
+      dens *= 1 + 1.25 * yard;
     }
     return dens;
   };
@@ -1094,7 +1101,7 @@ function buildGrassTiles(budget: number, cfg: GrassLayerCfg) {
          tall" — the whole 0.22-0.62 band dropped 20% to 0.176-0.496.
          Filler: 9-21 cm understorey whose only job is ground coverage. */
       filler
-        ? 0.08 + Math.pow(rand(i, 45 + S), 1.3) * 0.1
+        ? 0.095 + Math.pow(rand(i, 45 + S), 1.3) * 0.13
         : (0.176 + Math.pow(rand(i, 45 + S), 1.6) * 0.32) * (1 + far * 0.3), // height
       filler
         ? /* v8 went +15%, v9 another +24% (0.042-0.075 m). Width is the one
@@ -1102,7 +1109,7 @@ function buildGrassTiles(budget: number, cfg: GrassLayerCfg) {
              jittered-grid spacing (~5 cm between filler roots in the core)
              the mean blade is now WIDER than its spacing — the definition
              of a closed sward. Overlap is fine; bare ground is not. */
-          0.042 + rand(i, 46 + S) * 0.033
+          0.063 + rand(i, 46 + S) * 0.048
         : 0.026 + rand(i, 46 + S) * 0.018, // width — reference range, no far term
       rand(i, 47 + S) // fade seed
     );
@@ -1910,7 +1917,13 @@ export default function SceneDetail({
      aimed (the yard), paid for by the far field, not by new instances. */
   const mobile = size.width < 820;
   const heroCount = mobile ? 42000 : 120000;
-  const fillCount = mobile ? 250000 : 715000;
+  /* Founder "ridiculously good and smooth, no spacing" round: the filler
+     count climbs (desktop 715k -> 980k, mobile 250k -> 340k) AND the far
+     reach tightens (below) so the extra blades all land where the eye judges
+     coverage — the first ~22 m the story cameras sit in. Paired with wider
+     blades, a relaxed near-field height gate, and a deeper ground shade, the
+     near field reads as one closed sward instead of separable spikes. */
+  const fillCount = mobile ? 340000 : 980000;
 
   return (
     <group>
