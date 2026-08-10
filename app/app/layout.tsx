@@ -5,6 +5,7 @@ import "@fontsource-variable/jetbrains-mono";
 import "./globals.css";
 import { Providers } from "./providers";
 import SiteShell from "../components/SiteShell";
+import { NO_FLASH_SCRIPT } from "../lib/theme";
 
 const TITLE = "Aura Homes — AI-designed off-grid eco homes, funded in USDC on X Layer";
 const DESCRIPTION =
@@ -34,7 +35,17 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    /* suppressHydrationWarning is required and narrow: the inline script
+       below writes data-theme during head parse, so the DOM React hydrates
+       against legitimately differs from the server HTML on this one
+       attribute. Without the script there is a white flash on every
+       dark-mode load; without the suppression, React warns about the fix. */
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Runs before first paint. Resolution order is explicit choice →
+            OS preference; source lives in lib/theme.ts so nothing can drift. */}
+        <script dangerouslySetInnerHTML={{ __html: NO_FLASH_SCRIPT }} />
+      </head>
       <body className="min-h-screen antialiased font-sans">
         <a href="#main" className="skip-link">
           Skip to content

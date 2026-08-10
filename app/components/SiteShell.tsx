@@ -6,6 +6,9 @@ import { useEffect, useState } from "react";
 import { LazyMotion, MotionConfig } from "motion/react";
 import * as m from "motion/react-m";
 import CardFXLayer from "./CardFX";
+import Cursor from "./Cursor";
+import SmoothScroll from "./SmoothScroll";
+import ThemeToggle from "./ThemeToggle";
 
 /* Async feature load: the domAnimation bundle becomes its own chunk and
    never blocks first paint. `strict` makes any accidental use of the full
@@ -82,6 +85,9 @@ function StoryHeader() {
         </button>
       </header>
 
+      {/* Day/night is reachable from the menu sheet too — the story HUD's
+          own NIGHT button sits at the bottom of the scroll, which is a long
+          way to travel to undo an accidental flip. */}
       <div id="story-menu" className={`story-sheet${open ? " on" : ""}`} hidden={!open}>
         <nav aria-label="All pages">
           {NAV.map((item, i) => (
@@ -92,6 +98,9 @@ function StoryHeader() {
             </Link>
           ))}
         </nav>
+        <div className="story-sheet-tools">
+          <ThemeToggle />
+        </div>
         <p className="story-sheet-foot">A KR8TIV AI product · Open source (MIT)</p>
       </div>
     </>
@@ -107,6 +116,10 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
   return (
     <LazyMotion features={loadDomAnimation} strict>
       <MotionConfig reducedMotion="user">
+        {/* Both are inert on touch and under prefers-reduced-motion, and
+            SmoothScroll no-ops on "/" where the camera rig owns scroll. */}
+        <Cursor />
+        <SmoothScroll />
         {isStory ? (
           <>
             <StoryHeader />
@@ -121,12 +134,20 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
                 <Link href="/" className="font-display text-sm font-semibold tracking-label uppercase">
                   Aura <span className="text-aura-emerald">Homes</span>
                 </Link>
-                <nav className="flex flex-wrap gap-x-6 gap-y-2 sm:gap-8">
+                <nav className="flex flex-wrap items-center gap-x-6 gap-y-2 sm:gap-8">
                   {NAV.map((item) => (
-                    <Link key={item.href} href={item.href} className="aura-label transition-colors hover:text-aura-emerald">
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`aura-nav-link aura-label transition-colors hover:text-aura-emerald${
+                        pathname === item.href ? " is-current" : ""
+                      }`}
+                      aria-current={pathname === item.href ? "page" : undefined}
+                    >
                       {item.label}
                     </Link>
                   ))}
+                  <ThemeToggle />
                 </nav>
               </div>
             </header>

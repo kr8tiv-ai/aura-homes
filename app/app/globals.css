@@ -2,35 +2,101 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════════════════════
+   THE TONAL LADDER — one block every colour in the product resolves through.
+
+   Two structural rules are what make a real night mode possible here, and
+   both were missing from the attempt before this one (which is exactly why
+   that attempt changed nothing on screen):
+
+   1. TOKENS, NOT HEX. tailwind.config.ts used to emit literal hex for
+      bg-aura-bg / text-aura-text / border-hairline, so redefining CSS
+      variables repainted nothing — the utility classes never referenced
+      them. The Tailwind palette now points at these triplets. That is why
+      one attribute on <html> repaints the entire site.
+
+   2. CHANNEL TRIPLETS, NOT COLOURS. Values are bare "R G B" so Tailwind's
+      opacity modifiers still compose — the codebase leans on text-aura-text/70
+      and friends everywhere, and rgb(var(--tone-ink) / <alpha-value>) keeps
+      them working. A plain hex var would silently break every one of them.
+
+   Night is a TONAL system, not an inversion. Surfaces climb in luminance as
+   they rise toward the viewer (sunken → base → raised → overlay → floating),
+   because on a dark ground a drop shadow cannot express elevation — light
+   does. Accents are perceptually REMAPPED rather than reused: #047857 is AA
+   on paper and near-illegible on charcoal, so night lifts it to #34d399.
+   ═══════════════════════════════════════════════════════════════════════ */
 :root {
-  /* Light, paper-ground system (Aug 2026 pivot) — ink on paper, emerald as
-     THE accent, violet rationed to on-chain surfaces. Values are the
-     BRAND.md section 2 table verbatim; nothing here is a near-miss of a
-     palette entry. */
-  --aura-bg: #fafaf9;
-  --aura-panel: #ffffff;
-  --aura-text: #171a18;
-  --aura-emerald: #047857;
-  --aura-teal: #0f766e;
-  --aura-violet: #7c3aed;
-  --aura-lime: #4d7c0f;
-  --aura-border: rgba(23, 26, 24, 0.12);
+  /* ---- surfaces: the elevation ladder (light) ---------------------- */
+  --tone-sunken: 242 242 240;
+  --tone-base: 250 250 249;
+  --tone-raised: 255 255 255;
+  --tone-overlay: 255 255 255;
+  --tone-floating: 255 255 255;
+
+  /* ---- ink: the legibility ladder ---------------------------------- */
+  --tone-ink: 23 26 24;
+  --tone-dim: 95 102 99;
+  --tone-faint: 154 161 157;
+  --tone-paper: 250 250 249; /* text ON solid-ink surfaces */
+
+  /* ---- accents, in their sanctioned roles -------------------------- */
+  --tone-emerald: 4 120 87; /* #047857 — AA body-scale text */
+  --tone-emerald-label: 5 150 105; /* #059669 — large display + tracked caps */
+  --tone-emerald-bright: 16 185 129; /* #10b981 — a MARK: bars, rules, ticks */
+  --tone-teal: 15 118 110;
+  --tone-teal-mark: 13 148 136;
+  --tone-violet: 124 58 237;
+  --tone-lime: 77 124 15;
+
+  /* ---- hairlines and elevation ------------------------------------- */
+  --hair-alpha: 0.12;
+  --hair-soft-alpha: 0.07;
+  --shadow-1: 0 1px 2px rgb(var(--tone-ink) / 0.04);
+  --shadow-2: 0 1px 2px rgb(var(--tone-ink) / 0.04), 0 8px 24px rgb(var(--tone-ink) / 0.04);
+  --shadow-3: 0 2px 6px rgb(var(--tone-ink) / 0.06), 0 18px 48px rgb(var(--tone-ink) / 0.07);
+
+  /* ---- the modular spacing scale (1.5 ratio off a 4px base) --------
+     Vertical rhythm used to be ad-hoc Tailwind numbers picked per section,
+     which is why the pages read as "boxes stacked" rather than composed.
+     --space-7 is the section gap, --space-5 the block gap, --space-3 the
+     intra-block gap. Utilities: .stack-lg / .stack / .stack-sm below. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2.25rem;
+  --space-7: 3.375rem;
+  --space-8: 5rem;
+  --space-9: 7.5rem;
+
+  /* ---- legacy aliases: every existing rule keeps working, and now
+          flips with the theme because it resolves through the ladder --- */
+  --aura-bg: rgb(var(--tone-base));
+  --aura-panel: rgb(var(--tone-raised));
+  --aura-text: rgb(var(--tone-ink));
+  --aura-emerald: rgb(var(--tone-emerald));
+  --aura-teal: rgb(var(--tone-teal));
+  --aura-violet: rgb(var(--tone-violet));
+  --aura-lime: rgb(var(--tone-lime));
+  --aura-border: rgb(var(--tone-ink) / var(--hair-alpha));
 
   /* story palette lives at :root so fixed chrome outside .story-scope
      (the floating header, the menu sheet) resolves the same inks */
-  --st-paper: #fafaf9;
-  --st-ink: #171a18;
-  --st-ink-dim: #5f6663;
-  --st-faint: #9aa19d;
-  --st-hair: rgba(23, 26, 24, 0.14);
-  --st-hair-soft: rgba(23, 26, 24, 0.09);
+  --st-paper: rgb(var(--tone-base));
+  --st-ink: rgb(var(--tone-ink));
+  --st-ink-dim: rgb(var(--tone-dim));
+  --st-faint: rgb(var(--tone-faint));
+  --st-hair: rgb(var(--tone-ink) / 0.14);
+  --st-hair-soft: rgb(var(--tone-ink) / 0.09);
   /* emerald in its three sanctioned roles */
-  --st-emerald: #10b981; /* a MARK on paper: rules, bars, ticks */
-  --st-emerald-deep: #047857; /* body-scale text */
-  --st-emerald-label: #059669; /* large display + tracked caps */
-  --st-teal: #0f766e;
-  --st-violet: #7c3aed;
-  --st-lime: #4d7c0f;
+  --st-emerald: rgb(var(--tone-emerald-bright)); /* a MARK on paper: rules, bars, ticks */
+  --st-emerald-deep: rgb(var(--tone-emerald)); /* body-scale text */
+  --st-emerald-label: rgb(var(--tone-emerald-label)); /* large display + tracked caps */
+  --st-teal: rgb(var(--tone-teal));
+  --st-violet: rgb(var(--tone-violet));
+  --st-lime: rgb(var(--tone-lime));
   /* THE brand curve — "fluid deceleration": launches decisively, settles
      without overshoot, never bouncy. --ease-fluid-decel is the documented
      alias; --st-ease-out the historical name. One curve for reveals,
@@ -43,10 +109,167 @@
   --st-mono-font: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, monospace;
 }
 
+/* ---- NIGHT ------------------------------------------------------------
+   Only the ladder is overridden; nothing below this line in the file knows
+   a theme exists. layout.tsx sets data-theme before first paint (no flash),
+   so the authoritative selector is the attribute. The media query is the
+   no-JS fallback and deliberately only matches when the attribute is
+   ABSENT, so a reader who has chosen day is never overruled by their OS.
+
+   Surface luminance rises with elevation instead of falling with shadow.
+   Hairlines invert to light-on-dark and get a touch more alpha, because a
+   12%-black rule on charcoal is invisible while 12% white is not.
+   ------------------------------------------------------------------- */
+:root[data-theme="dark"] {
+  --tone-sunken: 8 10 9;
+  --tone-base: 16 19 18;
+  --tone-raised: 23 27 25;
+  --tone-overlay: 30 35 33;
+  --tone-floating: 38 44 41;
+
+  --tone-ink: 228 232 230;
+  --tone-dim: 162 170 166;
+  --tone-faint: 118 126 122;
+  --tone-paper: 16 19 18;
+
+  --tone-emerald: 52 211 153; /* #34d399 — the paper shade is unreadable here */
+  --tone-emerald-label: 52 211 153;
+  --tone-emerald-bright: 110 231 183; /* #6ee7b7 — marks stay the brightest step */
+  --tone-teal: 45 212 191;
+  --tone-teal-mark: 45 212 191;
+  --tone-violet: 167 139 250;
+  --tone-lime: 163 230 53;
+
+  --hair-alpha: 0.16;
+  --hair-soft-alpha: 0.09;
+  /* on a dark ground shadows read as nothing; elevation is carried by the
+     surface step above, and these become a faint contact darkening only */
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-2: 0 1px 2px rgb(0 0 0 / 0.4), 0 10px 30px rgb(0 0 0 / 0.35);
+  --shadow-3: 0 2px 8px rgb(0 0 0 / 0.5), 0 22px 60px rgb(0 0 0 / 0.45);
+
+  --st-hair: rgb(var(--tone-ink) / 0.18);
+  --st-hair-soft: rgb(var(--tone-ink) / 0.1);
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --tone-sunken: 8 10 9;
+    --tone-base: 16 19 18;
+    --tone-raised: 23 27 25;
+    --tone-overlay: 30 35 33;
+    --tone-floating: 38 44 41;
+    --tone-ink: 228 232 230;
+    --tone-dim: 162 170 166;
+    --tone-faint: 118 126 122;
+    --tone-paper: 16 19 18;
+    --tone-emerald: 52 211 153;
+    --tone-emerald-label: 52 211 153;
+    --tone-emerald-bright: 110 231 183;
+    --tone-teal: 45 212 191;
+    --tone-teal-mark: 45 212 191;
+    --tone-violet: 167 139 250;
+    --tone-lime: 163 230 53;
+    --hair-alpha: 0.16;
+    --hair-soft-alpha: 0.09;
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-2: 0 1px 2px rgb(0 0 0 / 0.4), 0 10px 30px rgb(0 0 0 / 0.35);
+    --shadow-3: 0 2px 8px rgb(0 0 0 / 0.5), 0 22px 60px rgb(0 0 0 / 0.45);
+    --st-hair: rgb(var(--tone-ink) / 0.18);
+    --st-hair-soft: rgb(var(--tone-ink) / 0.1);
+    color-scheme: dark;
+  }
+}
+
 body {
   background-color: var(--aura-bg);
   color: var(--aura-text);
   font-feature-settings: "ss01";
+  /* the ladder crossfades rather than snapping — a hard swap on a
+     full-viewport WebGL page reads as a bug, not a setting */
+  transition:
+    background-color 0.5s var(--ease-fluid-decel),
+    color 0.5s var(--ease-fluid-decel);
+}
+
+/* ---- the modular rhythm, as utilities ------------------------------- */
+.stack-lg > * + * {
+  margin-top: var(--space-7);
+}
+.stack > * + * {
+  margin-top: var(--space-5);
+}
+.stack-sm > * + * {
+  margin-top: var(--space-3);
+}
+
+/* ---- the pointer ------------------------------------------------------
+   A ring that trails the true cursor and reads the thing under it: it
+   contracts to a dot over text, expands and inverts over anything
+   interactive, and grows a label when an element declares data-cursor.
+   Fine pointers only — coarse (touch) never sees it, and it is inert to
+   hit-testing so nothing below it loses a click. components/Cursor.tsx
+   drives the two custom properties; everything else is presentation. */
+.aura-cursor {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 300;
+  pointer-events: none;
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  border-radius: 999px;
+  border: 1px solid rgb(var(--tone-ink) / 0.45);
+  transform: translate3d(var(--cx, -100px), var(--cy, -100px), 0) scale(var(--cs, 1));
+  transition:
+    transform 0.18s var(--ease-fluid-decel),
+    width 0.3s var(--ease-fluid-decel),
+    height 0.3s var(--ease-fluid-decel),
+    background-color 0.3s var(--ease-fluid-decel),
+    border-color 0.3s var(--ease-fluid-decel),
+    opacity 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  mix-blend-mode: normal;
+}
+.aura-cursor.on {
+  opacity: 1;
+}
+.aura-cursor.text {
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  background: rgb(var(--tone-ink) / 0.55);
+  border-color: transparent;
+}
+.aura-cursor.link {
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
+  background: rgb(var(--tone-emerald) / 0.14);
+  border-color: rgb(var(--tone-emerald) / 0.7);
+}
+.aura-cursor-label {
+  font-family: var(--st-mono-font);
+  font-size: 0.5rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgb(var(--tone-emerald));
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  white-space: nowrap;
+}
+.aura-cursor.labelled .aura-cursor-label {
+  opacity: 1;
+}
+@media (pointer: coarse), (prefers-reduced-motion: reduce) {
+  .aura-cursor {
+    display: none;
+  }
 }
 
 /* ---- focus-visible system (WCAG 2.4.7 / 2.4.11) ----
@@ -134,10 +357,89 @@ body {
   .aura-panel {
     @apply bg-aura-panel border rounded-xl;
     border-color: var(--aura-border);
-    box-shadow: 0 1px 2px rgba(23, 26, 24, 0.04), 0 8px 24px rgba(23, 26, 24, 0.04);
+    box-shadow: var(--shadow-2);
+    transition:
+      background-color 0.5s var(--ease-fluid-decel),
+      border-color 0.5s var(--ease-fluid-decel),
+      box-shadow 0.35s var(--ease-fluid-decel),
+      transform 0.35s var(--ease-fluid-decel);
+  }
+  /* a panel that answers the pointer: one surface step up the ladder and a
+     1px rise. Cheap, GPU-only, and it is what makes the pages feel alive
+     rather than printed. */
+  .aura-panel-lift:hover {
+    @apply bg-aura-overlay;
+    box-shadow: var(--shadow-3);
+    transform: translateY(-2px);
   }
   .aura-hairline {
     border-color: var(--aura-border);
+  }
+}
+
+/* ---- the day/night control ----------------------------------------- */
+.aura-theme-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0.6rem 0.3rem 0.45rem;
+  border: 1px solid var(--aura-border);
+  border-radius: 999px;
+  background: rgb(var(--tone-raised));
+  color: rgb(var(--tone-dim));
+  font-family: var(--st-mono-font);
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  line-height: 1;
+  transition:
+    color 0.3s var(--ease-fluid-decel),
+    border-color 0.3s var(--ease-fluid-decel),
+    background-color 0.3s var(--ease-fluid-decel);
+}
+.aura-theme-btn:hover {
+  color: rgb(var(--tone-emerald));
+  border-color: rgb(var(--tone-emerald) / 0.45);
+}
+.aura-theme-icon {
+  display: inline-flex;
+}
+.story-sheet-tools {
+  display: flex;
+  justify-content: flex-start;
+  padding-top: 1.25rem;
+}
+
+/* ---- nav links draw their own rule ----------------------------------
+   The hover state used to be a colour change alone, which on a tracked
+   0.62rem label is close to invisible. A rule wipes in from the left on
+   the shared curve, and the current route keeps its rule drawn. */
+.aura-nav-link {
+  position: relative;
+  padding-bottom: 3px;
+}
+.aura-nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: rgb(var(--tone-emerald));
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.45s var(--ease-fluid-decel);
+}
+.aura-nav-link:hover::after,
+.aura-nav-link.is-current::after {
+  transform: scaleX(1);
+}
+.aura-nav-link.is-current {
+  color: rgb(var(--tone-emerald));
+}
+@media (prefers-reduced-motion: reduce) {
+  .aura-nav-link::after {
+    transition: none;
   }
 }
 
@@ -537,7 +839,7 @@ body {
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, rgba(13, 148, 136, 0.22), rgba(13, 148, 136, 0.85));
+  background: linear-gradient(90deg, rgb(var(--tone-teal-mark) / 0.22), rgb(var(--tone-teal-mark) / 0.85));
 }
 .story-band-basis {
   margin-top: 0.85rem;
@@ -553,7 +855,7 @@ body {
 .story-mline-track {
   position: relative;
   height: 2px;
-  background: linear-gradient(90deg, rgba(124, 58, 237, 0.18), rgba(124, 58, 237, 0.7));
+  background: linear-gradient(90deg, rgb(var(--tone-violet) / 0.18), rgb(var(--tone-violet) / 0.7));
   margin: 0 0.4rem 2.2rem 0.4rem;
 }
 .story-mline-node {
@@ -592,7 +894,7 @@ body {
 .story-xlink {
   color: var(--st-emerald-deep);
   text-decoration: none;
-  border-bottom: 1px solid rgba(4, 120, 87, 0.4);
+  border-bottom: 1px solid rgb(var(--tone-emerald) / 0.4);
   padding-bottom: 0.06em;
   transition: color 0.25s, border-color 0.25s;
 }
@@ -633,7 +935,10 @@ body {
   color: var(--st-paper);
 }
 .story-cta-primary:hover {
-  background: #0d0f0e;
+  /* was a literal #0d0f0e, which assumed ink is always dark. At night ink
+     IS the light shade, so the hover has to move relative to the token:
+     12% toward the ground, whichever direction that happens to be. */
+  background: color-mix(in oklab, var(--st-ink) 88%, var(--st-paper));
   border-color: transparent;
 }
 
@@ -641,7 +946,7 @@ body {
   position: fixed;
   inset: 0;
   z-index: 6;
-  background: #fafaf9;
+  background: rgb(var(--tone-base));
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.5s ease;
@@ -764,8 +1069,8 @@ html.story-gated body { overflow: hidden; }
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 60% 56% at 50% 47%, rgba(250, 250, 249, 0.70), rgba(250, 250, 249, 0.16) 76%),
-    linear-gradient(180deg, rgba(250, 250, 249, 0.30), rgba(250, 250, 249, 0.14) 42%, rgba(250, 250, 249, 0.30));
+    radial-gradient(ellipse 60% 56% at 50% 47%, rgb(var(--tone-base) / 0.70), rgb(var(--tone-base) / 0.16) 76%),
+    linear-gradient(180deg, rgb(var(--tone-base) / 0.30), rgb(var(--tone-base) / 0.14) 42%, rgb(var(--tone-base) / 0.30));
 }
 /* On a phone the copy column spans nearly the full frame, so the radial
    lift has to as well — at 390px the sub line's right edge was crossing the
@@ -773,8 +1078,8 @@ html.story-gated body { overflow: hidden; }
 @media (max-width: 640px) {
   .story-gate-scrim {
     background:
-      radial-gradient(ellipse 92% 54% at 50% 46%, rgba(250, 250, 249, 0.78), rgba(250, 250, 249, 0.18) 78%),
-      linear-gradient(180deg, rgba(250, 250, 249, 0.34), rgba(250, 250, 249, 0.18) 42%, rgba(250, 250, 249, 0.34));
+      radial-gradient(ellipse 92% 54% at 50% 46%, rgb(var(--tone-base) / 0.78), rgb(var(--tone-base) / 0.18) 78%),
+      linear-gradient(180deg, rgb(var(--tone-base) / 0.34), rgb(var(--tone-base) / 0.18) 42%, rgb(var(--tone-base) / 0.34));
   }
 }
 .story-gate-inner {
@@ -825,7 +1130,7 @@ html.story-gated body { overflow: hidden; }
   cursor: pointer;
   transition: background 0.3s;
 }
-.story-gate-btn:hover { background: #0d0f0e; }
+.story-gate-btn:hover { background: color-mix(in oklab, var(--st-ink) 88%, var(--st-paper)); }
 .story-gate-quiet {
   margin-top: 1rem;
   background: none;
@@ -859,7 +1164,7 @@ html.story-gated body { overflow: hidden; }
   padding: 0.42rem 0.8rem;
   border-radius: 2px; /* square — same founder call as the gate buttons */
   border: 1px solid var(--st-hair);
-  background: rgba(250, 250, 249, 0.86);
+  background: rgb(var(--tone-base) / 0.86);
   backdrop-filter: blur(9px);
   -webkit-backdrop-filter: blur(9px);
   color: var(--st-ink-dim);
@@ -875,7 +1180,7 @@ html.story-gated body { overflow: hidden; }
   border-color: var(--st-ink);
   color: var(--st-ink);
 }
-.story-hud-btn.on { border-color: rgba(4, 120, 87, 0.7); color: var(--st-emerald-deep); }
+.story-hud-btn.on { border-color: rgb(var(--tone-emerald) / 0.7); color: var(--st-emerald-deep); }
 /* the star was #d9a300 gold — a colour that appears nowhere in the palette */
 .story-hud-star svg { color: var(--st-faint); }
 .story-hud-star:hover svg { color: var(--st-ink); }
@@ -908,8 +1213,14 @@ html.story-gated body { overflow: hidden; }
   transition: filter 1.2s var(--st-ease-out);
 }
 .story-sky { transition: filter 1.2s var(--st-ease-out); }
-/* pages stay paper at night: BRAND.md section 2 — dark may exist only
-   INSIDE framed media, and the scene IS the framed media here. */
+/* SUPERSEDES the rule that used to live here: "pages stay paper at night —
+   dark may exist only INSIDE framed media, and the scene IS the framed
+   media." That reading held while night was a sky filter and nothing more.
+   Night is now the site theme (lib/theme.ts): one control, and the paper
+   plates, the rail, the chrome and every document page cross to the dark
+   rung of the tonal ladder with the sun. The BRAND.md constraint it
+   replaces was about never painting a DARK PANEL onto a paper page —
+   which still holds, because at night there is no paper page to violate. */
 
 /* ---- in-scene hotspots ---- */
 
@@ -926,7 +1237,7 @@ html.story-gated body { overflow: hidden; }
   height: 20px;
   border-radius: 50%;
   border: 1.5px solid var(--st-emerald-deep);
-  background: rgba(250, 250, 249, 0.6);
+  background: rgb(var(--tone-base) / 0.6);
   cursor: pointer;
   padding: 0;
   transition: transform 0.35s var(--st-ease-out), background 0.3s;
@@ -1126,10 +1437,10 @@ html.story-gated body { overflow: hidden; }
   /* the header used to have NO background at any breakpoint, which is how
      the wordmark ended up illegible against pale sky and moving copy */
   background: linear-gradient(
-    rgba(250, 250, 249, 0.96),
-    rgba(250, 250, 249, 0.9) 52%,
-    rgba(250, 250, 249, 0.66) 78%,
-    rgba(250, 250, 249, 0)
+    rgb(var(--tone-base) / 0.96),
+    rgb(var(--tone-base) / 0.9) 52%,
+    rgb(var(--tone-base) / 0.66) 78%,
+    rgb(var(--tone-base) / 0)
   );
   backdrop-filter: blur(7px);
   -webkit-backdrop-filter: blur(7px);
@@ -1369,31 +1680,31 @@ html.story-gated body { overflow: hidden; }
       var(--st-emerald-deep)
     );
     text-shadow:
-      0 0 0.5px rgb(16 185 129 / calc(0.34 * var(--fx-warm))),
-      0 0 4px rgb(16 185 129 / calc(0.2 * var(--fx-warm))),
-      0 0 14px rgb(16 185 129 / calc(0.1 * var(--fx-warm)));
+      0 0 0.5px rgb(var(--tone-emerald-bright) / calc(0.34 * var(--fx-warm))),
+      0 0 4px rgb(var(--tone-emerald-bright) / calc(0.2 * var(--fx-warm))),
+      0 0 14px rgb(var(--tone-emerald-bright) / calc(0.1 * var(--fx-warm)));
   }
   .fx-card,
   [data-fx] {
-    background-color: color-mix(in oklab, var(--st-paper) calc(100% - 100% * var(--fx-warm)), #fbfdfb);
+    background-color: color-mix(in oklab, var(--st-paper) calc(100% - 100% * var(--fx-warm)), rgb(var(--tone-floating)));
     border-color: color-mix(
       in srgb,
       var(--st-hair) calc(100% - 60% * var(--fx-warm)),
-      rgb(16 185 129 / 0.34)
+      rgb(var(--tone-emerald-bright) / 0.34)
     );
   }
   .aura-panel {
-    background-color: color-mix(in oklab, var(--aura-panel) calc(100% - 100% * var(--fx-warm)), #fdfefd);
+    background-color: color-mix(in oklab, var(--aura-panel) calc(100% - 100% * var(--fx-warm)), rgb(var(--tone-floating)));
     border-color: color-mix(
       in srgb,
       var(--aura-border) calc(100% - 60% * var(--fx-warm)),
-      rgb(16 185 129 / 0.34)
+      rgb(var(--tone-emerald-bright) / 0.34)
     );
     /* The card's own light: inset, so it can never become an outer bloom.
        (The old 0 0 34px -6px outer shadow pulled itself back inside the
        border before the blur began — invisible on all 28 panels.) */
     box-shadow:
-      inset 0 0 0 1px rgb(16 185 129 / calc(0.12 * var(--fx-warm))),
+      inset 0 0 0 1px rgb(var(--tone-emerald-bright) / calc(0.12 * var(--fx-warm))),
       0 1px 2px rgba(23, 26, 24, 0.04),
       0 8px 24px rgba(23, 26, 24, 0.04);
   }
@@ -1417,7 +1728,7 @@ html.story-gated body { overflow: hidden; }
     border-color: color-mix(
       in srgb,
       var(--st-hair) calc(100% - 60% * var(--fx-warm)),
-      rgb(16 185 129 / 0.34)
+      rgb(var(--tone-emerald-bright) / 0.34)
     );
   }
   .fx-card .story-ledger > div,
@@ -1425,7 +1736,7 @@ html.story-gated body { overflow: hidden; }
     border-color: color-mix(
       in srgb,
       var(--st-hair-soft) calc(100% - 60% * var(--fx-warm)),
-      rgb(16 185 129 / 0.3)
+      rgb(var(--tone-emerald-bright) / 0.3)
     );
   }
   .fx-card .story-kicker i,
@@ -1433,7 +1744,7 @@ html.story-gated body { overflow: hidden; }
     background: color-mix(
       in srgb,
       var(--st-hair) calc(100% - 60% * var(--fx-warm)),
-      rgb(16 185 129 / 0.34)
+      rgb(var(--tone-emerald-bright) / 0.34)
     );
   }
 }
@@ -1445,7 +1756,7 @@ html.story-gated body { overflow: hidden; }
 @media (any-hover: hover) and (min-width: 768px) {
   .story-plate.fx-card {
     box-shadow:
-      inset 0 0 0 1px rgb(16 185 129 / calc(0.12 * var(--fx-warm))),
+      inset 0 0 0 1px rgb(var(--tone-emerald-bright) / calc(0.12 * var(--fx-warm))),
       var(--st-plate-shadow, 30px 0 90px -66px rgba(23, 26, 24, 0.6));
   }
   .story-plate-left {

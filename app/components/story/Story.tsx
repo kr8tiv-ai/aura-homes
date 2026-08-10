@@ -7,6 +7,7 @@ import { frame, cancelFrame } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { HERO, BEATS, END, BUILD_CTA, type LedgerRow } from "./copy";
 import { withBase } from "../../lib/basePath";
+import { applyTheme, currentTheme, onThemeChange } from "../../lib/theme";
 import { EnterGate, StoryHUD, useForestAudio, WithXLayerLinks, REPO_URL } from "./StoryChrome";
 
 const StoryCanvas = dynamic(() => import("./StoryCanvas"), { ssr: false });
@@ -160,7 +161,21 @@ export default function Story() {
   const router = useRouter();
 
   const [entered, setEntered] = useState(false);
+  /* ONE switch, one world. The HUD's NIGHT button no longer only darkens the
+     sky — it is the site theme. Flipping it here turns the paper plates,
+     the rail, the header and every document page to charcoal at the same
+     moment the sun sets over the meadow, and arriving from a page already
+     set to night starts the scene at dusk instead of snapping to it.
+     Starts false so the server markup and the first client render agree;
+     the effect reconciles with <html data-theme> immediately after mount. */
   const [night, setNight] = useState(false);
+  useEffect(() => {
+    setNight(currentTheme() === "dark");
+    return onThemeChange((t) => setNight(t === "dark"));
+  }, []);
+  const flipNight = useCallback(() => {
+    applyTheme(currentTheme() === "dark" ? "light" : "dark");
+  }, []);
   const audio = useForestAudio();
 
   /* The gate film gets the wire first. The 3.4 MB establishing film and the
@@ -340,7 +355,7 @@ export default function Story() {
 
       {audio.element}
       <EnterGate onEnter={handleEnter} entered={entered} onVideoFallback={bootCanvas} />
-      <StoryHUD night={night} onNight={() => setNight((n) => !n)} sound={audio.on} onSound={audio.toggle} />
+      <StoryHUD night={night} onNight={flipNight} sound={audio.on} onSound={audio.toggle} />
 
       {/* progress rail */}
       <nav className={railClass} aria-label="Story progress">
