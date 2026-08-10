@@ -146,7 +146,9 @@ BUYER (crypto-native, CA)  Wealthsimple 0%-fee USDC → withdraw on Base → Cir
                                      │
                                      ▼
                         AuraHomeOrder / AuraBuildEscrow  (X Layer, native USDC)
-                        • reservation deposit, refundable inside a cooling-off window
+                        • reservation deposit — homeowner-refundable alone through the
+                          14-day refundDeadline (inclusive); after the window it converts
+                          into the first milestone's funding
                         • milestones, 2-of-3 release (buyer / builder / arbiter)
                         • 10% Alberta statutory holdback retained per release + maturity timer
                                      │
@@ -158,7 +160,7 @@ BUYER (crypto-native, CA)  Wealthsimple 0%-fee USDC → withdraw on Base → Cir
                                               on-chain record updated on title confirmation
                                      │
                                      ▼
-                        AuraBuildRegistry NFT: Reserved → Contracted → UnderConstruction → Complete
+                        AuraBuildRegistry NFT: Designed → Funded → UnderConstruction → Complete
 ```
 
 Off-ramp reality (unchanged from FEASIBILITY.md §5): the last mile to Alberta suppliers and lawyers is CAD — Kraken USDC/CAD ≈0.4% taker → wire to trust account. QCAD (TD-custodied) is the future one-hop corridor when it ships.
@@ -206,7 +208,7 @@ Ranked by (judge impact ÷ build hours). Everything above the line is Phase 1; e
 1. **Immersive 3D catalog → 3 pre-designed eco homes** with real specs and real prices. *(The site already exists and is live at aurahomes.fun — this is a re-cut, not a rebuild.)*
 2. **Pick a parcel → AI suitability gate** that visibly rejects a bad pairing.
 3. **BUY in native USDC on X Layer** — reservation deposit into escrow, one signature, real tx, **OKLink link on screen**.
-4. **Registry NFT flips Reserved → Contracted** live, in front of the judge.
+4. **Registry NFT flips Designed → Funded** live, in front of the judge.
 5. **Release one milestone** and watch the 10% statutory holdback retain with its timer — the single most differentiated thing in the entire build.
 6. **A refund/cooling-off window** demonstrated. Trust is the product in a home purchase; a refundable deposit is the most persuasive 8 seconds in the video.
 7. *(if time)* x402/APP-metered AI design fee — pennies, visible, on-chain.

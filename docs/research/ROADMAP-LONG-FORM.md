@@ -133,7 +133,7 @@ Do not rebuild any of this. Verified green in Audit #5 and #6 (`docs/AUDIT-LOG.m
 - `contracts/` — `AuraBuildEscrow` (milestones, 2-of-3, 10% holdback with a 60-day maturity timer) and `AuraBuildRegistry` (Designed → Funded → UnderConstruction → Complete), 10/10 tests.
 - `app/` — 8 routes live at aurahomes.fun, the 3D scroll story, /land /design /budget /escrow /dashboard /overview /faq.
 
-**Two things are not done and they are the whole critical path:** the contracts are not on chain (deployer `0x831F…f260` at nonce 0, balance 0 — faucet captcha, four audits running), and the Aug 9 pivot's front door (concierge, catalog, buy button, refund window) has zero code.
+**Two things are not done and they are the whole critical path:** the contracts are not on chain (deployer `0x831F…f260` at nonce 0, balance 0 — faucet captcha, four audits running), and the Aug 9 pivot's front door (concierge, catalog, buy button) has zero code. (The refund window's *contract* side has since shipped — escrow v2, commit `496dcff` — its front-door UI has not.)
 
 ## 0.2 MUST ship — the five, in dependency order
 
@@ -144,7 +144,9 @@ The single longest-standing item in the audit log. Claim ~0.2 OKB/day at the fau
 Mainnet deploy is scheduled for Aug 19 and is explicitly **not** a submission gate (the rules say testnet during, mainnet after).
 
 **M2 · Escrow v2: reservation deposit and a cooling-off refund window.** *The only contract work in this phase.*
-The existing escrow can only unwind by 2-of-3 `cancel()`. A consumer buying a home needs a unilateral out for a defined period — that is both the consumer-protection answer and the most trust-building eight seconds in the video. Concretely, added to `contracts/contracts/AuraBuildEscrow.sol`:
+> **SHIPPED — commit `496dcff`, 21 passing tests.** The final implementation supersedes the sketch below: the deposit is held *separately* from the milestones via `placeDeposit()` (one per escrow lifetime, homeowner-only), `refundDeposit()` lets the homeowner alone pull it back through `refundDeadline` (**inclusive**; default 14 days, `DEFAULT_REFUND_WINDOW`), and after the window `convertDeposit(id)` converts it into the funding of the first milestone (amount must match exactly) under the existing 2-of-3 release with the 10% holdback. The sketch's milestone-0-as-deposit design was not what shipped.
+
+The existing escrow can only unwind by 2-of-3 `cancel()`. A consumer buying a home needs a unilateral out for a defined period — that is both the consumer-protection answer and the most trust-building eight seconds in the video. The original sketch for `contracts/contracts/AuraBuildEscrow.sol` (kept for the record — see the SHIPPED note above for what actually landed):
 
 ```solidity
 // new immutable, set at construction; 0 disables the window entirely
@@ -167,8 +169,8 @@ function refundDeposit() external onlyHomeowner whenActive nonReentrant {
 }
 ```
 
-Tests to add alongside the existing 10 — each of these must be able to fail: refund inside the window succeeds and returns the exact amount; refund one second after the window reverts `RefundWindowClosed`; refund after release reverts; `refundWindow = 0` disables the path; a released milestone's holdback clock is untouched by a deposit refund; sum of all balances is conserved across every path (fund, refund, release, holdback, cancel).
-**Resolve the registry-enum contradiction in the same change** (Audit #5 finding #2): `AuraBuildRegistry` says Designed → Funded → UnderConstruction → Complete and `SUBMISSION.md` agrees; `PHASED-ROADMAP.md:78` says Reserved → Contracted → UnderConstruction → Complete. The contract vocabulary wins — it is deployed, tested, and already in the judge-facing doc. Edit the roadmap line, not the enum. Cost: one line. Leaving it costs a judge finding a contradiction in the docs.
+Tests to add alongside the existing 10 — each of these must be able to fail: refund inside the window succeeds and returns the exact amount; refund one second after the window reverts `RefundWindowClosed`; refund after release reverts; `refundWindow = 0` disables the path; a released milestone's holdback clock is untouched by a deposit refund; sum of all balances is conserved across every path (fund, refund, release, holdback, cancel). *(Done: the suite now stands at 21 passing tests as of `496dcff`.)*
+**Resolve the registry-enum contradiction in the same change** (Audit #5 finding #2) — **RESOLVED**: `AuraBuildRegistry` declares the canonical vocabulary Designed → Funded → UnderConstruction → Complete in its NatSpec (`496dcff`), `SUBMISSION.md` agrees, and `PHASED-ROADMAP.md:78` plus `MARKET-AND-USDC-FEASIBILITY.md` have been restated in the contract vocabulary. The older "Reserved / Contracted" wording survives only in historical audit-log entries.
 
 **M3 · `/concierge` — the AI front door wired to an order object.**
 A chat route that drives the pipeline that already runs. It is the interface to the buy flow, not a sidebar.

@@ -75,7 +75,7 @@ That sentence is the product strategy, the compliance answer, and the best line 
 - Gasless USDC transfers on X Layer via x402 are live in OKX Wallet — use them so the buyer never needs OKB.
 
 **E. The record**
-- `AuraBuildRegistry` NFT per order: **Reserved → Contracted → UnderConstruction → Complete.** An ownership/build **record**, never legal title.
+- `AuraBuildRegistry` NFT per order: **Designed → Funded → UnderConstruction → Complete** (the contract's canonical `BuildStatus` enum — the vocabulary of record). An ownership/build **record**, never legal title.
 
 **F. If time remains, in this order**
 1. x402 / OKX APP-metered AI concierge fee — pennies, visible, on-chain.
@@ -93,7 +93,7 @@ That sentence is the product strategy, the compliance answer, and the best line 
 |---|---|
 | Faucet OKB for deployer `0x831Fb0…f260` | **Matt-only, captcha-gated. Blocking. 30 seconds.** |
 | Contracts on testnet 1952, then mainnet 196 | Written and tested; awaiting faucet |
-| Reservation-deposit + refund-window semantics | Small addition to the existing escrow — the only contract work in Phase 1 |
+| Reservation-deposit + refund-window semantics | **Shipped** — escrow v2 (`496dcff`, 21 passing tests): homeowner places the USDC deposit, can refund it alone through the 14-day `refundDeadline` (inclusive); after the window it converts into the first milestone under the existing 2-of-3 release with the 10% holdback |
 | Three catalog homes with priced line items + source links | Cost model exists; needs catalog framing |
 | Chatbot wired to the order object | New, but thin — it drives existing state |
 | Parcel fixtures + suitability rules | `lib/parcels.ts` and the land page exist |
