@@ -70,6 +70,36 @@ Recorded in `docs/AI-HANDOFF.md`. Do not "helpfully" reintroduce any of them:
 
 ---
 
+## 1A. THE PHASED ROADMAP — the shared plan
+
+*Set by the founder, 2026-08-09. Full version with market evidence, named partner candidates and the legal analysis: **[docs/PHASED-ROADMAP.md](docs/PHASED-ROADMAP.md)** (written by the Fable session), backed by [docs/research/RETAIL-PARTNERS-USDC.md](docs/research/RETAIL-PARTNERS-USDC.md) and [docs/research/MARKET-AND-USDC-FEASIBILITY.md](docs/research/MARKET-AND-USDC-FEASIBILITY.md).*
+
+> **SEQUENCING RULE — the live-site fix comes first.** Deploy, mobile layout, and the grass/trees/mountains work take priority over every phase below. The phases get built once **aurahomes.fun is presentable**. After that, the immediate build targets are the **Phase-1 chatbot and the USDC purchase flow**.
+
+### Phase 1 — buy an eco home with USDC *(hackathon MVP)*
+
+A user can **purchase one of these eco homes with USDC**. Three things make it real:
+
+- **A real retailer/seller who accepts USDC.** Not a mock. The research session is hunting named candidates — the shortlist lives in `docs/research/RETAIL-PARTNERS-USDC.md`. Two findings that de-risk it: **BOXABL already accepts crypto for home sales** (Casita, ~375 sqft, ~$49.5K), and the industry's first real payment is already a **reservation deposit** (Nestron takes $1,000 online today, via Stripe) — so Aura's Phase 1 buy button is that exact fee, settled in USDC and wrapped in escrow. The seller never has to hold crypto: an approved gateway auto-converts to fiat, the Dubai/DAMAC model.
+- **A chatbot we program.** We author the instructions and the flows; it ships as a **live, interactive assistant** that guides the user through the whole process end to end — budget, climate, off-grid systems, what is actually included, lead times — and **it is the interface to the buy flow, not a sidebar.** The order it produces is the order that gets funded.
+- **The existing contracts, re-cut rather than rebuilt.** `AuraBuildEscrow` (milestones, 2-of-3, 10% Alberta holdback with its maturity timer) and `AuraBuildRegistry` become what the buy button is wired to.
+
+The AI has to be load-bearing, not garnish: the constraint check runs **before the buy button unlocks**, and **the buy button must be able to say NO** — the district-minimum kill (592 vs 1,076 sqft) is the most memorable moment in the demo.
+
+### Phase 2 — buy the property too, and customize
+
+- **Buy the land**, paid via **X Layer / OKX** using bridges and on-ramps.
+- The user can **buy or customize** the home/property — **either through a retailer or through an AI app.**
+- The legal split that makes it work, and the best line in the pitch: **the home is *goods*, settleable in USDC essentially today; the land is *a deed* in a government registry.** So the land deposit is escrowed on-chain, the closing is executed by a lawyer in fiat (Alberta lawyers cannot hold crypto in trust), and the on-chain record updates on title confirmation.
+
+### Phase 3 — increasingly automated
+
+Toward the **full one-click, A-to-Z design and build orchestration** described in §1 — the platform carrying design → land → budget → contractors → permits → ordering → draws → possession, with the human in the loop only where the law requires it.
+
+**Note on numbering:** `docs/ROADMAP.md` uses a *different*, engineering-timeline numbering (its Phase 0 is the 12-day sprint). The two are mapped against each other in `PHASED-ROADMAP.md`. Unqualified, "Phase 1" means the founder's Phase 1 — the USDC buy flow.
+
+---
+
 ## 2. STATE OF THE REPO — what is on GitHub right now
 
 | Branch | HEAD | What |

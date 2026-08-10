@@ -1,5 +1,19 @@
 # Roadmap
 
+> ### ⚠️ TWO NUMBERING SCHEMES — read this first
+>
+> **[PHASED-ROADMAP.md](PHASED-ROADMAP.md) is the founder's commercial roadmap and the shared plan.** It numbers phases by *what a customer can buy*:
+>
+> | | Founder's phase | One line |
+> |---|---|---|
+> | **1** | Buy the home in USDC | A real retailer that accepts USDC, a real catalog, and a chatbot we author that guides the buyer end to end. Hackathon MVP. |
+> | **2** | Buy the land too, and customize | Land purchased via X Layer / OKX bridges and on-ramps; buy *or* customize, through a retailer **or** an AI app. |
+> | **3** | Increasingly automated | Toward the full one-click, A-to-Z design + build orchestration. |
+>
+> **This file** numbers phases by *engineering timeline* (Phase 0 = the 12-day sprint, Phase 1 = proof, and so on). The two are mapped against each other in [PHASED-ROADMAP.md § Mapping](PHASED-ROADMAP.md). When someone says "Phase 1" without qualifying it, they almost always mean the founder's Phase 1 — the USDC buy flow.
+>
+> **Sequencing rule, set by the founder Aug 9 2026:** the **live-site fix comes first** — deploy, mobile layout, grass/trees/mountains — and the phases get built once aurahomes.fun is presentable. The immediate build targets after that are the **Phase-1 chatbot and the USDC purchase flow**.
+
 ## Phase 0 — the 12-day sprint (Aug 9 → Aug 21, 2026) · hackathon
 
 | Days | Ship |
