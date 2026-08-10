@@ -73,10 +73,26 @@ function Kicker({ n, label, delay = 0 }: { n: string; label: string; delay?: num
   );
 }
 
-/** BRAND.md section 7, the spec-ledger: hairline-ruled mono IN / OUT rows. */
-function Ledger({ rows, delay = 320 }: { rows: readonly LedgerRow[]; delay?: number }) {
+/** BRAND.md section 7, the spec-ledger: hairline-ruled mono IN / OUT rows.
+ *  `fx` opts the standalone hero ledger into the border tracer (CardFX); the
+ *  in-plate ledgers inherit the plate's own hover glow instead — a tracer
+ *  orbiting a box inside a traced box would be noise, not elevation. */
+function Ledger({
+  rows,
+  delay = 320,
+  fx = false,
+}: {
+  rows: readonly LedgerRow[];
+  delay?: number;
+  fx?: boolean;
+}) {
   return (
-    <dl className="story-ledger" data-rv style={{ transitionDelay: `${delay}ms` }}>
+    <dl
+      className={`story-ledger${fx ? " fx-card" : ""}`}
+      data-rv
+      data-fx={fx ? "" : undefined}
+      style={{ transitionDelay: `${delay}ms` }}
+    >
       {rows.map((r) => (
         <div key={r.k}>
           <dt>{r.k}</dt>
@@ -335,7 +351,8 @@ export default function Story() {
             ref={(el) => {
               plateRefs.current[i] = el;
             }}
-            className={`story-plate story-plate-${b.side} story-accent-${b.accent}`}
+            className={`story-plate story-plate-${b.side} story-accent-${b.accent} fx-card`}
+            data-fx=""
           >
             <Kicker n={b.n} label={b.label} />
             <Reveal className="story-display" text={b.heading} />
@@ -377,7 +394,7 @@ export default function Story() {
             <p className="story-sub" data-rv style={{ transitionDelay: "380ms" }}>
               <WithXLayerLinks text={HERO.sub} />
             </p>
-            <Ledger rows={HERO.ledger} delay={480} />
+            <Ledger rows={HERO.ledger} delay={480} fx />
             <div className="story-cue" data-rv style={{ transitionDelay: "640ms" }}>
               <span>{HERO.cue}</span>
               <i aria-hidden />

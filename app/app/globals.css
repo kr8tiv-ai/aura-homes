@@ -1133,3 +1133,71 @@ html.story-gated body { overflow: hidden; }
 @media (max-width: 380px) {
   .story-plate { max-height: 56svh; }
 }
+
+/* =============================================================== card fx
+   The founder's interactivity round (Aug 10, 2026) — see components/CardFX.tsx
+   for the tracer half and for the honest note on the BRAND.md section 2
+   collision: "no glow anywhere" was round 1's reading; the founder explicitly
+   reinstated a WHISPER-level hover glow and border tracer on Aug 10. These
+   values are the approved ceiling — resist the urge to turn them up.
+
+   The hover response: text gently lifts with an emerald-tinted shadow
+   (text-shadow inherits, so one rule on the card carries every heading, row,
+   and body line inside it), and the box itself lifts a breath. 550 ms ease —
+   imperceptible-then-lovely, never a snap. Hover-capable pointers only. */
+
+.fx-tracer-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 10; /* over the copy plates (z 3), under the chrome/HUD */
+  pointer-events: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .aura-panel,
+  .fx-card,
+  [data-fx] {
+    transition:
+      text-shadow 0.55s var(--st-ease-out, ease),
+      box-shadow 0.55s var(--st-ease-out, ease),
+      border-color 0.55s var(--st-ease-out, ease),
+      background-color 0.55s var(--st-ease-out, ease);
+    text-shadow: 0 0 0 rgba(4, 120, 87, 0);
+  }
+  .aura-panel:hover,
+  .fx-card:hover,
+  [data-fx]:hover {
+    text-shadow: 0 0 16px rgba(4, 120, 87, 0.28);
+    border-color: rgba(16, 185, 129, 0.34);
+  }
+  .aura-panel:hover {
+    background-color: #fdfefd;
+    box-shadow:
+      0 1px 2px rgba(23, 26, 24, 0.04),
+      0 8px 24px rgba(23, 26, 24, 0.05),
+      0 0 0 1px rgba(16, 185, 129, 0.1),
+      0 0 34px -6px rgba(16, 185, 129, 0.14);
+  }
+  /* the story plates keep their directional paper shadow and add the lift */
+  .story-plate.fx-card:hover {
+    background: #fdfefd;
+  }
+  .story-plate-left.fx-card:hover {
+    box-shadow:
+      30px 0 90px -66px rgba(23, 26, 24, 0.6),
+      0 0 38px -8px rgba(16, 185, 129, 0.16);
+  }
+  .story-plate-right.fx-card:hover {
+    box-shadow:
+      -30px 0 90px -66px rgba(23, 26, 24, 0.6),
+      0 0 38px -8px rgba(16, 185, 129, 0.16);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aura-panel,
+  .fx-card,
+  [data-fx] {
+    transition: none;
+  }
+}

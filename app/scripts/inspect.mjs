@@ -237,8 +237,13 @@ const INIT_SCRIPT = `(() => {
   const TW = 64, TH = 40;
   let off = null, octx = null;
   function biggestCanvas() {
+    // The CardFX tracer overlay (components/CardFX.tsx) is a transparent
+    // pointer-events-none canvas present on EVERY page — it is chrome, not
+    // the scene, and a mostly-empty overlay reads as variance 0. Excluding
+    // it by class keeps the flat/dead-scene check falsifiable for the real
+    // canvas: delete the story canvas and this check still fires.
     const cs = Array.from(document.querySelectorAll("canvas"))
-      .filter((c) => c.width > 8 && c.height > 8);
+      .filter((c) => c.width > 8 && c.height > 8 && !c.classList.contains("fx-tracer-canvas"));
     if (!cs.length) return null;
     return cs.reduce((a, b) => (b.width * b.height > a.width * a.height ? b : a));
   }
