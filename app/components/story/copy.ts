@@ -45,7 +45,7 @@ export const BEATS: Beat[] = [
     accent: "lime",
     ledger: [
       { k: "In", v: "Budget, region, acreage" },
-      { k: "Out", v: "Shortlist with title status" },
+      { k: "Out", v: "Shortlist with bylaw verdicts" },
     ],
   },
   {
@@ -103,7 +103,7 @@ export const END = {
   cta: { href: "/dashboard", label: "Open the build dashboard" },
   /* One line of rollout honesty — the same three arcs as /overview and docs/ROADMAP.md. */
   rollout: {
-    text: "Three arcs from here: the hackathon MVP live now, the Locality Hub next, and the HOMES token announced.",
+    text: "Three arcs from here: the hackathon MVP in build, the Locality Hub next, and the HOMES token announced.",
     href: "/overview",
     label: "See the rollout",
   },

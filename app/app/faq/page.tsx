@@ -10,7 +10,7 @@ const REPO = "https://github.com/kr8tiv-ai/aura-homes";
 const faqs = [
   {
     q: "Do I need to own crypto?",
-    a: "No. Pay by Visa or Mastercard; an on-ramp partner converts to USDC in-flow, and you see prices in CAD throughout. If you already hold USDC, bring it — faster and cheaper.",
+    a: "Eventually, no — the designed onboarding path is card-first: pay by Visa or Mastercard, an on-ramp partner converts to USDC in-flow, and you see prices in CAD throughout. That integration is pending, not live; the current build assumes USDC you already hold. Even after cards land, bringing your own USDC stays faster and cheaper.",
   },
   {
     q: "Do I need an architect?",
@@ -46,7 +46,7 @@ const faqs = [
 export const metadata = {
   title: "FAQ — Aura Homes",
   description:
-    "Plain answers: crypto not required, no architect needed, honest costs, the AWG winter truth, resale rules, and the HOMES token.",
+    "Plain answers: the card-first onboarding design, no architect needed, honest costs, the AWG winter truth, resale rules, and the HOMES token.",
 };
 
 export default function FaqPage() {

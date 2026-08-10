@@ -5,11 +5,11 @@ import Link from "next/link";
 const arcs = [
   {
     n: "01",
-    status: "Live now",
+    status: "In build",
     name: "The hackathon MVP",
-    line: "Buy a home with USDC on X Layer, with an agent that directs you to the land.",
+    line: "Buy a home with USDC on X Layer, with an agent that directs you to the land — the arc being built now.",
     detail:
-      "The escrow and registry contracts are written and tested (10 of 10 passing); the land agent rejects real parcels for real bylaw reasons; this site is the storefront. Honest status: testnet deployment waits on one human step, and escrow figures shown here run on fixtures until it lands.",
+      "The spine is real and tested: the escrow and registry contracts pass 10 of 10 tests, the land filter rejects real parcels for real bylaw reasons, and the budget reconciles to the open Alberta cost model to the dollar. The buy flow itself — catalog, order, deposit — is in build; testnet deployment waits on one human step, and escrow figures shown here run on fixtures until it lands.",
   },
   {
     n: "02",
@@ -40,7 +40,7 @@ const pipeline = [
 export const metadata = {
   title: "Overview — Aura Homes",
   description:
-    "The rollout: buy a home with USDC on X Layer today, the Locality Hub next, and the HOMES token as its own phase.",
+    "The rollout: the USDC buy arc in build, the Locality Hub next, and the HOMES token as its own phase.",
 };
 
 export default function OverviewPage() {
@@ -73,7 +73,7 @@ export default function OverviewPage() {
       <div className="mt-28">
         <p className="aura-label">The rollout</p>
         <h2 className="mt-3 max-w-2xl text-3xl font-semibold leading-snug">
-          One story, three arcs — each one shipped, not sliced.
+          One story, three arcs — each one ships whole, not sliced.
         </h2>
         <div className="mt-10 grid gap-6 md:grid-cols-3">
           {arcs.map((a) => (

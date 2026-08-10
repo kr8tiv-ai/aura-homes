@@ -1,10 +1,14 @@
 "use client";
 
 // Questionnaire wizard shell. All answers live in one state object shaped like
-// the aura-architect Questionnaire; "Generate design" runs the client-side stub.
+// the aura-architect Questionnaire; "Generate design" composes a reference
+// brief client-side from those answers — honestly labeled as such on the page.
+// The full pipeline (bylaw checks, climate-zone constraints, the costed model)
+// runs in agent/ (aura-architect), not in this hosted demo.
 
 import { useState } from "react";
-import { designFixture } from "@/lib/fixtures";
+
+const REPO_AGENT = "https://github.com/kr8tiv-ai/aura-homes/tree/main/agent";
 
 const steps = ["Land", "Home size & style", "Energy", "Water", "Extras"] as const;
 
@@ -24,6 +28,59 @@ const initialState: WizardState = {
   extras: { hotTub: false, deck: true, hrv: true },
 };
 
+// ------------------------------------------------- client-side reference brief
+// Composed from the actual answers so the hosted demo never returns a canned
+// narrative that ignores the questionnaire. It states inputs plus the standard
+// Aura envelope; it makes NO verdict claims — those need the real pipeline.
+
+const STYLE_LABELS: Record<string, string> = {
+  modernCabin: "modern cabin",
+  aFrame: "A-frame",
+  bungalow: "bungalow",
+  storeyAndAHalf: "storey-and-a-half",
+};
+
+const WATER_LABELS: Record<WizardState["water"]["source"], string> = {
+  cistern: "a buried cistern",
+  well: "a drilled well",
+  awgSupplement: "a buried cistern with the AWG summer module",
+};
+
+const SEPTIC_LABELS: Record<string, string> = {
+  tankAndField: "a tank-and-field septic system",
+  mound: "a mound septic system",
+  holdingTank: "a holding-tank septic system",
+  packagedTreatment: "a packaged treatment septic system",
+};
+
+function composeBrief(s: WizardState): string {
+  const size = Number(s.home.sizeSqft);
+  const sizeTxt =
+    Number.isFinite(size) && size > 0 ? size.toLocaleString("en-CA") : s.home.sizeSqft;
+  const storeys = s.home.storeys === "2" ? "two-storey" : "single-storey";
+  const style = STYLE_LABELS[s.home.style] ?? s.home.style;
+  const beds = s.home.bedrooms.trim();
+  const power =
+    `a ${s.energy.solarKw} kW solar array with ${s.energy.batteryKwh} kWh of storage` +
+    (s.energy.backupGenerator ? " and generator backup" : ", with no backup generator");
+  const heat = s.energy.woodStove
+    ? "A WETT-inspected wood stove provides resilient heat"
+    : "Heating runs on the electrical system, with no wood stove";
+  const hrv = s.extras.hrv ? ", with an HRV keeping the tight envelope fresh" : "";
+  const extras = [s.extras.deck && "a deck", s.extras.hotTub && "a wood-fired hot tub"]
+    .filter(Boolean)
+    .join(" and ");
+  return (
+    `A ${storeys} ${style} of ${sizeTxt} sqft with ${beds} bedroom${beds === "1" ? "" : "s"} ` +
+    `on ${s.parcel.acreage} acres in ${s.parcel.county} (${s.parcel.district}), ` +
+    `sited on screw piles with a structural insulated panel envelope (walls R-24, roof R-40). ` +
+    `Power comes from ${power}; water from ${WATER_LABELS[s.water.source]}, ` +
+    `draining to ${SEPTIC_LABELS[s.water.septic] ?? s.water.septic}. ` +
+    `${heat}${hrv}.` +
+    (extras ? ` Outside: ${extras}.` : "")
+  );
+}
+
 export default function DesignPage() {
   const [step, setStep] = useState(0);
   const [state, setState] = useState<WizardState>(initialState);
@@ -36,11 +93,10 @@ export default function DesignPage() {
   async function generate() {
     setBusy(true);
     setResult(null);
-    // Static-export build: the design stub runs client-side so the hosted demo
-    // needs no server. The real pipeline lives in agent/ (aura-architect).
+    // Static-export build: the brief is composed client-side from the answers
+    // so the hosted demo needs no server. The real pipeline lives in agent/.
     await new Promise((r) => setTimeout(r, 400));
-    const data = { ...designFixture, questionnaire: state };
-    setResult(data.narrative ?? JSON.stringify(data, null, 2));
+    setResult(composeBrief(state));
     setBusy(false);
   }
 
@@ -48,6 +104,20 @@ export default function DesignPage() {
     <div className="py-16">
       <p className="aura-label mb-4">Design questionnaire</p>
       <h1 className="font-display text-[2.35rem] font-medium leading-[1.08] tracking-[-0.025em]">Tell Aura about your build</h1>
+      <p className="mt-4 max-w-xl text-sm leading-relaxed text-aura-text/70">
+        Hosted demo: the brief is composed in your browser from your answers, as a reference. The
+        full pipeline — bylaw checks, climate-zone constraints, and the costed model — runs in the
+        open repo,{" "}
+        <a
+          href={REPO_AGENT}
+          target="_blank"
+          rel="noreferrer"
+          className="text-aura-emerald underline underline-offset-4"
+        >
+          agent/
+        </a>
+        .
+      </p>
 
       <div className="mt-10 flex flex-wrap gap-2">
         {steps.map((name, i) => (
@@ -232,8 +302,12 @@ export default function DesignPage() {
 
       {result && (
         <div className="aura-panel mt-10 p-8">
-          <p className="aura-label mb-4">Design brief</p>
+          <p className="aura-label mb-4">Design brief — reference</p>
           <p className="whitespace-pre-line text-sm leading-relaxed text-aura-text/80">{result}</p>
+          <p className="mt-4 text-xs leading-relaxed text-aura-text/60">
+            Composed client-side from your answers. Verdicts — district minimums, Part 9, zone 7A —
+            come from the real pipeline in agent/, not this demo.
+          </p>
         </div>
       )}
     </div>
