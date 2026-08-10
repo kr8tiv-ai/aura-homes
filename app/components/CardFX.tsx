@@ -160,8 +160,14 @@ export default function CardFXLayer() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const coarse = window.matchMedia("(hover: none), (pointer: coarse)");
-    if (reduced.matches || coarse.matches) return;
+    /* any-hover, not hover: `hover`/`pointer` describe the PRIMARY pointer,
+       and on a Windows touchscreen laptop Chrome can call that pointer
+       coarse — which switched this whole file off with no visual trace.
+       `any-hover: none` is only true when NO attached pointer can hover, so
+       phones stay correctly excluded and trackpad sessions correctly in.
+       (ELEVATION-BRIEF §2.1, the H9 fix.) */
+    const noHover = window.matchMedia("(any-hover: none)");
+    if (reduced.matches || noHover.matches) return;
 
     const canvas = document.createElement("canvas");
     canvas.className = "fx-tracer-canvas";
@@ -183,44 +189,50 @@ export default function CardFXLayer() {
     // hoisted function declarations below don't inherit the null-narrowing
     const glc: WebGLRenderingContext = gl;
 
-    // ---- program ----
-    const mk = (type: number, src: string) => {
-      const sh = gl.createShader(type)!;
-      gl.shaderSource(sh, src);
-      gl.compileShader(sh);
-      return sh;
-    };
-    const prog = gl.createProgram()!;
-    gl.attachShader(prog, mk(gl.VERTEX_SHADER, VERT));
-    gl.attachShader(prog, mk(gl.FRAGMENT_SHADER, FRAG));
-    gl.linkProgram(prog);
-    gl.useProgram(prog);
-    const uRes = gl.getUniformLocation(prog, "uRes");
-    const aPos = gl.getAttribLocation(prog, "aPos");
-    const aSize = gl.getAttribLocation(prog, "aSize");
-    const aCol = gl.getAttribLocation(prog, "aCol");
-    const buf = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    /* ---- program ----
+       Factored into setupGL so a webglcontextrestored can rebuild it. A
+       driver reset used to leave a dead canvas: contextlost was handled but
+       nothing recompiled the program afterwards. */
     const STRIDE = 7; // x, y, size, r, g, b, a
-    gl.enableVertexAttribArray(aPos);
-    gl.enableVertexAttribArray(aSize);
-    gl.enableVertexAttribArray(aCol);
-    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, STRIDE * 4, 0);
-    gl.vertexAttribPointer(aSize, 1, gl.FLOAT, false, STRIDE * 4, 2 * 4);
-    gl.vertexAttribPointer(aCol, 4, gl.FLOAT, false, STRIDE * 4, 3 * 4);
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-    gl.clearColor(0, 0, 0, 0);
-
+    let uRes: WebGLUniformLocation | null = null;
     let dpr = 1;
     const resize = () => {
       dpr = Math.min(2, window.devicePixelRatio || 1);
       canvas.width = Math.round(window.innerWidth * dpr);
       canvas.height = Math.round(window.innerHeight * dpr);
-      gl.viewport(0, 0, canvas.width, canvas.height);
-      gl.uniform2f(uRes, canvas.width, canvas.height);
+      glc.viewport(0, 0, canvas.width, canvas.height);
+      if (uRes) glc.uniform2f(uRes, canvas.width, canvas.height);
     };
-    resize();
+    const setupGL = () => {
+      const mk = (type: number, src: string) => {
+        const sh = glc.createShader(type)!;
+        glc.shaderSource(sh, src);
+        glc.compileShader(sh);
+        return sh;
+      };
+      const prog = glc.createProgram()!;
+      glc.attachShader(prog, mk(glc.VERTEX_SHADER, VERT));
+      glc.attachShader(prog, mk(glc.FRAGMENT_SHADER, FRAG));
+      glc.linkProgram(prog);
+      glc.useProgram(prog);
+      uRes = glc.getUniformLocation(prog, "uRes");
+      const aPos = glc.getAttribLocation(prog, "aPos");
+      const aSize = glc.getAttribLocation(prog, "aSize");
+      const aCol = glc.getAttribLocation(prog, "aCol");
+      const buf = glc.createBuffer();
+      glc.bindBuffer(glc.ARRAY_BUFFER, buf);
+      glc.enableVertexAttribArray(aPos);
+      glc.enableVertexAttribArray(aSize);
+      glc.enableVertexAttribArray(aCol);
+      glc.vertexAttribPointer(aPos, 2, glc.FLOAT, false, STRIDE * 4, 0);
+      glc.vertexAttribPointer(aSize, 1, glc.FLOAT, false, STRIDE * 4, 2 * 4);
+      glc.vertexAttribPointer(aCol, 4, glc.FLOAT, false, STRIDE * 4, 3 * 4);
+      glc.enable(glc.BLEND);
+      glc.blendFunc(glc.ONE, glc.ONE_MINUS_SRC_ALPHA);
+      glc.clearColor(0, 0, 0, 0);
+      resize();
+    };
+    setupGL();
     window.addEventListener("resize", resize);
 
     // ---- card registry ----
@@ -348,10 +360,20 @@ export default function CardFXLayer() {
         glc.drawArrays(glc.POINTS, 0, n);
         raf = requestAnimationFrame(frame);
       } else {
-        running = false; // idle: no rAF until a card scrolls into view
+        running = false; // idle: no rAF until maybeRun() wakes the loop
       }
     }
 
+    /* THE PARKING BUG (ELEVATION-BRIEF §5.1). The idle park above is correct
+       and must stay — but the wake-up has to be REACHABLE. maybeRun used to
+       be called only from the IntersectionObserver, scan(), and
+       visibilitychange. On "/" the plates live in a position:fixed stage, so
+       they NEVER change intersection after mount — the first time every
+       plate was visibility:hidden (every beat boundary), n hit 0, running
+       went false, and nothing restarted the loop for the rest of the
+       session. Scroll is what changes the plates' inline visibility, so
+       scroll must also be a wake-up source. The wake is cheap: when there is
+       still nothing to draw, the loop parks itself again one frame later. */
     function maybeRun() {
       if (running) return;
       let any = false;
@@ -365,18 +387,35 @@ export default function CardFXLayer() {
     }
     const onVis = () => maybeRun();
     document.addEventListener("visibilitychange", onVis);
+    const onScrollWake = () => maybeRun();
+    window.addEventListener("scroll", onScrollWake, { passive: true });
 
     const onLost = (e: Event) => e.preventDefault();
+    /* A driver reset fires contextlost; when the browser hands the context
+       back, rebuild the program or the canvas stays dead for the session. */
+    const onRestored = () => {
+      setupGL();
+      maybeRun();
+    };
     canvas.addEventListener("webglcontextlost", onLost);
+    canvas.addEventListener("webglcontextrestored", onRestored);
 
     return () => {
       window.removeEventListener("resize", resize);
+      window.removeEventListener("scroll", onScrollWake);
       document.removeEventListener("visibilitychange", onVis);
       canvas.removeEventListener("webglcontextlost", onLost);
+      canvas.removeEventListener("webglcontextrestored", onRestored);
       mo.disconnect();
       io.disconnect();
       window.clearTimeout(scanTimer);
       if (raf) cancelAnimationFrame(raf);
+      /* Release the GL context explicitly. This effect re-runs per route
+         (keyed on pathname) and browsers cap live WebGL contexts at 8-16
+         with OLDEST EVICTED FIRST — without this, a walk around the site's
+         eight routes accumulated contexts until the browser evicted the R3F
+         story scene itself. (ELEVATION-BRIEF §5.2) */
+      glc.getExtension("WEBGL_lose_context")?.loseContext();
       canvas.remove();
     };
     // Re-run on route change: the DOM under SiteShell is replaced wholesale
