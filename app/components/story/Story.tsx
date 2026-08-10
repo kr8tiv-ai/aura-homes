@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { HERO, BEATS, END, BUILD_CTA, type LedgerRow } from "./copy";
 import { withBase } from "../../lib/basePath";
-import { EnterGate, StoryHUD, useForestAudio, WithXLayerLinks } from "./StoryChrome";
+import { EnterGate, StoryHUD, useForestAudio, WithXLayerLinks, REPO_URL } from "./StoryChrome";
 
 const StoryCanvas = dynamic(() => import("./StoryCanvas"), { ssr: false });
 
@@ -138,11 +138,25 @@ export default function Story() {
   const [night, setNight] = useState(false);
   const audio = useForestAudio();
 
+  /* The gate film gets the wire first. The 3.4 MB establishing film and the
+     three.js scene used to race each other for bandwidth on first load; now
+     the canvas holds back briefly so the film's opening seconds stream
+     clean, then boots behind the opaque gate as before. It boots at once if
+     the film can't run (error / reduced motion — the scene IS the fallback)
+     or the visitor enters early. First paint is the gate either way. */
+  const [canvasBoot, setCanvasBoot] = useState(false);
+  const bootCanvas = useCallback(() => setCanvasBoot(true), []);
+  useEffect(() => {
+    const t = window.setTimeout(bootCanvas, 1600);
+    return () => window.clearTimeout(t);
+  }, [bootCanvas]);
+
   /* The gate's click is the audio gesture. Entering silently still enters —
      the sound button in the HUD stays available either way. */
   const handleEnter = useCallback(
     (withSound: boolean) => {
       setEntered(true);
+      setCanvasBoot(true);
       document.documentElement.classList.remove("story-gated");
       if (withSound) audio.start();
     },
@@ -284,12 +298,14 @@ export default function Story() {
   return (
     <div className={`story-scope${night ? " night" : ""}`}>
       <div className="story-sky" aria-hidden />
-      {reduced !== null && <StoryCanvas progressRef={progressRef} reduced={reduced} night={night} />}
+      {reduced !== null && (canvasBoot || reduced) && (
+        <StoryCanvas progressRef={progressRef} reduced={reduced} night={night} />
+      )}
       <div className="story-grain" aria-hidden />
       <div className={`story-veil${leaving ? " on" : ""}`} aria-hidden />
 
       {audio.element}
-      <EnterGate onEnter={handleEnter} entered={entered} />
+      <EnterGate onEnter={handleEnter} entered={entered} onVideoFallback={bootCanvas} />
       <StoryHUD night={night} onNight={() => setNight((n) => !n)} sound={audio.on} onSound={audio.toggle} />
 
       {/* progress rail */}
@@ -426,7 +442,11 @@ export default function Story() {
                     <span>A KR8TIV AI product</span>
                   </div>
                   <p className="story-end-credit">
-                    MIT ·{" "}
+                    Open source, end to end — MIT on{" "}
+                    <a href={REPO_URL} target="_blank" rel="noreferrer">
+                      GitHub
+                    </a>{" "}
+                    ·{" "}
                     <a href={END.creditsUrl} target="_blank" rel="noreferrer">
                       scene inspired by MengTo&apos;s kage (credited)
                     </a>

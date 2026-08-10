@@ -18,6 +18,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { withBase } from "../../lib/basePath";
 
 export const REPO_URL = "https://github.com/kr8tiv-ai/aura-homes";
+/* The star pill's destination. GitHub publishes no star-intent URL, so this
+   uses the login?return_to pattern the star-button services (ghbtns class)
+   link through — VERIFIED in a real headless browser, Aug 9 2026:
+   · logged OUT: GitHub's own sign-in page with return_to carrying
+     /kr8tiv-ai/aura-homes — after sign-in you land on the repo;
+   · logged IN: /login redirects straight to the repo, whose header carries
+     the Star control (also verified present on the logged-out repo page,
+     where clicking Star routes through this same login?return_to flow).
+   Either way the journey ends at the screen with the Star button. */
+export const STAR_URL = "https://github.com/login?return_to=%2Fkr8tiv-ai%2Faura-homes";
 export const XLAYER_URL = "https://web3.okx.com/xlayer";
 
 /* ----------------------------- the gate ----------------------------- */
@@ -25,11 +35,42 @@ export const XLAYER_URL = "https://web3.okx.com/xlayer";
 export function EnterGate({
   onEnter,
   entered,
+  onVideoFallback,
 }: {
   onEnter: (withSound: boolean) => void;
   entered: boolean;
+  /** Called when the gate film cannot run (missing/failed asset or
+   *  prefers-reduced-motion) so the parent can boot the 3D scene at once —
+   *  the scene IS the fallback presentation. */
+  onVideoFallback?: () => void;
 }) {
   const [leaving, setLeaving] = useState(false);
+
+  /* ---- the gate film ----
+     The founder's Grok-generated establishing film plays as a muted looping
+     cover behind the gate copy. Asset contract (app/public/video/enter.mp4):
+     H.264 yuv420p, faststart, no audio track, seamless loop, currently
+     1280x872 / 15 s / 3.44 MB — keep any replacement in that class.
+     Degradation is graceful and free of 404 spinners: the file ships with
+     the bundle, and if it ever errors (or the visitor asks for reduced
+     motion) the video unmounts and the gate is exactly the pre-film paper
+     gate with the 3D scene behind it. playsInline keeps iOS from going
+     fullscreen; muted is ALSO set via ref because React renders the muted
+     prop after hydration, which some Chromium builds treat as unmuted at
+     autoplay-policy time. */
+  const [videoOk, setVideoOk] = useState(true);
+  const [reducedM, setReducedM] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const set = () => setReducedM(mq.matches);
+    set();
+    mq.addEventListener("change", set);
+    return () => mq.removeEventListener("change", set);
+  }, []);
+  const videoDead = !videoOk || reducedM;
+  useEffect(() => {
+    if (videoDead) onVideoFallback?.();
+  }, [videoDead, onVideoFallback]);
 
   const go = useCallback(
     (withSound: boolean) => {
@@ -58,18 +99,34 @@ export function EnterGate({
 
   return (
     <div className={`story-gate${leaving ? " leaving" : ""}`} role="dialog" aria-label="Enter Aura Homes">
+      {!videoDead && (
+        <>
+          <video
+            className="story-gate-video"
+            src={withBase("/video/enter.mp4")}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            aria-hidden
+            ref={(el) => {
+              if (el) el.muted = true;
+            }}
+            onError={() => setVideoOk(false)}
+          />
+          <div className="story-gate-scrim" aria-hidden />
+        </>
+      )}
       <div className="story-gate-inner">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={withBase("/aura-mark.png")} alt="" className="story-gate-mark" />
-        <p className="story-label story-gate-label">Alberta · off-grid · on-chain</p>
         <h1 className="story-display story-gate-title">Aura Homes</h1>
         <p className="story-gate-sub">
           A journey from USDC on X Layer to the keys of an off-grid eco home.
         </p>
 
         <button type="button" className="story-gate-btn" onClick={() => go(true)} autoFocus>
-          <span className="story-gate-btn-ring" aria-hidden />
-          <span className="story-gate-btn-ring d2" aria-hidden />
           <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
             <path d="M8 5v14l11-7z" />
           </svg>
@@ -79,8 +136,6 @@ export function EnterGate({
         <button type="button" className="story-gate-quiet" onClick={() => go(false)}>
           Enter silently
         </button>
-
-        <p className="story-gate-fine">Forest ambience · 6.5 MB, only loads if you ask for it</p>
       </div>
     </div>
   );
@@ -103,7 +158,7 @@ export function StoryHUD({
     <div className="story-hud">
       <a
         className="story-hud-btn story-hud-star"
-        href={`${REPO_URL}`}
+        href={STAR_URL}
         target="_blank"
         rel="noreferrer"
         aria-label="Star the Aura Homes repository on GitHub"

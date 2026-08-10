@@ -609,24 +609,58 @@ html.story-gated body { overflow: hidden; }
   text-align: center;
   padding: 2rem 1.4rem;
   background: var(--st-paper);
+  overflow: hidden;
   transition: opacity 0.46s var(--st-ease-out);
 }
 .story-gate.leaving { opacity: 0; pointer-events: none; }
-.story-gate-inner { max-width: 34rem; display: grid; justify-items: center; gap: 0.5rem; }
-.story-gate-mark { width: 66px; height: auto; margin-bottom: 0.6rem; }
-.story-gate-label {
-  font-family: var(--st-mono-font);
-  font-size: 0.62rem;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: var(--st-emerald-label);
+/* The founder's establishing film, as a muted looping cover behind the gate
+   copy. The paper ground above stays — it is the poster-free fallback while
+   the first frames stream, and the whole design if the video unmounts. */
+.story-gate-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
+/* Paper-tint scrim so the writing, the mark, and the buttons hold their
+   contrast over any frame of the film: a flat tint plus a soft radial lift
+   behind the copy column. Tuned by screenshot at 1440x900 and 390x844 —
+   ink on the lifted centre sits well past AA. No blur, no glow. */
+.story-gate-scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 56% at 50% 47%, rgba(250, 250, 249, 0.70), rgba(250, 250, 249, 0.16) 76%),
+    linear-gradient(180deg, rgba(250, 250, 249, 0.30), rgba(250, 250, 249, 0.14) 42%, rgba(250, 250, 249, 0.30));
+}
+/* On a phone the copy column spans nearly the full frame, so the radial
+   lift has to as well — at 390px the sub line's right edge was crossing the
+   film's dark gable on the thin tail of the desktop ellipse. */
+@media (max-width: 640px) {
+  .story-gate-scrim {
+    background:
+      radial-gradient(ellipse 92% 54% at 50% 46%, rgba(250, 250, 249, 0.78), rgba(250, 250, 249, 0.18) 78%),
+      linear-gradient(180deg, rgba(250, 250, 249, 0.34), rgba(250, 250, 249, 0.18) 42%, rgba(250, 250, 249, 0.34));
+  }
+}
+.story-gate-inner {
+  position: relative;
+  z-index: 1;
+  max-width: 34rem;
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
+}
+/* the eyebrow tagline between mark and title is gone (founder cut); the
+   mark's margin carries the optical gap it used to occupy */
+.story-gate-mark { width: 66px; height: auto; margin-bottom: 0.9rem; }
 .story-gate-title {
   font-family: var(--st-display-font);
   font-weight: 500;
   font-size: clamp(2.4rem, 6vw, 3.8rem);
   letter-spacing: -0.04em;
-  margin: 0.2rem 0 0.3rem;
+  margin: 0 0 0.3rem;
   color: var(--st-ink);
 }
 .story-gate-sub {
@@ -636,13 +670,15 @@ html.story-gated body { overflow: hidden; }
   color: var(--st-ink-dim);
   margin-bottom: 1.7rem;
 }
+/* square corners — founder call, Aug 9: the house buttons are square now
+   (2px, not pills); size, type, and colour untouched */
 .story-gate-btn {
   position: relative;
   display: inline-flex;
   align-items: center;
   gap: 0.65rem;
   padding: 0.9rem 1.8rem;
-  border-radius: 999px;
+  border-radius: 2px;
   border: 1px solid transparent;
   background: var(--st-ink);
   color: var(--st-paper);
@@ -654,7 +690,6 @@ html.story-gated body { overflow: hidden; }
   transition: background 0.3s;
 }
 .story-gate-btn:hover { background: #0d0f0e; }
-.story-gate-btn-ring { display: none; }
 .story-gate-quiet {
   margin-top: 1rem;
   background: none;
@@ -670,12 +705,6 @@ html.story-gated body { overflow: hidden; }
   transition: color 0.25s, border-color 0.25s;
 }
 .story-gate-quiet:hover { color: var(--st-ink); border-color: var(--st-ink); }
-.story-gate-fine {
-  margin-top: 1.6rem;
-  font-family: var(--st-body-font);
-  font-size: 0.72rem;
-  color: var(--st-faint);
-}
 
 /* ---- HUD ---- */
 .story-hud {
@@ -692,7 +721,7 @@ html.story-gated body { overflow: hidden; }
   align-items: center;
   gap: 0.4rem;
   padding: 0.42rem 0.8rem;
-  border-radius: 999px;
+  border-radius: 2px; /* square — same founder call as the gate buttons */
   border: 1px solid var(--st-hair);
   background: rgba(250, 250, 249, 0.86);
   backdrop-filter: blur(9px);
