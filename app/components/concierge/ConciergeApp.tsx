@@ -34,6 +34,14 @@ import { buildContext, chipsForStatus, parseIntent } from "@/lib/concierge";
 import { CHAIN_ID, ESCROW_ADDRESS, FAUCET_URL, USDC_TESTNET, oklinkTx, shortAddr } from "@/lib/contracts";
 import { auraBuildEscrowAbi, erc20Abi, fmtUsdcUnits, useEscrowLive, useUsdcState } from "@/lib/hooks";
 import LiveEscrowCard from "@/components/chain/LiveEscrowCard";
+import { Counter, GrowBar, Reveal, Stagger, StaggerItem } from "@/components/Reveal";
+
+/* Counter restarts its rAF whenever `format` changes identity, and this tree
+   re-renders on every message and once a second while the refund countdown
+   runs. Module scope keeps the formatters stable so each figure counts up
+   once and then holds. */
+const cadWhole = (n: number) => fmtCad(Math.round(n));
+const asInt = (n: number) => Math.round(n).toLocaleString("en-CA");
 
 // ---------------------------------------------------------------- types
 
@@ -337,52 +345,61 @@ export default function ConciergeApp() {
   return (
     <div className="py-16">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
+        <Reveal y={12}>
           <p className="aura-label mb-4">The buy flow</p>
           <h1 className="font-display text-[2.35rem] font-medium leading-[1.08] tracking-[-0.025em]">Concierge</h1>
           <p className="mt-4 max-w-xl text-[0.95rem] leading-[1.65] text-aura-text/75">
             Pick a home, pick a parcel, get quoted to the dollar, and place a reservation deposit
             in native USDC — with a refusal, citation included, when the bylaw says no.
           </p>
-        </div>
-        <button
-          onClick={resetOrder}
-          className="rounded-md border aura-hairline px-4 py-2 text-xs uppercase tracking-label transition-colors hover:border-aura-teal"
-        >
-          Start a new order
-        </button>
+        </Reveal>
+        <Reveal delay={0.12} y={10}>
+          <button
+            onClick={resetOrder}
+            data-cursor="Reset"
+            className="rounded-md border aura-hairline px-4 py-2 text-xs uppercase tracking-label transition-colors hover:border-aura-teal"
+          >
+            Start a new order
+          </button>
+        </Reveal>
       </div>
 
       {/* --------------------------------------------------- the land gate */}
-      <div
-        className={`aura-panel mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 p-5 ${
-          gate.enabled ? "" : ""
-        }`}
-        style={{ borderColor: gate.enabled ? "rgba(4, 120, 87, 0.55)" : "rgba(124, 58, 237, 0.45)" }}
-      >
-        <div className="flex items-center gap-3">
-          <span
-            className={`rounded-md border px-3 py-1 text-xs font-semibold uppercase tracking-label ${
-              gate.enabled ? "border-aura-emerald text-aura-emerald" : "border-aura-violet text-aura-violet"
-            }`}
-          >
-            {committed ? "Committed" : gate.enabled ? "Buy enabled" : "Buy disabled"}
-          </span>
-          <BuyButton
-            enabled={gate.enabled && !committed}
-            status={order.status}
-            onQuote={() => dispatch({ type: "requestQuote" }, "Quote it for me.")}
-            onDeposit={() => dispatch({ type: "placeDeposit" }, "Place the deposit.")}
-          />
+      {/* The gate border is the loudest signal on the page, so it has to
+          survive the card-fx rule that repaints .aura-panel borders on
+          hover-capable devices — hence the important modifier rather than a
+          plain utility (the old inline rgba() did the same job but could
+          never flip with the theme). */}
+      <Reveal className="mt-8" delay={0.06} y={16}>
+        <div
+          className={`aura-panel aura-panel-lift flex flex-wrap items-center gap-x-6 gap-y-2 p-5 ${
+            gate.enabled ? "!border-aura-emerald/60" : "!border-aura-violet/50"
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <span
+              className={`rounded-md border px-3 py-1 text-xs font-semibold uppercase tracking-label ${
+                gate.enabled ? "border-aura-emerald text-aura-emerald" : "border-aura-violet text-aura-violet"
+              }`}
+            >
+              {committed ? "Committed" : gate.enabled ? "Buy enabled" : "Buy disabled"}
+            </span>
+            <BuyButton
+              enabled={gate.enabled && !committed}
+              status={order.status}
+              onQuote={() => dispatch({ type: "requestQuote" }, "Quote it for me.")}
+              onDeposit={() => dispatch({ type: "placeDeposit" }, "Place the deposit.")}
+            />
+          </div>
+          <p className="min-w-[240px] flex-1 text-xs leading-relaxed text-aura-text/75">
+            {committed
+              ? "Deposit in motion — home and parcel are locked for this order."
+              : gate.enabled
+                ? "Home and land both check out. The gate stays open unless either changes."
+                : gate.reason}
+          </p>
         </div>
-        <p className="min-w-[240px] flex-1 text-xs leading-relaxed text-aura-text/75">
-          {committed
-            ? "Deposit in motion — home and parcel are locked for this order."
-            : gate.enabled
-              ? "Home and land both check out. The gate stays open unless either changes."
-              : gate.reason}
-        </p>
-      </div>
+      </Reveal>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
         {/* ------------------------------------------------------- chat */}
@@ -428,6 +445,7 @@ export default function ConciergeApp() {
               <RefundWindowPanel
                 deadlineISO={order.deposit.refundDeadlineISO}
                 now={nowFn()}
+                windowHours={order.quote?.refundWindowHours}
                 mode={depositMode}
                 txBusy={txBusy}
                 clockAdvanced={clockOffsetMs > 0}
@@ -447,6 +465,7 @@ export default function ConciergeApp() {
                   <button
                     key={c.label}
                     onClick={() => dispatch(c.intent, c.label)}
+                    data-cursor="Ask"
                     className="rounded-full border aura-hairline px-3.5 py-1.5 text-xs transition-colors hover:border-aura-emerald hover:text-aura-emerald"
                   >
                     {c.label}
@@ -464,6 +483,7 @@ export default function ConciergeApp() {
               />
               <button
                 type="submit"
+                data-cursor="Send"
                 className="rounded-md bg-aura-ink px-5 py-2.5 font-mono text-xs font-medium uppercase tracking-label text-aura-paper transition-opacity hover:opacity-85"
               >
                 Send
@@ -476,11 +496,17 @@ export default function ConciergeApp() {
         </div>
 
         {/* ------------------------------------------------------- rail */}
-        <div className="space-y-6">
-          <OrderPanel order={order} depositTxHash={depositTxHash} depositMode={depositMode} />
-          <LiveEscrowCard compact />
-          <EventLog order={order} />
-        </div>
+        <Stagger className="space-y-6" gap={0.09}>
+          <StaggerItem y={16}>
+            <OrderPanel order={order} depositTxHash={depositTxHash} depositMode={depositMode} />
+          </StaggerItem>
+          <StaggerItem y={16}>
+            <LiveEscrowCard compact />
+          </StaggerItem>
+          <StaggerItem y={16}>
+            <EventLog order={order} />
+          </StaggerItem>
+        </Stagger>
       </div>
     </div>
   );
@@ -510,6 +536,7 @@ function BuyButton({
     <button
       onClick={next}
       disabled={!enabled}
+      data-cursor={status === "quoted" ? "Deposit" : "Buy"}
       className={`rounded-full px-5 py-2 font-mono text-xs font-semibold uppercase tracking-label transition-opacity ${
         enabled ? "bg-aura-ink text-aura-paper hover:opacity-85" : "bg-aura-ink/20 text-aura-text/45"
       }`}
@@ -541,7 +568,7 @@ function ChatMessage({ msg }: { msg: Msg }) {
     <div className="flex">
       <div
         className={`max-w-[92%] whitespace-pre-wrap rounded-xl border px-4 py-3 text-sm leading-relaxed ${
-          msg.refusal ? "border-aura-violet/60 bg-[#faf7ff]" : "aura-hairline bg-aura-bg"
+          msg.refusal ? "border-aura-violet/60 bg-aura-violet/[0.06]" : "aura-hairline bg-aura-bg"
         }`}
       >
         {msg.refusal && (
@@ -589,6 +616,7 @@ function DepositPanel(props: {
             key={c.uid}
             onClick={() => p.connect(c)}
             disabled={p.connecting}
+            data-cursor="Connect"
             className="block w-full max-w-xs rounded-md border aura-hairline px-4 py-2 text-xs font-medium uppercase tracking-label transition-colors hover:border-aura-teal disabled:opacity-50"
           >
             {p.connecting ? "Connecting" : `Connect ${c.name}`}
@@ -611,6 +639,7 @@ function DepositPanel(props: {
         <button
           onClick={p.onSwitch}
           disabled={p.switching}
+          data-cursor="Switch"
           className="rounded-md border border-aura-emerald px-4 py-2 text-xs font-medium uppercase tracking-label text-aura-emerald transition-colors hover:bg-aura-emerald/5 disabled:opacity-50"
         >
           {p.switching ? "Switching" : `Switch to X Layer testnet (${CHAIN_ID})`}
@@ -640,7 +669,13 @@ function DepositPanel(props: {
         <p className="text-xs leading-relaxed text-aura-text/75">
           Testnet funds needed — this wallet holds {fmtUsdcUnits(p.balance)} of native testnet USDC
           and the deposit is {amount}. Nothing here fakes a balance: get testnet OKB for gas at the{" "}
-          <a href={FAUCET_URL} target="_blank" rel="noreferrer" className="text-aura-emerald underline">
+          <a
+            href={FAUCET_URL}
+            target="_blank"
+            rel="noreferrer"
+            data-cursor="Faucet"
+            className="text-aura-emerald underline"
+          >
             OKX faucet
           </a>{" "}
           and fund the wallet with testnet USDC ({shortAddr(USDC_TESTNET)}), then return. The
@@ -654,6 +689,7 @@ function DepositPanel(props: {
         <button
           onClick={p.onApprove}
           disabled={p.hasAllowance || p.txBusy !== null}
+          data-cursor="Approve"
           className="rounded-md border border-aura-emerald px-4 py-2 text-xs font-medium uppercase tracking-label text-aura-emerald transition-colors hover:bg-aura-emerald/5 disabled:opacity-40"
         >
           {p.txBusy === "approve" ? "Approving" : p.hasAllowance ? "1. Approved" : `1. Approve ${amount}`}
@@ -661,6 +697,7 @@ function DepositPanel(props: {
         <button
           onClick={p.onPlaceDeposit}
           disabled={!p.hasAllowance || p.txBusy !== null}
+          data-cursor="Deposit"
           className="rounded-md bg-aura-ink px-4 py-2 font-mono text-xs font-semibold uppercase tracking-label text-aura-paper transition-opacity hover:opacity-85 disabled:opacity-40"
         >
           {p.txBusy === "deposit" ? "Placing deposit" : "2. placeDeposit()"}
@@ -671,15 +708,21 @@ function DepositPanel(props: {
 
   return (
     <div>
-      <p className="aura-label">Reservation deposit — {amount}</p>
-      <p className="mt-2 text-xs leading-relaxed text-aura-text/70">
-        Two signatures on the real contract: approve native USDC, then placeDeposit(). The
-        refund window opens the moment the deposit lands, and the chain enforces it.
-      </p>
+      {/* Copy reveals; the CONTROLS never do. A scroll-triggered once-only
+          reveal on a signature button would hide it from a reader whose
+          viewport never reached it. */}
+      <Reveal y={10}>
+        <p className="aura-label">Reservation deposit — {amount}</p>
+        <p className="mt-2 text-xs leading-relaxed text-aura-text/70">
+          Two signatures on the real contract: approve native USDC, then placeDeposit(). The
+          refund window opens the moment the deposit lands, and the chain enforces it.
+        </p>
+      </Reveal>
       <div className="mt-4">{realPath}</div>
       <div className="mt-4 border-t aura-hairline pt-4">
         <button
           onClick={p.onWalkthrough}
+          data-cursor="Preview"
           className="rounded-md border aura-hairline px-4 py-2 text-xs uppercase tracking-label transition-colors hover:border-aura-teal"
         >
           Continue in walkthrough — no transaction
@@ -695,6 +738,9 @@ function DepositPanel(props: {
 function RefundWindowPanel(props: {
   deadlineISO: string;
   now: Date;
+  /** Total length of the window, so the bar below can show how much of it is
+   *  left. Undefined until the quote lands — the bar simply does not render. */
+  windowHours?: number;
   mode: "onchain" | "walkthrough" | null;
   txBusy: null | "approve" | "deposit" | "refund";
   clockAdvanced: boolean;
@@ -708,24 +754,35 @@ function RefundWindowPanel(props: {
   const hours = Math.floor((msLeft % 86_400_000) / 3_600_000);
   const minutes = Math.floor((msLeft % 3_600_000) / 60_000);
   const seconds = Math.floor((msLeft % 60_000) / 1000);
+  const windowMs = props.windowHours !== undefined ? props.windowHours * 3_600_000 : undefined;
+  const pctLeft =
+    windowMs && windowMs > 0 ? Math.max(0, Math.min(100, (msLeft / windowMs) * 100)) : null;
 
   return (
     <div>
-      <p className="aura-label">Refund window — open</p>
-      <div className="mt-3 flex flex-wrap items-baseline gap-x-6 gap-y-2">
-        <p className="font-display text-[1.8rem] font-medium tabular-nums tracking-[-0.02em] text-aura-emerald">
-          {days}d {String(hours).padStart(2, "0")}:{String(minutes).padStart(2, "0")}:
-          {String(seconds).padStart(2, "0")}
-        </p>
-        <p className="text-xs text-aura-text/65">
-          until {props.deadlineISO.slice(0, 19).replace("T", " ")} UTC — you alone control the walk-away
-        </p>
-      </div>
+      <Reveal y={10}>
+        <p className="aura-label">Refund window — open</p>
+        <div className="mt-3 flex flex-wrap items-baseline gap-x-6 gap-y-2">
+          <p className="font-display text-[1.8rem] font-medium tabular-nums tracking-[-0.02em] text-aura-emerald">
+            {days}d {String(hours).padStart(2, "0")}:{String(minutes).padStart(2, "0")}:
+            {String(seconds).padStart(2, "0")}
+          </p>
+          <p className="text-xs text-aura-text/65">
+            until {props.deadlineISO.slice(0, 19).replace("T", " ")} UTC — you alone control the walk-away
+          </p>
+        </div>
+        {pctLeft !== null && (
+          <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-aura-ink/10">
+            <GrowBar pct={pctLeft} className="h-full rounded-full bg-aura-emerald-bright" />
+          </div>
+        )}
+      </Reveal>
       <div className="mt-4 flex flex-wrap gap-3">
         {props.mode === "onchain" ? (
           <button
             onClick={props.onRefundOnchain}
             disabled={props.txBusy !== null}
+            data-cursor="Refund"
             className="rounded-md border border-aura-violet px-4 py-2 text-xs font-medium uppercase tracking-label text-aura-violet transition-colors hover:bg-aura-violet/5 disabled:opacity-50"
           >
             {props.txBusy === "refund" ? "Refunding" : "refundDeposit() — full refund"}
@@ -734,6 +791,7 @@ function RefundWindowPanel(props: {
           <>
             <button
               onClick={props.onRefundWalkthrough}
+              data-cursor="Refund"
               className="rounded-md border border-aura-violet px-4 py-2 text-xs font-medium uppercase tracking-label text-aura-violet transition-colors hover:bg-aura-violet/5"
             >
               Request the refund (walkthrough)
@@ -741,6 +799,7 @@ function RefundWindowPanel(props: {
             {!props.clockAdvanced && (
               <button
                 onClick={props.onAdvanceClock}
+                data-cursor="Advance"
                 className="rounded-md border aura-hairline px-4 py-2 text-xs uppercase tracking-label transition-colors hover:border-aura-teal"
               >
                 Advance the clock past the deadline — simulated time
@@ -749,6 +808,7 @@ function RefundWindowPanel(props: {
             {props.clockAdvanced && (
               <button
                 onClick={props.onTick}
+                data-cursor="Check"
                 className="rounded-md border aura-hairline px-4 py-2 text-xs uppercase tracking-label transition-colors hover:border-aura-teal"
               >
                 Check the clock

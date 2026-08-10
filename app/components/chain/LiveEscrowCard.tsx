@@ -7,13 +7,23 @@
 
 import { CHAIN_ID, ESCROW_ADDRESS, REGISTRY_ADDRESS, oklinkAddress, shortAddr } from "@/lib/contracts";
 import { fmtSeconds, fmtUsdcUnits, useEscrowLive } from "@/lib/hooks";
+import { Counter, Stagger, StaggerItem } from "@/components/Reveal";
+
+/* Counter re-runs its rAF whenever `format` changes identity, and this card
+   re-renders on every 30 s refetch (and once a second while the concierge
+   countdown ticks). Module scope keeps these stable, so a figure counts up
+   exactly once instead of restarting under the reader. */
+const asInt = (n: number) => Math.round(n).toLocaleString("en-CA");
+const asPct = (n: number) => (Math.round(n * 100) / 100).toLocaleString("en-CA");
+const asUsdc = (n: number) =>
+  n.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 function Row({ k, v, mono = false }: { k: string; v: React.ReactNode; mono?: boolean }) {
   return (
-    <div className="flex items-baseline justify-between gap-4 py-1.5">
+    <StaggerItem className="flex items-baseline justify-between gap-4 py-1.5" y={8}>
       <span className="text-xs text-aura-text/65">{k}</span>
       <span className={`text-right text-xs ${mono ? "font-mono" : ""} text-aura-text/90`}>{v}</span>
-    </div>
+    </StaggerItem>
   );
 }
 
@@ -24,7 +34,7 @@ export default function LiveEscrowCard({ compact = false }: { compact?: boolean 
     live.homeowner && live.homeowner === live.builder && live.builder === live.arbiter;
 
   return (
-    <div className="aura-panel p-6">
+    <div className="aura-panel aura-panel-lift p-6">
       <div className="flex items-center justify-between gap-3">
         <p className="aura-label">On-chain escrow — live read</p>
         {live.loaded ? (
@@ -48,6 +58,7 @@ export default function LiveEscrowCard({ compact = false }: { compact?: boolean 
           href={oklinkAddress(ESCROW_ADDRESS)}
           target="_blank"
           rel="noreferrer"
+          data-cursor="Verify"
           className="font-mono text-aura-emerald underline decoration-dotted underline-offset-2"
         >
           {shortAddr(ESCROW_ADDRESS)}
@@ -59,17 +70,32 @@ export default function LiveEscrowCard({ compact = false }: { compact?: boolean 
         <p className="mt-4 text-xs leading-relaxed text-aura-violet">
           The RPC read failed, so there is nothing to show — this panel never substitutes sample
           data for chain data. Verify the contract directly on{" "}
-          <a href={oklinkAddress(ESCROW_ADDRESS)} target="_blank" rel="noreferrer" className="underline">
+          <a
+            href={oklinkAddress(ESCROW_ADDRESS)}
+            target="_blank"
+            rel="noreferrer"
+            data-cursor="Verify"
+            className="underline"
+          >
             OKLink
           </a>
           .
         </p>
       ) : (
-        <div className="mt-3 divide-y divide-[rgba(23,26,24,0.06)]">
+        <Stagger className="mt-3 divide-y divide-aura-ink/10" gap={0.045}>
           <Row k="Escrow state" v={live.loaded ? live.stateName : "…"} />
           <Row
             k="Statutory holdback"
-            v={live.holdbackBps !== undefined ? `${live.holdbackBps / 100}% (holdbackBps ${live.holdbackBps})` : "…"}
+            v={
+              live.holdbackBps !== undefined ? (
+                <>
+                  <Counter value={live.holdbackBps / 100} format={asPct} suffix="%" /> (holdbackBps{" "}
+                  {live.holdbackBps})
+                </>
+              ) : (
+                "…"
+              )
+            }
           />
           <Row
             k="Holdback maturity"
@@ -82,20 +108,43 @@ export default function LiveEscrowCard({ compact = false }: { compact?: boolean 
           <Row
             k="Refund window (refundWindow())"
             v={
-              live.refundWindowSeconds !== undefined
-                ? `${fmtSeconds(live.refundWindowSeconds)} (${live.refundWindowSeconds.toLocaleString("en-CA")} s)`
-                : "…"
+              live.refundWindowSeconds !== undefined ? (
+                <>
+                  {fmtSeconds(live.refundWindowSeconds)} (
+                  <Counter value={live.refundWindowSeconds} format={asInt} suffix=" s" />)
+                </>
+              ) : (
+                "…"
+              )
             }
           />
-          <Row k="Milestones on chain" v={live.milestoneCount ?? "…"} />
+          <Row
+            k="Milestones on chain"
+            v={
+              live.milestoneCount === undefined ? (
+                "…"
+              ) : (
+                <Counter value={live.milestoneCount} format={asInt} />
+              )
+            }
+          />
           <Row
             k="Reservation deposit"
             v={
-              live.depositAmount === undefined
-                ? "…"
-                : live.depositAmount === BigInt(0)
-                  ? "none placed yet"
-                  : `${fmtUsdcUnits(live.depositAmount)}${live.depositRefunded ? " (refunded)" : live.depositConverted ? " (converted)" : ""}`
+              live.depositAmount === undefined ? (
+                "…"
+              ) : live.depositAmount === BigInt(0) ? (
+                "none placed yet"
+              ) : (
+                <>
+                  <Counter
+                    value={Number(live.depositAmount) / 1_000_000}
+                    format={asUsdc}
+                    suffix=" USDC"
+                  />
+                  {live.depositRefunded ? " (refunded)" : live.depositConverted ? " (converted)" : ""}
+                </>
+              )
             }
           />
           {live.refundDeadline !== undefined && live.refundDeadline > 0 && (
@@ -113,16 +162,20 @@ export default function LiveEscrowCard({ compact = false }: { compact?: boolean 
               <Row
                 k="Registry build records"
                 v={
-                  live.registryNextTokenId === undefined
-                    ? "…"
-                    : live.registryNextTokenId === 0
-                      ? "0 minted — nothing recorded yet"
-                      : `${live.registryNextTokenId} minted`
+                  live.registryNextTokenId === undefined ? (
+                    "…"
+                  ) : live.registryNextTokenId === 0 ? (
+                    "0 minted — nothing recorded yet"
+                  ) : (
+                    <>
+                      <Counter value={live.registryNextTokenId} format={asInt} /> minted
+                    </>
+                  )
                 }
               />
             </>
           )}
-        </div>
+        </Stagger>
       )}
 
       {sameRoles && (
@@ -138,6 +191,7 @@ export default function LiveEscrowCard({ compact = false }: { compact?: boolean 
             href={oklinkAddress(REGISTRY_ADDRESS)}
             target="_blank"
             rel="noreferrer"
+            data-cursor="Verify"
             className="font-mono underline decoration-dotted underline-offset-2"
           >
             {shortAddr(REGISTRY_ADDRESS)}

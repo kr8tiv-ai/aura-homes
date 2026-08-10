@@ -6,12 +6,17 @@
 // The full pipeline (bylaw checks, climate-zone constraints, the costed model)
 // runs in agent/ (aura-architect), not in this hosted demo.
 
-import { useState } from "react";
+import { Children, useState } from "react";
 import RevealWords from "@/components/RevealWords";
+import { Reveal, Stagger, StaggerItem, GrowBar, Counter } from "@/components/Reveal";
 
 const REPO_AGENT = "https://github.com/kr8tiv-ai/aura-homes/tree/main/agent";
 
 const steps = ["Land", "Home size & style", "Energy", "Water", "Extras"] as const;
+
+// Module scope on purpose: Counter lists `format` in its effect deps, so an
+// inline arrow would restart the count on every keystroke in the wizard.
+const pad2 = (n: number) => String(Math.round(n)).padStart(2, "0");
 
 interface WizardState {
   parcel: { county: string; district: string; acreage: string };
@@ -103,216 +108,260 @@ export default function DesignPage() {
 
   return (
     <div className="py-16">
-      <p className="aura-label mb-4">Design questionnaire</p>
+      <Reveal y={10}>
+        <p className="aura-label mb-4">Design questionnaire</p>
+      </Reveal>
       <RevealWords
         text="Tell Aura about your build"
         className="font-display text-[2.35rem] font-medium leading-[1.08] tracking-[-0.025em]"
       />
-      <p className="mt-4 max-w-xl text-sm leading-relaxed text-aura-text/70">
-        Hosted demo: the brief is composed in your browser from your answers, as a reference. The
-        full pipeline — bylaw checks, climate-zone constraints, and the costed model — runs in the
-        open repo,{" "}
-        <a
-          href={REPO_AGENT}
-          target="_blank"
-          rel="noreferrer"
-          className="text-aura-emerald underline underline-offset-4"
-        >
-          agent/
-        </a>
-        .
-      </p>
+      <Reveal delay={0.12} y={12}>
+        <p className="mt-4 max-w-xl text-sm leading-relaxed text-aura-text/70">
+          Hosted demo: the brief is composed in your browser from your answers, as a reference. The
+          full pipeline — bylaw checks, climate-zone constraints, and the costed model — runs in the
+          open repo,{" "}
+          <a
+            href={REPO_AGENT}
+            target="_blank"
+            rel="noreferrer"
+            data-cursor="Open"
+            className="text-aura-emerald underline underline-offset-4"
+          >
+            agent/
+          </a>
+          .
+        </p>
+      </Reveal>
 
-      <div className="mt-10 flex flex-wrap gap-2">
+      <Stagger className="mt-10 flex flex-wrap gap-2" gap={0.05}>
         {steps.map((name, i) => (
-          <button
-            key={name}
-            onClick={() => setStep(i)}
-            className={`rounded-md border px-4 py-2 text-xs uppercase tracking-label transition-colors ${
-              i === step
-                ? "border-aura-emerald text-aura-emerald"
-                : "aura-hairline text-aura-text/70 hover:text-aura-text"
-            }`}
-          >
-            {name}
-          </button>
+          <StaggerItem key={name}>
+            <button
+              onClick={() => setStep(i)}
+              data-cursor="Jump"
+              className={`rounded-md border px-4 py-2 text-xs uppercase tracking-label transition-colors ${
+                i === step
+                  ? "border-aura-emerald text-aura-emerald"
+                  : "aura-hairline text-aura-text/70 hover:text-aura-text"
+              }`}
+            >
+              {name}
+            </button>
+          </StaggerItem>
         ))}
+      </Stagger>
+
+      {/* progress rail — redraws itself from zero on every step change, so the
+          wizard reads as travel rather than five identical screens */}
+      <div className="mt-6 flex items-center gap-4">
+        <div className="h-1 flex-1 overflow-hidden rounded-full bg-aura-ink/10">
+          <GrowBar
+            key={step}
+            pct={((step + 1) / steps.length) * 100}
+            className="h-full rounded-full bg-aura-emerald-bright"
+          />
+        </div>
+        <span className="font-mono text-xs uppercase tracking-label text-aura-dim">
+          <Counter key={step} value={step + 1} format={pad2} duration={0.5} />
+          {` / ${String(steps.length).padStart(2, "0")}`}
+        </span>
       </div>
 
-      <div className="aura-panel mt-8 p-8">
-        {step === 0 && (
-          <StepGrid>
-            <Field label="County">
-              <TextInput
-                value={state.parcel.county}
-                onChange={(v) => patch("parcel", { county: v })}
-              />
-            </Field>
-            <Field label="Planning district">
-              <TextInput
-                value={state.parcel.district}
-                onChange={(v) => patch("parcel", { district: v })}
-              />
-            </Field>
-            <Field label="Acreage">
-              <TextInput
-                value={state.parcel.acreage}
-                onChange={(v) => patch("parcel", { acreage: v })}
-              />
-            </Field>
-          </StepGrid>
-        )}
+      <Reveal y={18} delay={0.05}>
+        <div className="aura-panel aura-panel-lift mt-8 p-8">
+          {step === 0 && (
+            <StepGrid>
+              <Field label="County">
+                <TextInput
+                  value={state.parcel.county}
+                  onChange={(v) => patch("parcel", { county: v })}
+                />
+              </Field>
+              <Field label="Planning district">
+                <TextInput
+                  value={state.parcel.district}
+                  onChange={(v) => patch("parcel", { district: v })}
+                />
+              </Field>
+              <Field label="Acreage">
+                <TextInput
+                  value={state.parcel.acreage}
+                  onChange={(v) => patch("parcel", { acreage: v })}
+                />
+              </Field>
+            </StepGrid>
+          )}
 
-        {step === 1 && (
-          <StepGrid>
-            <Field label="Size (sqft)">
-              <TextInput
-                value={state.home.sizeSqft}
-                onChange={(v) => patch("home", { sizeSqft: v })}
-              />
-            </Field>
-            <Field label="Style">
-              <Select
-                value={state.home.style}
-                onChange={(v) => patch("home", { style: v })}
-                options={[
-                  ["modernCabin", "Modern cabin"],
-                  ["aFrame", "A-frame"],
-                  ["bungalow", "Bungalow"],
-                  ["storeyAndAHalf", "Storey and a half"],
-                ]}
-              />
-            </Field>
-            <Field label="Storeys">
-              <Select
-                value={state.home.storeys}
-                onChange={(v) => patch("home", { storeys: v })}
-                options={[
-                  ["1", "One"],
-                  ["2", "Two"],
-                ]}
-              />
-            </Field>
-            <Field label="Bedrooms">
-              <TextInput
-                value={state.home.bedrooms}
-                onChange={(v) => patch("home", { bedrooms: v })}
-              />
-            </Field>
-          </StepGrid>
-        )}
+          {step === 1 && (
+            <StepGrid>
+              <Field label="Size (sqft)">
+                <TextInput
+                  value={state.home.sizeSqft}
+                  onChange={(v) => patch("home", { sizeSqft: v })}
+                />
+              </Field>
+              <Field label="Style">
+                <Select
+                  value={state.home.style}
+                  onChange={(v) => patch("home", { style: v })}
+                  options={[
+                    ["modernCabin", "Modern cabin"],
+                    ["aFrame", "A-frame"],
+                    ["bungalow", "Bungalow"],
+                    ["storeyAndAHalf", "Storey and a half"],
+                  ]}
+                />
+              </Field>
+              <Field label="Storeys">
+                <Select
+                  value={state.home.storeys}
+                  onChange={(v) => patch("home", { storeys: v })}
+                  options={[
+                    ["1", "One"],
+                    ["2", "Two"],
+                  ]}
+                />
+              </Field>
+              <Field label="Bedrooms">
+                <TextInput
+                  value={state.home.bedrooms}
+                  onChange={(v) => patch("home", { bedrooms: v })}
+                />
+              </Field>
+            </StepGrid>
+          )}
 
-        {step === 2 && (
-          <StepGrid>
-            <Field label="Solar array (kW)">
-              <TextInput
-                value={state.energy.solarKw}
-                onChange={(v) => patch("energy", { solarKw: v })}
+          {step === 2 && (
+            <StepGrid>
+              <Field label="Solar array (kW)">
+                <TextInput
+                  value={state.energy.solarKw}
+                  onChange={(v) => patch("energy", { solarKw: v })}
+                />
+              </Field>
+              <Field label="Battery (kWh)">
+                <TextInput
+                  value={state.energy.batteryKwh}
+                  onChange={(v) => patch("energy", { batteryKwh: v })}
+                />
+              </Field>
+              <Toggle
+                label="Backup generator"
+                checked={state.energy.backupGenerator}
+                onChange={(v) => patch("energy", { backupGenerator: v })}
               />
-            </Field>
-            <Field label="Battery (kWh)">
-              <TextInput
-                value={state.energy.batteryKwh}
-                onChange={(v) => patch("energy", { batteryKwh: v })}
+              <Toggle
+                label="Wood stove (WETT)"
+                checked={state.energy.woodStove}
+                onChange={(v) => patch("energy", { woodStove: v })}
               />
-            </Field>
-            <Toggle
-              label="Backup generator"
-              checked={state.energy.backupGenerator}
-              onChange={(v) => patch("energy", { backupGenerator: v })}
-            />
-            <Toggle
-              label="Wood stove (WETT)"
-              checked={state.energy.woodStove}
-              onChange={(v) => patch("energy", { woodStove: v })}
-            />
-          </StepGrid>
-        )}
+            </StepGrid>
+          )}
 
-        {step === 3 && (
-          <StepGrid>
-            <Field label="Water source">
-              <Select
-                value={state.water.source}
-                onChange={(v) => patch("water", { source: v as WizardState["water"]["source"] })}
-                options={[
-                  ["cistern", "Buried cistern"],
-                  ["well", "Drilled well"],
-                  ["awgSupplement", "Cistern + AWG supplement"],
-                ]}
-              />
-            </Field>
-            <Field label="Septic">
-              <Select
-                value={state.water.septic}
-                onChange={(v) => patch("water", { septic: v })}
-                options={[
-                  ["tankAndField", "Tank and field"],
-                  ["mound", "Mound"],
-                  ["holdingTank", "Holding tank"],
-                  ["packagedTreatment", "Packaged treatment"],
-                ]}
-              />
-            </Field>
-          </StepGrid>
-        )}
+          {step === 3 && (
+            <StepGrid>
+              <Field label="Water source">
+                <Select
+                  value={state.water.source}
+                  onChange={(v) => patch("water", { source: v as WizardState["water"]["source"] })}
+                  options={[
+                    ["cistern", "Buried cistern"],
+                    ["well", "Drilled well"],
+                    ["awgSupplement", "Cistern + AWG supplement"],
+                  ]}
+                />
+              </Field>
+              <Field label="Septic">
+                <Select
+                  value={state.water.septic}
+                  onChange={(v) => patch("water", { septic: v })}
+                  options={[
+                    ["tankAndField", "Tank and field"],
+                    ["mound", "Mound"],
+                    ["holdingTank", "Holding tank"],
+                    ["packagedTreatment", "Packaged treatment"],
+                  ]}
+                />
+              </Field>
+            </StepGrid>
+          )}
 
-        {step === 4 && (
-          <StepGrid>
-            <Toggle
-              label="Wood-fired hot tub"
-              checked={state.extras.hotTub}
-              onChange={(v) => patch("extras", { hotTub: v })}
-            />
-            <Toggle
-              label="Deck"
-              checked={state.extras.deck}
-              onChange={(v) => patch("extras", { deck: v })}
-            />
-            <Toggle
-              label="HRV"
-              checked={state.extras.hrv}
-              onChange={(v) => patch("extras", { hrv: v })}
-            />
-          </StepGrid>
-        )}
-      </div>
+          {step === 4 && (
+            <StepGrid>
+              <Toggle
+                label="Wood-fired hot tub"
+                checked={state.extras.hotTub}
+                onChange={(v) => patch("extras", { hotTub: v })}
+              />
+              <Toggle
+                label="Deck"
+                checked={state.extras.deck}
+                onChange={(v) => patch("extras", { deck: v })}
+              />
+              <Toggle
+                label="HRV"
+                checked={state.extras.hrv}
+                onChange={(v) => patch("extras", { hrv: v })}
+              />
+            </StepGrid>
+          )}
+        </div>
+      </Reveal>
 
-      <div className="mt-8 flex items-center gap-4">
-        <button
-          onClick={() => setStep((s) => Math.max(0, s - 1))}
-          disabled={step === 0}
-          className="rounded-md border aura-hairline px-5 py-2.5 text-xs uppercase tracking-label disabled:opacity-30"
-        >
-          Back
-        </button>
-        {step < steps.length - 1 ? (
+      <Stagger className="mt-8 flex items-center gap-4" gap={0.07}>
+        <StaggerItem>
           <button
-            onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}
-            className="rounded-md border border-aura-teal px-5 py-2.5 text-xs uppercase tracking-label text-aura-teal"
+            onClick={() => setStep((s) => Math.max(0, s - 1))}
+            disabled={step === 0}
+            data-cursor="Back"
+            className="rounded-md border aura-hairline px-5 py-2.5 text-xs uppercase tracking-label disabled:opacity-30"
           >
-            Next
+            Back
           </button>
-        ) : (
-          <button
-            onClick={generate}
-            disabled={busy}
-            className="rounded-full bg-aura-ink px-6 py-2.5 font-mono text-xs font-medium uppercase tracking-label text-aura-paper disabled:opacity-50"
-          >
-            {busy ? "Generating" : "Generate design"}
-          </button>
-        )}
-      </div>
+        </StaggerItem>
+        <StaggerItem>
+          {step < steps.length - 1 ? (
+            <button
+              onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}
+              data-cursor="Next"
+              className="rounded-md border border-aura-teal px-5 py-2.5 text-xs uppercase tracking-label text-aura-teal"
+            >
+              Next
+            </button>
+          ) : (
+            <button
+              onClick={generate}
+              disabled={busy}
+              data-cursor="Generate"
+              className="rounded-full bg-aura-ink px-6 py-2.5 font-mono text-xs font-medium uppercase tracking-label text-aura-paper disabled:opacity-50"
+            >
+              {busy ? "Generating" : "Generate design"}
+            </button>
+          )}
+        </StaggerItem>
+      </Stagger>
 
       {result && (
-        <div className="aura-panel mt-10 p-8">
-          <p className="aura-label mb-4">Design brief — reference</p>
-          <p className="whitespace-pre-line text-sm leading-relaxed text-aura-text/80">{result}</p>
-          <p className="mt-4 text-xs leading-relaxed text-aura-text/60">
-            Composed client-side from your answers. Verdicts — district minimums, Part 9, zone 7A —
-            come from the real pipeline in agent/, not this demo.
-          </p>
-        </div>
+        <Reveal y={20}>
+          <div className="aura-panel aura-panel-lift mt-10 p-8">
+            <Stagger gap={0.08}>
+              <StaggerItem>
+                <p className="aura-label mb-4">Design brief — reference</p>
+              </StaggerItem>
+              <StaggerItem>
+                <p className="whitespace-pre-line text-sm leading-relaxed text-aura-text/80">
+                  {result}
+                </p>
+              </StaggerItem>
+              <StaggerItem>
+                <p className="mt-4 text-xs leading-relaxed text-aura-text/60">
+                  Composed client-side from your answers. Verdicts — district minimums, Part 9, zone
+                  7A — come from the real pipeline in agent/, not this demo.
+                </p>
+              </StaggerItem>
+            </Stagger>
+          </div>
+        </Reveal>
       )}
     </div>
   );
@@ -320,8 +369,16 @@ export default function DesignPage() {
 
 // ---------------------------------------------------------------- primitives
 
+// Each step remounts when `step` changes, so the stagger replays every time —
+// the fields arrive one after another instead of the panel swapping contents.
 function StepGrid({ children }: { children: React.ReactNode }) {
-  return <div className="grid gap-6 md:grid-cols-2">{children}</div>;
+  return (
+    <Stagger className="grid gap-6 md:grid-cols-2" gap={0.07}>
+      {Children.map(children, (child) => (
+        <StaggerItem>{child}</StaggerItem>
+      ))}
+    </Stagger>
+  );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -380,7 +437,8 @@ function Toggle({
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className={`flex items-center justify-between rounded-md border px-4 py-3 text-left text-sm transition-colors ${
+      data-cursor="Toggle"
+      className={`flex h-full w-full items-center justify-between rounded-md border px-4 py-3 text-left text-sm transition-colors ${
         checked ? "border-aura-emerald text-aura-text" : "aura-hairline text-aura-text/70"
       }`}
     >

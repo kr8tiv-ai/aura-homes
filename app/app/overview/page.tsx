@@ -1,5 +1,6 @@
 import Link from "next/link";
 import RevealWords from "@/components/RevealWords";
+import { Reveal, Stagger, StaggerItem, GrowBar, Counter } from "@/components/Reveal";
 
 // The site tells the same rollout story as docs/ROADMAP.md — three arcs,
 // honest labels on every one. If the roadmap changes, this page changes.
@@ -47,6 +48,9 @@ export const metadata = {
 export default function OverviewPage() {
   return (
     <div className="py-24">
+      {/* The first screen is deliberately NOT faded in: label, headline and
+          lede render at full opacity so the page is readable the instant it
+          paints. Only the call-to-action row arrives, and it arrives fast. */}
       <p className="aura-label mb-6">Off-grid, on-chain</p>
       <h1 className="max-w-3xl text-5xl font-semibold leading-tight md:text-6xl">
         Design it. <span className="text-aura-emerald">Fund it.</span> Build it.
@@ -55,91 +59,136 @@ export default function OverviewPage() {
         AI-designed off-grid eco homes on X Layer, paid in USDC.
       </p>
 
-      <div className="mt-10 flex gap-4">
-        <Link
-          href="/design"
-          className="rounded-full bg-aura-ink px-6 py-3 font-mono text-sm font-medium uppercase tracking-label text-aura-paper transition-opacity hover:opacity-85"
-        >
-          Start a design
-        </Link>
-        <Link
-          href="/escrow"
-          className="rounded-md border aura-hairline px-6 py-3 text-sm font-medium uppercase tracking-label transition-colors hover:border-aura-teal"
-        >
-          View escrow
-        </Link>
-      </div>
+      <Stagger className="mt-10 flex gap-4">
+        {/* the wrapper is the flex child now, so it carries `flex` and the
+            link carries `inline-flex` — that keeps the two buttons the same
+            height, which stretch used to do for free */}
+        <StaggerItem y={8} className="flex">
+          <Link
+            href="/design"
+            data-cursor="Design"
+            className="inline-flex items-center rounded-full bg-aura-ink px-6 py-3 font-mono text-sm font-medium uppercase tracking-label text-aura-paper transition-opacity hover:opacity-85"
+          >
+            Start a design
+          </Link>
+        </StaggerItem>
+        <StaggerItem y={8} className="flex">
+          <Link
+            href="/escrow"
+            data-cursor="Open"
+            className="inline-flex items-center rounded-md border aura-hairline px-6 py-3 text-sm font-medium uppercase tracking-label transition-colors hover:border-aura-teal"
+          >
+            View escrow
+          </Link>
+        </StaggerItem>
+      </Stagger>
 
       {/* ---- the rollout: the same three arcs as docs/ROADMAP.md ---- */}
       <div className="mt-28">
-        <p className="aura-label">The rollout</p>
+        <Reveal y={10}>
+          <p className="aura-label">The rollout</p>
+          {/* the section rule draws itself: track on the ink ladder so it
+              flips with the theme, fill on the emerald MARK step */}
+          <div className="mt-3 h-px w-28 overflow-hidden rounded-full bg-aura-ink/10">
+            <GrowBar pct={100} className="h-full bg-aura-emerald-bright" />
+          </div>
+        </Reveal>
         <RevealWords
           as="h2"
           text="One story, three arcs — each one ships whole, not sliced."
-          className="mt-3 max-w-2xl text-3xl font-semibold leading-snug"
+          className="mt-5 max-w-2xl text-3xl font-semibold leading-snug"
         />
-        <div className="mt-10 grid gap-6 md:grid-cols-3">
+        <Stagger className="mt-10 grid gap-6 md:grid-cols-3">
           {arcs.map((a) => (
-            <article key={a.n} className="aura-panel p-8">
-              <div className="flex items-baseline justify-between">
-                <p className="font-mono text-xs text-aura-violet">{a.n}</p>
-                <p className="font-mono text-[0.65rem] uppercase tracking-label text-aura-emerald">
-                  {a.status}
-                </p>
-              </div>
-              <h3 className="mt-4 text-lg font-semibold">{a.name}</h3>
-              <p className="mt-3 text-sm font-medium leading-relaxed text-aura-text/90">{a.line}</p>
-              <p className="mt-3 text-sm leading-relaxed text-aura-text/70">{a.detail}</p>
-            </article>
+            /* StaggerItem is the grid child now, so the card keeps its own
+               equal-height stretch via h-full on both. */
+            <StaggerItem key={a.n} className="h-full">
+              <article className="aura-panel aura-panel-lift h-full p-8">
+                <div className="flex items-baseline justify-between">
+                  <p className="font-mono text-xs text-aura-violet">
+                    {/* prefix, not a format fn: this is a server component and
+                        functions cannot cross into a client component */}
+                    <Counter value={Number(a.n)} prefix="0" duration={0.8} />
+                  </p>
+                  <p className="font-mono text-[0.65rem] uppercase tracking-label text-aura-emerald">
+                    {a.status}
+                  </p>
+                </div>
+                <h3 className="mt-4 text-lg font-semibold">{a.name}</h3>
+                <p className="mt-3 text-sm font-medium leading-relaxed text-aura-text/90">{a.line}</p>
+                <p className="mt-3 text-sm leading-relaxed text-aura-text/70">{a.detail}</p>
+              </article>
+            </StaggerItem>
           ))}
-        </div>
-        <p className="mt-6 max-w-2xl text-sm text-aura-text/70">
-          The full plan, with every line item and its status, lives in the open:{" "}
-          <a
-            href="https://github.com/kr8tiv-ai/aura-homes/blob/main/docs/ROADMAP.md"
-            target="_blank"
-            rel="noreferrer"
-            className="text-aura-emerald underline underline-offset-4"
-          >
-            docs/ROADMAP.md
-          </a>
-          .
-        </p>
+        </Stagger>
+        <Reveal delay={0.05} y={10}>
+          <p className="mt-6 max-w-2xl text-sm text-aura-text/70">
+            The full plan, with every line item and its status, lives in the open:{" "}
+            <a
+              href="https://github.com/kr8tiv-ai/aura-homes/blob/main/docs/ROADMAP.md"
+              target="_blank"
+              rel="noreferrer"
+              data-cursor="Read"
+              className="text-aura-emerald underline underline-offset-4"
+            >
+              docs/ROADMAP.md
+            </a>
+            .
+          </p>
+        </Reveal>
       </div>
 
       {/* ---- the five-stage pipeline ---- */}
       <div className="mt-24">
-        <p className="aura-label">The pipeline</p>
+        <Reveal y={10}>
+          <p className="aura-label">The pipeline</p>
+          <div className="mt-3 h-px w-28 overflow-hidden rounded-full bg-aura-ink/10">
+            <GrowBar pct={100} className="h-full bg-aura-emerald-bright" />
+          </div>
+        </Reveal>
         {/* structure by hairline, not by box — and the old filled gutter was
             rgba(26,29,27,.12), a near-miss of --aura-border */}
-        <div className="mt-6 grid overflow-hidden rounded-lg border aura-hairline md:grid-cols-5">
-          {pipeline.map((p) => (
-            <div
-              key={p.step}
-              className="fx-card border-b aura-hairline p-8 last:border-b-0 md:border-b-0 md:border-r md:last:border-r-0"
-              data-fx=""
-            >
-              <p className="text-xs text-aura-violet">{p.step}</p>
-              <p className="mt-3 text-sm font-semibold uppercase tracking-label text-aura-text">
-                {p.name}
-              </p>
-              <p className="mt-3 text-sm leading-relaxed text-aura-text/75">{p.detail}</p>
-            </div>
+        <Stagger className="mt-6 grid overflow-hidden rounded-lg border aura-hairline md:grid-cols-5">
+          {pipeline.map((p, i) => (
+            /* The fx-card and its borders stay on ONE element (the hover warms
+               the border, so they cannot be split across the motion wrapper).
+               `last:` selectors would match every cell once each is wrapped, so
+               the divider is derived from the index instead — same render. */
+            <StaggerItem key={p.step} y={10}>
+              <div
+                className={
+                  i < pipeline.length - 1
+                    ? "fx-card h-full border-b aura-hairline p-8 md:border-b-0 md:border-r"
+                    : "fx-card h-full p-8"
+                }
+                data-fx=""
+              >
+                <p className="text-xs text-aura-violet">
+                  <Counter value={Number(p.step)} prefix="0" duration={0.9} />
+                </p>
+                <p className="mt-3 text-sm font-semibold uppercase tracking-label text-aura-text">
+                  {p.name}
+                </p>
+                <p className="mt-3 text-sm leading-relaxed text-aura-text/75">{p.detail}</p>
+              </div>
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       </div>
 
-      <p className="mt-16 text-sm text-aura-text/75">
-        Prefer the full story?{" "}
-        <Link href="/" className="text-aura-emerald underline underline-offset-4">
-          Watch the scroll tour
-        </Link>
-        {" "}— or read{" "}
-        <Link href="/faq" className="text-aura-emerald underline underline-offset-4">
-          the FAQ
-        </Link>
-        .
-      </p>
+      <Reveal y={10}>
+        <p className="mt-16 text-sm text-aura-text/75">
+          Prefer the full story?{" "}
+          <Link href="/" className="text-aura-emerald underline underline-offset-4" data-cursor="Watch">
+            Watch the scroll tour
+          </Link>
+          {" "}— or read{" "}
+          <Link href="/faq" className="text-aura-emerald underline underline-offset-4" data-cursor="Read">
+            the FAQ
+          </Link>
+          .
+        </p>
+      </Reveal>
     </div>
   );
 }

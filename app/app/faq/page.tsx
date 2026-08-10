@@ -1,5 +1,7 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import RevealWords from "@/components/RevealWords";
+import { Reveal, Stagger, StaggerItem, GrowBar, Counter } from "@/components/Reveal";
 
 /* The FAQ, trimmed from README section 16 to the eight questions people
    actually ask first. Same voice as the rest of the house: plain answers,
@@ -44,6 +46,48 @@ const faqs = [
   },
 ] as const;
 
+/* ---------------------------------------------------------------------
+   The money in these answers is the reason people read the page, so the
+   figures count up when the card arrives instead of sitting there printed.
+
+   This is a RENDERING pass only — the answer strings above are untouched
+   and every character still ships to crawlers and no-JS readers, because
+   <Counter> server-renders its final value. Two rules keep it honest:
+   · Only sums of $1,000 and up animate. Watching "$95" tick is a gimmick.
+   · The interim frames are padded with FIGURE SPACES (U+2007, one digit
+     wide) to the final string's length, so the paragraph never reflows
+     while the number climbs — a sentence rewrapping itself for a second
+     reads as a bug, which is exactly what a money page cannot afford.
+--------------------------------------------------------------------- */
+const MONEY = /\$(\d{1,3}(?:,\d{3})*)/g;
+const FIGURE_SPACE = " "; // exactly one digit wide, and HTML does not collapse it
+
+function withCountingFigures(text: string): ReactNode[] {
+  const out: ReactNode[] = [];
+  const re = new RegExp(MONEY.source, "g");
+  let cursor = 0;
+  let key = 0;
+
+  for (let hit = re.exec(text); hit !== null; hit = re.exec(text)) {
+    const n = Number(hit[1].replace(/,/g, ""));
+    if (n < 1000) continue;
+    if (hit.index > cursor) out.push(text.slice(cursor, hit.index));
+    const settled = n.toLocaleString("en-CA");
+    out.push(
+      <Counter
+        key={`fig-${key++}`}
+        value={n}
+        prefix="$"
+        className="whitespace-nowrap font-medium tabular-nums text-aura-text"
+        format={(v) => Math.round(v).toLocaleString("en-CA").padEnd(settled.length, FIGURE_SPACE)}
+      />,
+    );
+    cursor = hit.index + hit[0].length;
+  }
+  if (cursor < text.length) out.push(text.slice(cursor));
+  return out;
+}
+
 export const metadata = {
   title: "FAQ — Aura Homes",
   description:
@@ -53,55 +97,73 @@ export const metadata = {
 export default function FaqPage() {
   return (
     <div className="py-24">
-      <p className="aura-label mb-6">Questions, answered plainly</p>
+      <Reveal y={10}>
+        <p className="aura-label mb-6">Questions, answered plainly</p>
+      </Reveal>
       <RevealWords text="FAQ" className="max-w-3xl text-5xl font-semibold leading-tight md:text-6xl" />
-      <p className="mt-6 max-w-xl text-lg text-aura-text/70">
-        The eight questions people ask first — with the catches stated up front.
-      </p>
+      <Reveal delay={0.12}>
+        <p className="mt-6 max-w-xl text-lg text-aura-text/70">
+          The eight questions people ask first — with the catches stated up front.
+        </p>
+      </Reveal>
 
-      <div className="mt-16 grid gap-6 md:grid-cols-2">
+      <Stagger className="mt-16 grid gap-6 md:grid-cols-2">
         {faqs.map((f, i) => (
-          <article key={f.q} className="aura-panel p-8">
-            <p className="flex items-center gap-3">
-              <span className="font-mono text-xs text-aura-violet">
-                {String(i + 1).padStart(2, "0")}
-              </span>
-              <i className="h-px flex-1 bg-[rgba(23,26,24,0.12)]" aria-hidden />
-            </p>
-            <h2 className="mt-4 text-lg font-semibold">{f.q}</h2>
-            <p className="mt-3 text-sm leading-relaxed text-aura-text/75">{f.a}</p>
-            {"link" in f && f.link ? (
-              <p className="mt-3 text-sm">
-                <a
-                  href={f.link.href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-aura-emerald underline underline-offset-4"
-                >
-                  {f.link.label}
-                </a>
+          <StaggerItem key={f.q} className="h-full">
+            <article className="aura-panel aura-panel-lift h-full p-8">
+              {/* a div, not a p: GrowBar renders a div and a div inside a
+                  paragraph is invalid nesting React will complain about */}
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-xs text-aura-violet">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <GrowBar pct={100} delay={0.12} className="h-px flex-1 bg-aura-ink/15" />
+              </div>
+              <h2 className="mt-4 text-lg font-semibold">{f.q}</h2>
+              <p className="mt-3 text-sm leading-relaxed text-aura-text/75">
+                {withCountingFigures(f.a)}
               </p>
-            ) : null}
-          </article>
+              {"link" in f && f.link ? (
+                <p className="mt-3 text-sm">
+                  <a
+                    href={f.link.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    data-cursor="Star"
+                    className="text-aura-emerald underline underline-offset-4"
+                  >
+                    {f.link.label}
+                  </a>
+                </p>
+              ) : null}
+            </article>
+          </StaggerItem>
         ))}
-      </div>
+      </Stagger>
 
-      <p className="mt-16 text-sm text-aura-text/75">
-        Longer answers live in the{" "}
-        <a
-          href={`${REPO}#16--faq`}
-          target="_blank"
-          rel="noreferrer"
-          className="text-aura-emerald underline underline-offset-4"
-        >
-          README FAQ
-        </a>
-        {" "}— or start from{" "}
-        <Link href="/overview" className="text-aura-emerald underline underline-offset-4">
-          the overview
-        </Link>
-        .
-      </p>
+      <Reveal className="mt-16">
+        <p className="text-sm text-aura-text/75">
+          Longer answers live in the{" "}
+          <a
+            href={`${REPO}#16--faq`}
+            target="_blank"
+            rel="noreferrer"
+            data-cursor="Read"
+            className="text-aura-emerald underline underline-offset-4"
+          >
+            README FAQ
+          </a>
+          {" "}— or start from{" "}
+          <Link
+            href="/overview"
+            data-cursor="Open"
+            className="text-aura-emerald underline underline-offset-4"
+          >
+            the overview
+          </Link>
+          .
+        </p>
+      </Reveal>
     </div>
   );
 }
