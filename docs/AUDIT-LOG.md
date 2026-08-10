@@ -306,4 +306,52 @@ Eleven days out, the two things that decide this are both one decision each — 
 
 ---
 
-*Next audit: append `## Audit #6 — <date>` below this line. Do not edit prior audits.*
+## Audit #6 — promised vs built (rollout kickoff) — 2026-08-10
+
+*(The founder's brief numbered this pass "Audit #5"; the scheduled 06:30 audit claimed that number hours earlier, so this is #6. Nothing else changes.)*
+
+**Method:** a full promise sweep — README (§01–§17, including the 22-step journey table and its LIVE/PARTIAL/SPEC labels), ROADMAP.md (as of today's three-arc rewrite), VISION.md, PHASED-ROADMAP.md, and all 7 GitHub issues — with every promise graded **BUILT** (runs today, verified), **DEMO-ONLY** (exists but simulated/fixture-backed), or **PROMISED** (specified, not built). This list is the marching order for the next session.
+
+### The ledger
+
+**BUILT — runs today, anchors green (per Audit #5's executed pass + this session):**
+- Land verdict engine with bylaw citations (`agent/src/parcels.ts`, /land, the Lakeside REJECT).
+- Design brief pipeline + 5 constraint checks, offline-deterministic (`agent` demo reconciles to the dollar).
+- Line-item Alberta budget + milestone schedule (totals rule frozen, exact).
+- `AuraBuildEscrow` + `AuraBuildRegistry` — written, 10/10 tests (the *contracts* are built; the *chain* is not — see DEMO-ONLY).
+- Aura Brain phase 0: slips, memory, digest render, MCP smoke — all execute green.
+- The 3D story site + 8 app routes live at aurahomes.fun — including, from this session: the /faq page, the three-arc rollout story on /overview, the DIY-or-hire budget view, and the site-wide hover/tracer interactivity round.
+- **Moved from PARTIAL to BUILT today:** the DIY-or-hire *display* half of issue #7 — `ownerBuildable` + basis now rendered per line on /budget with working owner-buildable / licensed filters and honest subtotals.
+
+**DEMO-ONLY — exists, labeled, not yet real:**
+- Escrow on-chain: contracts undeployed (testnet nonce 0, faucet-captcha-gated for four consecutive audits); /escrow and /dashboard run on fixtures.
+- x402 design-fee metering: demo runs, settlement simulated.
+- Design "live AI mode": offline fallback ships; live mode awaits a key (OPEN-QUESTIONS #6).
+- /budget renders a fixture mirror of `cost-model.json` — reconciled today (flags re-checked against the model this session), but a mirror is a standing drift risk.
+
+**PROMISED — specified and issue-tracked, zero code:**
+- The Aug 9 pivot front door: retailer catalog + concierge chatbot + BUY button + reservation-deposit/refund-window escrow semantics (PHASED-ROADMAP Phase 1 — still the largest drift risk on the board, unchanged since Audit #5).
+- Realtor matching; offer/closing/title flow (README steps 7–9); card on-ramp (issue #1); contractor research sweep (issue #7, research half); ordering/inventory (step 18); trade coordination (step 19); finishing/interior/furniture (step 21); IFC export (issue #4); second catalog home (issue #6); escrow pre-audit package (issue #5); digest email delivery (issue #2); the Arc 2 Locality Hub surface (vendor directory in USDC, contractor payments, build tracking, tech discovery).
+
+### Top 5 next builds for the rollout (user value × feasibility), the marching order
+
+| # | Build | Why now | One-line plan |
+|---|---|---|---|
+| 1 | **Concierge chatbot wired to an order object** | It IS the Arc-1 pitch; the demo script cannot be filmed without it | A /concierge chat flow driving questionnaire → brief → parcel check → order state, offline-deterministic first, model behind an env key — a thin driver over the pipeline that already runs |
+| 2 | **Reservation deposit + refund window in the escrow** | The only contract work in Arc 1; unlocks the BUY-in-USDC moment and the registry status flip on camera | New deposit milestone semantics + cancel-within-window + tests; resolve the registry-enum vocabulary contradiction (Audit #5 finding #2) in the same change |
+| 3 | **Three-home catalog with priced line items** | PHASED-ROADMAP storefront requirement; absorbs issue #6's A-frame | Catalog data + /design catalog section reusing the budget pipeline, labeled "reference designs priced from published sources" |
+| 4 | **Digest email delivery adapter (issue #2)** | The Brain's visible daily value; small and self-contained | Resend/SES-class adapter, env-driven, `emailPrefs` opt-in check, dry-run-to-disk mode |
+| 5 | **Escrow pre-audit package (issue #5)** | Required before any mainnet value; writable now with zero dependencies | Threat model + invariant list (fund conservation, holdback monotonicity, role separation) + fuzz targets as a docs/security package |
+
+*(Issue #1 on-ramp and issue #4 IFC rank below the cut: both heavy, neither demo-critical for Aug 21.)*
+
+### This session's own additions, measured
+
+- **Grass v10** ("double it around the house"): filler yard-boost mask (×2 inside ~7 m of the home/deck/fire-pit centroid, feathered to 15 m; second jittered candidate per grid cell) paid for by the far-field trim (radial 26–36 → 20–30 m) and a budget re-balance (870k → 715k planted filler). Worst beat **1,343,928 tris** (2-crest), under the 1.35M ceiling; near-house beats +80–106k tris each; trailhead −61k; mobile worst 597k. Frame pacing improved vs v9 under the same instrument (20.9 ms vs 27.7 ms beat medians). Harness: desktop + mobile, 8 scroll beats, **0 console errors**.
+- **Interactivity round:** hover text-glow (CSS, 550 ms, emerald-tinted, hover-capable pointers only) + a WebGL border light tracer (ONE shared canvas/context for all cards — per-card contexts would evict the R3F scene's context; ~11 s/lap, whisper alpha, IntersectionObserver-gated, disabled on coarse pointers and reduced-motion). BRAND.md §2 "no glow anywhere" collision resolved by explicit founder direction Aug 10; the shipped values are the approved ceiling, recorded in `components/CardFX.tsx`.
+- **Harness note:** the tracer canvas triggered the flat/dead-canvas check on every app route (a real false positive — the overlay is 99% transparent); `inspect.mjs` now excludes `.fx-tracer-canvas` by class, and the check still fires if the scene canvas dies.
+- The founder's design-inspiration post (x.com/abyssallD, Aug 2) was fetched and read: it is an essay on Claude driving Blender through MCP — no layout/typography/color/interaction principles to extract. Its one transferable idea, "success is what the viewport shows, not that the code executed," is already this project's harness doctrine and was applied as such. Recorded honestly rather than invented.
+
+---
+
+*Next audit: append `## Audit #7 — <date>` below this line. Do not edit prior audits.*
