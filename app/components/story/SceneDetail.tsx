@@ -692,7 +692,7 @@ void main(){
      popping and no hysteresis state is needed. */
   float p = mix(1.0, ${G_PMIN.toFixed(3)}, smoothstep(${G_NEAR.toFixed(1)}, ${G_FAR.toFixed(1)}, dist));
   float projH = (aRand.y * aClear) * uProjScale / max(dist, 0.001);
-  p *= smoothstep(0.0045, 0.022, projH);
+  p *= smoothstep(0.0052, 0.023, projH);
   float vis = 1.0 - smoothstep(p - ${G_BAND.toFixed(3)}, p, aRand.w);
   // never let a blade flash across the lens as the camera brushes past it
   vis *= smoothstep(0.18, 0.55, dist);

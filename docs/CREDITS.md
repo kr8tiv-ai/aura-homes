@@ -63,6 +63,28 @@ into a dark speck. The references run ~49 blades/m² (16,000 per 18 m tile). At
 that density blades stop being objects and become a surface. Density, plus
 widening blades with distance, was the whole fix.
 
+### August 2026 beauty pass — research applied
+
+The "keep it complex but fast" research round (Aug 2026) studied and adopted
+the following. Techniques only — no code or assets were copied:
+
+- **[Codrops — *How to Make The Fluffiest Grass With Three.js*](https://tympanus.net/codrops/2025/02/04/how-to-make-the-fluffiest-grass-with-three-js/)**
+  (article; technique credit) — **adopted**: "match the terrain to the colour
+  of the grass and fake the occlusion with a dark base." The terrain vertex
+  colours now darken 18% under the meadow (`meadowShade` in
+  `SceneDetail.tsx`, mirrored in the blade shader's root colour), so gaps
+  between blades read as sward shadow instead of bare lawn.
+- **Sucker Punch — Ghost of Tsushima grass** (via the
+  [GDC talk summary](https://gist.ly/youtube-summarizer/procedural-grass-systems-in-ghost-of-tsushima-achieving-art-direction)
+  and [Tiger Abrodi's write-up](https://tigerabrodi.blog/what-we-can-learn-from-grass-in-ghost-of-tsushima-renders);
+  technique credit) — **confirmed and kept**: Bézier-bent blades, per-patch
+  clumping of species/traits rather than per-blade randomness, and slim
+  ~1:12 blade proportions; **rejected for this scene**: their compute-driven
+  tile pipeline (no compute in a WebGL static export).
+- **[Oleksandr Popov — *Efficient WebGL vegetation rendering*](https://keaukraine.medium.com/efficient-webgl-vegetation-rendering-b09a7fa904cc)**
+  (article; technique credit) — corroborated the tile-instancing and
+  proportional-density-reduction LOD already in place.
+
 ### Earlier grass research (studied during the rejected attempts)
 
 No code was copied from these either, but they shaped the approach:
