@@ -107,6 +107,7 @@ export const END = {
     { href: "/design", label: "Design" },
     { href: "/budget", label: "Budget" },
     { href: "/escrow", label: "Escrow" },
+    { href: "/faq", label: "FAQ" },
   ],
   creditsUrl:
     "https://github.com/kr8tiv-ai/aura-homes/blob/main/docs/CREDITS.md",

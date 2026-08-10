@@ -1,7 +1,34 @@
 import Link from "next/link";
 
-// The original landing content lives on: the pipeline strip and intro,
-// kept reachable from the story's end card and the site nav.
+// The site tells the same rollout story as docs/ROADMAP.md — three arcs,
+// honest labels on every one. If the roadmap changes, this page changes.
+const arcs = [
+  {
+    n: "01",
+    status: "Live now",
+    name: "The hackathon MVP",
+    line: "Buy a home with USDC on X Layer, with an agent that directs you to the land.",
+    detail:
+      "The escrow and registry contracts are written and tested (10 of 10 passing); the land agent rejects real parcels for real bylaw reasons; this site is the storefront. Honest status: testnet deployment waits on one human step, and escrow figures shown here run on fixtures until it lands.",
+  },
+  {
+    n: "02",
+    status: "Next",
+    name: "The Locality Hub",
+    line: "A giant hub with bridges across — rolled out locality by locality, Alberta counties first.",
+    detail:
+      "Design your own eco home (SIP sandwich panels, solar), source every material and contractor locally, and choose buy-versus-build. A vendor directory purchasable in USDC, with bridge-in guidance where vendors take CAD. Pay contractors, manage inventory, track the build, and discover the latest building technology — one hub per locality.",
+  },
+  {
+    n: "03",
+    status: "Announced",
+    name: "The HOMES token",
+    line: "A token named HOMES will launch on X Layer as part of the phased rollout.",
+    detail:
+      "Its utility is deliberately undecided and will be announced as a phase of its own. There is no token in the hackathon build, and nothing launches before Canadian securities counsel — the research and the exact conditions are public in the repo.",
+  },
+] as const;
+
 const pipeline = [
   { step: "01", name: "Land", detail: "Real parcels filtered against district bylaws, aquifers, grid distance, and septic soils" },
   { step: "02", name: "Design", detail: "AI architect turns your land and lifestyle into a buildable brief" },
@@ -12,7 +39,8 @@ const pipeline = [
 
 export const metadata = {
   title: "Overview — Aura Homes",
-  description: "The five-stage pipeline: land, design, budget, escrow, and build.",
+  description:
+    "The rollout: buy a home with USDC on X Layer today, the Locality Hub next, and the HOMES token as its own phase.",
 };
 
 export default function OverviewPage() {
@@ -41,22 +69,65 @@ export default function OverviewPage() {
         </Link>
       </div>
 
-      <div className="mt-28 grid gap-px overflow-hidden rounded-lg border aura-hairline bg-[rgba(26,29,27,0.12)] md:grid-cols-5">
-        {pipeline.map((p) => (
-          <div key={p.step} className="bg-aura-panel p-8">
-            <p className="text-xs text-aura-violet">{p.step}</p>
-            <p className="mt-3 text-sm font-semibold uppercase tracking-label text-aura-text">
-              {p.name}
-            </p>
-            <p className="mt-3 text-sm leading-relaxed text-aura-text/75">{p.detail}</p>
-          </div>
-        ))}
+      {/* ---- the rollout: the same three arcs as docs/ROADMAP.md ---- */}
+      <div className="mt-28">
+        <p className="aura-label">The rollout</p>
+        <h2 className="mt-3 max-w-2xl text-3xl font-semibold leading-snug">
+          One story, three arcs — each one shipped, not sliced.
+        </h2>
+        <div className="mt-10 grid gap-6 md:grid-cols-3">
+          {arcs.map((a) => (
+            <article key={a.n} className="aura-panel p-8">
+              <div className="flex items-baseline justify-between">
+                <p className="font-mono text-xs text-aura-violet">{a.n}</p>
+                <p className="font-mono text-[0.65rem] uppercase tracking-label text-aura-emerald">
+                  {a.status}
+                </p>
+              </div>
+              <h3 className="mt-4 text-lg font-semibold">{a.name}</h3>
+              <p className="mt-3 text-sm font-medium leading-relaxed text-aura-text/90">{a.line}</p>
+              <p className="mt-3 text-sm leading-relaxed text-aura-text/70">{a.detail}</p>
+            </article>
+          ))}
+        </div>
+        <p className="mt-6 max-w-2xl text-sm text-aura-text/70">
+          The full plan, with every line item and its status, lives in the open:{" "}
+          <a
+            href="https://github.com/kr8tiv-ai/aura-homes/blob/main/docs/ROADMAP.md"
+            target="_blank"
+            rel="noreferrer"
+            className="text-aura-emerald underline underline-offset-4"
+          >
+            docs/ROADMAP.md
+          </a>
+          .
+        </p>
+      </div>
+
+      {/* ---- the five-stage pipeline ---- */}
+      <div className="mt-24">
+        <p className="aura-label">The pipeline</p>
+        <div className="mt-6 grid gap-px overflow-hidden rounded-lg border aura-hairline bg-[rgba(26,29,27,0.12)] md:grid-cols-5">
+          {pipeline.map((p) => (
+            <div key={p.step} className="fx-card bg-aura-panel p-8" data-fx="">
+              <p className="text-xs text-aura-violet">{p.step}</p>
+              <p className="mt-3 text-sm font-semibold uppercase tracking-label text-aura-text">
+                {p.name}
+              </p>
+              <p className="mt-3 text-sm leading-relaxed text-aura-text/75">{p.detail}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       <p className="mt-16 text-sm text-aura-text/75">
         Prefer the full story?{" "}
         <Link href="/" className="text-aura-emerald underline underline-offset-4">
           Watch the scroll tour
+        </Link>
+        {" "}— or read{" "}
+        <Link href="/faq" className="text-aura-emerald underline underline-offset-4">
+          the FAQ
         </Link>
         .
       </p>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import CardFXLayer from "./CardFX";
 
 const NAV = [
   { href: "/overview", label: "Overview" },
@@ -10,6 +11,7 @@ const NAV = [
   { href: "/design", label: "Design" },
   { href: "/budget", label: "Budget" },
   { href: "/escrow", label: "Escrow" },
+  { href: "/faq", label: "FAQ" },
   { href: "/dashboard", label: "Dashboard" },
 ] as const;
 
@@ -97,12 +99,14 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
       <>
         <StoryHeader />
         {children}
+        <CardFXLayer />
       </>
     );
   }
 
   return (
     <>
+      <CardFXLayer />
       <header className="border-b aura-hairline">
         <div className="mx-auto flex max-w-5xl flex-col gap-3 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
           <Link href="/" className="font-display text-sm font-semibold tracking-label uppercase">

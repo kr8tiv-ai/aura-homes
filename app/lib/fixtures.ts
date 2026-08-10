@@ -1,6 +1,11 @@
 // Fixture data mirroring the aura-architect pipeline output shapes.
 // The /budget and /escrow pages render these until the contract reads are wired.
 
+/** Mirrors `ownerBuildable` in data/alberta/cost-model.json: can the owner
+ *  legally do this line themselves in Alberta, and on what basis. "na" is a
+ *  line where the question doesn't apply (land, soft costs, contingency). */
+export type OwnerBuildable = "yes" | "no" | "na";
+
 export interface BudgetLineFixture {
   id: string;
   category: string;
@@ -8,6 +13,9 @@ export interface BudgetLineFixture {
   lowCad: number;
   midCad: number;
   highCad: number;
+  ownerBuildable: OwnerBuildable;
+  /** The legal or practical basis for the flag, stated honestly. */
+  diyBasis: string;
 }
 
 export const budgetFixture: {
@@ -19,19 +27,19 @@ export const budgetFixture: {
   currency: "CAD",
   excludesLand: true,
   lines: [
-    { id: "siteWork", category: "Site", item: "Driveway, clearing, site prep", lowCad: 4500, midCad: 8000, highCad: 12000 },
-    { id: "foundation", category: "Foundation", item: "Screw-pile foundation (16-24 piles)", lowCad: 6000, midCad: 10000, highCad: 15000 },
-    { id: "sipShell", category: "Shell", item: "SIP shell kit + erection", lowCad: 30000, midCad: 45000, highCad: 55000 },
-    { id: "roofWindowsDoors", category: "Shell", item: "Metal roof, triple-pane windows, doors, siding", lowCad: 22000, midCad: 32000, highCad: 45000 },
-    { id: "interior", category: "Interior", item: "Interior fit-out (kitchen, bath, drywall, floor)", lowCad: 22000, midCad: 35000, highCad: 55000 },
-    { id: "mechanical", category: "Mechanical", item: "HRV, plumbing, electrical, wood stove + WETT", lowCad: 22000, midCad: 30000, highCad: 40000 },
-    { id: "solar", category: "Energy", item: "Off-grid solar 8-12kW + 20-40kWh battery + generator", lowCad: 35000, midCad: 48000, highCad: 70000 },
-    { id: "water", category: "Water", item: "Buried cistern (or well)", lowCad: 8000, midCad: 12000, highCad: 18000 },
-    { id: "awgSupplement", category: "Water", item: "AWG summer water module (standard on every home)", lowCad: 3500, midCad: 5000, highCad: 8000 },
-    { id: "septic", category: "Septic", item: "Private sewage (septic field or biofilter)", lowCad: 12000, midCad: 18000, highCad: 28000 },
-    { id: "hotTubDeck", category: "Extras", item: "Wood-fired hot tub + deck", lowCad: 8000, midCad: 14000, highCad: 22000 },
-    { id: "permitsSoft", category: "Soft costs", item: "Permits, design, engineering, insurance", lowCad: 8000, midCad: 12000, highCad: 18000 },
-    { id: "contingency", category: "Contingency", item: "Contingency (10-15%)", lowCad: 18100, midCad: 32280, highCad: 57900 },
+    { id: "siteWork", category: "Site", item: "Driveway, clearing, site prep", lowCad: 4500, midCad: 8000, highCad: 12000, ownerBuildable: "yes", diyBasis: "Owner work — gravel drive and clearing" },
+    { id: "foundation", category: "Foundation", item: "Screw-pile foundation (16-24 piles)", lowCad: 6000, midCad: 10000, highCad: 15000, ownerBuildable: "no", diyBasis: "Part 4 element — P.Eng-stamped plans, certified install" },
+    { id: "sipShell", category: "Shell", item: "SIP shell kit + erection", lowCad: 30000, midCad: 45000, highCad: 55000, ownerBuildable: "yes", diyBasis: "Small-format panels — a 2-3 person job" },
+    { id: "roofWindowsDoors", category: "Shell", item: "Metal roof, triple-pane windows, doors, siding", lowCad: 22000, midCad: 32000, highCad: 45000, ownerBuildable: "yes", diyBasis: "Owner work — zone 7A window spec applies" },
+    { id: "interior", category: "Interior", item: "Interior fit-out (kitchen, bath, drywall, floor)", lowCad: 22000, midCad: 35000, highCad: 55000, ownerBuildable: "yes", diyBasis: "Owner-legal — drywall required over SIP faces" },
+    { id: "mechanical", category: "Mechanical", item: "HRV, plumbing, electrical, wood stove + WETT", lowCad: 22000, midCad: 30000, highCad: 40000, ownerBuildable: "yes", diyBasis: "Homeowner permits; solar wiring excluded; WETT inspected" },
+    { id: "solar", category: "Energy", item: "Off-grid solar 8-12kW + 20-40kWh battery + generator", lowCad: 35000, midCad: 48000, highCad: 70000, ownerBuildable: "no", diyBasis: "Licensed work — CEC s.64" },
+    { id: "water", category: "Water", item: "Buried cistern (or well)", lowCad: 8000, midCad: 12000, highCad: 18000, ownerBuildable: "no", diyBasis: "Well drilling is licensed; cistern comes installed" },
+    { id: "awgSupplement", category: "Water", item: "AWG summer water module (standard on every home)", lowCad: 3500, midCad: 5000, highCad: 8000, ownerBuildable: "yes", diyBasis: "Plumbs into the cistern loop" },
+    { id: "septic", category: "Septic", item: "Private sewage (septic field or biofilter)", lowCad: 12000, midCad: 18000, highCad: 28000, ownerBuildable: "no", diyBasis: "Certified installer required by law" },
+    { id: "hotTubDeck", category: "Extras", item: "Wood-fired hot tub + deck", lowCad: 8000, midCad: 14000, highCad: 22000, ownerBuildable: "yes", diyBasis: "Owner work — deck under 24 in needs no permit" },
+    { id: "permitsSoft", category: "Soft costs", item: "Permits, design, engineering, insurance", lowCad: 8000, midCad: 12000, highCad: 18000, ownerBuildable: "na", diyBasis: "Fees and professional services — not work packages" },
+    { id: "contingency", category: "Contingency", item: "Contingency (10-15%)", lowCad: 18100, midCad: 32280, highCad: 57900, ownerBuildable: "na", diyBasis: "Computed on the ex-land lines" },
   ],
   total: { lowCad: 199100, midCad: 301280, highCad: 443900 },
 };
