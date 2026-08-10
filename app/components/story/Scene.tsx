@@ -309,11 +309,70 @@ function Terrain() {
     g.computeVertexNormals();
     return g;
   }, []);
-  return (
-    <mesh geometry={geo} receiveShadow>
-      <meshStandardMaterial vertexColors flatShading roughness={1} metalness={0} />
-    </mesh>
-  );
+  /* TEXTURE PASS (Aug 10): sub-vertex ground detail lives in GLSL, not in a
+     canvas. The vertex mottle above tops out at the mesh's own frequency —
+     one facet per ~0.85 m — so anything the camera reads at 2-20 m was a
+     flat painted facet. A CPU-drawn detail texture was the alternative and
+     it loses on every axis here: it would need repeat wrapping (visible
+     tiling on a 170 m plane), an upload, and filtering; a two-octave value
+     noise in the fragment shader is resolution-independent, uploads
+     nothing, and costs a handful of ALU. Amplitudes are LOW-CONTRAST value
+     moves (±7% patch, ±3% micro) that multiply the approved palette — grain,
+     not hue — and each octave fades out past the distance at which its
+     features would alias into shimmer, which is what mipmaps do for real
+     textures and what raw procedural noise otherwise gets wrong. */
+  const mat = useMemo(() => {
+    const m = new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      flatShading: true,
+      roughness: 1,
+      metalness: 0,
+    });
+    m.onBeforeCompile = (shader) => {
+      shader.vertexShader = shader.vertexShader
+        .replace("#include <common>", "#include <common>\nvarying vec3 vTerraWorld;")
+        .replace(
+          "#include <begin_vertex>",
+          "#include <begin_vertex>\nvTerraWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;"
+        );
+      shader.fragmentShader = shader.fragmentShader
+        .replace(
+          "#include <common>",
+          `#include <common>
+varying vec3 vTerraWorld;
+float terraHash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float terraNoise(vec2 p){
+  vec2 i = floor(p), f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(terraHash(i), terraHash(i + vec2(1.0, 0.0)), u.x),
+             mix(terraHash(i + vec2(0.0, 1.0)), terraHash(i + vec2(1.0, 1.0)), u.x), u.y);
+}
+float terraFbm(vec2 p){
+  float v = 0.0, a = 0.5;
+  for (int k = 0; k < 3; k++) { v += a * terraNoise(p); p = p * 2.13 + 17.0; a *= 0.5; }
+  return v;
+}`
+        )
+        .replace(
+          "#include <color_fragment>",
+          `#include <color_fragment>
+{
+  float terraD = length(vViewPosition);
+  // ~0.5 m soil/patch variation, readable to ~60 m
+  float terraPatch = terraFbm(vTerraWorld.xz * 2.1);
+  float terraFadeP = 1.0 - smoothstep(26.0, 60.0, terraD);
+  // ~9 cm micro grain for the ground right under the camera
+  float terraMicro = terraNoise(vTerraWorld.xz * 11.0);
+  float terraFadeM = 1.0 - smoothstep(10.0, 26.0, terraD);
+  diffuseColor.rgb *= 1.0
+    + (terraPatch - 0.47) * 0.14 * terraFadeP
+    + (terraMicro - 0.5) * 0.06 * terraFadeM;
+}`
+        );
+    };
+    return m;
+  }, []);
+  return <mesh geometry={geo} material={mat} receiveShadow />;
 }
 
 /* --------------------------- soft sprites --------------------------- */
@@ -349,6 +408,52 @@ const _hash = (seed: number) => {
   };
 };
 
+/* ---- texture sharpness plumbing (texture pass, Aug 10) ----
+   Two distinct blurs were softening the procedural surfaces:
+   1. RASTER BLUR — strokes drawn once into a 256/128 px canvas carry that
+      canvas's antialiasing forever; magnified on a near-camera plank the
+      smear is the texture. Each detail texture now draws into a backing
+      store scaled by 2 x min(devicePixelRatio, 2) (ctx.scale keeps the
+      pattern IDENTICAL — same rnd() sequence, same logical coords — only
+      the rasterisation gets finer). The DPR term is capped at 2 so a 3x
+      phone doesn't quadruple VRAM for texels its screen never resolves;
+      the canvas dpr cap in StoryCanvas is 1.75 anyway.
+   2. ANISOTROPY — the camera travels low across the deck and the stone
+      path, and at grazing angles trilinear filtering alone collapses into
+      the smallest mip. Every detail texture takes the GPU max (16 on the
+      target AMD), wired from the renderer by Scene below. NOTE the soft
+      radial-gradient sprites (smoke, mist, steam, glow, sun shafts) are
+      deliberately NOT resized or filtered differently: a smooth gradient
+      has no detail above its own smoothness, so a bigger store is the
+      same pixels — measured as a no-op and skipped, not forgotten.
+   Mip settings are the three.js defaults, asserted here so a future
+   refactor cannot silently drop to non-mipped filtering (which is what
+   makes mid-distance detail shimmer). colorSpace stays per-texture: sRGB
+   where the texture carries colour, linear for the water normal map. */
+const texDPR = () =>
+  Math.min(Math.max(1, (typeof window !== "undefined" && window.devicePixelRatio) || 1), 2);
+
+let _texAniso = 4;
+/** Called by Scene with renderer.capabilities.getMaxAnisotropy(). Upgrades
+ *  any texture already built (needsUpdate re-uploads it once). */
+export function setProceduralAnisotropy(v: number) {
+  _texAniso = v;
+  for (const t of [_woodGrain, _stoneMottle, _waterNormal]) {
+    if (t && t.anisotropy !== v) {
+      t.anisotropy = v;
+      t.needsUpdate = true;
+    }
+  }
+}
+
+export function sharpen<T extends THREE.Texture>(t: T): T {
+  t.generateMipmaps = true;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.magFilter = THREE.LinearFilter;
+  t.anisotropy = _texAniso;
+  return t;
+}
+
 /** Milled-cedar grain — mostly light, so `map * color` keeps the per-piece
  *  cedar tone and just carves long grain, faint cathedral figure and pore
  *  speckle into it. Streaks run along U, so it is applied ONLY where U is the
@@ -357,9 +462,13 @@ let _woodGrain: THREE.CanvasTexture | null = null;
 export function makeWoodGrain(): THREE.CanvasTexture {
   if (_woodGrain) return _woodGrain;
   const c = document.createElement("canvas");
-  c.width = 256;
-  c.height = 128;
+  /* Backing store scaled for sharpness (see the texture-pass note above);
+     everything below draws in the original 256x128 logical space. */
+  const S = 2 * texDPR();
+  c.width = 256 * S;
+  c.height = 128 * S;
   const ctx = c.getContext("2d")!;
+  ctx.scale(S, S);
   const rnd = _hash(7.13);
   ctx.fillStyle = "#f0f0f0";
   ctx.fillRect(0, 0, 256, 128);
@@ -393,7 +502,7 @@ export function makeWoodGrain(): THREE.CanvasTexture {
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(3, 1.4);
-  t.anisotropy = 4;
+  sharpen(t);
   _woodGrain = t;
   return t;
 }
@@ -405,8 +514,10 @@ let _stoneMottle: THREE.CanvasTexture | null = null;
 export function makeStoneMottle(): THREE.CanvasTexture {
   if (_stoneMottle) return _stoneMottle;
   const c = document.createElement("canvas");
-  c.width = c.height = 128;
+  const S = 2 * texDPR();
+  c.width = c.height = 128 * S;
   const ctx = c.getContext("2d")!;
+  ctx.scale(S, S);
   const rnd = _hash(3.7);
   ctx.fillStyle = "#ededed";
   ctx.fillRect(0, 0, 128, 128);
@@ -437,6 +548,7 @@ export function makeStoneMottle(): THREE.CanvasTexture {
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(1.6, 1.6);
+  sharpen(t);
   _stoneMottle = t;
   return t;
 }
@@ -447,7 +559,12 @@ export function makeStoneMottle(): THREE.CanvasTexture {
 let _waterNormal: THREE.CanvasTexture | null = null;
 export function makeWaterNormal(): THREE.CanvasTexture {
   if (_waterNormal) return _waterNormal;
-  const S = 128;
+  /* 256 flat, no DPR term: the height field is analytic so more pixels are
+     genuinely finer ripples, but the tub disc is 1.44 m across and never
+     fills more than a fraction of the frame — 256 (2.8 mm/texel) is already
+     past what any beat resolves, and the per-pixel JS loop is startup cost
+     on phones. Measured reasoning, not an oversight. */
+  const S = 256;
   const c = document.createElement("canvas");
   c.width = c.height = S;
   const ctx = c.getContext("2d")!;
@@ -481,8 +598,11 @@ export function makeWaterNormal(): THREE.CanvasTexture {
   }
   ctx.putImageData(img, 0, 0);
   const t = new THREE.CanvasTexture(c);
+  // linear colour space (default) — this is a normal map; sRGB here would
+  // decode the vectors as colour and flatten every ripple
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(2, 2);
+  sharpen(t); // anisotropy matters: the water disc is always seen at an angle
   _waterNormal = t;
   return t;
 }
@@ -2131,6 +2251,15 @@ export default function Scene({
   const archGlass = useArchGlass();
   const glassFloor = useGlassFloor();
   const glassRail = useGlassRail();
+
+  /* Texture pass: every procedural detail texture filters at the GPU's max
+     anisotropy (16 on the target hardware). Runs during Scene's own render,
+     BEFORE any child builds its textures, so the value is baked in at
+     creation; the setter also retro-upgrades any texture that got there
+     first. Grazing-angle sharpness on the deck, steps, and stone path for
+     what modern GPUs charge for it — effectively nothing. */
+  const { gl } = useThree();
+  useMemo(() => setProceduralAnisotropy(gl.capabilities.getMaxAnisotropy()), [gl]);
 
   /* Night is a target the whole scene damps toward rather than a hard swap,
      so the toggle reads as the sun going down instead of a light switch.

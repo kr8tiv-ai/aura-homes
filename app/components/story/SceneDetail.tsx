@@ -22,7 +22,7 @@
 import { useMemo, useRef, useLayoutEffect } from "react";
 import * as THREE from "three";
 import { useFrame, useThree } from "@react-three/fiber";
-import { terrainH, makeWoodGrain, type Dusk } from "./Scene";
+import { terrainH, makeWoodGrain, sharpen, type Dusk } from "./Scene";
 
 /* --------------------------- small helpers -------------------------- */
 
@@ -1507,8 +1507,17 @@ function Hammock({ frozen }: { frozen: boolean }) {
 function useNetTexture() {
   return useMemo(() => {
     const c = document.createElement("canvas");
-    c.width = c.height = 128;
+    /* Texture pass (Aug 10): the net is an alphaTest cut-out lying nearly
+       flat — the worst possible case for a soft-edged 128 px line grid: the
+       cords' alpha edge IS the geometry, and at grazing angles the blur
+       read as fray. Backing store rides the shared 2 x min(DPR,2) scale and
+       the grid filters anisotropically like the other detail textures
+       (sharpen also asserts mipmaps stay on — alphaTest plus broken mips is
+       how cut-out cords vanish at mid-distance). */
+    const S = 2 * Math.min(Math.max(1, window.devicePixelRatio || 1), 2);
+    c.width = c.height = 128 * S;
     const ctx = c.getContext("2d")!;
+    ctx.scale(S, S);
     ctx.clearRect(0, 0, 128, 128);
     ctx.strokeStyle = "#efe9dc";
     ctx.lineWidth = 3.2;
@@ -1527,7 +1536,7 @@ function useNetTexture() {
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     t.repeat.set(4, 3);
     t.colorSpace = THREE.SRGBColorSpace;
-    return t;
+    return sharpen(t);
   }, []);
 }
 
