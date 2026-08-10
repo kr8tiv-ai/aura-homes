@@ -1031,12 +1031,28 @@ function buildGrassTiles(budget: number, cfg: GrassLayerCfg) {
      KEEP the corridor: the first cut of this mask was radial-only, and the
      trailhead beat sits at r~33 — it deleted the filler from the exact
      ground the opening frame stares at. */
+  /* v10 — the founder's "double it, just down around the house" round.
+     Two moves, budget-conserving by construction:
+     · YARD BOOST: density runs ABOVE one (up to x2) in the zone beats
+       01-06 actually frame — the ring around the home rect, the deck
+       aprons, the fire-pit lounge, the tub pad (centre ~(0, 3.6), full
+       inside ~7 m, feathered out by 15 m). The jittered grid spends it by
+       planting a SECOND candidate per cell with probability dens-1, so
+       the yard genuinely doubles while cell size stays uniform.
+     · FAR TRIM pays for it: the radial reach tightens 26-36 -> 20-30 m.
+       Past r~30 the story cameras resolve a 1-tri 8-18 cm blade as less
+       than a texel — the hero layer, the sward-toned ground, and Scrub
+       already carry that field. Removing it from the measured area E
+       shrinks the grid cell, which re-spends those instances near the
+       house instead of adding new ones. */
   const density = (x: number, z: number) => {
     let dens = meadowDensity(x, z);
     if (filler) {
       const corridor =
         (1 - smooth01(9, 18, Math.abs(x))) * smooth01(5.5, 11, z) * (1 - smooth01(33, 41, z));
-      dens *= Math.max(1 - smooth01(26, 36, Math.hypot(x, z)), corridor);
+      dens *= Math.max(1 - smooth01(20, 30, Math.hypot(x, z)), corridor);
+      const yard = 1 - smooth01(7, 15, Math.hypot(x, z - 3.6));
+      dens *= 1 + yard;
     }
     return dens;
   };
@@ -1127,11 +1143,21 @@ function buildGrassTiles(budget: number, cfg: GrassLayerCfg) {
     for (let r = 0; r < rows; r++) {
       for (let q = 0; q < cols; q++) {
         const i = r * cols + q;
-        place(
-          i,
-          X0 + ((q + rand(i, 141)) / cols) * (X1 - X0),
-          Z0 + ((r + rand(i, 142)) / rows) * (Z1 - Z0)
-        );
+        const x = X0 + ((q + rand(i, 141)) / cols) * (X1 - X0);
+        const z = Z0 + ((r + rand(i, 142)) / rows) * (Z1 - Z0);
+        place(i, x, z);
+        /* v10 yard boost: where the boosted mask exceeds one, this cell owes
+           a second blade. An independent jitter inside the same cell keeps
+           the blue-noise spacing; place() re-thins at the new position, so
+           the boost feathers exactly like the mask that created it. */
+        const d = density(x, z);
+        if (d > 1 && rand(i, 143) < d - 1) {
+          place(
+            i + 9000017,
+            X0 + ((q + rand(i, 144)) / cols) * (X1 - X0),
+            Z0 + ((r + rand(i, 145)) / rows) * (Z1 - Z0)
+          );
+        }
       }
     }
   } else {
@@ -1871,9 +1897,20 @@ export default function SceneDetail({
      (zero tris), jittered-grid spacing so the same count leaves no voids
      (zero tris) — and spends the actual headroom here: +60k filler blades
      (1 tri each; the near-band LOD submits roughly half at the worst beat). */
+  /* v10: "double it, just down around the house." The planted TOTAL holds at
+     the same budget — the yard-boost mask in buildGrassTiles doubles the
+     blades in the ring the close beats frame, and the far-trim (radial
+     26-36 -> 20-30 m) hands back the instances to pay for it, so the worst
+     beat stays under the 1.35M ceiling. Measured per beat in
+     C:\tmp\aura-shots\metrics (label v10-*), not assumed. */
+  /* 870k with the v10 mask measured OVER ceiling (crest 1.412M): the far
+     trim shrinks the mask's effective area E, and budget/E redistributes the
+     freed instances into the mid-ring the crest camera stares at. 780k puts
+     the BASE density back at v9 levels — the doubling stays where it was
+     aimed (the yard), paid for by the far field, not by new instances. */
   const mobile = size.width < 820;
   const heroCount = mobile ? 42000 : 120000;
-  const fillCount = mobile ? 300000 : 870000;
+  const fillCount = mobile ? 250000 : 715000;
 
   return (
     <group>
