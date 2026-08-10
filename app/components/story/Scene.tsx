@@ -383,7 +383,7 @@ function useDuskRegistry() {
     };
   }, []);
 }
-type Dusk = ReturnType<typeof useDuskRegistry>;
+export type Dusk = ReturnType<typeof useDuskRegistry>;
 
 /* ------------------------------ the home ---------------------------- */
 
@@ -1638,7 +1638,7 @@ export default function Scene({
 
       {/* The additive detail layer — mountains, clouds, grass, steps,
           hammock, netting, wildlife, outdoor lighting, tub steam. */}
-      <SceneDetail frozen={reduced} night={nightAmt} glassRail={glassRail} />
+      <SceneDetail frozen={reduced} night={nightAmt} glassRail={glassRail} dusk={dusk} />
       <HotTub position={[5.9, 0, 5.4]} dusk={dusk} />
       <FirePit dusk={dusk} />
       <Bench position={[8.6, terrainH(8.6, 18.0) - 0.14, 18.0]} rotY={Math.PI * 1.12} />
