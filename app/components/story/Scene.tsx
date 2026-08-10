@@ -244,6 +244,14 @@ function Terrain() {
     /* Trodden earth for the walked trail — pale straw-tan, inside the
        scene's warm-neutral family (cedar/stone), never orange. */
     const cEarth = new THREE.Color("#b9aa8a");
+    /* v9: the sward's own root green. The lawn palette above is a PALE
+       YELLOW-sage — correct for open lawn, but between blades it read as
+       dirt showing through and the founder called the whole field patchy.
+       Where the meadow grows, the ground now shifts HUE toward this deep
+       blade-root green as well as dropping in value (below), so a gap
+       between blades is the colour of shadowed understorey, not soil.
+       GRASS_VERT's vGround mirrors this exact linear value. */
+    const cSward = new THREE.Color("#4d6a42");
     const tmp = new THREE.Color();
     const hash = (x: number, z: number) => {
       const s = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453;
@@ -272,10 +280,21 @@ function Terrain() {
          as fake AO). Gaps between blades then read as depth under the
          canopy instead of bare lawn. clearance() keeps the mown path, the
          deck aprons and the fire-pit ring at full lawn brightness, so the
-         walked places still read walked. grassVert's meadowD mirrors this —
-         0.22 here MUST match the 0.22 in vGround. (Deepened from 0.18 with
-         the v6 double-layer sward: a denser canopy throws a darker base.) */
-      const shade = 1 - 0.22 * meadowShade(x, z);
+         walked places still read walked.
+
+         v9 REPLACES the old "0.22 MUST match vGround's 0.22" invariant.
+         The founder's v8 verdict — "I can still see the ground and it looks
+         really patchy" — was the pale-yellow lawn tone showing between
+         blades. Matching terrain to blade ROOTS exactly is what kept the
+         gaps as bright as the sward; the Codrops technique wants the ground
+         BELOW the root tone so a gap is a shadow. So the meadow ground now
+         (a) hue-shifts toward cSward and (b) drops ~32% in value, while
+         vGround in GRASS_VERT does the same move at ~3/4 strength — blade
+         roots sit a shade ABOVE the ground they grow from, and the gap
+         reads as depth under the canopy. Deliberate offset, not drift. */
+      const ms = meadowShade(x, z);
+      tmp.lerp(cSward, ms * 0.45);
+      const shade = 1 - 0.32 * ms;
       colors[i * 3] = tmp.r * v * shade;
       colors[i * 3 + 1] = tmp.g * (1 + m * 0.055) * shade;
       colors[i * 3 + 2] = tmp.b * v * shade;

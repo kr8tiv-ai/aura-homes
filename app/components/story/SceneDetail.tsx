@@ -695,7 +695,22 @@ function meadowDensity(x: number, z: number): number {
    keeps the sward shadow on the shoulders while true aprons (clearance 0 at
    the deck, fire pit, and stones) still read walked and bright. */
 export function meadowShade(x: number, z: number): number {
-  return meadowDensity(x, z) * Math.pow(clearance(x, z), 0.35);
+  /* v9: the shade band reaches PAST the planted ring. Shading that faded in
+     lockstep with planting density left a pale mid ring at r 18-35 — the
+     filler dissolves by 16 m, the hero thins, AND the ground brightened at
+     the same radius, so the LAND beat read sparse blades on pale lawn
+     exactly where the eye lands. The shade ring now feathers 16->46 m
+     (planting keeps 16->35): the ground stays meadow-toned past the last
+     dense blade and hands off to the fog, so the field reads as one
+     continuous sward with blades on it rather than a sward that ends. */
+  const r = Math.hypot(x, z);
+  const ring = 1 - smooth01(16, 46, r);
+  const corridor =
+    (1 - smooth01(9, 18, Math.abs(x))) * smooth01(5.5, 11, z) * (1 - smooth01(33, 41, z));
+  const scatter = 0.34 * (1 - smooth01(28, 48, r));
+  let d = Math.max(ring, corridor, scatter);
+  d *= 1 - smooth01(6, 15, -z);
+  return clamp01(d) * Math.pow(clearance(x, z), 0.35);
 }
 
 /* Exported for Terrain(): 0..1 trodden-earth factor along the walked route.
@@ -892,7 +907,14 @@ void main(){
   vNormal = nrm;
   vWorld = world;
   vHue = h21(floor(base.xz * 2.3) + 3.1);
-  vGround = groundColor(base.xz) * (1.0 - 0.22 * meadowD(base.xz));
+  /* v9: mirrors Terrain()'s meadow deepening — hue toward the sward root
+     green (#4d6a42 in linear) plus a value drop — but at ~3/4 strength, so
+     the ground sits a shade BELOW the blade roots and a gap between blades
+     reads as shadow under the canopy, not soil. See the Terrain() comment
+     in Scene.tsx; the two moves are calibrated together. */
+  float md = meadowD(base.xz);
+  vGround = mix(groundColor(base.xz), vec3(0.0744, 0.1442, 0.0546), md * 0.35)
+          * (1.0 - 0.26 * md);
   vSpecies = sp;
 
   gl_Position = projectionMatrix * viewMatrix * vec4(world, 1.0);
@@ -1001,24 +1023,27 @@ function buildGrassTiles(budget: number, cfg: GrassLayerCfg) {
   const X0 = filler ? -38 : -46, X1 = filler ? 38 : 46;
   const Z0 = filler ? -16 : -22, Z1 = filler ? 44 : 54;
   let placed = 0;
-  const MAX_TRIES = budget * 9;
-  for (let i = 0; i < MAX_TRIES && placed < budget; i++) {
-    const x = X0 + rand(i, 41 + S) * (X1 - X0);
-    const z = Z0 + rand(i, 42 + S) * (Z1 - Z0);
+
+  /* The filler exists to close the ground the CAMERA can see. Its blades
+     dissolve past ~24 m of camera distance anyway, and the journey runs
+     the trail corridor down into the r<35 ring — so filler planted in the
+     far scatter would be instances that never draw. Concentrate it, but
+     KEEP the corridor: the first cut of this mask was radial-only, and the
+     trailhead beat sits at r~33 — it deleted the filler from the exact
+     ground the opening frame stares at. */
+  const density = (x: number, z: number) => {
     let dens = meadowDensity(x, z);
-    /* The filler exists to close the ground the CAMERA can see. Its blades
-       dissolve past ~24 m of camera distance anyway, and the journey runs
-       the trail corridor down into the r<35 ring — so filler planted in the
-       far scatter would be instances that never draw. Concentrate it, but
-       KEEP the corridor: the first cut of this mask was radial-only, and the
-       trailhead beat sits at r~33 — it deleted the filler from the exact
-       ground the opening frame stares at. */
     if (filler) {
       const corridor =
         (1 - smooth01(9, 18, Math.abs(x))) * smooth01(5.5, 11, z) * (1 - smooth01(33, 41, z));
       dens *= Math.max(1 - smooth01(26, 36, Math.hypot(x, z)), corridor);
     }
-    if (dens < 0.02 || rand(i, 43 + S) > dens) continue;
+    return dens;
+  };
+
+  const place = (i: number, x: number, z: number) => {
+    const dens = density(x, z);
+    if (dens < 0.02 || rand(i, 43 + S) > dens) return;
     /* Filler clearance rides a sqrt: the apron rims plant at clearance
        0.2-0.5, which is 2-9 cm of blade — and the shader's projected-height
        gate (projH < 0.0052 screen fraction) deletes exactly those blades at
@@ -1027,7 +1052,7 @@ function buildGrassTiles(budget: number, cfg: GrassLayerCfg) {
        blades in the fire ring or through the deck) but lifts the mid-band
        (0.3 -> 0.55) past the gate, so the rim closes instead of dissolving. */
     const clr = filler ? Math.sqrt(clearance(x, z, 0.22, 0.5, true)) : clearance(x, z);
-    if (clr < 0.06) continue;
+    if (clr < 0.06) return;
 
     const key = `${Math.floor(x / cfg.tile)},${Math.floor(z / cfg.tile)}`;
     let c = cells.get(key);
@@ -1056,16 +1081,67 @@ function buildGrassTiles(budget: number, cfg: GrassLayerCfg) {
         ? 0.08 + Math.pow(rand(i, 45 + S), 1.3) * 0.1
         : (0.176 + Math.pow(rand(i, 45 + S), 1.6) * 0.32) * (1 + far * 0.3), // height
       filler
-        ? /* v8: +15% width. The one lever that closes ground for ZERO extra
-             triangles — the near-camera band of the crest beat still showed
-             lawn between blades at v7 density, and the worst beat sits 50k
-             tris under the ceiling, so more instances was not the move. */
-          0.034 + rand(i, 46 + S) * 0.026
+        ? /* v8 went +15%, v9 another +24% (0.042-0.075 m). Width is the one
+             lever that closes ground for ZERO extra triangles, and at v9's
+             jittered-grid spacing (~5 cm between filler roots in the core)
+             the mean blade is now WIDER than its spacing — the definition
+             of a closed sward. Overlap is fine; bare ground is not. */
+          0.042 + rand(i, 46 + S) * 0.033
         : 0.026 + rand(i, 46 + S) * 0.018, // width — reference range, no far term
       rand(i, 47 + S) // fade seed
     );
     c.clr.push(clr);
     placed++;
+  };
+
+  if (filler) {
+    /* v9: JITTERED GRID, not white noise. Uniform-random planting clumps —
+       Poisson spacing puts pairs of blades on top of each other and leaves
+       fist-sized voids at the same density, and those voids are exactly the
+       pale dots the founder read as patchiness. One candidate per grid cell,
+       jittered a full cell width, keeps the count and the randomness but
+       bounds the largest possible gap at ~2 cell diagonals — blue-noise-ish
+       spacing for free, no dart-throwing cost.
+
+       The grid is sized from the mask's measured effective area so the
+       planted count lands on the budget: E = integral of the density mask
+       (m^2 at full density), cell edge = sqrt(E / budget). Each candidate
+       then thins by its local density exactly like the old sampler, so the
+       fringes still feather. */
+    let E = 0;
+    const EST = 96;
+    for (let gx = 0; gx < EST; gx++) {
+      for (let gz = 0; gz < EST; gz++) {
+        const x = X0 + ((gx + 0.5) / EST) * (X1 - X0);
+        const z = Z0 + ((gz + 0.5) / EST) * (Z1 - Z0);
+        const dens = density(x, z);
+        if (dens < 0.02) continue;
+        if (Math.sqrt(clearance(x, z, 0.22, 0.5, true)) < 0.06) continue;
+        E += dens;
+      }
+    }
+    E *= ((X1 - X0) * (Z1 - Z0)) / (EST * EST);
+    const edge = Math.sqrt(Math.max(1e-6, E / budget));
+    const cols = Math.max(1, Math.round((X1 - X0) / edge));
+    const rows = Math.max(1, Math.round((Z1 - Z0) / edge));
+    for (let r = 0; r < rows; r++) {
+      for (let q = 0; q < cols; q++) {
+        const i = r * cols + q;
+        place(
+          i,
+          X0 + ((q + rand(i, 141)) / cols) * (X1 - X0),
+          Z0 + ((r + rand(i, 142)) / rows) * (Z1 - Z0)
+        );
+      }
+    }
+  } else {
+    /* Hero keeps rejection sampling: it is the sparse silhouette layer, its
+       blades are tall enough to read individually, and a little clumping
+       reads as natural tussock there. */
+    const MAX_TRIES = budget * 9;
+    for (let i = 0; i < MAX_TRIES && placed < budget; i++) {
+      place(i, X0 + rand(i, 41 + S) * (X1 - X0), Z0 + rand(i, 42 + S) * (Z1 - Z0));
+    }
   }
 
   const tiles: GrassTile[] = [];
@@ -1788,9 +1864,16 @@ export default function SceneDetail({
      G_HERO/G_FILL). The split is what keeps it inside the ~1.3M worst-beat
      triangle budget: density lives in the near field where the eye judges
      coverage, not in the fog wash. Mobile keeps its ~35% proportion. */
+  /* v9: the founder's "4x the grass in close proximity" round. Brute count
+     was impossible (v8's worst beat already sat 40k tris under the 1.35M
+     ceiling), so v9 closes the ground with the three cheap levers — deeper
+     sward-green terrain under the meadow (zero tris), wider filler blades
+     (zero tris), jittered-grid spacing so the same count leaves no voids
+     (zero tris) — and spends the actual headroom here: +60k filler blades
+     (1 tri each; the near-band LOD submits roughly half at the worst beat). */
   const mobile = size.width < 820;
   const heroCount = mobile ? 42000 : 120000;
-  const fillCount = mobile ? 284000 : 810000;
+  const fillCount = mobile ? 300000 : 870000;
 
   return (
     <group>
