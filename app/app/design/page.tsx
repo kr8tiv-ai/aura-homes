@@ -1,125 +1,241 @@
 "use client";
 
-// Questionnaire wizard shell. All answers live in one state object shaped like
-// the aura-architect Questionnaire; "Generate design" composes a reference
-// brief client-side from those answers — honestly labeled as such on the page.
-// The full pipeline (bylaw checks, climate-zone constraints, the costed model)
-// runs in agent/ (aura-architect), not in this hosted demo.
+/* 02 · DESIGN — wired to the design service (design-api/).
 
-import { Children, useState } from "react";
+   What this page is now: the questionnaire in design-api/app/models.py
+   (DesignRequest), posted through the typed client in lib/designApi.ts, with
+   the solved plan, the room schedule, the blueprint and every warning rendered
+   from the response.
+
+   What it was, and where that went: a five-step client-side wizard whose
+   answers were pasted into a narrative paragraph in the browser. Its parcel
+   questions (county, planning district, acreage) belong to /land and the agent
+   pipeline — the design service does not take them and this page no longer
+   pretends to price them. Its systems questions did not vanish: wood stove,
+   wood-fired hot tub, deck, greywater, solar and battery are now the STANDARD
+   rows of the Aura eco spec below, and generator, HRV, grid-connect and
+   hempcrete are the four real options.
+
+   Honesty rules this page keeps:
+   · No service, no result. If the endpoint does not answer, the page says so
+     and shows nothing in its place — it never composes a fake plan.
+   · `offline: true` from the service is labelled as the deterministic geometry
+     path, not passed off as an AI design.
+   · Every warning is rendered, and the drawing's REVIEW-READY / NOT FOR
+     CONSTRUCTION stamp is carried onto the page. */
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import RevealWords from "@/components/RevealWords";
-import { Reveal, Stagger, StaggerItem, GrowBar, Counter } from "@/components/Reveal";
+import { Reveal, Stagger, StaggerItem } from "@/components/Reveal";
+import { Field, NumberInput, Select, Toggle } from "@/components/design/Controls";
+import EcoChecklist from "@/components/design/EcoChecklist";
+import DesignResult from "@/components/design/DesignResult";
+import {
+  CLIMATE_ZONES,
+  MATERIALS,
+  STYLES,
+  composeNotes,
+  materialWallMm,
+} from "@/components/design/ecoSpec";
+import {
+  artifactUrl,
+  designHealth,
+  generateDesign,
+  type ClimateZone,
+  type DesignHealth,
+  type DesignRequest,
+  type DesignResponse,
+  type EcoMaterial,
+  type HomeStyle,
+} from "@/lib/designApi";
 
 const REPO_AGENT = "https://github.com/kr8tiv-ai/aura-homes/tree/main/agent";
 
-const steps = ["Land", "Home size & style", "Energy", "Water", "Extras"] as const;
+/* The endpoint, taken from the client itself rather than re-read from env, so
+   the address printed in an error message is the address that was called. */
+const API_BASE = (artifactUrl("/") ?? "").replace(/\/$/, "");
 
-// Module scope on purpose: Counter lists `format` in its effect deps, so an
-// inline arrow would restart the count on every keystroke in the wizard.
-const pad2 = (n: number) => String(Math.round(n)).padStart(2, "0");
+const STOREYS = [
+  { id: "1", label: "Single storey" },
+  { id: "2", label: "Two storeys" },
+] as const;
 
-interface WizardState {
-  parcel: { county: string; district: string; acreage: string };
-  home: { sizeSqft: string; style: string; storeys: string; bedrooms: string };
-  energy: { solarKw: string; batteryKwh: string; backupGenerator: boolean; woodStove: boolean };
-  water: { source: "cistern" | "well" | "awgSupplement"; septic: string };
-  extras: { hotTub: boolean; deck: boolean; hrv: boolean };
+interface FormState {
+  bedrooms: string;
+  bathrooms: string;
+  totalSqFt: string;
+  climate: ClimateZone;
+  material: EcoMaterial;
+  style: HomeStyle;
+  storeys: "1" | "2";
+  offGrid: boolean;
+  ownerNotes: string;
 }
 
-const initialState: WizardState = {
-  parcel: { county: "Lac Ste. Anne County", district: "Agriculture (AG)", acreage: "3" },
-  home: { sizeSqft: "800", style: "modernCabin", storeys: "1", bedrooms: "2" },
-  energy: { solarKw: "10", batteryKwh: "30", backupGenerator: true, woodStove: true },
-  water: { source: "cistern", septic: "tankAndField" },
-  extras: { hotTub: false, deck: true, hrv: true },
+/* The Alberta pilot, which is also the reference build the budget and escrow
+   pages cost: 800 sq ft, zone 7A, SIP, off grid. */
+const INITIAL: FormState = {
+  bedrooms: "2",
+  bathrooms: "1",
+  totalSqFt: "800",
+  climate: "7A",
+  material: "sip",
+  style: "off_grid_cabin",
+  storeys: "1",
+  offGrid: true,
+  ownerNotes: "",
 };
 
-// ------------------------------------------------- client-side reference brief
-// Composed from the actual answers so the hosted demo never returns a canned
-// narrative that ignores the questionnaire. It states inputs plus the standard
-// Aura envelope; it makes NO verdict claims — those need the real pipeline.
+const INITIAL_OPTIONS = ["generator", "hrv"];
 
-const STYLE_LABELS: Record<string, string> = {
-  modernCabin: "modern cabin",
-  aFrame: "A-frame",
-  bungalow: "bungalow",
-  storeyAndAHalf: "storey-and-a-half",
-};
+type Phase = "idle" | "loading" | "done" | "failed";
 
-const WATER_LABELS: Record<WizardState["water"]["source"], string> = {
-  cistern: "a buried cistern",
-  well: "a drilled well",
-  awgSupplement: "a buried cistern with the AWG summer module",
-};
+interface Failure {
+  kind: "unreachable" | "rejected";
+  message: string;
+}
 
-const SEPTIC_LABELS: Record<string, string> = {
-  tankAndField: "a tank-and-field septic system",
-  mound: "a mound septic system",
-  holdingTank: "a holding-tank septic system",
-  packagedTreatment: "a packaged treatment septic system",
-};
-
-function composeBrief(s: WizardState): string {
-  const size = Number(s.home.sizeSqft);
-  const sizeTxt =
-    Number.isFinite(size) && size > 0 ? size.toLocaleString("en-CA") : s.home.sizeSqft;
-  const storeys = s.home.storeys === "2" ? "two-storey" : "single-storey";
-  const style = STYLE_LABELS[s.home.style] ?? s.home.style;
-  const beds = s.home.bedrooms.trim();
-  const power =
-    `a ${s.energy.solarKw} kW solar array with ${s.energy.batteryKwh} kWh of storage` +
-    (s.energy.backupGenerator ? " and generator backup" : ", with no backup generator");
-  const heat = s.energy.woodStove
-    ? "A WETT-inspected wood stove provides resilient heat"
-    : "Heating runs on the electrical system, with no wood stove";
-  const hrv = s.extras.hrv ? ", with an HRV keeping the tight envelope fresh" : "";
-  const extras = [s.extras.deck && "a deck", s.extras.hotTub && "a wood-fired hot tub"]
-    .filter(Boolean)
-    .join(" and ");
-  return (
-    `A ${storeys} ${style} of ${sizeTxt} sqft with ${beds} bedroom${beds === "1" ? "" : "s"} ` +
-    `on ${s.parcel.acreage} acres in ${s.parcel.county} (${s.parcel.district}), ` +
-    `sited on screw piles with a structural insulated panel envelope (walls R-24, roof R-40). ` +
-    `Power comes from ${power}; water from ${WATER_LABELS[s.water.source]}, ` +
-    `draining to ${SEPTIC_LABELS[s.water.septic] ?? s.water.septic}. ` +
-    `${heat}${hrv}.` +
-    (extras ? ` Outside: ${extras}.` : "")
-  );
+/** generateDesign throws `design service <status>: …` for an answered-but-
+ *  refused request, and a network TypeError when nothing answered at all.
+ *  The two need different words: one is a bad brief, the other is a service
+ *  that is not running. */
+function classify(err: unknown): Failure {
+  const message = err instanceof Error ? err.message : String(err);
+  return /^design service \d+/.test(message)
+    ? { kind: "rejected", message }
+    : { kind: "unreachable", message };
 }
 
 export default function DesignPage() {
-  const [step, setStep] = useState(0);
-  const [state, setState] = useState<WizardState>(initialState);
-  const [result, setResult] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [form, setForm] = useState<FormState>(INITIAL);
+  const [options, setOptions] = useState<string[]>(INITIAL_OPTIONS);
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [result, setResult] = useState<DesignResponse | null>(null);
+  const [failure, setFailure] = useState<Failure | null>(null);
 
-  const patch = <K extends keyof WizardState>(section: K, value: Partial<WizardState[K]>) =>
-    setState((s) => ({ ...s, [section]: { ...s[section], ...value } }));
+  /* undefined = still probing, null = the service did not answer. */
+  const [health, setHealth] = useState<DesignHealth | null | undefined>(undefined);
+  const [probe, setProbe] = useState(0);
 
-  async function generate() {
-    setBusy(true);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    const ac = new AbortController();
+    setHealth(undefined);
+    designHealth(ac.signal).then((h) => {
+      if (!ac.signal.aborted) setHealth(h);
+    });
+    return () => ac.abort();
+  }, [probe]);
+
+  useEffect(() => () => abortRef.current?.abort(), []);
+
+  const set = useCallback(
+    <K extends keyof FormState>(key: K, value: FormState[K]) =>
+      setForm((f) => ({ ...f, [key]: value })),
+    []
+  );
+
+  const toggleOption = useCallback(
+    (id: string, on: boolean) =>
+      setOptions((prev) =>
+        on ? (prev.includes(id) ? prev : [...prev, id]) : prev.filter((x) => x !== id)
+      ),
+    []
+  );
+
+  const composed = useMemo(
+    () => composeNotes(form.material, options, form.ownerNotes),
+    [form.material, form.ownerNotes, options]
+  );
+
+  /* Client-side checks that mirror the service's Field() constraints, so a
+     typo comes back as a sentence instead of a 422 from Pydantic. */
+  const errors = useMemo(() => {
+    const out: string[] = [];
+    const beds = Number(form.bedrooms);
+    const baths = Number(form.bathrooms);
+    const area = Number(form.totalSqFt);
+    if (form.bedrooms.trim() === "" || !Number.isInteger(beds) || beds < 0 || beds > 6)
+      out.push("Bedrooms must be a whole number from 0 to 6.");
+    if (
+      form.bathrooms.trim() === "" ||
+      !Number.isFinite(baths) ||
+      baths < 0.5 ||
+      baths > 4 ||
+      (baths * 2) % 1 !== 0
+    )
+      out.push("Bathrooms must be in half steps from 0.5 to 4 — 0.5 is a powder room.");
+    if (form.totalSqFt.trim() === "" || !Number.isInteger(area) || area < 200 || area > 4000)
+      out.push("Total floor area must be a whole number of square feet from 200 to 4,000.");
+    return out;
+  }, [form.bedrooms, form.bathrooms, form.totalSqFt]);
+
+  const request: DesignRequest = useMemo(
+    () => ({
+      bedrooms: Number(form.bedrooms),
+      bathrooms: Number(form.bathrooms),
+      total_sq_ft: Number(form.totalSqFt),
+      climate_zone: form.climate,
+      material: form.material,
+      style: form.style,
+      storeys: form.storeys === "2" ? 2 : 1,
+      off_grid: form.offGrid,
+      notes: composed.notes,
+    }),
+    [form, composed.notes]
+  );
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (errors.length > 0 || phase === "loading") return;
+
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
+
+    setPhase("loading");
+    setFailure(null);
     setResult(null);
-    // Static-export build: the brief is composed client-side from the answers
-    // so the hosted demo needs no server. The real pipeline lives in agent/.
-    await new Promise((r) => setTimeout(r, 400));
-    setResult(composeBrief(state));
-    setBusy(false);
+    try {
+      const res = await generateDesign(request, ac.signal);
+      if (ac.signal.aborted) return;
+      setResult(res);
+      setPhase("done");
+      // The service answered; re-read /health rather than inferring its
+      // wiring from the response — a guessed status bar is a lie.
+      setProbe((n) => n + 1);
+    } catch (err) {
+      if (ac.signal.aborted) return;
+      const f = classify(err);
+      setFailure(f);
+      setPhase("failed");
+      if (f.kind === "unreachable") setHealth(null);
+    }
   }
+
+  const wallMm = materialWallMm(form.material);
 
   return (
     <div className="py-16">
       <Reveal y={10}>
-        <p className="aura-label mb-4">Design questionnaire</p>
+        <p className="aura-label mb-4">02 · Design</p>
       </Reveal>
       <RevealWords
         text="Tell Aura about your build"
         className="font-display text-[2.35rem] font-medium leading-[1.08] tracking-[-0.025em]"
       />
       <Reveal delay={0.12} y={12}>
-        <p className="mt-4 max-w-xl text-sm leading-relaxed text-aura-text/70">
-          Hosted demo: the brief is composed in your browser from your answers, as a reference. The
-          full pipeline — bylaw checks, climate-zone constraints, and the costed model — runs in the
-          open repo,{" "}
+        <p className="mt-4 max-w-2xl text-[0.95rem] leading-[1.65] text-aura-text/75">
+          The questionnaire posts to the design service, which reasons a room program, re-solves the
+          geometry deterministically, and draws a dimensioned plan at 1/4&quot; = 1&apos;-0&quot;.
+          Python owns the geometry; nothing on the drawing is drawn by a language model. Parcel
+          questions — district minimums, aquifer, septic soils — live on{" "}
+          <Link href="/land" data-cursor="Open" className="text-aura-emerald underline underline-offset-4">
+            /land
+          </Link>{" "}
+          and in the open pipeline at{" "}
           <a
             href={REPO_AGENT}
             target="_blank"
@@ -133,319 +249,246 @@ export default function DesignPage() {
         </p>
       </Reveal>
 
-      <Stagger className="mt-10 flex flex-wrap gap-2" gap={0.05}>
-        {steps.map((name, i) => (
-          <StaggerItem key={name}>
-            <button
-              onClick={() => setStep(i)}
-              data-cursor="Jump"
-              className={`rounded-md border px-4 py-2 text-xs uppercase tracking-label transition-colors ${
-                i === step
-                  ? "border-aura-emerald text-aura-emerald"
-                  : "aura-hairline text-aura-text/70 hover:text-aura-text"
-              }`}
-            >
-              {name}
-            </button>
-          </StaggerItem>
-        ))}
-      </Stagger>
-
-      {/* progress rail — redraws itself from zero on every step change, so the
-          wizard reads as travel rather than five identical screens */}
-      <div className="mt-6 flex items-center gap-4">
-        <div className="h-1 flex-1 overflow-hidden rounded-full bg-aura-ink/10">
-          <GrowBar
-            key={step}
-            pct={((step + 1) / steps.length) * 100}
-            className="h-full rounded-full bg-aura-emerald-bright"
-          />
-        </div>
-        <span className="font-mono text-xs uppercase tracking-label text-aura-dim">
-          <Counter key={step} value={step + 1} format={pad2} duration={0.5} />
-          {` / ${String(steps.length).padStart(2, "0")}`}
-        </span>
-      </div>
-
-      <Reveal y={18} delay={0.05}>
-        <div className="aura-panel aura-panel-lift mt-8 p-8">
-          {step === 0 && (
-            <StepGrid>
-              <Field label="County">
-                <TextInput
-                  value={state.parcel.county}
-                  onChange={(v) => patch("parcel", { county: v })}
-                />
-              </Field>
-              <Field label="Planning district">
-                <TextInput
-                  value={state.parcel.district}
-                  onChange={(v) => patch("parcel", { district: v })}
-                />
-              </Field>
-              <Field label="Acreage">
-                <TextInput
-                  value={state.parcel.acreage}
-                  onChange={(v) => patch("parcel", { acreage: v })}
-                />
-              </Field>
-            </StepGrid>
+      {/* --------------------------------------------------- service status */}
+      <Reveal y={12} className="mt-8">
+        <div className="flex flex-wrap items-center gap-3">
+          {health === undefined ? (
+            <span className="rounded border aura-hairline px-2 py-0.5 font-mono text-[0.6rem] uppercase tracking-label text-aura-text/60">
+              Checking service
+            </span>
+          ) : health === null ? (
+            <span className="rounded border border-aura-violet px-2 py-0.5 font-mono text-[0.6rem] uppercase tracking-label text-aura-violet">
+              Service unreachable
+            </span>
+          ) : (
+            <span className="rounded border border-aura-emerald px-2 py-0.5 font-mono text-[0.6rem] uppercase tracking-label text-aura-emerald">
+              Service reachable
+            </span>
           )}
-
-          {step === 1 && (
-            <StepGrid>
-              <Field label="Size (sqft)">
-                <TextInput
-                  value={state.home.sizeSqft}
-                  onChange={(v) => patch("home", { sizeSqft: v })}
-                />
-              </Field>
-              <Field label="Style">
-                <Select
-                  value={state.home.style}
-                  onChange={(v) => patch("home", { style: v })}
-                  options={[
-                    ["modernCabin", "Modern cabin"],
-                    ["aFrame", "A-frame"],
-                    ["bungalow", "Bungalow"],
-                    ["storeyAndAHalf", "Storey and a half"],
-                  ]}
-                />
-              </Field>
-              <Field label="Storeys">
-                <Select
-                  value={state.home.storeys}
-                  onChange={(v) => patch("home", { storeys: v })}
-                  options={[
-                    ["1", "One"],
-                    ["2", "Two"],
-                  ]}
-                />
-              </Field>
-              <Field label="Bedrooms">
-                <TextInput
-                  value={state.home.bedrooms}
-                  onChange={(v) => patch("home", { bedrooms: v })}
-                />
-              </Field>
-            </StepGrid>
-          )}
-
-          {step === 2 && (
-            <StepGrid>
-              <Field label="Solar array (kW)">
-                <TextInput
-                  value={state.energy.solarKw}
-                  onChange={(v) => patch("energy", { solarKw: v })}
-                />
-              </Field>
-              <Field label="Battery (kWh)">
-                <TextInput
-                  value={state.energy.batteryKwh}
-                  onChange={(v) => patch("energy", { batteryKwh: v })}
-                />
-              </Field>
-              <Toggle
-                label="Backup generator"
-                checked={state.energy.backupGenerator}
-                onChange={(v) => patch("energy", { backupGenerator: v })}
-              />
-              <Toggle
-                label="Wood stove (WETT)"
-                checked={state.energy.woodStove}
-                onChange={(v) => patch("energy", { woodStove: v })}
-              />
-            </StepGrid>
-          )}
-
-          {step === 3 && (
-            <StepGrid>
-              <Field label="Water source">
-                <Select
-                  value={state.water.source}
-                  onChange={(v) => patch("water", { source: v as WizardState["water"]["source"] })}
-                  options={[
-                    ["cistern", "Buried cistern"],
-                    ["well", "Drilled well"],
-                    ["awgSupplement", "Cistern + AWG supplement"],
-                  ]}
-                />
-              </Field>
-              <Field label="Septic">
-                <Select
-                  value={state.water.septic}
-                  onChange={(v) => patch("water", { septic: v })}
-                  options={[
-                    ["tankAndField", "Tank and field"],
-                    ["mound", "Mound"],
-                    ["holdingTank", "Holding tank"],
-                    ["packagedTreatment", "Packaged treatment"],
-                  ]}
-                />
-              </Field>
-            </StepGrid>
-          )}
-
-          {step === 4 && (
-            <StepGrid>
-              <Toggle
-                label="Wood-fired hot tub"
-                checked={state.extras.hotTub}
-                onChange={(v) => patch("extras", { hotTub: v })}
-              />
-              <Toggle
-                label="Deck"
-                checked={state.extras.deck}
-                onChange={(v) => patch("extras", { deck: v })}
-              />
-              <Toggle
-                label="HRV"
-                checked={state.extras.hrv}
-                onChange={(v) => patch("extras", { hrv: v })}
-              />
-            </StepGrid>
-          )}
+          <span className="font-mono text-xs text-aura-text/55">{API_BASE}</span>
+          {health ? (
+            <span className="text-xs text-aura-text/65">
+              {health.llm
+                ? `Reasoning: ${health.llm_provider ?? "LLM"}`
+                : "No LLM key — deterministic room program"}{" "}
+              ·{" "}
+              {health.images
+                ? `Renders: ${health.image_model ?? "image backend"}`
+                : "No image key — blueprint only, no AI renders"}
+            </span>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => setProbe((n) => n + 1)}
+            data-cursor="Recheck"
+            className="rounded-full border aura-hairline px-3 py-1 font-mono text-[0.6rem] uppercase tracking-label text-aura-text/70 transition-colors hover:border-aura-teal"
+          >
+            Re-check
+          </button>
         </div>
       </Reveal>
 
-      <Stagger className="mt-8 flex items-center gap-4" gap={0.07}>
-        <StaggerItem>
-          <button
-            onClick={() => setStep((s) => Math.max(0, s - 1))}
-            disabled={step === 0}
-            data-cursor="Back"
-            className="rounded-md border aura-hairline px-5 py-2.5 text-xs uppercase tracking-label disabled:opacity-30"
-          >
-            Back
-          </button>
-        </StaggerItem>
-        <StaggerItem>
-          {step < steps.length - 1 ? (
-            <button
-              onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}
-              data-cursor="Next"
-              className="rounded-md border border-aura-teal px-5 py-2.5 text-xs uppercase tracking-label text-aura-teal"
-            >
-              Next
-            </button>
-          ) : (
-            <button
-              onClick={generate}
-              disabled={busy}
-              data-cursor="Generate"
-              className="rounded-full bg-aura-ink px-6 py-2.5 font-mono text-xs font-medium uppercase tracking-label text-aura-paper disabled:opacity-50"
-            >
-              {busy ? "Generating" : "Generate design"}
-            </button>
-          )}
-        </StaggerItem>
-      </Stagger>
-
-      {result && (
-        <Reveal y={20}>
-          <div className="aura-panel aura-panel-lift mt-10 p-8">
-            <Stagger gap={0.08}>
+      <form onSubmit={submit}>
+        {/* --------------------------------------------------------- the home */}
+        <Reveal y={18} className="mt-6">
+          <div className="aura-panel p-8">
+            <p className="aura-label">The home</p>
+            <Stagger className="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3" gap={0.05}>
               <StaggerItem>
-                <p className="aura-label mb-4">Design brief — reference</p>
+                <Field label="Bedrooms" hint="0 to 6.">
+                  <NumberInput
+                    value={form.bedrooms}
+                    onChange={(v) => set("bedrooms", v)}
+                    min={0}
+                    max={6}
+                  />
+                </Field>
               </StaggerItem>
               <StaggerItem>
-                <p className="whitespace-pre-line text-sm leading-relaxed text-aura-text/80">
-                  {result}
-                </p>
+                <Field label="Bathrooms" hint="Half steps — 0.5 is a powder room.">
+                  <NumberInput
+                    value={form.bathrooms}
+                    onChange={(v) => set("bathrooms", v)}
+                    min={0.5}
+                    max={4}
+                    step={0.5}
+                  />
+                </Field>
               </StaggerItem>
               <StaggerItem>
-                <p className="mt-4 text-xs leading-relaxed text-aura-text/60">
-                  Composed client-side from your answers. Verdicts — district minimums, Part 9, zone
-                  7A — come from the real pipeline in agent/, not this demo.
-                </p>
+                <Field label="Total floor area (sq ft)" hint="200 to 4,000.">
+                  <NumberInput
+                    value={form.totalSqFt}
+                    onChange={(v) => set("totalSqFt", v)}
+                    min={200}
+                    max={4000}
+                    step={10}
+                  />
+                </Field>
+              </StaggerItem>
+              <StaggerItem>
+                <Field label="Storeys">
+                  <Select
+                    value={form.storeys}
+                    onChange={(v) => set("storeys", v)}
+                    options={STOREYS}
+                  />
+                </Field>
+              </StaggerItem>
+              <StaggerItem>
+                <Field
+                  label="Climate zone"
+                  hint="7A is the Alberta pilot — 5,000–5,999 heating degree-days."
+                >
+                  <Select
+                    value={form.climate}
+                    onChange={(v) => set("climate", v)}
+                    options={CLIMATE_ZONES}
+                  />
+                </Field>
+              </StaggerItem>
+              <StaggerItem>
+                <Field
+                  label="Structural material"
+                  hint={`Drawn at its real thickness — ${wallMm} mm walls, which changes the net internal area.`}
+                >
+                  <Select
+                    value={form.material}
+                    onChange={(v) => set("material", v)}
+                    options={MATERIALS.map((m) => ({ id: m.id, label: `${m.label} · ${m.wallMm} mm` }))}
+                  />
+                </Field>
+              </StaggerItem>
+              <StaggerItem>
+                <Field label="Style">
+                  <Select value={form.style} onChange={(v) => set("style", v)} options={STYLES} />
+                </Field>
+              </StaggerItem>
+              <StaggerItem className="flex items-end">
+                <Toggle
+                  label="Off grid"
+                  checked={form.offGrid}
+                  onChange={(v) => set("offGrid", v)}
+                  hint="Off grid by default; the grid-connect option is in the checklist below."
+                />
               </StaggerItem>
             </Stagger>
           </div>
         </Reveal>
-      )}
+
+        {/* --------------------------------------------------- the eco spec */}
+        <Reveal y={18} className="mt-6">
+          <EcoChecklist
+            material={form.material}
+            chosen={options}
+            onToggle={toggleOption}
+            ownerText={form.ownerNotes}
+            onOwnerText={(v) => set("ownerNotes", v)}
+            composed={composed}
+          />
+        </Reveal>
+
+        {/* ----------------------------------------------------------- submit */}
+        <div className="mt-8 flex flex-wrap items-center gap-4">
+          <button
+            type="submit"
+            disabled={phase === "loading" || errors.length > 0}
+            data-cursor="Generate"
+            className="rounded-full bg-aura-ink px-6 py-2.5 font-mono text-xs font-medium uppercase tracking-label text-aura-paper transition-opacity hover:opacity-85 disabled:opacity-40"
+          >
+            {phase === "loading" ? "Generating" : "Generate design"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setForm(INITIAL);
+              setOptions(INITIAL_OPTIONS);
+            }}
+            data-cursor="Reset"
+            className="rounded-md border aura-hairline px-5 py-2.5 font-mono text-xs uppercase tracking-label text-aura-text/70 transition-colors hover:border-aura-teal"
+          >
+            Reset to the Alberta pilot
+          </button>
+          <span className="text-xs text-aura-text/55">
+            {request.bedrooms} bed · {request.bathrooms} bath ·{" "}
+            {Number.isFinite(request.total_sq_ft) ? request.total_sq_ft.toLocaleString("en-CA") : "—"}{" "}
+            sq ft · zone {request.climate_zone}
+          </span>
+        </div>
+
+        {errors.length > 0 && (
+          <ul className="mt-4 space-y-1">
+            {errors.map((e) => (
+              <li key={e} className="text-xs leading-relaxed text-aura-violet">
+                {e}
+              </li>
+            ))}
+          </ul>
+        )}
+      </form>
+
+      {/* ------------------------------------------------- loading / failure */}
+      <div aria-live="polite">
+        {phase === "loading" && (
+          <div className="aura-panel mt-10 p-8">
+            <p className="aura-label animate-pulse">Solving</p>
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-aura-text/70">
+              Packing the room program into an envelope, clustering the wet rooms onto a shared
+              plumbing wall, checking glazing against the 22% FDWR ceiling, then drawing the plan
+              and writing the PDF and DXF. The geometry is deterministic, so this is the same answer
+              every time for the same brief.
+            </p>
+          </div>
+        )}
+
+        {phase === "failed" && failure && (
+          <div className="mt-10 rounded-xl border border-aura-violet p-8">
+            <p className="aura-label text-aura-violet">
+              {failure.kind === "unreachable" ? "The design service did not answer" : "The service refused this brief"}
+            </p>
+            {failure.kind === "unreachable" ? (
+              <>
+                <p className="mt-3 max-w-2xl text-sm leading-relaxed text-aura-text/80">
+                  Nothing answered at <span className="font-mono">{API_BASE}</span>, so there is no
+                  design to show — and this page will not compose one in the browser and call it a
+                  result. Your answers and the brief above are intact; run the service and press
+                  Generate again.
+                </p>
+                <pre className="mt-4 overflow-x-auto rounded-md border aura-hairline p-4 font-mono text-xs leading-relaxed text-aura-text/70">
+{`cd design-api
+python -m pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000`}
+                </pre>
+                <p className="mt-3 max-w-2xl text-xs leading-relaxed text-aura-text/60">
+                  Every key in the service is optional: with none configured it still returns a full
+                  blueprint from the deterministic planner and reports{" "}
+                  <span className="font-mono">offline: true</span>. Point this page elsewhere with{" "}
+                  <span className="font-mono">NEXT_PUBLIC_DESIGN_API</span>.
+                </p>
+              </>
+            ) : (
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-aura-text/80">
+                The service answered and rejected the request, which usually means a value outside
+                the contract — bedrooms 0–6, bathrooms in half steps to 4, area 200–4,000 sq ft, or
+                a room program that cannot be packed into the envelope.
+              </p>
+            )}
+            <p className="mt-4 break-words font-mono text-xs leading-relaxed text-aura-text/60">
+              {failure.message}
+            </p>
+            <button
+              type="button"
+              onClick={() => setProbe((n) => n + 1)}
+              data-cursor="Recheck"
+              className="mt-4 rounded-full border border-aura-teal px-4 py-1.5 font-mono text-[0.6rem] uppercase tracking-label text-aura-teal transition-colors hover:bg-aura-teal/5"
+            >
+              Re-check the service
+            </button>
+          </div>
+        )}
+
+        {phase === "done" && result && <DesignResult res={result} />}
+      </div>
     </div>
-  );
-}
-
-// ---------------------------------------------------------------- primitives
-
-// Each step remounts when `step` changes, so the stagger replays every time —
-// the fields arrive one after another instead of the panel swapping contents.
-function StepGrid({ children }: { children: React.ReactNode }) {
-  return (
-    <Stagger className="grid gap-6 md:grid-cols-2" gap={0.07}>
-      {Children.map(children, (child) => (
-        <StaggerItem>{child}</StaggerItem>
-      ))}
-    </Stagger>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="aura-label mb-2 block">{label}</span>
-      {children}
-    </label>
-  );
-}
-
-function TextInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  return (
-    <input
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="w-full rounded-md border aura-hairline bg-aura-bg px-4 py-2.5 text-sm text-aura-text"
-    />
-  );
-}
-
-function Select({
-  value,
-  onChange,
-  options,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  options: ReadonlyArray<readonly [string, string]>;
-}) {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="w-full rounded-md border aura-hairline bg-aura-bg px-4 py-2.5 text-sm text-aura-text"
-    >
-      {options.map(([v, label]) => (
-        <option key={v} value={v}>
-          {label}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-function Toggle({
-  label,
-  checked,
-  onChange,
-}: {
-  label: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => onChange(!checked)}
-      data-cursor="Toggle"
-      className={`flex h-full w-full items-center justify-between rounded-md border px-4 py-3 text-left text-sm transition-colors ${
-        checked ? "border-aura-emerald text-aura-text" : "aura-hairline text-aura-text/70"
-      }`}
-    >
-      <span className="uppercase tracking-label text-xs">{label}</span>
-      <span className={`text-xs ${checked ? "text-aura-lime" : "text-aura-text/65"}`}>
-        {checked ? "On" : "Off"}
-      </span>
-    </button>
   );
 }
