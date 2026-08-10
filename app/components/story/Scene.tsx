@@ -6,7 +6,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useGLTF, Sparkles, Html, Environment, Lightformer } from "@react-three/drei";
 import { EffectComposer, Bloom, Vignette, Noise } from "@react-three/postprocessing";
 import { withBase } from "../../lib/basePath";
-import SceneDetail, { meadowShade } from "./SceneDetail";
+import SceneDetail, { meadowShade, trailTrodden } from "./SceneDetail";
 
 /* ------------------------------------------------------------------ */
 /* One continuous camera journey (kage-inspired motion, ours in every  */
@@ -241,6 +241,9 @@ function Terrain() {
     const cA = new THREE.Color("#8db284");
     const cB = new THREE.Color("#a4c295");
     const cC = new THREE.Color("#b7c489");
+    /* Trodden earth for the walked trail — pale straw-tan, inside the
+       scene's warm-neutral family (cedar/stone), never orange. */
+    const cEarth = new THREE.Color("#b9aa8a");
     const tmp = new THREE.Color();
     const hash = (x: number, z: number) => {
       const s = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453;
@@ -254,6 +257,10 @@ function Terrain() {
       const n1 = 0.5 + 0.5 * Math.sin(x * 0.23 + z * 0.17 + 1.2);
       const n2 = 0.5 + 0.5 * Math.sin(x * 0.61 - z * 0.43 + 4.0);
       tmp.copy(cA).lerp(cB, n1).lerp(cC, n2 * 0.25);
+      /* the walked line earths over — a trail, not a stripe of missing
+         grass. Slightly noise-broken edge so it never reads vector-crisp. */
+      const trod = trailTrodden(x, z);
+      if (trod > 0) tmp.lerp(cEarth, trod * (0.68 + 0.14 * Math.sin(x * 3.1 + z * 2.3)));
       // — meadow mottle: two high frequencies plus per-facet jitter —
       const m =
         0.5 * Math.sin(x * 1.9 + z * 1.4) +

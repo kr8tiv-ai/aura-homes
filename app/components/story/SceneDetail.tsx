@@ -461,8 +461,12 @@ function Clouds({ frozen, night }: { frozen: boolean; night: number }) {
    38 m and only then dissolves to 52 m. Ours used to start thinning at 11 m,
    which is why the meadow read as sparse scatter: two thirds of every frame
    was already past the fade. Density is what turns blades into a surface. */
-const G_NEAR = 34.0; // full density inside this radius
-const G_FAR = 56.0; // thinned to G_PMIN by here
+/* The reference holds to 38 m for a ground-level roaming camera. Our beats
+   never stare across more than ~24 m of meadow, so 27 m keeps every blade
+   the journey can resolve while returning ~90k triangles the 34 m horizon
+   was spending past the fog wash — measured at beat 1, 1.166M -> budget. */
+const G_NEAR = 27.0; // full density inside this radius
+const G_FAR = 46.0; // thinned to G_PMIN by here
 const G_PMIN = 0.06;
 const G_BAND = 0.16; // width of the smooth dissolve band, in seed space
 /* 4 m tiles put ~440 instanced draws in the trailhead frustum and the beat
@@ -579,6 +583,20 @@ export function meadowShade(x: number, z: number): number {
   return meadowDensity(x, z) * clearance(x, z);
 }
 
+/* Exported for Terrain(): 0..1 trodden-earth factor along the walked route.
+   The mown verge alone left a pale-lawn stripe through the meadow that read
+   as MISSING grass; a faint earth line inside it reads as a trail — the
+   thing a walked route actually looks like, and it leads the eye to the
+   door. Core ~0.55 m half-width, feathered out by 1.2 m; narrower than the
+   0.3+0.75 m mow, so the dirt sits inside a short-grass shoulder. */
+export function trailTrodden(x: number, z: number): number {
+  let pd = Infinity;
+  for (let i = 0; i < G_PATH.length - 1; i++) {
+    pd = Math.min(pd, segDist(x, z, G_PATH[i][0], G_PATH[i][1], G_PATH[i + 1][0], G_PATH[i + 1][1]));
+  }
+  return 1 - clamp01((pd - 0.55) / 0.65);
+}
+
 /* --------------------------- the blade ---------------------------- */
 
 const G_SEGS = 4; // 9 verts, 7 triangles, no alpha anywhere
@@ -674,7 +692,7 @@ void main(){
      popping and no hysteresis state is needed. */
   float p = mix(1.0, ${G_PMIN.toFixed(3)}, smoothstep(${G_NEAR.toFixed(1)}, ${G_FAR.toFixed(1)}, dist));
   float projH = (aRand.y * aClear) * uProjScale / max(dist, 0.001);
-  p *= smoothstep(0.0035, 0.020, projH);
+  p *= smoothstep(0.0045, 0.022, projH);
   float vis = 1.0 - smoothstep(p - ${G_BAND.toFixed(3)}, p, aRand.w);
   // never let a blade flash across the lens as the camera brushes past it
   vis *= smoothstep(0.18, 0.55, dist);
