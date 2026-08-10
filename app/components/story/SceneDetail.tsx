@@ -518,8 +518,15 @@ type GrassLayerCfg = {
    layer's draws back again. Culling granularity stays far finer than a
    camera beat. Filler tiles are bigger still — the layer is short-range, so
    few of its tiles are ever in frustum at once. */
-export const G_HERO: GrassLayerCfg = { near: 14, far: 36, pmin: 0.05, band: 0.16, tile: 8, segs: 4 };
-export const G_FILL: GrassLayerCfg = { near: 12, far: 24, pmin: 0.0, band: 0.16, tile: 12, segs: 1 };
+export const G_HERO: GrassLayerCfg = { near: 14, far: 34, pmin: 0.04, band: 0.16, tile: 8, segs: 4 };
+/* Founder x3 escalation (Aug 9, on top of the x4): the extra density all
+   lands in the filler, and it pays for itself twice — the blades got
+   SHORTER (8-18 cm, was 9-21), so the projected-height gate prunes them
+   sooner, and the LOD reach tightened 12-24 -> 8-18 m, so a fourfold
+   planted count submits only ~15% more triangles per frame. Coverage where
+   the eye judges it (the first 8-18 m) quadruples; past that the hero
+   layer, the darkened ground, and the fog were already carrying the field. */
+export const G_FILL: GrassLayerCfg = { near: 8, far: 16, pmin: 0.0, band: 0.16, tile: 6, segs: 1 };
 
 const smooth01 = (a: number, b: number, x: number) => {
   const t = clamp01((x - a) / (b - a));
@@ -941,7 +948,11 @@ function buildGrassTiles(budget: number, cfg: GrassLayerCfg) {
   const S = filler ? 60 : 0;
   const cells = new Map<string, { pos: number[]; rnd: number[]; clr: number[] }>();
 
-  const X0 = -46, X1 = 46, Z0 = -22, Z1 = 54;
+  /* The filler samples a tighter box: its mask lives inside the ring plus
+     the corridor, and at ~1M planted blades the rejection loop's wasted
+     tries are real startup milliseconds. The hero keeps the full field. */
+  const X0 = filler ? -38 : -46, X1 = filler ? 38 : 46;
+  const Z0 = filler ? -16 : -22, Z1 = filler ? 44 : 54;
   let placed = 0;
   const MAX_TRIES = budget * 9;
   for (let i = 0; i < MAX_TRIES && placed < budget; i++) {
@@ -988,7 +999,7 @@ function buildGrassTiles(budget: number, cfg: GrassLayerCfg) {
          tall" — the whole 0.22-0.62 band dropped 20% to 0.176-0.496.
          Filler: 9-21 cm understorey whose only job is ground coverage. */
       filler
-        ? 0.09 + Math.pow(rand(i, 45 + S), 1.3) * 0.12
+        ? 0.08 + Math.pow(rand(i, 45 + S), 1.3) * 0.1
         : (0.176 + Math.pow(rand(i, 45 + S), 1.6) * 0.32) * (1 + far * 0.3), // height
       filler
         ? 0.03 + rand(i, 46 + S) * 0.022 // filler runs a touch broader — it is coverage
@@ -1168,7 +1179,16 @@ function GrassField({
       const dy = cy - t.cy;
       const dz = cz - t.cz;
       const d = Math.max(0, Math.sqrt(dx * dx + dy * dy + dz * dz) - t.radius);
-      const keep = Math.min(1, keepFraction(cfg, d) + 0.02);
+      const kf = keepFraction(cfg, d);
+      /* A tile fully past its fade (pmin 0 layers) has every blade at zero
+         height in the shader — but the 0.02 pad still submitted ~2% of its
+         instances AND a whole draw call per tile, which at 6 m filler tiles
+         was ~40 dead draws per beat. Fully-faded means fully hidden. */
+      if (kf <= 0.001) {
+        m.visible = false;
+        continue;
+      }
+      const keep = Math.min(1, kf + 0.02);
       const count = Math.ceil(keep * t.n);
       if (count < 2) {
         m.visible = false;
@@ -1704,14 +1724,15 @@ export default function SceneDetail({
      reading as separate objects and become a surface. 48k spread across this
      meadow was roughly a third of that, which is exactly why it read as
      sparse scatter no matter how good the blade itself was. */
-  /* The founder's x4: 96k -> ~410k planted blades on desktop, split so the
-     triangles stay inside the ~1.3M worst-beat budget — 150k full 7-tri hero
-     blades (the silhouette) + 260k 3-tri short filler (the ground cover; see
-     the layer comment above G_HERO). Mobile keeps the same ~35% proportion
-     it always ran. */
+  /* The founder's x4, then his x3 on top of it: 96k planted blades grew to
+     1.04M on desktop — 120k full 7-tri hero blades (the silhouette) + 920k
+     single-triangle short filler (the carpet; see the layer comments above
+     G_HERO/G_FILL). The split is what keeps it inside the ~1.3M worst-beat
+     triangle budget: density lives in the near field where the eye judges
+     coverage, not in the fog wash. Mobile keeps its ~35% proportion. */
   const mobile = size.width < 820;
   const heroCount = mobile ? 42000 : 120000;
-  const fillCount = mobile ? 81000 : 230000;
+  const fillCount = mobile ? 284000 : 810000;
 
   return (
     <group>
