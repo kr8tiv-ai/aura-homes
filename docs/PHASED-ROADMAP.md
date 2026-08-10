@@ -8,7 +8,7 @@
 > **Phase 2** — buy the property/land too, via X Layer / OKX bridges; buy *or customize* through the retailer or the AI app.
 > **Phase 3** — increasingly automated, toward full one-click A-to-Z.
 
-**Evidence base:** [research/MARKET-AND-USDC-FEASIBILITY.md](research/MARKET-AND-USDC-FEASIBILITY.md) (market structure, buy-flow legality) · [research/RETAIL-PARTNERS-USDC.md](research/RETAIL-PARTNERS-USDC.md) (named partner candidates and their actual payment stance) · [FEASIBILITY.md](FEASIBILITY.md) (Alberta construction, energy, crypto rails).
+**Evidence base:** [research/MARKET-AND-USDC-FEASIBILITY.md](research/MARKET-AND-USDC-FEASIBILITY.md) (market structure, buy-flow legality) · [research/RETAIL-PARTNERS-USDC.md](research/RETAIL-PARTNERS-USDC.md) (named home-seller candidates and their actual payment stance) · [research/SUPPLY-CHAIN-CRYPTO-RAILS.md](research/SUPPLY-CHAIN-CRYPTO-RAILS.md) (materials distributors that take crypto, and the gift-card/card bridges for the ones that don't) · [FEASIBILITY.md](FEASIBILITY.md) (Alberta construction, energy, crypto rails).
 
 ---
 
@@ -77,7 +77,12 @@ That sentence is the product strategy, the compliance answer, and the best line 
 **E. The record**
 - `AuraBuildRegistry` NFT per order: **Designed → Funded → UnderConstruction → Complete** (the contract's canonical `BuildStatus` enum — the vocabulary of record). An ownership/build **record**, never legal title.
 
-**F. If time remains, in this order**
+**F. The Supply Router — read-only panel** *(cheap, demoable, zero custody)*
+- Per budget line, show which rail buys it with crypto today: **DIRECT** (supplier accepts it) → **BRIDGE** (gift card / card, small tickets, no recourse) → **CONVERT** (USDC/CAD → wire, full recourse), each with its fee.
+- Name the real one: **[Kuby Renewable Energy](https://kuby.ca/) — Edmonton/Calgary/Lethbridge — accepts Bitcoin for solar systems *and* contracting**, which lands directly on the largest non-land line in an Aura build (~$48K MID).
+- Show the honest total: **roughly $50–60K of a $301K MID build has a real crypto rail today**; the rest converts. A stated number beats a vague claim, and it makes the routing product obvious. Detail in [research/SUPPLY-CHAIN-CRYPTO-RAILS.md](research/SUPPLY-CHAIN-CRYPTO-RAILS.md).
+
+**G. If time remains, in this order**
 1. x402 / OKX APP-metered AI concierge fee — pennies, visible, on-chain.
 2. A second parcel scenario so rejection and acceptance show back to back.
 
@@ -130,7 +135,15 @@ Free-form design. Land purchase. Fiat on-ramp integration. Account abstraction. 
 - **Closing partner where licensing is required:** Propy is a US-licensed title company with USDC escrow and $5B of volume — partner, don't rebuild.
 - CRA barter-disposition ledger export shipped as a feature, not a nuisance.
 
-### 2c — Buy *or customize*
+### 2c — The materials rail *(the Supply Router goes transactional)*
+
+- **Sign the direct suppliers.** Kuby (solar + contracting, Alberta, already takes Bitcoin) is the first call; Skycorp Solar already settles in **USDC** for components.
+- **Run supplier onboarding as a growth loop.** Hand Insulspan / EnerSmart / a window supplier a Coinbase Commerce or BitPay link so they can accept USDC without ever holding it — the same argument that works on home retailers: the gateway converts, they book fiat. **Every supplier converted moves a budget line from CONVERT to DIRECT, and that migration is a measurable ecosystem metric.**
+- **Bridge with discipline.** Gift-card rails (Bitrefill covers Home Depot Canada and Home Hardware with USDC; Coinsbee; CryptoRefills) are buy-and-burn only, capped to small tickets, and carry **no recourse** — Bitrefill was breached March 1 2026 and Pay with Moon is reported offline/refusing refunds in early 2026. Never custody with a bridge; keep a second and third provider configured.
+- **Raise the AML question with counsel before this ships.** Routing users into crypto-for-gift-cards is a known laundering typology; tie every purchase to a build record and keep receipts.
+- Automatic CRA barter-disposition logging on every path — each crypto spend is a taxable disposition.
+
+### 2d — Buy *or customize*
 
 - Catalog becomes a **constrained configurator**: massing, room program, envelope and glazing generated against Part 9 / zone 7A / district bylaws. Generating a plausible design is now commodity (Higharc trained on 3,500 home files / 75,720 room samples; Maket; Snaptrude) — **the moat is constraint-checking against a real jurisdiction**, so that is what gets built.
 - Two doors from the same chatbot: *buy this home from this retailer*, or *customize one and we'll price and source it*.
