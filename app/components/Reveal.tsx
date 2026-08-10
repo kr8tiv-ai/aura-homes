@@ -128,21 +128,58 @@ export function GrowBar({
  *  arrives at the exact number and stops.
  *
  *  The DOM node is written directly from rAF; React renders once. */
+export const FIGURE_SPACE = " "; // exactly one digit wide; HTML will not collapse it
+
 export function Counter({
   value,
-  format = (n) => Math.round(n).toLocaleString("en-CA"),
+  format,
   prefix = "",
   suffix = "",
   duration = 1.25,
+  decimals = 0,
+  padTo,
+  minDigits,
   className,
 }: {
   value: number;
+  /** CLIENT CALLERS ONLY — see the boundary note below. */
   format?: (n: number) => string;
   prefix?: string;
   suffix?: string;
   duration?: number;
+  /** fixed decimal places, e.g. 2 for a USDC amount */
+  decimals?: number;
+  /** pad the interim frames with figure spaces to this width, so a sentence
+   *  never reflows while the number climbs — a paragraph rewrapping itself
+   *  for a second reads as a bug, which a money page cannot afford */
+  padTo?: number;
+  /** zero-pad to this many digits, e.g. 2 for step numbers "01".."05" */
+  minDigits?: number;
   className?: string;
 }) {
+  /* THE SERVER/CLIENT BOUNDARY, and why these props exist.
+     `format` is a function, and a function cannot cross from a server
+     component into a client one — React has to serialize props into the RSC
+     payload, and it throws while stringifying. That is exactly what broke the
+     static export: /faq passed an inline format closure, prerender threw
+     inside the flight serializer, the worker hung past the 60s static-
+     generation timeout, and the export failed with a misleading "Cannot find
+     module for page /faq/page" once the worker had been SIGTERMed.
+     So the common cases are expressed as DATA — decimals / padTo / minDigits —
+     which serialize fine. `format` stays available for callers that are
+     already "use client". */
+  const fmt =
+    format ??
+    ((n: number) => {
+      const base =
+        minDigits != null
+          ? String(Math.round(n)).padStart(minDigits, "0")
+          : n.toLocaleString("en-CA", {
+              minimumFractionDigits: decimals,
+              maximumFractionDigits: decimals,
+            });
+      return padTo != null ? base.padEnd(padTo, FIGURE_SPACE) : base;
+    });
   const ref = useRef<HTMLSpanElement>(null);
   const [armed, setArmed] = useState(false);
 
@@ -167,7 +204,7 @@ export function Counter({
     if (!el || !armed) return;
     // A number ticking is motion; MotionConfig cannot strip it, so ask here.
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      el.textContent = `${prefix}${format(value)}${suffix}`;
+      el.textContent = `${prefix}${fmt(value)}${suffix}`;
       return;
     }
     let raf = 0;
@@ -177,18 +214,18 @@ export function Counter({
       if (!start) start = t;
       const p = Math.min(1, (t - start) / ms);
       const eased = 1 - Math.pow(1 - p, 3);
-      el.textContent = `${prefix}${format(value * eased)}${suffix}`;
+      el.textContent = `${prefix}${fmt(value * eased)}${suffix}`;
       if (p < 1) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [armed, value, duration, prefix, suffix, format]);
+  }, [armed, value, duration, prefix, suffix, fmt]);
 
   // Server render carries the FINAL value: no-JS and crawlers see the real
   // number, and there is no layout shift when the count starts.
   return (
     <span ref={ref} className={className}>
-      {`${prefix}${format(value)}${suffix}`}
+      {`${prefix}${fmt(value)}${suffix}`}
     </span>
   );
 }

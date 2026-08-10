@@ -79,7 +79,11 @@ function withCountingFigures(text: string): ReactNode[] {
         value={n}
         prefix="$"
         className="whitespace-nowrap font-medium tabular-nums text-aura-text"
-        format={(v) => Math.round(v).toLocaleString("en-CA").padEnd(settled.length, FIGURE_SPACE)}
+        /* padTo, NOT a format closure. This page is a server component, and a
+           function prop cannot cross into a client component — React throws
+           while serializing it into the RSC payload. The inline closure that
+           used to be here is what broke the static export. */
+        padTo={settled.length}
       />,
     );
     cursor = hit.index + hit[0].length;
