@@ -22,7 +22,7 @@
 import { useMemo, useRef, useLayoutEffect } from "react";
 import * as THREE from "three";
 import { useFrame, useThree } from "@react-three/fiber";
-import { terrainH, type Dusk } from "./Scene";
+import { terrainH, makeWoodGrain, type Dusk } from "./Scene";
 
 /* --------------------------- small helpers -------------------------- */
 
@@ -1390,6 +1390,7 @@ function GrassField({
 
 function EntranceSteps({ glassRail }: { glassRail: THREE.Material }) {
   const cedar = ["#a97e57", "#9b7350", "#b0855e"];
+  const grain = useMemo(() => makeWoodGrain(), []);
   const N = 5;
   return (
     <group position={[0.05, 0, 6.55]}>
@@ -1400,7 +1401,7 @@ function EntranceSteps({ glassRail }: { glassRail: THREE.Material }) {
           <group key={i}>
             <mesh castShadow receiveShadow position={[0, y, z]}>
               <boxGeometry args={[2.3, 0.1, 0.36]} />
-              <meshStandardMaterial color={cedar[i % 3]} roughness={0.85} flatShading />
+              <meshStandardMaterial map={grain} color={cedar[i % 3]} roughness={0.85} flatShading />
             </mesh>
             <mesh position={[0, y - 0.09, z]} castShadow>
               <boxGeometry args={[2.2, 0.08, 0.3]} />

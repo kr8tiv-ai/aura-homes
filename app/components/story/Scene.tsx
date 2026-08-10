@@ -333,6 +333,160 @@ function useSoftTexture(stops: [number, string][]) {
   }, [stops]);
 }
 
+/* ------------------------ procedural materials ----------------------
+   The founder's "texture pass on everything else" round. The built world
+   was flat-shaded solid colour, which reads as plastic next to the grass.
+   These three factories add procedural surface detail — no downloaded
+   textures, no payload, nothing to credit. Each is built once and shared.
+   All are LOW-CONTRAST and multiply the existing palette colour, so the
+   light/emerald brand is untouched: they add grain and life, not hue. */
+
+const _hash = (seed: number) => {
+  let s = seed;
+  return () => {
+    s = Math.sin(s * 91.7 + 13.1) * 43758.5453;
+    return s - Math.floor(s);
+  };
+};
+
+/** Milled-cedar grain — mostly light, so `map * color` keeps the per-piece
+ *  cedar tone and just carves long grain, faint cathedral figure and pore
+ *  speckle into it. Streaks run along U, so it is applied ONLY where U is the
+ *  plank's length (deck planks, step treads) and the grain direction is right. */
+let _woodGrain: THREE.CanvasTexture | null = null;
+export function makeWoodGrain(): THREE.CanvasTexture {
+  if (_woodGrain) return _woodGrain;
+  const c = document.createElement("canvas");
+  c.width = 256;
+  c.height = 128;
+  const ctx = c.getContext("2d")!;
+  const rnd = _hash(7.13);
+  ctx.fillStyle = "#f0f0f0";
+  ctx.fillRect(0, 0, 256, 128);
+  // long grain lines, gently wavering so they are never ruler-straight
+  for (let i = 0; i < 52; i++) {
+    const y = rnd() * 128;
+    const g = Math.floor((0.78 + rnd() * 0.18) * 255);
+    ctx.strokeStyle = `rgba(${g},${g},${g},${0.22 + rnd() * 0.4})`;
+    ctx.lineWidth = 0.5 + rnd() * 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    for (let x = 0; x <= 256; x += 16) ctx.lineTo(x, y + Math.sin(x * 0.05 + i) * (1.0 + rnd()));
+    ctx.stroke();
+  }
+  // a few darker cathedral arcs for figure
+  for (let i = 0; i < 3; i++) {
+    const cy = 20 + rnd() * 88;
+    ctx.strokeStyle = "rgba(150,138,124,0.10)";
+    ctx.lineWidth = 2 + rnd() * 3;
+    ctx.beginPath();
+    for (let x = 0; x <= 256; x += 8) ctx.lineTo(x, cy + Math.sin(x * 0.017 + i * 2) * 20);
+    ctx.stroke();
+  }
+  // fine pore speckle
+  for (let i = 0; i < 1100; i++) {
+    const g = 205 + Math.floor(rnd() * 40);
+    ctx.fillStyle = `rgba(${g},${g},${g},0.10)`;
+    ctx.fillRect(rnd() * 256, rnd() * 128, 1, 1);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(3, 1.4);
+  t.anisotropy = 4;
+  _woodGrain = t;
+  return t;
+}
+
+/** Quarried-stone mottle — soft isotropic blotches, so it can go on rock
+ *  faces at any orientation. Multiplies the grey stone colour to break the
+ *  dead-flat facets into weathered stone without shifting hue. */
+let _stoneMottle: THREE.CanvasTexture | null = null;
+export function makeStoneMottle(): THREE.CanvasTexture {
+  if (_stoneMottle) return _stoneMottle;
+  const c = document.createElement("canvas");
+  c.width = c.height = 128;
+  const ctx = c.getContext("2d")!;
+  const rnd = _hash(3.7);
+  ctx.fillStyle = "#ededed";
+  ctx.fillRect(0, 0, 128, 128);
+  // soft blotches, darker and lighter, wrapped by drawing 3x3 tiled offsets
+  for (let i = 0; i < 120; i++) {
+    const x = rnd() * 128;
+    const y = rnd() * 128;
+    const r = 4 + rnd() * 20;
+    const dark = rnd() < 0.55;
+    const v = dark ? 0.72 + rnd() * 0.14 : 0.98 + rnd() * 0.04;
+    const g = Math.min(255, Math.floor(v * 255));
+    for (let ox = -1; ox <= 1; ox++)
+      for (let oy = -1; oy <= 1; oy++) {
+        const grad = ctx.createRadialGradient(x + ox * 128, y + oy * 128, 0, x + ox * 128, y + oy * 128, r);
+        grad.addColorStop(0, `rgba(${g},${g},${g},0.5)`);
+        grad.addColorStop(1, `rgba(${g},${g},${g},0)`);
+        ctx.fillStyle = grad;
+        ctx.fillRect(x + ox * 128 - r, y + oy * 128 - r, r * 2, r * 2);
+      }
+  }
+  // fine grit
+  for (let i = 0; i < 700; i++) {
+    const g = 190 + Math.floor(rnd() * 50);
+    ctx.fillStyle = `rgba(${g},${g},${g},0.12)`;
+    ctx.fillRect(rnd() * 128, rnd() * 128, 1, 1);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(1.6, 1.6);
+  _stoneMottle = t;
+  return t;
+}
+
+/** Tileable ripple NORMAL map for the tub water — a few periodic sine bumps
+ *  turned into a normal field. Scrolled slowly in the tub's useFrame so the
+ *  flat disc catches moving highlights and reads as warm, breathing water. */
+let _waterNormal: THREE.CanvasTexture | null = null;
+export function makeWaterNormal(): THREE.CanvasTexture {
+  if (_waterNormal) return _waterNormal;
+  const S = 128;
+  const c = document.createElement("canvas");
+  c.width = c.height = S;
+  const ctx = c.getContext("2d")!;
+  const img = ctx.createImageData(S, S);
+  const TAU = Math.PI * 2;
+  const height = (x: number, y: number) => {
+    const u = (x / S) * TAU;
+    const v = (y / S) * TAU;
+    return (
+      Math.sin(u * 3 + Math.cos(v * 2)) * 0.5 +
+      Math.sin(v * 4 - Math.cos(u * 3)) * 0.35 +
+      Math.sin((u + v) * 5) * 0.2
+    );
+  };
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      const hL = height((x - 1 + S) % S, y);
+      const hR = height((x + 1) % S, y);
+      const hD = height(x, (y - 1 + S) % S);
+      const hU = height(x, (y + 1) % S);
+      const nx = (hL - hR) * 0.5;
+      const ny = (hD - hU) * 0.5;
+      const nz = 1.0;
+      const len = Math.hypot(nx, ny, nz);
+      const i = (y * S + x) * 4;
+      img.data[i] = Math.floor(((nx / len) * 0.5 + 0.5) * 255);
+      img.data[i + 1] = Math.floor(((ny / len) * 0.5 + 0.5) * 255);
+      img.data[i + 2] = Math.floor(((nz / len) * 0.5 + 0.5) * 255);
+      img.data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(2, 2);
+  _waterNormal = t;
+  return t;
+}
+
 /* Kept below bloom threshold so smoke never reads as a glowing orb. */
 const SMOKE_STOPS: [number, string][] = [
   [0, "rgba(236,238,234,0.7)"],
@@ -847,13 +1001,14 @@ function pieceTone(base: string, i: number, dl = 0.05, dh = 0.012) {
 
 function Deck({ glassFloor, glassRail }: { glassFloor: THREE.Material; glassRail: THREE.Material }) {
   const cedar = ["#a97e57", "#9b7350", "#b0855e"];
+  const grain = useMemo(() => makeWoodGrain(), []);
   const planks = [];
   for (let i = 0; i < 6; i++) {
     const z = 3.25 + i * 0.47;
     planks.push(
       <mesh key={i} castShadow receiveShadow position={[-1.15, 0.44, z]}>
         <boxGeometry args={[4.9, 0.09, 0.43]} />
-        <meshStandardMaterial color={pieceTone(cedar[i % 3], i)} roughness={0.85} flatShading />
+        <meshStandardMaterial map={grain} color={pieceTone(cedar[i % 3], i)} roughness={0.85} flatShading />
       </mesh>
     );
   }
@@ -863,7 +1018,7 @@ function Deck({ glassFloor, glassRail }: { glassFloor: THREE.Material; glassRail
       {/* rim joist + skirt so the deck reads built, not floating lumber */}
       <mesh castShadow receiveShadow position={[-1.15, 0.29, 4.43]}>
         <boxGeometry args={[4.72, 0.24, 2.62]} />
-        <meshStandardMaterial color="#6d523c" roughness={0.9} flatShading />
+        <meshStandardMaterial map={grain} color="#6d523c" roughness={0.9} flatShading />
       </mesh>
       {([[-3.35, 3.35], [0.95, 3.35], [-3.35, 5.6], [0.95, 5.6]] as [number, number][]).map(([x, z], i) => (
         <mesh key={`dp${i}`} castShadow position={[x, 0.14, z]}>
@@ -890,7 +1045,7 @@ function Deck({ glassFloor, glassRail }: { glassFloor: THREE.Material; glassRail
       {[0, 1, 2].map((i) => (
         <mesh key={i} castShadow receiveShadow position={[0.05, 0.34 - i * 0.13, 6.35 + i * 0.34]}>
           <boxGeometry args={[2.1, 0.1, 0.34]} />
-          <meshStandardMaterial color={pieceTone(cedar[i % 3], i + 11)} roughness={0.85} flatShading />
+          <meshStandardMaterial map={grain} color={pieceTone(cedar[i % 3], i + 11)} roughness={0.85} flatShading />
         </mesh>
       ))}
     </group>
@@ -970,8 +1125,10 @@ function Walkway({ glassFloor, glassRail }: { glassFloor: THREE.Material; glassR
   );
 }
 
-function HotTub({ position, dusk }: { position: [number, number, number]; dusk: Dusk }) {
+function HotTub({ position, dusk, frozen = false }: { position: [number, number, number]; dusk: Dusk; frozen?: boolean }) {
   const water = useRef<THREE.MeshStandardMaterial>(null);
+  const waterNormal = useMemo(() => makeWaterNormal(), []);
+  const mottle = useMemo(() => makeStoneMottle(), []);
   useLayoutEffect(
     () =>
       dusk.add((d) => {
@@ -979,6 +1136,15 @@ function HotTub({ position, dusk }: { position: [number, number, number]; dusk: 
       }),
     [dusk]
   );
+  /* Water life: the ripple normal map drifts slowly so the flat disc catches
+     moving highlights and reads as warm, breathing water instead of a painted
+     lid. Sub-4px ambient drift (BRAND.md §8), so it is fine under reduced
+     motion — but it still parks on `frozen` for a dead-still first frame. */
+  useFrame(({ clock }) => {
+    if (frozen) return;
+    const t = clock.elapsedTime;
+    waterNormal.offset.set(t * 0.014, t * 0.02);
+  });
   /* THE LOUDEST OBJECT IN EVERY FRAME. The tub carried a bright cyan water
      disc (#1d8f86) over saturated orange staves (#8a5a3a) — neither hue is
      in BRAND.md section 2, and together they out-shouted the A-frame, which
@@ -991,7 +1157,7 @@ function HotTub({ position, dusk }: { position: [number, number, number]; dusk: 
       {/* stone pad */}
       <mesh receiveShadow castShadow position={[0, 0.1, 0]}>
         <cylinderGeometry args={[1.42, 1.56, 0.22, 12]} />
-        <meshStandardMaterial color="#8d968f" roughness={0.95} flatShading />
+        <meshStandardMaterial map={mottle} color="#8d968f" roughness={0.95} flatShading />
       </mesh>
       <mesh castShadow receiveShadow position={[0, 0.62, 0]}>
         <cylinderGeometry args={[0.78, 0.72, 0.84, 14, 1, true]} />
@@ -1002,8 +1168,17 @@ function HotTub({ position, dusk }: { position: [number, number, number]; dusk: 
         <meshStandardMaterial color="#6f6152" roughness={0.9} flatShading />
       </mesh>
       <mesh position={[0, 1.0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[0.72, 14]} />
-        <meshStandardMaterial ref={water} color="#4f8d86" roughness={0.16} metalness={0.1} emissive="#0d9488" emissiveIntensity={0.12} />
+        <circleGeometry args={[0.72, 48]} />
+        <meshStandardMaterial
+          ref={water}
+          color="#4f8d86"
+          roughness={0.14}
+          metalness={0.12}
+          emissive="#0d9488"
+          emissiveIntensity={0.12}
+          normalMap={waterNormal}
+          normalScale={new THREE.Vector2(0.18, 0.18)}
+        />
       </mesh>
       <mesh castShadow position={[0.95, 0.75, -0.12]}>
         <cylinderGeometry args={[0.14, 0.14, 0.7, 10]} />
@@ -1125,7 +1300,7 @@ function FirePit({ dusk }: { dusk: Dusk }) {
         return (
           <mesh key={i} castShadow position={[-4.6 + Math.cos(a) * 0.85, 0.12, 6.2 + Math.sin(a) * 0.85]} rotation={[0, a, 0]}>
             <boxGeometry args={[0.34, 0.24, 0.22]} />
-            <meshStandardMaterial color="#7f8781" roughness={0.95} flatShading />
+            <meshStandardMaterial map={makeStoneMottle()} color="#7f8781" roughness={0.95} flatShading />
           </mesh>
         );
       })}
@@ -1306,7 +1481,7 @@ function Trailhead() {
       {TRAIL_ROCKS.map(({ pos: [x, z], s }, i) => (
         <mesh key={`tr${i}`} castShadow receiveShadow position={[x, terrainH(x, z) + s * 0.28, z]} rotation={[0, i * 2.3, 0]}>
           <dodecahedronGeometry args={[s, 0]} />
-          <meshStandardMaterial color="#8f9890" roughness={0.95} flatShading />
+          <meshStandardMaterial map={makeStoneMottle()} color="#8f9890" roughness={0.95} flatShading />
         </mesh>
       ))}
       {/* trail sign */}
@@ -1382,8 +1557,8 @@ function PathStones() {
             rotation={[0, i * 1.3, 0]}
           >
             <cylinderGeometry args={[r, r + 0.05, 0.14, 7]} />
-            {/* quarried stone is never one grey — per-slab value drift */}
-            <meshStandardMaterial color={pieceTone("#9aa39b", i + 83, 0.06, 0.006)} roughness={0.95} flatShading />
+            {/* quarried stone is never one grey — per-slab value drift + mottle */}
+            <meshStandardMaterial map={makeStoneMottle()} color={pieceTone("#9aa39b", i + 83, 0.06, 0.006)} roughness={0.95} flatShading />
           </mesh>
         );
       })}
@@ -2006,7 +2181,7 @@ export default function Scene({
       {/* The additive detail layer — mountains, clouds, grass, steps,
           hammock, netting, wildlife, outdoor lighting, tub steam. */}
       <SceneDetail frozen={reduced} night={nightAmt} glassRail={glassRail} dusk={dusk} />
-      <HotTub position={[5.9, 0, 5.4]} dusk={dusk} />
+      <HotTub position={[5.9, 0, 5.4]} dusk={dusk} frozen={reduced} />
       <FirePit dusk={dusk} />
       <Bench position={[8.6, terrainH(8.6, 18.0) - 0.14, 18.0]} rotY={Math.PI * 1.12} />
       <PathStones />

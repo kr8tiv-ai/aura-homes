@@ -46,6 +46,11 @@ export default function StoryCanvas({
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       onCreated={({ gl }) => {
         gl.setClearColor(0x000000, 0);
+        /* ACES over AgX (both trialled, Aug 2026): AgX's gentler highlight
+           rolloff helped the dusk sun, but it desaturated the emerald
+           landscape and teal firs — and vivid, alive foliage is what sells
+           this eco brand. ACES keeps the greens punchy; the dusk clip AgX
+           fixed was never actually a problem here. */
         gl.toneMapping = THREE.ACESFilmicToneMapping;
         gl.toneMappingExposure = 1.12;
       }}
