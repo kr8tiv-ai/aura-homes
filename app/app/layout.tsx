@@ -20,13 +20,15 @@ export const metadata: Metadata = {
     type: "website",
     url: "/",
     siteName: "Aura Homes",
-    images: [{ url: "/social-card.png", width: 1200, height: 630, alt: "Aura Homes" }],
+    /* site-card.png is the paper-ground card (BRAND.md §10); the old
+       social-card.png was the pre-flip dark card, flagged in Audit #4 */
+    images: [{ url: "/site-card.png", width: 1200, height: 630, alt: "Aura Homes" }],
   },
   twitter: {
     card: "summary_large_image",
     title: TITLE,
     description: DESCRIPTION,
-    images: ["/social-card.png"],
+    images: ["/site-card.png"],
   },
 };
 
@@ -34,6 +36,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="min-h-screen antialiased font-sans">
+        <a href="#main" className="skip-link">
+          Skip to content
+        </a>
         <Providers>
           <SiteShell>{children}</SiteShell>
         </Providers>

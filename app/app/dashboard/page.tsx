@@ -59,12 +59,18 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Stage tracker */}
-      <div className="mt-10 grid gap-px overflow-hidden rounded-lg border aura-hairline bg-[rgba(26,29,27,0.12)] md:grid-cols-5">
+      {/* Stage tracker — structure by hairline, not by box: transparent
+          cells with border dividers. The old gap-px + filled-gutter trick
+          also used rgba(26,29,27,.12), a near-miss of --aura-border that
+          globals.css's header forbids. */}
+      <div className="mt-10 grid overflow-hidden rounded-lg border aura-hairline md:grid-cols-5">
         {d.stages.map((stage, i) => {
           const state = i < currentIdx ? "done" : i === currentIdx ? "current" : "ahead";
           return (
-            <div key={stage} className="bg-aura-panel p-5">
+            <div
+              key={stage}
+              className="border-b aura-hairline p-5 last:border-b-0 md:border-b-0 md:border-r md:last:border-r-0"
+            >
               <p className="font-mono text-xs tabular-nums text-aura-emerald">
                 {String(i + 1).padStart(2, "0")}
               </p>
@@ -117,7 +123,7 @@ export default function DashboardPage() {
               </div>
             ))}
           </dl>
-          <div className="mt-6 h-1.5 overflow-hidden rounded-full bg-[rgba(26,29,27,0.08)]">
+          <div className="mt-6 h-1.5 overflow-hidden rounded-full bg-[rgba(23,26,24,0.08)]">
             <div
               className="h-full rounded-full bg-aura-emerald-bright"
               style={{ width: `${Math.round((fundedCad / totalCad) * 100)}%` }}
@@ -238,7 +244,7 @@ export default function DashboardPage() {
                       / {cad(midCad)}
                     </p>
                   </div>
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[rgba(26,29,27,0.08)]">
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[rgba(23,26,24,0.08)]">
                     <div
                       className={`h-full rounded-full ${
                         actualCad > midCad ? "bg-aura-violet" : "bg-aura-teal"

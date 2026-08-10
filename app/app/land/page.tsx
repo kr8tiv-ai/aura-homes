@@ -35,7 +35,7 @@ export default function LandPage() {
             value={sizeSqft}
             onChange={(e) => setSizeSqft(e.target.value)}
             inputMode="numeric"
-            className="w-40 rounded-md border aura-hairline bg-aura-bg px-4 py-2.5 text-sm text-aura-text outline-none focus:border-aura-emerald"
+            className="w-40 rounded-md border aura-hairline bg-aura-bg px-4 py-2.5 text-sm text-aura-text"
           />
         </label>
         <label className="block">
@@ -43,7 +43,7 @@ export default function LandPage() {
           <select
             value={waterSource}
             onChange={(e) => setWaterSource(e.target.value as "cistern" | "well")}
-            className="w-48 rounded-md border aura-hairline bg-aura-bg px-4 py-2.5 text-sm text-aura-text outline-none focus:border-aura-emerald"
+            className="w-48 rounded-md border aura-hairline bg-aura-bg px-4 py-2.5 text-sm text-aura-text"
           >
             <option value="cistern">Buried cistern</option>
             <option value="well">Drilled well</option>

@@ -260,7 +260,7 @@ function TextInput({ value, onChange }: { value: string; onChange: (v: string) =
     <input
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full rounded-md border aura-hairline bg-aura-bg px-4 py-2.5 text-sm text-aura-text outline-none focus:border-aura-emerald"
+      className="w-full rounded-md border aura-hairline bg-aura-bg px-4 py-2.5 text-sm text-aura-text"
     />
   );
 }
@@ -278,7 +278,7 @@ function Select({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full rounded-md border aura-hairline bg-aura-bg px-4 py-2.5 text-sm text-aura-text outline-none focus:border-aura-emerald"
+      className="w-full rounded-md border aura-hairline bg-aura-bg px-4 py-2.5 text-sm text-aura-text"
     >
       {options.map(([v, label]) => (
         <option key={v} value={v}>

@@ -350,8 +350,11 @@ export default function Story() {
             onClick={() => scrollToBeat(i)}
           >
             <i aria-hidden />
+            {/* ordinal always visible, the word on hover/active — globals
+                .story-rail button span / span em */}
             <span aria-hidden>
-              {b.n} · {b.label}
+              {b.n}
+              <em>&nbsp;· {b.label}</em>
             </span>
           </button>
         ))}
@@ -392,7 +395,7 @@ export default function Story() {
         ))}
       </div>
 
-      <div className="story-flow">
+      <div className="story-flow" id="main">
         {/* hero — a paper column against the world, not a scrim blob */}
         <section
           ref={(el) => {

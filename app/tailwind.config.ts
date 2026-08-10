@@ -33,7 +33,9 @@ const config: Config = {
         },
       },
       borderColor: {
-        hairline: "rgba(26, 29, 27, 0.12)",
+        /* --aura-border verbatim — the old value rgba(26,29,27,.12) was a
+           near-miss of the palette, which the globals.css header forbids */
+        hairline: "rgba(23, 26, 24, 0.12)",
       },
       letterSpacing: {
         label: "0.18em",

@@ -104,11 +104,17 @@ export function EnterGate({
           <video
             className="story-gate-video"
             src={withBase("/video/enter.mp4")}
+            /* the film IS the LCP element: a 13KB AVIF poster paints the
+               first frame immediately while preload="metadata" keeps the
+               3.5MB stream from competing with fonts and the scene for the
+               wire (ELEVATION-BRIEF §4.3). autoplay still pulls the stream
+               the moment metadata is in; the poster covers the gap. */
+            poster={withBase("/video/enter-poster.avif")}
             autoPlay
             muted
             loop
             playsInline
-            preload="auto"
+            preload="metadata"
             aria-hidden
             ref={(el) => {
               if (el) el.muted = true;
@@ -262,9 +268,13 @@ export function useForestAudio() {
   }, [fadeTo, start]);
 
   const element = (
+    /* forest-ambience-loop.mp3: 90s seamless loop (3s head crossfade from
+       the tail), mono 64kbps — 721KB against the old 6.66MB stereo file.
+       Inaudible difference at the 0.45-volume bed; 89% less data the moment
+       someone taps "Enter with sound". */
     <audio
       ref={ref}
-      src={withBase("/audio/forest-ambience.mp3")}
+      src={withBase("/audio/forest-ambience-loop.mp3")}
       loop
       preload="none"
       onEnded={() => setOn(false)}

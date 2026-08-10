@@ -43,6 +43,42 @@ body {
   font-feature-settings: "ss01";
 }
 
+/* ---- focus-visible system (WCAG 2.4.7 / 2.4.11) ----
+   Keyboard users could not see where they were: zero :focus-visible rules
+   existed and four inputs replaced the outline with a hairline-on-hairline
+   colour change. One visible ring, everywhere; ink-on-paper ring for the
+   rail and HUD, which sit over the scene. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--st-emerald-deep);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+.story-rail button:focus-visible,
+.story-hud-btn:focus-visible {
+  outline-color: var(--st-ink);
+  box-shadow: 0 0 0 4px var(--st-paper);
+}
+
+/* skip link: first child of body, revealed only on keyboard focus */
+.skip-link {
+  position: fixed;
+  top: 0.9rem;
+  left: 0.9rem;
+  z-index: 200;
+  padding: 0.55rem 0.9rem;
+  background: var(--st-ink);
+  color: var(--st-paper);
+  font-family: var(--st-mono-font);
+  font-size: 0.66rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  border-radius: 2px;
+  transform: translateY(-300%);
+}
+.skip-link:focus-visible {
+  transform: none;
+}
+
 @layer base {
   h1, h2, h3 {
     font-family: var(--st-display-font);
@@ -150,6 +186,13 @@ body {
 }
 
 .story-sub,
+.story-body,
+.story-gate-sub {
+  /* `pretty`, not `balance` — balance is for headlines */
+  text-wrap: pretty;
+}
+
+.story-sub,
 .story-body {
   margin-top: 1.3rem;
   max-width: 30rem;
@@ -177,6 +220,24 @@ body {
   letter-spacing: 0.22em;
   text-transform: uppercase;
   line-height: 1;
+  font-variant-numeric: tabular-nums slashed-zero;
+}
+
+/* tabular figures + slashed zero on every mono/data surface — only
+   .story-band-nums had them before (AWARD tier-1) */
+.story-ledger dt,
+.story-rail button span,
+.story-mline-node em,
+.story-band-scale,
+.story-hud-btn {
+  font-variant-numeric: tabular-nums slashed-zero;
+}
+
+/* Safari-only today, harmless elsewhere: opening quotes hang into the
+   margin the way set type does */
+.story-plate,
+.story-hero-inner {
+  hanging-punctuation: first last;
 }
 .story-kicker-n { color: var(--st-emerald-label); }
 .story-kicker-l { color: var(--st-ink-dim); white-space: nowrap; }
@@ -593,6 +654,10 @@ body {
   background: rgba(23, 26, 24, 0.3);
   transition: background 0.35s, width 0.4s var(--st-ease-out);
 }
+/* Rail ordinals (the By-Kin lesson, AWARD tier-1): the mono ordinal is
+   ALWAYS visible at --st-faint — a `01 02 03 04 05` column reads as
+   editorial apparatus, five anonymous ticks read as a generic scroll
+   indicator. The word still arrives on hover / active only. */
 .story-rail button span {
   position: absolute;
   top: 0;
@@ -603,14 +668,21 @@ body {
   letter-spacing: 0.18em;
   text-transform: uppercase;
   white-space: nowrap;
+  color: var(--st-faint);
+  transition: color 0.3s;
+}
+.story-rail button span em {
+  font-style: normal;
   opacity: 0;
   transition: opacity 0.3s;
 }
 .story-rail.at-left button i { right: auto; left: 0; }
 .story-rail.at-left button span { right: auto; left: 26px; }
 .story-rail button.on i { width: 30px; background: var(--st-emerald); }
-.story-rail button.on span,
-.story-rail button:hover span { opacity: 1; }
+.story-rail button.on span { color: var(--st-emerald-deep); }
+.story-rail button:hover span { color: var(--st-ink-dim); }
+.story-rail button.on span em,
+.story-rail button:hover span em { opacity: 1; }
 @media (max-width: 767px) {
   .story-rail { display: none; }
 }
@@ -678,7 +750,10 @@ html.story-gated body { overflow: hidden; }
   font-family: var(--st-display-font);
   font-weight: 500;
   font-size: clamp(2.4rem, 6vw, 3.8rem);
-  letter-spacing: -0.04em;
+  /* BRAND.md §4: display tracking runs to -0.06em as size grows; the file
+     stopped at -0.042em and left the top of the band unused. The gate title
+     is the largest type on the site. */
+  letter-spacing: -0.052em;
   margin: 0 0 0.3rem;
   color: var(--st-ink);
 }

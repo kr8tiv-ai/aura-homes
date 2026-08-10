@@ -121,7 +121,7 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
           </nav>
         </div>
       </header>
-      <main className="mx-auto max-w-5xl px-6">{children}</main>
+      <main id="main" className="mx-auto max-w-5xl px-6">{children}</main>
       <footer className="mt-24 border-t aura-hairline">
         <div className="mx-auto max-w-5xl px-6 py-8 text-xs uppercase tracking-label text-aura-text/70">
           A KR8TIV AI product &middot; Open source (MIT)

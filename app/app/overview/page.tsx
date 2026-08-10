@@ -107,9 +107,15 @@ export default function OverviewPage() {
       {/* ---- the five-stage pipeline ---- */}
       <div className="mt-24">
         <p className="aura-label">The pipeline</p>
-        <div className="mt-6 grid gap-px overflow-hidden rounded-lg border aura-hairline bg-[rgba(26,29,27,0.12)] md:grid-cols-5">
+        {/* structure by hairline, not by box — and the old filled gutter was
+            rgba(26,29,27,.12), a near-miss of --aura-border */}
+        <div className="mt-6 grid overflow-hidden rounded-lg border aura-hairline md:grid-cols-5">
           {pipeline.map((p) => (
-            <div key={p.step} className="fx-card bg-aura-panel p-8" data-fx="">
+            <div
+              key={p.step}
+              className="fx-card border-b aura-hairline p-8 last:border-b-0 md:border-b-0 md:border-r md:last:border-r-0"
+              data-fx=""
+            >
               <p className="text-xs text-aura-violet">{p.step}</p>
               <p className="mt-3 text-sm font-semibold uppercase tracking-label text-aura-text">
                 {p.name}
