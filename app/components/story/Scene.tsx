@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState, useLayoutEffect } from "react";
 import * as THREE from "three";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useGLTF, Sparkles, Html, Environment, Lightformer } from "@react-three/drei";
+import { useGLTF, Sparkles, Html, Environment, Lightformer, SoftShadows } from "@react-three/drei";
 import { EffectComposer, Bloom, Vignette, Noise } from "@react-three/postprocessing";
 import { withBase } from "../../lib/basePath";
 import SceneDetail, { meadowShade, trailTrodden } from "./SceneDetail";
@@ -386,6 +386,143 @@ function Smoke({
         </sprite>
       ))}
     </group>
+  );
+}
+
+/* ---------------------------- sun shafts ----------------------------
+   Light through the pines at the reveal beats. Matte-painter volumetrics:
+   crossed additive gradient quads aligned to the SAME key vector every
+   baked light in the scene uses, living only among the tree stands the
+   crest and descent cameras actually face. A real screen-space god-ray
+   pass was researched and rejected: the sun is off-frame at every beat
+   that matters, and on a light scene the radial blur reads as haze smear
+   rather than rays. Cheap quads aimed by hand read better and cost ~8
+   triangles. Opacity is driven by scroll progress so the shafts belong to
+   the morning reveal (beats 1-2) and are gone before dusk. */
+const SHAFTS: { pos: [number, number]; w: number; len: number; o: number; rot: number }[] = [
+  { pos: [-10.6, -3.6], w: 2.3, len: 9.5, o: 1.0, rot: 0.3 },
+  { pos: [-13.4, 4.8], w: 1.7, len: 8.0, o: 0.8, rot: 1.2 },
+  { pos: [9.6, -4.2], w: 2.5, len: 9.0, o: 0.9, rot: -0.4 },
+  { pos: [5.4, -9.6], w: 1.9, len: 8.5, o: 0.7, rot: 0.8 },
+];
+
+function SunShafts({
+  progressRef,
+  night,
+  reduced,
+}: {
+  progressRef: React.MutableRefObject<number>;
+  night: number;
+  reduced: boolean;
+}) {
+  const tex = useMemo(() => {
+    const c = document.createElement("canvas");
+    c.width = 64;
+    c.height = 256;
+    const ctx = c.getContext("2d")!;
+    /* lengthwise: a whisper at the ground, peak mid-shaft, dissolving into
+       the canopy; crosswise: soft edges so the quad never reads as a card */
+    const v = ctx.createLinearGradient(0, 256, 0, 0);
+    v.addColorStop(0, "rgba(255,238,200,0.14)");
+    v.addColorStop(0.45, "rgba(255,238,200,0.55)");
+    v.addColorStop(0.85, "rgba(255,238,200,0.10)");
+    v.addColorStop(1, "rgba(255,238,200,0)");
+    ctx.fillStyle = v;
+    ctx.fillRect(0, 0, 64, 256);
+    const h = ctx.createLinearGradient(0, 0, 64, 0);
+    h.addColorStop(0, "rgba(0,0,0,0)");
+    h.addColorStop(0.3, "rgba(0,0,0,1)");
+    h.addColorStop(0.7, "rgba(0,0,0,1)");
+    h.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.globalCompositeOperation = "destination-in";
+    ctx.fillStyle = h;
+    ctx.fillRect(0, 0, 64, 256);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }, []);
+  const mats = useRef<(THREE.MeshBasicMaterial | null)[]>([]);
+  /* +Y of each shaft group points AT the sun, so the quad lies along the
+     actual light path — the one angle at which a fake shaft reads true. */
+  const q = useMemo(
+    () =>
+      new THREE.Quaternion().setFromUnitVectors(
+        new THREE.Vector3(0, 1, 0),
+        new THREE.Vector3(18, 16, 13).normalize()
+      ),
+    []
+  );
+  useFrame(() => {
+    if (reduced) return;
+    const p = progressRef.current;
+    const win = smoothstep(0.55, 1.3, p) * (1 - smoothstep(2.6, 3.4, p));
+    const o = win * (1 - night);
+    mats.current.forEach((m, i) => {
+      if (m) m.opacity = o * SHAFTS[i].o * 0.32;
+    });
+  });
+  if (reduced) return null;
+  return (
+    <group>
+      {SHAFTS.map((s, i) => (
+        <group
+          key={i}
+          position={[s.pos[0], terrainH(s.pos[0], s.pos[1]) + 0.1, s.pos[1]]}
+          quaternion={q}
+        >
+          {[0, 1.25].map((ry, j) => (
+            <mesh key={j} position={[0, s.len / 2, 0]} rotation={[0, s.rot + ry, 0]}>
+              <planeGeometry args={[s.w, s.len]} />
+              {j === 0 ? (
+                <meshBasicMaterial
+                  ref={(el) => {
+                    mats.current[i] = el;
+                  }}
+                  map={tex}
+                  transparent
+                  opacity={0}
+                  blending={THREE.AdditiveBlending}
+                  depthWrite={false}
+                  side={THREE.DoubleSide}
+                  fog={false}
+                />
+              ) : (
+                <ShaftFollower map={tex} host={mats} idx={i} />
+              )}
+            </mesh>
+          ))}
+        </group>
+      ))}
+    </group>
+  );
+}
+
+/** Second quad of the cross shares the first quad's animated opacity. */
+function ShaftFollower({
+  map,
+  host,
+  idx,
+}: {
+  map: THREE.Texture;
+  host: React.MutableRefObject<(THREE.MeshBasicMaterial | null)[]>;
+  idx: number;
+}) {
+  const ref = useRef<THREE.MeshBasicMaterial>(null);
+  useFrame(() => {
+    const h = host.current[idx];
+    if (ref.current && h) ref.current.opacity = h.opacity * 0.8;
+  });
+  return (
+    <meshBasicMaterial
+      ref={ref}
+      map={map}
+      transparent
+      opacity={0}
+      blending={THREE.AdditiveBlending}
+      depthWrite={false}
+      side={THREE.DoubleSide}
+      fog={false}
+    />
   );
 }
 
@@ -1833,6 +1970,11 @@ export default function Scene({
   return (
     <>
       <fog attach="fog" args={["#e3ede7", 30, 88]} />
+      {/* PCSS — the sun key gets a real penumbra: crisp at the caster's
+          foot, softening with distance, which is the single strongest
+          "expensive light" cue a shadow can carry. Mounted with the scene
+          so shaders compile once, naturally. */}
+      <SoftShadows size={14} samples={10} focus={0.4} />
       <LightArc progressRef={progressRef} reduced={reduced} dusk={dusk} night={nightAmt} />
 
       <Environment resolution={64} frames={1}>
@@ -1888,10 +2030,23 @@ export default function Scene({
       <Smoke origin={[-4.6, 0.8, 6.2]} count={5} rate={0.13} size={0.5} rise={2.2} drift={0.2} opacity={0.22} frozen={reduced} />
 
       <Mist frozen={reduced} />
-      <Sparkles count={80} scale={[28, 8, 28]} position={[0, 3.5, 2]} size={2.2} speed={reduced ? 0 : 0.25} opacity={0.4} color="#fff6dd" />
+      {/* size 2.2 / opacity 0.4 read as UFO orbs once dusk emissives pushed
+          them over the bloom threshold — dust motes, not fireflies */}
+      <Sparkles count={80} scale={[28, 8, 28]} position={[0, 3.5, 2]} size={1.6} speed={reduced ? 0 : 0.25} opacity={0.28} color="#fff6dd" />
+      <SunShafts progressRef={progressRef} night={nightAmt} reduced={reduced} />
 
       <CameraRig progressRef={progressRef} reduced={reduced} />
 
+      {/* N8AO was trialled here (round1–2b) and REJECTED. Its grounding gain was
+          subtle, but the n8ao pass resolves a depth-STENCIL buffer that this AMD
+          driver rejects with GL_INVALID_OPERATION on glBlitFramebuffer ~256x per
+          frame — independent of halfRes or the composer's multisampling, so not
+          fixable from the app side — and its full-res mode nearly halved the
+          frame rate. Grounding is carried instead by the real directional
+          shadows (now PCSS-softened) and the terrain's meadow-shade fake AO.
+          MSAA 4 stays: it super-samples the thin grass/tree silhouettes better
+          than a post SMAA pass could, and with no depth-reading effect in the
+          chain it is completely clean. */}
       <EffectComposer multisampling={4}>
         <Bloom mipmapBlur intensity={0.25} luminanceThreshold={0.9} luminanceSmoothing={0.3} />
         <Vignette eskil={false} offset={0.16} darkness={0.26} />
