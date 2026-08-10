@@ -6,7 +6,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useGLTF, Sparkles, Html, Environment, Lightformer } from "@react-three/drei";
 import { EffectComposer, Bloom, Vignette, Noise } from "@react-three/postprocessing";
 import { withBase } from "../../lib/basePath";
-import SceneDetail from "./SceneDetail";
+import SceneDetail, { meadowShade } from "./SceneDetail";
 
 /* ------------------------------------------------------------------ */
 /* One continuous camera journey (kage-inspired motion, ours in every  */
@@ -260,9 +260,16 @@ function Terrain() {
         0.3 * Math.sin(x * 4.3 - z * 3.1 + 2.2) +
         0.7 * (hash(Math.floor(x * 1.3), Math.floor(z * 1.3)) - 0.5);
       const v = 1 + m * 0.075;
-      colors[i * 3] = tmp.r * v;
-      colors[i * 3 + 1] = tmp.g * (1 + m * 0.055);
-      colors[i * 3 + 2] = tmp.b * v;
+      /* Where the meadow grows, the ground darkens toward the sward's own
+         shadow (Codrops fluffiest-grass: match terrain to grass, dark base
+         as fake AO). Gaps between blades then read as depth under the
+         canopy instead of bare lawn. clearance() keeps the mown path, the
+         deck aprons and the fire-pit ring at full lawn brightness, so the
+         walked places still read walked. GRASS_VERT.meadowD mirrors this. */
+      const shade = 1 - 0.18 * meadowShade(x, z);
+      colors[i * 3] = tmp.r * v * shade;
+      colors[i * 3 + 1] = tmp.g * (1 + m * 0.055) * shade;
+      colors[i * 3 + 2] = tmp.b * v * shade;
     }
     g.setAttribute("color", new THREE.BufferAttribute(colors, 3));
     g.computeVertexNormals();

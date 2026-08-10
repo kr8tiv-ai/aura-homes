@@ -465,7 +465,10 @@ const G_NEAR = 34.0; // full density inside this radius
 const G_FAR = 56.0; // thinned to G_PMIN by here
 const G_PMIN = 0.06;
 const G_BAND = 0.16; // width of the smooth dissolve band, in seed space
-const G_TILE = 4.0;
+/* 4 m tiles put ~440 instanced draws in the trailhead frustum and the beat
+   over the 1000-call budget. 6 m tiles carry the same blades in ~45% the
+   draws; culling granularity is still far finer than a camera beat. */
+const G_TILE = 6.0;
 
 const smooth01 = (a: number, b: number, x: number) => {
   const t = clamp01((x - a) / (b - a));
@@ -533,8 +536,10 @@ function clearance(x: number, z: number): number {
   }
   /* The stepping stones used to keep 25% height ON the path, which put
      blades poking straight through the slabs. A walked route is mown: the
-     line goes to zero and feathers back up over a metre. */
-  c = Math.min(c, fade(pd, 0.42, 1.15));
+     line goes to zero and feathers back up — but the old 0.42+1.15 m verge
+     cut a 3 m swath that filled half the hero frame with bare lawn from the
+     trailhead camera. A walked line through a meadow is narrow. */
+  c = Math.min(c, fade(pd, 0.3, 0.75));
   return c;
 }
 
@@ -555,11 +560,23 @@ function meadowDensity(x: number, z: number): number {
   // the trail corridor: trailhead at z~34 down to the fence at z~8
   const corridor =
     (1 - smooth01(9, 18, Math.abs(x))) * smooth01(5.5, 11, z) * (1 - smooth01(33, 41, z));
-  const scatter = 0.16 * (1 - smooth01(34, 66, r));
+  /* 0.16 to r=66 was coverage everywhere and density nowhere: the camera
+     spends every beat inside r<35, staring at 16% scatter, while blades it
+     can never resolve soaked up budget out at the fog line. Concentrate:
+     double the floor, halve the reach. Scrub owns the far field. */
+  const scatter = 0.34 * (1 - smooth01(28, 48, r));
   let d = Math.max(ring, corridor, scatter);
   // nothing on the deep forest floor behind the home — the camera never goes
   d *= 1 - smooth01(6, 15, -z);
   return clamp01(d);
+}
+
+/* Exported for Terrain() in Scene.tsx: the ground under the meadow darkens
+   toward the sward's own shadow so a gap between blades reads as depth, not
+   bare lawn (Codrops "fluffiest grass": match the terrain to the grass and
+   fake the occlusion with a dark base). */
+export function meadowShade(x: number, z: number): number {
+  return meadowDensity(x, z) * clearance(x, z);
 }
 
 /* --------------------------- the blade ---------------------------- */
@@ -627,6 +644,21 @@ vec3 groundColor(vec2 p){
   float n1 = 0.5 + 0.5 * sin(p.x * 0.23 + p.y * 0.17 + 1.2);
   float n2 = 0.5 + 0.5 * sin(p.x * 0.61 - p.y * 0.43 + 4.0);
   return mix(mix(cA, cB, n1), cC, n2 * 0.25);
+}
+
+/* meadowDensity() from the JS planting pass, verbatim minus clearance — the
+   terrain bakes the same term (times clearance) into its vertex colours, so
+   blade roots and the darkened ground under them stay one surface. */
+float meadowD(vec2 p){
+  float r = length(p);
+  float ring = 1.0 - smoothstep(16.0, 35.0, r);
+  float corr = (1.0 - smoothstep(9.0, 18.0, abs(p.x)))
+             * smoothstep(5.5, 11.0, p.y)
+             * (1.0 - smoothstep(33.0, 41.0, p.y));
+  float scat = 0.34 * (1.0 - smoothstep(28.0, 48.0, r));
+  float d = max(ring, max(corr, scat));
+  d *= 1.0 - smoothstep(6.0, 15.0, -p.y);
+  return clamp(d, 0.0, 1.0);
 }
 
 void main(){
@@ -727,7 +759,7 @@ void main(){
   vNormal = nrm;
   vWorld = world;
   vHue = h21(floor(base.xz * 2.3) + 3.1);
-  vGround = groundColor(base.xz);
+  vGround = groundColor(base.xz) * (1.0 - 0.18 * meadowD(base.xz));
   vSpecies = sp;
 
   gl_Position = projectionMatrix * viewMatrix * vec4(world, 1.0);
