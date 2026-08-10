@@ -229,7 +229,14 @@ body {
 
 .story-wmask {
   display: inline-block;
-  overflow: hidden;
+  /* overflow:clip + clip-margin, not overflow:hidden: text-shadow paints
+     OUTSIDE the glyph box, and a hidden ancestor clipped the hover warmth
+     off the display headings — the largest type on every plate showed
+     nothing. 0.45em covers the 0.5px and 4px bloom layers in full. Browsers
+     without overflow-clip-margin treat clip as a hard clip, i.e. exactly
+     the old behaviour. (ELEVATION-BRIEF §3.3, the H3 fix.) */
+  overflow: clip;
+  overflow-clip-margin: 0.45em;
   vertical-align: bottom;
   /* room for descenders inside the mask — g, y, p were being sheared off */
   padding-bottom: 0.16em;
@@ -238,7 +245,9 @@ body {
 .story-w { display: inline-block; }
 
 .story-js .story-w {
-  transform: translateY(112%);
+  /* 150%, was 112% — the un-revealed word must clear the 0.45em clip margin
+     above, or it peeks below the mask before its reveal. */
+  transform: translateY(150%);
   transition: transform 0.9s var(--st-ease-out);
 }
 .story-js .rv-in .story-w { transform: none; }
@@ -1157,21 +1166,45 @@ html.story-gated body { overflow: hidden; }
 
 /* =============================================================== card fx
    The founder's interactivity round (Aug 10, 2026) — see components/CardFX.tsx
-   for the tracer half and for the honest note on the BRAND.md section 2
+   for the star-tracer half and for the honest note on the BRAND.md section 2
    collision: "no glow anywhere" was round 1's reading; the founder explicitly
-   reinstated a WHISPER-level hover glow and border tracer on Aug 10. These
+   reinstated a WHISPER-level hover glow and border stars on Aug 10. These
    values are the approved ceiling — resist the urge to turn them up.
 
-   The hover response: text gently lifts with an emerald-tinted shadow
-   (text-shadow inherits, so one rule on the card carries every heading, row,
-   and body line inside it), and the box itself lifts a breath. 550 ms ease —
-   imperceptible-then-lovely, never a snap. Hover-capable pointers only. */
+   THE WARM RESPONSE (v2, ELEVATION-BRIEF §3 / MOTION-STACK-SPEC §5).
+   Paper is #fafaf9, L* ≈ 98 — there is no luminance headroom, so on paper a
+   glow cannot be a luminance effect; it has to be a CHROMA effect. The old
+   16px text-shadow spread peak halo alpha to ~0.03 — under the JND — and a
+   dark halo behind glyphs on a light ground reads as out-of-focus, not warm.
+
+   Mechanism: ONE registered custom property, inherited, animated on the
+   card. Descendants READ it per frame with no transitions of their own, so
+   the reveal system's transition list can never clobber it again. Four
+   coordinated moves all read the one number: ink temperature, a tight-first
+   glyph bloom (the 0.5px layer IS the effect — it thickens the stem a
+   fraction of a pixel in emerald, like ink blooming on stock; the wide
+   layers only give it air — do NOT raise them), paper temperature, and an
+   INSET ring rather than an outer bloom.
+
+   Timing is 560ms in / 380ms out with an 80ms enter delay — deliberately
+   outside BRAND.md §8's 150–250ms band, because the founder asked for "a
+   nice SLOW activated responsiveness of a soft slow warming glow". These
+   values are a ceiling he can lower (in-band fallback: 240/180). */
 
 .fx-tracer-canvas {
   position: fixed;
   inset: 0;
   z-index: 10; /* over the copy plates (z 3), under the chrome/HUD */
   pointer-events: none;
+}
+
+/* Registered so it interpolates. Without @property support a custom
+   property is a token, not a value, and it jumps — exactly the pre-v2
+   behaviour, so the degradation is "no worse than before". */
+@property --fx-warm {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
 }
 
 /* any-hover, not hover: `hover`/`pointer` describe only the PRIMARY pointer,
@@ -1183,40 +1216,117 @@ html.story-gated body { overflow: hidden; }
   .aura-panel,
   .fx-card,
   [data-fx] {
-    transition:
-      text-shadow 0.55s var(--st-ease-out, ease),
-      box-shadow 0.55s var(--st-ease-out, ease),
-      border-color 0.55s var(--st-ease-out, ease),
-      background-color 0.55s var(--st-ease-out, ease);
-    text-shadow: 0 0 0 rgba(4, 120, 87, 0);
+    /* Asymmetric on purpose: light warms slowly and cools a little faster.
+       The 80ms enter delay means a cursor crossing a card on its way
+       somewhere else never strobes. Not --st-ease-out — the house curve
+       finishes 80% of its travel in the first quarter, which is a snap;
+       a filament wants a gentle ramp. */
+    transition: --fx-warm 560ms cubic-bezier(0.32, 0.08, 0.24, 1) 80ms;
   }
   .aura-panel:hover,
+  .aura-panel:focus-within,
   .fx-card:hover,
-  [data-fx]:hover {
-    text-shadow: 0 0 16px rgba(4, 120, 87, 0.28);
-    border-color: rgba(16, 185, 129, 0.34);
+  .fx-card:focus-within,
+  [data-fx]:hover,
+  [data-fx]:focus-within {
+    --fx-warm: 1;
+    transition: --fx-warm 380ms cubic-bezier(0.4, 0, 0.6, 1) 0ms;
   }
-  .aura-panel:hover {
-    background-color: #fdfefd;
+
+  /* --- the four moves, all reading the one number --- */
+  .aura-panel,
+  .fx-card,
+  [data-fx] {
+    color: color-mix(
+      in oklab,
+      var(--st-ink) calc(100% - 12% * var(--fx-warm)),
+      var(--st-emerald-deep)
+    );
+    text-shadow:
+      0 0 0.5px rgb(16 185 129 / calc(0.34 * var(--fx-warm))),
+      0 0 4px rgb(16 185 129 / calc(0.2 * var(--fx-warm))),
+      0 0 14px rgb(16 185 129 / calc(0.1 * var(--fx-warm)));
+  }
+  .fx-card,
+  [data-fx] {
+    background-color: color-mix(in oklab, var(--st-paper) calc(100% - 100% * var(--fx-warm)), #fbfdfb);
+    border-color: color-mix(
+      in srgb,
+      var(--st-hair) calc(100% - 60% * var(--fx-warm)),
+      rgb(16 185 129 / 0.34)
+    );
+  }
+  .aura-panel {
+    background-color: color-mix(in oklab, var(--aura-panel) calc(100% - 100% * var(--fx-warm)), #fdfefd);
+    border-color: color-mix(
+      in srgb,
+      var(--aura-border) calc(100% - 60% * var(--fx-warm)),
+      rgb(16 185 129 / 0.34)
+    );
+    /* The card's own light: inset, so it can never become an outer bloom.
+       (The old 0 0 34px -6px outer shadow pulled itself back inside the
+       border before the blur began — invisible on all 28 panels.) */
     box-shadow:
+      inset 0 0 0 1px rgb(16 185 129 / calc(0.12 * var(--fx-warm))),
       0 1px 2px rgba(23, 26, 24, 0.04),
-      0 8px 24px rgba(23, 26, 24, 0.05),
-      0 0 0 1px rgba(16, 185, 129, 0.1),
-      0 0 34px -6px rgba(16, 185, 129, 0.14);
+      0 8px 24px rgba(23, 26, 24, 0.04);
   }
-  /* the story plates keep their directional paper shadow and add the lift */
-  .story-plate.fx-card:hover {
-    background: #fdfefd;
+
+  /* Display headings set their own color, so the ink-temperature move has
+     to be written where they are. --fx-warm inherits from the card, so this
+     updates per frame with no transition of its own. */
+  .fx-card .story-display,
+  [data-fx] .story-display {
+    color: color-mix(
+      in oklab,
+      var(--st-ink) calc(100% - 12% * var(--fx-warm)),
+      var(--st-emerald-deep)
+    );
   }
-  .story-plate-left.fx-card:hover {
+  /* The rules warm with the type: ledger hairlines and the kicker's rule
+     shift toward emerald as the card warms. Hairlines-as-structure is the
+     brand; warming the structure is the effect. */
+  .fx-card .story-ledger,
+  [data-fx] .story-ledger {
+    border-color: color-mix(
+      in srgb,
+      var(--st-hair) calc(100% - 60% * var(--fx-warm)),
+      rgb(16 185 129 / 0.34)
+    );
+  }
+  .fx-card .story-ledger > div,
+  [data-fx] .story-ledger > div {
+    border-color: color-mix(
+      in srgb,
+      var(--st-hair-soft) calc(100% - 60% * var(--fx-warm)),
+      rgb(16 185 129 / 0.3)
+    );
+  }
+  .fx-card .story-kicker i,
+  [data-fx] .story-kicker i {
+    background: color-mix(
+      in srgb,
+      var(--st-hair) calc(100% - 60% * var(--fx-warm)),
+      rgb(16 185 129 / 0.34)
+    );
+  }
+}
+
+/* The story plates keep their directional paper shadow — that is DEPTH, and
+   the brand keeps depth while refusing glow — and add the inset warm ring.
+   Desktop only: below 768px the plates are a bottom sheet with a different
+   shadow, and any-hover phones never reach here anyway. */
+@media (any-hover: hover) and (min-width: 768px) {
+  .story-plate.fx-card {
     box-shadow:
-      30px 0 90px -66px rgba(23, 26, 24, 0.6),
-      0 0 38px -8px rgba(16, 185, 129, 0.16);
+      inset 0 0 0 1px rgb(16 185 129 / calc(0.12 * var(--fx-warm))),
+      var(--st-plate-shadow, 30px 0 90px -66px rgba(23, 26, 24, 0.6));
   }
-  .story-plate-right.fx-card:hover {
-    box-shadow:
-      -30px 0 90px -66px rgba(23, 26, 24, 0.6),
-      0 0 38px -8px rgba(16, 185, 129, 0.16);
+  .story-plate-left {
+    --st-plate-shadow: 30px 0 90px -66px rgba(23, 26, 24, 0.6);
+  }
+  .story-plate-right {
+    --st-plate-shadow: -30px 0 90px -66px rgba(23, 26, 24, 0.6);
   }
 }
 
