@@ -1,0 +1,22 @@
+{
+  "model_profile": "quality",
+  "models": {
+    "planning": "opus",
+    "discuss": "opus",
+    "research": "opus",
+    "execution": "opus",
+    "verification": "sonnet",
+    "completion": "sonnet"
+  },
+  "model_overrides": {
+    "gsd-planner": "claude-fable-5",
+    "gsd-roadmapper": "claude-fable-5",
+    "gsd-debugger": "claude-fable-5",
+    "gsd-executor": "claude-opus-5",
+    "gsd-phase-researcher": "claude-opus-5",
+    "gsd-project-researcher": "claude-opus-5",
+    "gsd-research-synthesizer": "claude-opus-5",
+    "gsd-verifier": "claude-opus-5"
+  },
+  "commit_docs": true
+}
