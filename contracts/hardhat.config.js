@@ -1,5 +1,20 @@
 require("@nomicfoundation/hardhat-toolbox");
 
+// Load contracts/.env (gitignored) so the documented one-command deploy works.
+// Dependency-free on purpose: dotenv is not in this package's tree, and real
+// environment variables always win over .env values.
+const fs = require("fs");
+const path = require("path");
+const envPath = path.join(__dirname, ".env");
+if (fs.existsSync(envPath)) {
+  for (const line of fs.readFileSync(envPath, "utf8").split(/\r?\n/)) {
+    const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/);
+    if (m && !(m[1] in process.env)) {
+      process.env[m[1]] = m[2].replace(/^["']|["']$/g, "");
+    }
+  }
+}
+
 // Deployer key comes from the environment only. See README.md — never hardcode.
 const accounts = process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [];
 
