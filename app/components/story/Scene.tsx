@@ -550,8 +550,13 @@ function AFrameHome({ dusk, archGlass, glassRoof }: { dusk: Dusk; archGlass: THR
           <meshStandardMaterial color={mullion} roughness={0.6} metalness={0.2} />
         </mesh>
       ))}
+      {/* transom over the door. Its width is COMPUTED from the gable taper —
+          it was a hardcoded 4.6, but the A-frame at y=2.5 is only ~3.7 wide,
+          so the bar ran out through both roof planes and read as a stray
+          beam from every front and three-quarter camera. It now terminates
+          0.14 inside the roof line, where a real transom meets the rafters. */}
       <mesh castShadow position={[0, 2.5, DEPTH]}>
-        <boxGeometry args={[4.6, 0.08, 0.1]} />
+        <boxGeometry args={[2 * ((EAVE * (RIDGE_H - 2.5)) / (RIDGE_H - EAVE_H) - 0.14), 0.08, 0.1]} />
         <meshStandardMaterial color={mullion} roughness={0.6} metalness={0.2} />
       </mesh>
       {/* door frame + handle */}
