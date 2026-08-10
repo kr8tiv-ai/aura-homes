@@ -1040,14 +1040,12 @@ const PATH_STONES: [number, number][] = [
   [-0.5, 8.9], [0.1, 7.7],
 ];
 
-/** Grass tufts dressing the trailhead meadow before the crest. */
-const TUFTS: [number, number][] = [
-  [-3.6, 32.2], [-1.1, 31.6], [0.8, 30.4], [-4.2, 29.8], [2.2, 29.0], [-2.8, 27.6],
-  [1.6, 26.6], [-0.6, 25.2], [3.4, 27.8], [-5.4, 31.0], [4.2, 31.4], [1.2, 33.0],
-  [-6.2, 27.2], [5.8, 28.6], [-3.2, 25.0], [2.8, 24.2],
-  [-1.8, 33.6], [0.2, 32.4], [-4.8, 33.0], [3.0, 32.6], [-0.2, 29.2], [1.9, 31.8],
-  [-2.6, 30.6], [4.8, 30.0], [-6.8, 29.6], [0.9, 28.0], [-1.6, 26.4], [2.6, 25.4],
-];
+/* TUFTS (28 clusters x five 4-sided cones at the trailhead) are GONE.
+   They predate the instanced meadow, which now grows denser, better-shaped
+   blades over exactly that ground — and at beat 0 the camera stood right in
+   them, so their 0.14 m-wide flat-shaded cones were the single worst
+   "chunky triangle" offender in the hero frame. Removing them also returns
+   ~140 draw calls. */
 
 /** Wildflower clusters — quiet color, trail-side only. */
 const FLOWERS: { pos: [number, number]; tint: string }[] = [
@@ -1073,16 +1071,6 @@ const TRAIL_ROCKS: { pos: [number, number]; s: number }[] = [
 function Trailhead() {
   return (
     <group>
-      {TUFTS.map(([x, z], i) => (
-        <group key={i} position={[x, terrainH(x, z) - 0.02, z]} rotation={[0, i * 2.1, 0]}>
-          {[0, 1, 2, 3, 4].map((j) => (
-            <mesh key={j} position={[(j - 2) * 0.11, 0.2, ((j * 7) % 3) * 0.08]} rotation={[0, j * 1.2, (j - 2) * 0.18]}>
-              <coneGeometry args={[0.07, 0.42 + (j % 3) * 0.14, 4]} />
-              <meshStandardMaterial color={["#7ba368", "#a8c77e", "#8fb573"][j % 3]} roughness={1} flatShading />
-            </mesh>
-          ))}
-        </group>
-      ))}
       {FLOWERS.map(({ pos: [x, z], tint }, i) => (
         <group key={`f${i}`} position={[x, terrainH(x, z) - 0.02, z]} rotation={[0, i * 1.9, 0]}>
           {[0, 1, 2].map((j) => {

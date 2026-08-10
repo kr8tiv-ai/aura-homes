@@ -659,10 +659,11 @@ void main(){
   float sp = h21(floor(base.xz * 0.55) + 19.3);
   float isTuft = smoothstep(0.48, 0.54, sp) * (1.0 - smoothstep(0.78, 0.84, sp));
   float isStem = smoothstep(0.78, 0.84, sp);
-  float hMul = mix(1.0, 0.58, isTuft) * mix(1.0, 1.75, isStem);
+  float hMul = mix(1.0, 0.66, isTuft) * mix(1.0, 1.75, isStem);
   /* 1.85 made tufts read as cones next to the pines. Species should vary the
-     silhouette, not the mass. */
-  float wMul = mix(1.0, 1.3, isTuft) * mix(1.0, 0.5, isStem);
+     silhouette, not the mass — and 1.3 width on a 0.58-height tuft still
+     compounded into squat near-camera triangles. A tuft is short, not fat. */
+  float wMul = mix(1.0, 1.12, isTuft) * mix(1.0, 0.5, isStem);
   float bendMul = mix(1.0, 1.4, isTuft) * mix(1.0, 0.3, isStem);
 
   float bh = aRand.y * aClear * vis * hMul;
@@ -709,7 +710,10 @@ void main(){
      blade that faced away from the camera. */
   vec3 viewDir = normalize(uCamPos - base);
   float edgeOn = abs(dot(viewDir, wDir3));
-  w *= mix(1.0, 1.5, edgeOn);
+  /* 1.5 stacked onto the tuft multiplier still made 1:6 triangles in the
+     near field. 1.3 keeps mass at grazing angles; the ~1:12 blade ratio the
+     reference uses (0.03-0.05 wide at 0.35-0.75 tall) does the rest. */
+  w *= mix(1.0, 1.3, edgeOn);
 
   vec3 world = base + curve + wDir3 * side * w;
 
@@ -852,7 +856,10 @@ function buildGrassTiles(budget: number) {
        ~2%/m). Height keeps a mild far-boost so the far field holds mass. */
     c.rnd.push(
       rand(i, 44) * Math.PI * 2, // yaw
-      (0.16 + Math.pow(rand(i, 45), 1.6) * 0.34) * (1 + far * 0.3), // height
+      /* 0.16-0.50 at 0.026-0.044 wide was ~1:8 — squat. The reference blade
+         is 0.35-0.75 at 0.03-0.05, ~1:12. Taller blades also close more of
+         the ground the founder can still see between clumps. */
+      (0.22 + Math.pow(rand(i, 45), 1.6) * 0.4) * (1 + far * 0.3), // height
       0.026 + rand(i, 46) * 0.018, // width — reference range, no far term
       rand(i, 47) // fade seed
     );
