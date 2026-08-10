@@ -184,6 +184,41 @@ function useGlassFloor() {
   );
 }
 
+/** Roof glazing — the skylight run on the west slope.
+ *
+ *  THE WHITE STRIPES ON THE ROOF. Critics read hard diagonal white bands
+ *  across the upper slope as a broken texture or a UV seam. It was neither:
+ *  the skylight was borrowing useGlassFloor(), whose roughness 0.05 /
+ *  envMapIntensity 1.5 is tuned for a HORIZONTAL pane seen at a glancing
+ *  angle. Tilted up into the key Lightformer, that same material returns a
+ *  near-mirror specular and clips to white — while the five dark glazing bars
+ *  crossing it stayed dark, turning a window into a set of painted stripes.
+ *
+ *  Roof glass gets its own material: rougher, far less reflective, and a
+ *  fraction more opaque so it still reads as a surface rather than a hole.
+ *  It keeps depthWrite and the floor renderOrder, because the sort-thrash and
+ *  z-fighting fixes documented above apply to it identically.
+ */
+function useGlassRoof() {
+  return useMemo(
+    () =>
+      new THREE.MeshPhysicalMaterial({
+        transparent: true,
+        opacity: 0.42,
+        roughness: 0.22,
+        metalness: 0,
+        color: new THREE.Color("#cfe3dd"),
+        envMapIntensity: 0.5,
+        side: THREE.DoubleSide,
+        depthWrite: true,
+        polygonOffset: true,
+        polygonOffsetFactor: -2,
+        polygonOffsetUnits: -2,
+      }),
+    []
+  );
+}
+
 /** Balustrade glass — rails only. Thin, layered, never writes depth.
  *
  *  THE "TWO-TONE DECK". Critics read the deck as pale beige on the left and
@@ -622,6 +657,12 @@ function Smoke({
   rise = 3.6,
   drift = 0.3,
   opacity = 0.5,
+  /* The shared sprite texture is near-white (#ecefea) because it was written
+     for STEAM off the hot tub. Wood smoke tinted the same white against a
+     pale #e3ede7 sky is invisible — which is why the chimney appeared to be
+     venting nothing at all in every frame. spriteMaterial.color multiplies
+     the map, so one prop lets steam stay white and smoke go grey. */
+  color = "#ffffff",
   frozen = false,
 }: {
   origin: [number, number, number];
@@ -631,6 +672,7 @@ function Smoke({
   rise?: number;
   drift?: number;
   opacity?: number;
+  color?: string;
   frozen?: boolean;
 }) {
   const refs = useRef<(THREE.Sprite | null)[]>([]);
@@ -662,7 +704,16 @@ function Smoke({
           }}
           position={origin}
         >
-          <spriteMaterial map={tex} transparent depthWrite={false} opacity={frozen ? 0 : 0.01} />
+          <spriteMaterial
+            map={tex}
+            color={color}
+            transparent
+            depthWrite={false}
+            /* Frozen (prefers-reduced-motion) the useFrame never runs, so the
+               plume would hang as a stack of identical sprites at the origin.
+               Opacity 0 hides it; the still frame keeps a clean chimney. */
+            opacity={frozen ? 0 : 0.01}
+          />
         </sprite>
       ))}
     </group>
@@ -856,6 +907,75 @@ function Mist({ frozen = false }: { frozen?: boolean }) {
 
 type DuskSink = (d: number) => void;
 
+/* ------------------------------- birds -------------------------------
+   The sky was the stillest region of every frame — a gradient with a few
+   clouds and nothing alive in it. A small flock fixes that for one draw
+   call and 16 triangles.
+
+   Each bird is a shallow V of two triangles. They ride one slow circling
+   path at different radii, heights and phases, so the flock spreads and
+   gathers the way a real one does instead of orbiting in formation. The
+   "wingbeat" is a scale oscillation on the local X axis — at this distance
+   a wing flap and a horizontal squash are indistinguishable, and squash
+   costs one multiply against a skeleton's everything.
+
+   FROZEN (prefers-reduced-motion): the matrices are written once on mount
+   from t=0, so the still frame shows a composed, spread flock rather than
+   sixteen triangles piled at the origin. */
+const BIRD_N = 8;
+
+function Birds({ frozen = false }: { frozen?: boolean }) {
+  const ref = useRef<THREE.InstancedMesh>(null);
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+
+  const geo = useMemo(() => {
+    const g = new THREE.BufferGeometry();
+    // a flattened V: centre at origin, tips swept back and slightly up
+    const v = new Float32Array([
+      0, 0, 0, -0.5, 0.16, -0.22, -0.5, 0, 0.02,
+      0, 0, 0, 0.5, 0, 0.02, 0.5, 0.16, -0.22,
+    ]);
+    g.setAttribute("position", new THREE.BufferAttribute(v, 3));
+    g.computeVertexNormals();
+    return g;
+  }, []);
+
+  const place = (t: number) => {
+    const m = ref.current;
+    if (!m) return;
+    for (let i = 0; i < BIRD_N; i++) {
+      const phase = (i / BIRD_N) * Math.PI * 2;
+      const r = 26 + (i % 4) * 5.5;
+      const a = t * 0.055 + phase;
+      const x = Math.cos(a) * r;
+      const z = Math.sin(a) * r * 0.72 - 6;
+      const y = 17 + Math.sin(a * 1.7 + phase) * 2.6 + (i % 3) * 1.4;
+      dummy.position.set(x, y, z);
+      // face along the tangent of the circle
+      dummy.rotation.set(0, -a + Math.PI / 2, Math.sin(a * 2.2 + phase) * 0.22);
+      const beat = 0.72 + Math.sin(t * 6.4 + phase * 3.1) * 0.28;
+      dummy.scale.set(1.05 * beat, 1, 1.05);
+      dummy.updateMatrix();
+      m.setMatrixAt(i, dummy.matrix);
+    }
+    m.instanceMatrix.needsUpdate = true;
+  };
+
+  useLayoutEffect(() => place(0), []); // eslint-disable-line react-hooks/exhaustive-deps
+  useFrame(({ clock }) => {
+    if (frozen) return;
+    place(clock.elapsedTime);
+  });
+
+  return (
+    <instancedMesh ref={ref} args={[geo, undefined, BIRD_N]} frustumCulled={false}>
+      {/* unlit and slightly transparent: at 30m a bird is a silhouette, and
+          a lit material would just make them flicker as they turn */}
+      <meshBasicMaterial color="#3d4a45" transparent opacity={0.55} side={THREE.DoubleSide} />
+    </instancedMesh>
+  );
+}
+
 function useDuskRegistry() {
   return useMemo(() => {
     const sinks = new Set<DuskSink>();
@@ -895,14 +1015,50 @@ function GableGlass({ z, mat }: { z: number; mat: THREE.Material }) {
 function AFrameHome({ dusk, archGlass, glassRoof }: { dusk: Dusk; archGlass: THREE.Material; glassRoof: THREE.Material }) {
   const lamp = useRef<THREE.PointLight>(null);
   const pendant = useRef<THREE.MeshStandardMaterial>(null);
+  const hearth = useRef<THREE.PointLight>(null);
+  const firebox = useRef<THREE.MeshStandardMaterial>(null);
+  /* The dusk registry is push-only (add/set), so the flicker loop below —
+     which needs the CURRENT dusk to scale against — keeps its own mirror
+     rather than reaching into the registry's private sink set. */
+  const duskAmt = useRef(0);
   useLayoutEffect(
     () =>
       dusk.add((d) => {
-        if (lamp.current) lamp.current.intensity = 0.15 + d * 2.2;
-        if (pendant.current) pendant.current.emissiveIntensity = 0.2 + d * 1.5;
+        duskAmt.current = d;
+        /* Base was 0.15 — effectively unlit until dusk, which is why the
+           interior read as a pale VOID in every daylight beat: you looked
+           through the glass at unlit boxes and saw fog. A real room is
+           visible through glass in daylight too, just outshone by it. */
+        if (lamp.current) lamp.current.intensity = 0.55 + d * 2.4;
+        if (pendant.current) pendant.current.emissiveIntensity = 0.35 + d * 1.6;
+        if (hearth.current) hearth.current.intensity = 0.9 + d * 1.9;
       }),
     [dusk]
   );
+
+  /* The firebox breathes. One sine against one cosine at incommensurate
+     rates never repeats on a loop the eye can catch, and it is two multiplies
+     a frame. Under prefers-reduced-motion the canvas renders a single frame
+     and freezes — so the CONSTRUCTOR values below are the frozen look, and
+     they are set to the middle of the flicker range rather than to zero. */
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime;
+    const f = 0.78 + Math.sin(t * 7.3) * 0.14 + Math.cos(t * 4.1) * 0.08;
+    if (firebox.current) firebox.current.emissiveIntensity = 2.1 * f;
+    if (hearth.current) hearth.current.intensity = (0.9 + duskAmt.current * 1.9) * f;
+  });
+
+  /* Interior floor: real oak, not the pale slab. The structural slab reads
+     #c6ccc4 concrete-grey, and through glass that is indistinguishable from
+     the fog behind the house — the single biggest reason the home looked
+     unbuilt. makeWoodGrain already exists for the deck; the interior gets the
+     same grain at a tighter repeat so the boards read narrower indoors. */
+  const floorTex = useMemo(() => {
+    const t = sharpen(makeWoodGrain());
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(3.2, 2.6);
+    return t;
+  }, []);
 
   const mullion = "#20261f";
   const cedar = ["#a97e57", "#9b7350", "#b0855e"];
@@ -1011,21 +1167,119 @@ function AFrameHome({ dusk, archGlass, glassRoof }: { dusk: Dusk; archGlass: THR
         <meshStandardMaterial color="#8f9a94" roughness={0.35} metalness={0.7} />
       </mesh>
 
-      {/* interior — silhouettes of a life, lit warm at dusk */}
-      <mesh position={[-1.5, 0.56, -1.2]} castShadow>
-        <boxGeometry args={[1.9, 0.36, 1.5]} />
-        <meshStandardMaterial color="#e8e2d4" roughness={0.95} />
+      {/* ---------------------------- THE INTERIOR ----------------------
+          This used to be two pale boxes on a concrete slab, and through
+          transmissive glass that read as an empty white void — the house
+          looked like an unbuilt shell at the exact beat where the camera
+          arrives at it. Everything below is seen ONLY through glass from
+          outside, so it is deliberately cheap: flat-shaded boxes, no
+          subdivision, one texture shared with the deck. What sells a room
+          from the outside is not detail, it is TONAL SEPARATION — a warm
+          floor against cool glass, a dark hearth, and one light source. */}
+
+      {/* oak floor, laid on top of the structural slab (slab top = y 0.38) */}
+      <mesh position={[0, 0.392, 0]} receiveShadow>
+        <boxGeometry args={[7.1, 0.03, 6.0]} />
+        <meshStandardMaterial map={floorTex} color="#b08a5e" roughness={0.72} />
       </mesh>
-      <mesh position={[-2.6, 0.75, 0.9]} castShadow>
-        <boxGeometry args={[0.9, 0.74, 1.9]} />
-        <meshStandardMaterial color="#4c4038" roughness={0.9} />
+      {/* a wool rug: the one soft, light thing in the room, and the reason
+          the floor does not read as one flat plank field through the glass */}
+      <mesh position={[-0.7, 0.412, 0.5]} receiveShadow>
+        <boxGeometry args={[3.0, 0.012, 2.2]} />
+        <meshStandardMaterial color="#cbbfa6" roughness={0.98} />
       </mesh>
+
+      {/* bed, with linen and a headboard rather than a single beige slab */}
+      <mesh position={[-2.1, 0.52, -1.7]} castShadow receiveShadow>
+        <boxGeometry args={[1.95, 0.24, 1.55]} />
+        <meshStandardMaterial color="#6a5442" roughness={0.9} flatShading />
+      </mesh>
+      <mesh position={[-2.1, 0.70, -1.7]} castShadow>
+        <boxGeometry args={[1.9, 0.16, 1.5]} />
+        <meshStandardMaterial color="#eae3d3" roughness={0.96} />
+      </mesh>
+      <mesh position={[-2.1, 0.80, -2.3]} castShadow>
+        <boxGeometry args={[1.9, 0.14, 0.34]} />
+        <meshStandardMaterial color="#f4efe4" roughness={0.97} />
+      </mesh>
+      <mesh position={[-2.95, 0.85, -1.7]} castShadow>
+        <boxGeometry args={[0.1, 0.85, 1.6]} />
+        <meshStandardMaterial color="#4c4038" roughness={0.9} flatShading />
+      </mesh>
+
+      {/* sofa, turned to face the front glass — furniture that faces the view
+          is what makes a room look INHABITED rather than furnished */}
+      <mesh position={[-0.7, 0.55, 1.55]} castShadow receiveShadow>
+        <boxGeometry args={[2.2, 0.3, 0.85]} />
+        <meshStandardMaterial color="#5d6b62" roughness={0.94} flatShading />
+      </mesh>
+      <mesh position={[-0.7, 0.82, 1.9]} castShadow>
+        <boxGeometry args={[2.2, 0.55, 0.16]} />
+        <meshStandardMaterial color="#68776d" roughness={0.94} flatShading />
+      </mesh>
+
+      {/* kitchen run along the east wall, counter + a dark splashback */}
+      <mesh position={[2.7, 0.83, 0.6]} castShadow receiveShadow>
+        <boxGeometry args={[0.7, 0.85, 2.6]} />
+        <meshStandardMaterial color="#7d6f5d" roughness={0.85} flatShading />
+      </mesh>
+      <mesh position={[2.7, 1.27, 0.6]} castShadow>
+        <boxGeometry args={[0.74, 0.05, 2.66]} />
+        <meshStandardMaterial color="#2b302d" roughness={0.4} metalness={0.2} />
+      </mesh>
+
+      {/* sleeping loft over the north end, with a ladder. It reads as a dark
+          horizontal band high in the gable, which is what gives the interior
+          a sense of VOLUME through the glass instead of one flat floor. */}
+      <mesh position={[0, 2.36, -1.95]} castShadow receiveShadow>
+        <boxGeometry args={[4.4, 0.12, 2.0]} />
+        <meshStandardMaterial map={floorTex} color="#9d7b53" roughness={0.78} />
+      </mesh>
+      <mesh position={[0, 2.60, -0.98]} castShadow>
+        <boxGeometry args={[4.4, 0.42, 0.06]} />
+        <meshStandardMaterial color={mullion} roughness={0.6} metalness={0.2} />
+      </mesh>
+      {[-0.42, 0.42].map((x) => (
+        <mesh key={`ld${x}`} position={[x, 1.38, -0.95]} castShadow>
+          <boxGeometry args={[0.07, 1.95, 0.07]} />
+          <meshStandardMaterial color="#6a5442" roughness={0.85} />
+        </mesh>
+      ))}
+      {[0.72, 1.14, 1.56, 1.98].map((y) => (
+        <mesh key={`lr${y}`} position={[0, y, -0.95]} castShadow>
+          <boxGeometry args={[0.84, 0.05, 0.05]} />
+          <meshStandardMaterial color="#6a5442" roughness={0.85} />
+        </mesh>
+      ))}
+
       {/* wood stove + a real chimney: double-wall flue, storm collar, rain cap,
           topping out above the ridge (not a bare rod poking the roof) */}
       <mesh position={[0.9, 0.78, -2.2]} castShadow>
         <cylinderGeometry args={[0.24, 0.26, 0.85, 10]} />
         <meshStandardMaterial color="#20211f" roughness={0.6} metalness={0.3} flatShading />
       </mesh>
+      {/* THE FIRE. The brief promises a wood stove in every home and the
+          chimney has been venting invisible smoke this whole time. A glowing
+          firebox door facing the front glass is the warmest pixel in the
+          frame at dusk, and the thing that says someone lives here. */}
+      <mesh position={[0.9, 0.72, -1.945]}>
+        <planeGeometry args={[0.26, 0.2]} />
+        <meshStandardMaterial
+          ref={firebox}
+          color="#ff9a3c"
+          emissive="#ff7a1a"
+          emissiveIntensity={2.1}
+          toneMapped={false}
+        />
+      </mesh>
+      <pointLight
+        ref={hearth}
+        position={[0.9, 0.8, -1.8]}
+        color="#ff8c3a"
+        intensity={0.9}
+        distance={6.5}
+        decay={2}
+      />
       <mesh position={[0.9, 3.15, -2.2]} castShadow>
         <cylinderGeometry args={[0.085, 0.085, 3.8, 10]} />
         <meshStandardMaterial color="#2e3230" roughness={0.45} metalness={0.6} />
@@ -2250,6 +2504,7 @@ export default function Scene({
   const dusk = useDuskRegistry();
   const archGlass = useArchGlass();
   const glassFloor = useGlassFloor();
+  const glassRoof = useGlassRoof();
   const glassRail = useGlassRail();
 
   /* Texture pass: every procedural detail texture filters at the GPU's max
@@ -2303,7 +2558,7 @@ export default function Scene({
       <Forest frozen={reduced} />
       <Props dusk={dusk} />
 
-      <AFrameHome dusk={dusk} archGlass={archGlass} glassRoof={glassFloor} />
+      <AFrameHome dusk={dusk} archGlass={archGlass} glassRoof={glassRoof} />
       <Deck glassFloor={glassFloor} glassRail={glassRail} />
       <Walkway glassFloor={glassFloor} glassRail={glassRail} />
 
@@ -2335,11 +2590,31 @@ export default function Scene({
       <Hotspots />
 
       {/* chimney wisp; tub steam; fire pit smoke */}
-      <Smoke origin={[0.9, 5.3, -2.2]} size={0.62} rise={3.0} opacity={0.3} frozen={reduced} />
-      <Smoke origin={[5.9, 1.15, 5.4]} count={4} rate={0.2} size={0.36} rise={1.2} drift={0.12} opacity={0.24} frozen={reduced} />
-      <Smoke origin={[-4.6, 0.8, 6.2]} count={5} rate={0.13} size={0.5} rise={2.2} drift={0.2} opacity={0.22} frozen={reduced} />
+      {/* THE CHIMNEY. Was size 0.62 / opacity 0.3 in the shared near-white
+          tint, which against the pale #e3ede7 sky rendered as nothing — the
+          house has had a lit stove and a dead chimney in every screenshot.
+          Grey, denser, taller, and sheared harder by drift. Smoke is the
+          cheapest possible signal that a home is occupied, and this plume is
+          readable from the crest beat onward. 10 sprites, no new draw call
+          class — sprites batch with the two plumes below. */}
+      <Smoke
+        origin={[0.9, 5.28, -2.2]}
+        count={10}
+        rate={0.13}
+        size={0.85}
+        rise={4.6}
+        drift={0.55}
+        opacity={0.6}
+        color="#b3bbb8"
+        frozen={reduced}
+      />
+      {/* hot tub steam and fire-pit smoke: steam stays white (it IS vapour),
+          the fire pit goes faintly grey so it separates from the tub */}
+      <Smoke origin={[5.9, 1.15, 5.4]} count={6} rate={0.2} size={0.44} rise={1.6} drift={0.16} opacity={0.42} frozen={reduced} />
+      <Smoke origin={[-4.6, 0.8, 6.2]} count={5} rate={0.13} size={0.5} rise={2.2} drift={0.24} opacity={0.3} color="#c8cdc9" frozen={reduced} />
 
       <Mist frozen={reduced} />
+      <Birds frozen={reduced} />
       {/* size 2.2 / opacity 0.4 read as UFO orbs once dusk emissives pushed
           them over the bloom threshold — dust motes, not fireflies */}
       <Sparkles count={80} scale={[28, 8, 28]} position={[0, 3.5, 2]} size={1.6} speed={reduced ? 0 : 0.25} opacity={0.28} color="#fff6dd" />
