@@ -1073,8 +1073,12 @@ function Trailhead() {
     <group>
       {FLOWERS.map(({ pos: [x, z], tint }, i) => (
         <group key={`f${i}`} position={[x, terrainH(x, z) - 0.02, z]} rotation={[0, i * 1.9, 0]}>
+          {/* v1 put 5-6 cm balls on sub-pixel stems at 16-34 cm — from the
+              hero camera the stems vanished and the heads read as floating
+              orbs. A wildflower in a sward is knee-high with a small head on
+              a stem thick enough to resolve at 3 m. */}
           {[0, 1, 2].map((j) => {
-            const h = 0.16 + (((i * 5 + j * 3) % 4) * 0.045);
+            const h = 0.09 + (((i * 5 + j * 3) % 4) * 0.03);
             return (
               <group
                 key={j}
@@ -1086,11 +1090,11 @@ function Trailhead() {
                 rotation={[Math.sin(i + j) * 0.14, 0, Math.cos(i * 2 + j) * 0.14]}
               >
                 <mesh position={[0, h / 2, 0]}>
-                  <cylinderGeometry args={[0.007, 0.011, h, 4]} />
+                  <cylinderGeometry args={[0.012, 0.016, h, 4]} />
                   <meshStandardMaterial color="#6f9c5e" roughness={1} />
                 </mesh>
-                <mesh position={[0, h + 0.02, 0]}>
-                  <sphereGeometry args={[0.024 + ((i + j) % 2) * 0.007, 6, 5]} />
+                <mesh position={[0, h + 0.01, 0]}>
+                  <sphereGeometry args={[0.013 + ((i + j) % 2) * 0.004, 6, 5]} />
                   <meshStandardMaterial color={tint} roughness={0.9} />
                 </mesh>
               </group>
