@@ -86,13 +86,14 @@ function Ledger({
   delay?: number;
   fx?: boolean;
 }) {
-  return (
-    <dl
-      className={`story-ledger${fx ? " fx-card" : ""}`}
-      data-rv
-      data-fx={fx ? "" : undefined}
-      style={{ transitionDelay: `${delay}ms` }}
-    >
+  /* The fx card WRAPS the reveal target rather than being it. transition-
+     property is one list per element: when `fx-card` and `[data-rv]` sat on
+     the same <dl>, the reveal rule's higher specificity (0,3,0 vs 0,1,0)
+     replaced the fx transition list entirely and every hover property
+     snapped in 0s. With the wrapper, no element carries both systems.
+     (ELEVATION-BRIEF §2.2, the H1 fix at the source.) */
+  const dl = (
+    <dl className="story-ledger" data-rv style={{ transitionDelay: `${delay}ms` }}>
       {rows.map((r) => (
         <div key={r.k}>
           <dt>{r.k}</dt>
@@ -100,6 +101,13 @@ function Ledger({
         </div>
       ))}
     </dl>
+  );
+  return fx ? (
+    <div className="fx-card" data-fx="">
+      {dl}
+    </div>
+  ) : (
+    dl
   );
 }
 
@@ -249,7 +257,13 @@ export default function Story() {
         const o = 1 - smoothstep(0.3, 0.5, Math.abs(p - (i + 1)));
         el.style.opacity = o.toFixed(3);
         el.style.visibility = o < 0.008 ? "hidden" : "visible";
-        el.style.pointerEvents = o > 0.6 ? "auto" : "none";
+        /* Interactive window matches the LEGIBLE window. At the old o > 0.6
+           the plate was inert across a band where its copy was still plainly
+           readable — a large part of "hover sometimes works". 0.35 keeps the
+           guard against hovering a ghost. (ELEVATION-BRIEF §2.3, H5.)
+           The per-frame inline write is load-bearing — see .story-stage in
+           globals.css before "improving" it. */
+        el.style.pointerEvents = o > 0.35 ? "auto" : "none";
         if (o > 0.5) el.classList.add("rv-in");
       }
     };

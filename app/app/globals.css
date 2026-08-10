@@ -337,6 +337,12 @@ body {
 
 /* ---- the pinned copy stage ---- */
 
+/* DO NOT "clean up" this layer. pointer-events:none on the fixed stage with
+   per-frame inline `auto` written onto each plate by Story.tsx paint() is
+   the correct arrangement: giving the stage pointer-events:auto breaks the
+   R3F pointer parallax (the canvas below owns the pointer where paper does
+   not cover it), and removing the inline write breaks hover completely.
+   (ELEVATION-BRIEF §2.4) */
 .story-stage {
   position: fixed;
   inset: 0;
@@ -1168,7 +1174,12 @@ html.story-gated body { overflow: hidden; }
   pointer-events: none;
 }
 
-@media (hover: hover) and (pointer: fine) {
+/* any-hover, not hover: `hover`/`pointer` describe only the PRIMARY pointer,
+   and Chrome on a Windows touchscreen laptop can report that as coarse —
+   silently switching this whole block off on the founder's own machine.
+   `any-hover: hover` is true when ANY attached pointer can hover; phones
+   still answer `any-hover: none` and stay excluded. (ELEVATION-BRIEF §2.1) */
+@media (any-hover: hover) {
   .aura-panel,
   .fx-card,
   [data-fx] {
