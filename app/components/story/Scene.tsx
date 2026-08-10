@@ -184,18 +184,31 @@ function useGlassFloor() {
   );
 }
 
-/** Balustrade glass — rails only. Thin, layered, never writes depth. */
+/** Balustrade glass — rails only. Thin, layered, never writes depth.
+ *
+ *  THE "TWO-TONE DECK". Critics read the deck as pale beige on the left and
+ *  saturated orange on the right, butted along a razor-straight vertical
+ *  seam, and called it a UV or material-assignment bug. It is not: the deck
+ *  is one run of planks with one material. The seam is THIS glass. The front
+ *  balustrade runs x -3.6 to -1.1 and stops at the step opening, and every
+ *  plank behind it was being tinted by a pane the viewer could not see —
+ *  DoubleSide meant each ray crossed two rendered faces, so an "0.2" pane
+ *  was really ~0.36, and envMapIntensity 1.6 added a bright reflective wash
+ *  on top. The pane ends at x -1.1; so did the wash. Fixed at the cause:
+ *  single-sided, 0.11, and a calmer reflection. Verified by cropping the
+ *  seam, not by assuming.
+ */
 function useGlassRail() {
   return useMemo(
     () =>
       new THREE.MeshPhysicalMaterial({
         transparent: true,
-        opacity: 0.2,
+        opacity: 0.11,
         roughness: 0.05,
         metalness: 0,
-        color: new THREE.Color("#dcf5ec"),
-        envMapIntensity: 1.6,
-        side: THREE.DoubleSide,
+        color: new THREE.Color("#eaf4f0"),
+        envMapIntensity: 0.85,
+        side: THREE.FrontSide,
         depthWrite: false,
       }),
     []
@@ -208,9 +221,20 @@ const RO_GLASS_RAIL = 20;
 
 /* ----------------------------- terrain ------------------------------ */
 
+/* TERRAIN v2.
+
+   Per-blade grass can only reach so far before a blade is smaller than a
+   texel; past that the ground has to carry the meadow by itself, and v1's
+   ground was two very low-frequency sine waves — smooth enough that the
+   far field read as a bare painted plane. The tint function keeps those two
+   waves EXACTLY (the grass shader mirrors them in GLSL so a blade's root is
+   the colour of the soil it grows from, and the two must not drift), and
+   adds a high-frequency mottle on top plus a per-facet value jitter. At
+   ~0.8 m per vertex that mottle is what a meadow looks like from 40 m. */
 function Terrain() {
   const geo = useMemo(() => {
-    const g = new THREE.PlaneGeometry(160, 160, 152, 152);
+    const SEG = 200;
+    const g = new THREE.PlaneGeometry(170, 170, SEG, SEG);
     g.rotateX(-Math.PI / 2);
     const p = g.attributes.position as THREE.BufferAttribute;
     const colors = new Float32Array(p.count * 3);
@@ -218,16 +242,27 @@ function Terrain() {
     const cB = new THREE.Color("#a4c295");
     const cC = new THREE.Color("#b7c489");
     const tmp = new THREE.Color();
+    const hash = (x: number, z: number) => {
+      const s = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453;
+      return s - Math.floor(s);
+    };
     for (let i = 0; i < p.count; i++) {
       const x = p.getX(i);
       const z = p.getZ(i);
       p.setY(i, terrainH(x, z));
+      // — the shared base, mirrored verbatim in GRASS_VERT.groundColor —
       const n1 = 0.5 + 0.5 * Math.sin(x * 0.23 + z * 0.17 + 1.2);
       const n2 = 0.5 + 0.5 * Math.sin(x * 0.61 - z * 0.43 + 4.0);
       tmp.copy(cA).lerp(cB, n1).lerp(cC, n2 * 0.25);
-      colors[i * 3] = tmp.r;
-      colors[i * 3 + 1] = tmp.g;
-      colors[i * 3 + 2] = tmp.b;
+      // — meadow mottle: two high frequencies plus per-facet jitter —
+      const m =
+        0.5 * Math.sin(x * 1.9 + z * 1.4) +
+        0.3 * Math.sin(x * 4.3 - z * 3.1 + 2.2) +
+        0.7 * (hash(Math.floor(x * 1.3), Math.floor(z * 1.3)) - 0.5);
+      const v = 1 + m * 0.075;
+      colors[i * 3] = tmp.r * v;
+      colors[i * 3 + 1] = tmp.g * (1 + m * 0.055);
+      colors[i * 3 + 2] = tmp.b * v;
     }
     g.setAttribute("color", new THREE.BufferAttribute(colors, 3));
     g.computeVertexNormals();
@@ -599,6 +634,12 @@ function GlassRailRun({
         <boxGeometry args={[0.07, 0.06, len + 0.05]} />
         <meshStandardMaterial color="#5d6663" roughness={0.4} metalness={0.6} />
       </mesh>
+      {/* base channel — without it the pane floats and the whole balustrade
+          reads as a tint rather than as glass held in a frame */}
+      <mesh position={[0, 0.035, 0]} castShadow>
+        <boxGeometry args={[0.09, 0.07, len + 0.05]} />
+        <meshStandardMaterial color="#5d6663" roughness={0.45} metalness={0.55} />
+      </mesh>
     </group>
   );
 }
@@ -655,38 +696,75 @@ function Deck({ glassFloor, glassRail }: { glassFloor: THREE.Material; glassRail
   );
 }
 
+/* THE BRIDGE, AND THE BEAMS THROUGH THE HOT TUB.
+
+   v1 ran the walkway from the deck edge (3.45, 4.65) to (5.9, 5.35) — which
+   is the CENTRE of the hot tub, not its edge — and then padded the deck box
+   by another 0.4 m. Its two handrails were offset by an eyeballed (-0.35,
+   +0.42) instead of a real perpendicular, so both of them ended up inside
+   the 0.78 m barrel: the "two grey beams passing straight through the tub
+   wall and out the other side". Now the landing point is solved rather than
+   guessed — the deck stops 0.96 m short of the tub centre (the barrel is
+   0.78) and the rails are offset along the true perpendicular, so every
+   piece clears the staves and lands on the stone pad instead.
+*/
+const WALK_FROM: [number, number] = [3.45, 4.65];
+const WALK_TO: [number, number] = [4.85, 5.06];
+const WALK_PAD = 0.3;
+
 function Walkway({ glassFloor, glassRail }: { glassFloor: THREE.Material; glassRail: THREE.Material }) {
-  // deck east edge (3.45, 4.6) -> tub platform (5.9, 5.4)
-  const from: [number, number] = [3.45, 4.65];
-  const to: [number, number] = [5.9, 5.35];
+  const from = WALK_FROM;
+  const to = WALK_TO;
+  const dx = to[0] - from[0];
+  const dz = to[1] - from[1];
+  const len = Math.hypot(dx, dz);
+  const ux = dx / len;
+  const uz = dz / len;
+  // true perpendicular in the ground plane
+  const px = -uz;
+  const pz = ux;
+  const half = 0.5;
   const cx = (from[0] + to[0]) / 2;
   const cz = (from[1] + to[1]) / 2;
-  const len = Math.hypot(to[0] - from[0], to[1] - from[1]);
-  const ang = Math.atan2(to[0] - from[0], to[1] - from[1]);
+  const ang = Math.atan2(dx, dz);
+  const railA: [[number, number], [number, number]] = [
+    [from[0] + px * half, from[1] + pz * half],
+    [to[0] + px * half, to[1] + pz * half],
+  ];
+  const railB: [[number, number], [number, number]] = [
+    [from[0] - px * half, from[1] - pz * half],
+    [to[0] - px * half, to[1] - pz * half],
+  ];
   return (
     <group>
       <group position={[cx, 0.42, cz]} rotation={[0, ang, 0]}>
-        {/* THE BRIDGE. Glass underside sits at 0.385; the frame top used to
-            land on exactly 0.385 — coplanar, and the pair z-fought every time
-            the camera came near. Frame dropped to -0.085 (top 0.395 - 0.06 =
-            0.335 world) leaving 5cm of air. */}
+        {/* Glass underside sits at 0.385; the frame top used to land on
+            exactly 0.385 — coplanar, and the pair z-fought every time the
+            camera came near. Frame dropped to -0.085 leaving 5cm of air. */}
         <mesh material={glassFloor} position={[0, 0, 0]} renderOrder={RO_GLASS_FLOOR}>
-          <boxGeometry args={[1.0, 0.07, len + 0.4]} />
+          <boxGeometry args={[1.0, 0.07, len + WALK_PAD]} />
         </mesh>
         <mesh castShadow position={[0, -0.085, 0]}>
-          <boxGeometry args={[1.08, 0.05, len + 0.5]} />
+          <boxGeometry args={[1.08, 0.05, len + WALK_PAD + 0.1]} />
           <meshStandardMaterial color="#5d6663" roughness={0.5} metalness={0.5} />
         </mesh>
       </group>
       {/* stone piers grounding the walkway */}
-      {([[4.25, 4.88], [5.1, 5.11]] as [number, number][]).map(([x, z], i) => (
+      {([[4.0, 4.77], [4.72, 4.98]] as [number, number][]).map(([x, z], i) => (
         <mesh key={`wp${i}`} castShadow position={[x, 0.18, z]}>
           <cylinderGeometry args={[0.11, 0.15, 0.4, 8]} />
           <meshStandardMaterial color="#848c85" roughness={0.95} flatShading />
         </mesh>
       ))}
-      <GlassRailRun from={[from[0] - 0.35, from[1] + 0.42]} to={[to[0] - 0.35, to[1] + 0.42]} h={0.62} base={0.45} mat={glassRail} />
-      <GlassRailRun from={[from[0] + 0.38, from[1] - 0.48]} to={[to[0] + 0.38, to[1] - 0.48]} h={0.62} base={0.45} mat={glassRail} />
+      <GlassRailRun from={railA[0]} to={railA[1]} h={0.62} base={0.45} mat={glassRail} />
+      <GlassRailRun from={railB[0]} to={railB[1]} h={0.62} base={0.45} mat={glassRail} />
+      {/* newel posts terminate the run instead of leaving a rail in mid-air */}
+      {[railA[1], railB[1]].map(([x, z], i) => (
+        <mesh key={`nw${i}`} castShadow position={[x, 0.72, z]}>
+          <boxGeometry args={[0.07, 0.62, 0.07]} />
+          <meshStandardMaterial color="#5d6663" roughness={0.45} metalness={0.55} />
+        </mesh>
+      ))}
     </group>
   );
 }
@@ -696,28 +774,35 @@ function HotTub({ position, dusk }: { position: [number, number, number]; dusk: 
   useLayoutEffect(
     () =>
       dusk.add((d) => {
-        if (water.current) water.current.emissiveIntensity = 0.15 + d * 0.45;
+        if (water.current) water.current.emissiveIntensity = 0.1 + d * 0.26;
       }),
     [dusk]
   );
+  /* THE LOUDEST OBJECT IN EVERY FRAME. The tub carried a bright cyan water
+     disc (#1d8f86) over saturated orange staves (#8a5a3a) — neither hue is
+     in BRAND.md section 2, and together they out-shouted the A-frame, which
+     is the actual product. Section 6: one dominant accent per surface. The
+     water settles toward the palette teal #0d9488 at low saturation and the
+     staves go to a neutral warm timber, so the tub becomes the quiet detail
+     it should always have been. */
   return (
     <group position={position}>
       {/* stone pad */}
       <mesh receiveShadow castShadow position={[0, 0.1, 0]}>
-        <cylinderGeometry args={[1.55, 1.7, 0.22, 12]} />
+        <cylinderGeometry args={[1.42, 1.56, 0.22, 12]} />
         <meshStandardMaterial color="#8d968f" roughness={0.95} flatShading />
       </mesh>
       <mesh castShadow receiveShadow position={[0, 0.62, 0]}>
         <cylinderGeometry args={[0.78, 0.72, 0.84, 14, 1, true]} />
-        <meshStandardMaterial color="#8a5a3a" roughness={0.9} flatShading side={THREE.DoubleSide} />
+        <meshStandardMaterial color="#8d7c66" roughness={0.92} flatShading side={THREE.DoubleSide} />
       </mesh>
       <mesh castShadow position={[0, 1.05, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[0.76, 0.05, 8, 14]} />
-        <meshStandardMaterial color="#6d4429" roughness={0.9} flatShading />
+        <meshStandardMaterial color="#6f6152" roughness={0.9} flatShading />
       </mesh>
       <mesh position={[0, 1.0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[0.72, 14]} />
-        <meshStandardMaterial ref={water} color="#1d8f86" roughness={0.12} metalness={0.1} emissive="#14655e" emissiveIntensity={0.2} />
+        <meshStandardMaterial ref={water} color="#4f8d86" roughness={0.16} metalness={0.1} emissive="#0d9488" emissiveIntensity={0.12} />
       </mesh>
       <mesh castShadow position={[0.95, 0.75, -0.12]}>
         <cylinderGeometry args={[0.14, 0.14, 0.7, 10]} />
@@ -733,34 +818,76 @@ function HotTub({ position, dusk }: { position: [number, number, number]; dusk: 
 
 /* -------------------- fire pit, chairs, string lights ---------------- */
 
-function LoungeChair({ position, rotY, cushion = "#e8e2d4" }: { position: [number, number, number]; rotY: number; cushion?: string }) {
+/* THE CHAIR. v1 read as a set of disconnected slabs: a thin seat plate, a
+   back tilted 0.3 rad floating 33 cm behind and above it with nothing
+   joining the two, and armrests hanging in space at a third height. From an
+   elevated camera it looked like a board leaning in mid-air. This is a
+   proper Adirondack — the back sits ON the seat's rear edge, the arms land
+   on real front posts, and there is a front apron, so every part touches
+   another part from every angle the camera visits. It is also planted on
+   the terrain rather than on y=0. */
+function LoungeChair({
+  position,
+  rotY,
+  cushion = "#e8e2d4",
+}: {
+  position: [number, number];
+  rotY: number;
+  cushion?: string;
+}) {
+  const [x, z] = position;
+  const wood = "#9b7350";
+  const woodDark = "#7c5c3f";
   return (
-    <group position={position} rotation={[0, rotY, 0]}>
-      {/* seat */}
-      <mesh castShadow position={[0, 0.32, 0.02]} rotation={[-0.1, 0, 0]}>
-        <boxGeometry args={[0.62, 0.07, 0.6]} />
-        <meshStandardMaterial color="#9b7350" roughness={0.85} flatShading />
-      </mesh>
-      <mesh castShadow position={[0, 0.37, 0.04]} rotation={[-0.1, 0, 0]}>
-        <boxGeometry args={[0.54, 0.05, 0.52]} />
-        <meshStandardMaterial color={cushion} roughness={0.95} />
-      </mesh>
-      {/* back, held by the arms so it reads as one chair from every angle */}
-      <mesh castShadow position={[0, 0.64, -0.31]} rotation={[0.3, 0, 0]}>
-        <boxGeometry args={[0.62, 0.68, 0.07]} />
-        <meshStandardMaterial color="#a97e57" roughness={0.85} flatShading />
-      </mesh>
-      {/* armrests */}
-      {[-0.34, 0.34].map((x) => (
-        <mesh key={x} castShadow position={[x, 0.5, -0.02]}>
-          <boxGeometry args={[0.08, 0.05, 0.66]} />
-          <meshStandardMaterial color="#8a6647" roughness={0.85} flatShading />
+    <group position={[x, terrainH(x, z), z]} rotation={[0, rotY, 0]}>
+      {/* rear legs / stringers */}
+      {[-0.29, 0.29].map((sx) => (
+        <mesh key={`r${sx}`} castShadow position={[sx, 0.19, -0.2]}>
+          <boxGeometry args={[0.06, 0.38, 0.07]} />
+          <meshStandardMaterial color={woodDark} roughness={0.9} flatShading />
         </mesh>
       ))}
-      {([[-0.31, 0.24], [0.31, 0.24], [-0.31, -0.28], [0.31, -0.28]] as [number, number][]).map(([x, z], i) => (
-        <mesh key={i} castShadow position={[x, 0.24, z]}>
-          <boxGeometry args={[0.06, 0.5, 0.06]} />
-          <meshStandardMaterial color="#6d4429" roughness={0.9} />
+      {/* front posts run all the way to the armrest, which is what makes the
+          arm look supported instead of hovering */}
+      {[-0.31, 0.31].map((sx) => (
+        <mesh key={`f${sx}`} castShadow position={[sx, 0.27, 0.26]}>
+          <boxGeometry args={[0.06, 0.54, 0.07]} />
+          <meshStandardMaterial color={woodDark} roughness={0.9} flatShading />
+        </mesh>
+      ))}
+      {/* front apron ties the two front posts together */}
+      <mesh castShadow position={[0, 0.36, 0.28]}>
+        <boxGeometry args={[0.62, 0.08, 0.05]} />
+        <meshStandardMaterial color={woodDark} roughness={0.9} flatShading />
+      </mesh>
+      {/* seat: three slats, sloping back into the frame */}
+      {[-0.2, 0, 0.2].map((sz) => (
+        <mesh key={`s${sz}`} castShadow receiveShadow position={[0, 0.4 + sz * 0.09, sz]} rotation={[-0.09, 0, 0]}>
+          <boxGeometry args={[0.62, 0.045, 0.17]} />
+          <meshStandardMaterial color={wood} roughness={0.88} flatShading />
+        </mesh>
+      ))}
+      {/* cushion sits in the seat, not above it */}
+      <mesh castShadow position={[0, 0.44, -0.01]} rotation={[-0.09, 0, 0]}>
+        <boxGeometry args={[0.55, 0.05, 0.48]} />
+        <meshStandardMaterial color={cushion} roughness={0.96} />
+      </mesh>
+      {/* back: four slats rising from the seat's rear edge, no gap */}
+      {[-0.21, -0.07, 0.07, 0.21].map((sx) => (
+        <mesh key={`b${sx}`} castShadow position={[sx, 0.62, -0.31]} rotation={[0.3, 0, 0]}>
+          <boxGeometry args={[0.11, 0.6, 0.045]} />
+          <meshStandardMaterial color={wood} roughness={0.88} flatShading />
+        </mesh>
+      ))}
+      <mesh castShadow position={[0, 0.86, -0.39]} rotation={[0.3, 0, 0]}>
+        <boxGeometry args={[0.62, 0.09, 0.05]} />
+        <meshStandardMaterial color={woodDark} roughness={0.88} flatShading />
+      </mesh>
+      {/* armrests landing on the front posts */}
+      {[-0.34, 0.34].map((sx) => (
+        <mesh key={`a${sx}`} castShadow position={[sx, 0.56, 0.02]}>
+          <boxGeometry args={[0.11, 0.045, 0.62]} />
+          <meshStandardMaterial color="#8a6647" roughness={0.85} flatShading />
         </mesh>
       ))}
     </group>
@@ -802,11 +929,17 @@ function FirePit({ dusk }: { dusk: Dusk }) {
         );
       })}
       <pointLight ref={light} position={[-4.6, 1.0, 6.2]} color="#ffb46b" intensity={1.2} distance={7} decay={2} />
-      <LoungeChair position={[-6.35, 0, 5.9]} rotY={1.4} />
-      <LoungeChair position={[-5.1, 0, 7.95]} rotY={2.86} cushion="#cfe4dc" />
-      <LoungeChair position={[-3.05, 0, 7.0]} rotY={-2.05} />
+      {/* pulled in off the fence line at z=8.5 — the middle chair's back used
+          to reach into the rails */}
+      {([
+        [-6.35, 5.9, 1.4],
+        [-5.1, 7.6, 2.86],
+        [-3.05, 6.9, -2.05],
+      ] as const).map(([x, z, rot], i) => (
+        <LoungeChair key={i} position={[x, z]} rotY={rot} cushion={i === 1 ? "#cfe4dc" : undefined} />
+      ))}
       {/* log side table */}
-      <mesh castShadow position={[-3.7, 0.19, 5.35]}>
+      <mesh castShadow position={[-3.7, terrainH(-3.7, 5.35) + 0.19, 5.35]}>
         <cylinderGeometry args={[0.22, 0.24, 0.38, 9]} />
         <meshStandardMaterial color="#8a6647" roughness={0.95} flatShading />
       </mesh>
@@ -1500,9 +1633,16 @@ function LightArc({
   const hemi = useRef<THREE.HemisphereLight>(null);
   const { scene } = useThree();
   const rig = useRef({ smooth: 0 });
+  /* THE KEY. It used to sit at (16, 26, 12) — 52 degrees of elevation, which
+     is nearly overhead: every prop's shadow collapsed underneath it and only
+     the deck, which is large, showed any contact at all. Rocks, fence posts,
+     lanterns and chairs looked pasted on. (18, 16, 13) is 33 degrees, so a
+     0.5 m rock throws a 0.8 m shadow the camera can actually see. The same
+     vector is the baked light in SceneDetail's KEY — one key, one direction,
+     everywhere. */
   const cools = useMemo(
     () => ({
-      sunP: new THREE.Vector3(16, 26, 12),
+      sunP: new THREE.Vector3(18, 16, 13).multiplyScalar(1.5),
       sunC: new THREE.Color("#fff3dd"),
       fogC: new THREE.Color("#e3ede7"),
     }),
@@ -1561,20 +1701,28 @@ function LightArc({
       <directionalLight
         ref={sun}
         castShadow
-        position={[16, 26, 12]}
+        position={[27, 24, 19.5]}
         color="#fff3dd"
         intensity={2.6}
         shadow-mapSize={[2048, 2048]}
-        shadow-bias={-0.0003}
-        shadow-normalBias={0.02}
-        shadow-camera-left={-30}
-        shadow-camera-right={30}
-        shadow-camera-top={30}
-        shadow-camera-bottom={-30}
+        shadow-bias={-0.00025}
+        shadow-normalBias={0.012}
+        /* tightened from +/-30 to +/-24: the story never leaves this box,
+           and 48 m across a 2048 map is 2.3 cm a texel instead of 2.9 —
+           which is the difference between a fence post casting something
+           and casting nothing. */
+        shadow-camera-left={-24}
+        shadow-camera-right={24}
+        shadow-camera-top={24}
+        shadow-camera-bottom={-24}
         shadow-camera-near={1}
-        shadow-camera-far={80}
+        shadow-camera-far={90}
       />
-      <directionalLight position={[-12, 8, -14]} color="#bfeee0" intensity={0.5} />
+      {/* Fill, not a second key. At 0.5 it was bright enough to light tree
+          canopies from the opposite side to the one casting the shadows,
+          which is the contradiction a viewer reads as "wrong" without being
+          able to name it. */}
+      <directionalLight position={[-14, 9, -16]} color="#d8ece6" intensity={0.16} />
     </>
   );
 }

@@ -259,59 +259,148 @@ function MountainRange() {
 }
 
 /* ============================== CLOUDS ==============================
-   Drifting sprite banks. They wrap rather than respawn, so there is no pop,
-   and they are kept well under the bloom threshold so they read as vapour
-   instead of glowing blobs.
+   CLOUDS v2 — volumes, not blobs.
+
+   v1 was 13 radial-gradient sprites: 2-4 flattened pure-white ellipses per
+   cloud with a heavy gaussian alpha falloff, stacked. Stacked soft alpha
+   is what produced the visibly brighter cores where two ellipses met — the
+   single clearest AI-slop tell on the page — and because a sprite has no
+   geometry there was no shading, no underside, no light direction at all.
+
+   These are real (if very low-poly) volumes: 4-7 squashed icosahedra merged
+   into one shell, drawn OPAQUE so nothing can stack, with the light baked
+   into vertex colours — warm sunlit crown, cool grey base, graded by height
+   AND by the dot product with the same key direction the scene's sun uses.
+   Same low-poly language as the trees and the terrain, which is the point:
+   a cloud that is made of the same stuff as the world reads as part of it.
+
+   The band was also lowered. v1 ran y 44-78 with half-heights near 18, so
+   the tallest clouds terminated exactly at the top of the hero frame and
+   got hard-clipped by the viewport edge.
 =================================================================== */
 
-const CLOUD_STOPS: [number, string][] = [
-  [0, "rgba(255,255,255,0.72)"],
-  [0.42, "rgba(250,252,253,0.3)"],
-  [1, "rgba(250,252,253,0)"],
-];
+/** Concatenate non-indexed geometries. IcosahedronGeometry is non-indexed
+ *  (PolyhedronGeometry always is), so position/normal can simply be joined —
+ *  no need to pull in BufferGeometryUtils for eleven lines of array copy. */
+function mergeNonIndexed(geos: THREE.BufferGeometry[]) {
+  let total = 0;
+  for (const g of geos) total += (g.attributes.position as THREE.BufferAttribute).count;
+  const pos = new Float32Array(total * 3);
+  const nor = new Float32Array(total * 3);
+  /* o counts VERTICES; the .set offset is in floats, so it multiplies by 3
+     exactly once. The old code accumulated count*3 AND multiplied by 3 at the
+     call site — the second geometry wrote 3x past the end and the RangeError
+     took the whole React tree (blank page, no canvas) with it. */
+  let o = 0;
+  for (const g of geos) {
+    const p = g.attributes.position as THREE.BufferAttribute;
+    const n = g.attributes.normal as THREE.BufferAttribute;
+    pos.set(p.array as Float32Array, o * 3);
+    nor.set(n.array as Float32Array, o * 3);
+    o += p.count;
+    g.dispose();
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  out.setAttribute("normal", new THREE.BufferAttribute(nor, 3));
+  return out;
+}
 
-function Clouds({ frozen }: { frozen: boolean }) {
-  const tex = useGradientSprite(CLOUD_STOPS);
-  const refs = useRef<(THREE.Sprite | null)[]>([]);
+/** The key direction every baked-light surface in this file agrees on.
+ *  It matches the LightArc's daytime sun in Scene.tsx. If that moves, this
+ *  moves — inconsistent light is worse than no light. */
+const KEY = new THREE.Vector3(18, 16, 13).normalize();
+
+function cloudGeometry(seed: number) {
+  const parts: THREE.BufferGeometry[] = [];
+  const n = 4 + Math.floor(rand(seed, 71) * 3);
+  for (let i = 0; i < n; i++) {
+    const k = seed * 7 + i;
+    const g = new THREE.IcosahedronGeometry(1, 1);
+    const s = 0.55 + rand(k, 72) * 0.8;
+    const sy = s * (0.5 + rand(k, 73) * 0.3);
+    g.scale(s * 1.3, sy, s);
+    // lobes step down toward the ends, which is what gives a cumulus its
+    // flat base and domed crown rather than a row of equal bubbles
+    const off = i - (n - 1) / 2;
+    g.translate(
+      off * 1.02 + (rand(k, 74) - 0.5) * 0.4,
+      (rand(k, 75) - 0.5) * 0.34 - Math.abs(off) * 0.16,
+      (rand(k, 76) - 0.5) * 0.5
+    );
+    parts.push(g);
+  }
+  const geo = mergeNonIndexed(parts);
+  const p = geo.attributes.position as THREE.BufferAttribute;
+  const nA = geo.attributes.normal as THREE.BufferAttribute;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (let i = 0; i < p.count; i++) {
+    minY = Math.min(minY, p.getY(i));
+    maxY = Math.max(maxY, p.getY(i));
+  }
+  const crown = new THREE.Color("#fffdf5");
+  const body = new THREE.Color("#eff2f1");
+  const base = new THREE.Color("#c0ccd1");
+  const tmp = new THREE.Color();
+  const cols = new Float32Array(p.count * 3);
+  for (let i = 0; i < p.count; i++) {
+    const h = (p.getY(i) - minY) / Math.max(0.001, maxY - minY);
+    const nd = clamp01(nA.getX(i) * KEY.x + nA.getY(i) * KEY.y + nA.getZ(i) * KEY.z);
+    tmp.copy(base).lerp(body, smooth01(0, 0.55, h)).lerp(crown, nd * 0.9 * smooth01(0.1, 0.85, h));
+    cols[i * 3] = tmp.r;
+    cols[i * 3 + 1] = tmp.g;
+    cols[i * 3 + 2] = tmp.b;
+  }
+  geo.setAttribute("color", new THREE.BufferAttribute(cols, 3));
+  geo.computeBoundingSphere();
+  return geo;
+}
+
+function Clouds({ frozen, night }: { frozen: boolean; night: number }) {
+  const geos = useMemo(() => [1, 2, 3, 4].map((s) => cloudGeometry(s)), []);
   const defs = useMemo(
     () =>
-      /* Small, high and far. The first pass had them at scale 26–60 barely
-         60 units out, which put house-sized white blobs in the mid-ground
-         where they read as fog banks rather than sky. */
       Array.from({ length: 13 }, (_, i) => ({
-        x: -120 + rand(i, 1) * 240,
-        y: 44 + rand(i, 2) * 34,
-        z: -120 - rand(i, 3) * 90,
-        s: 15 + rand(i, 4) * 22,
-        v: 0.22 + rand(i, 5) * 0.36,
-        o: 0.16 + rand(i, 6) * 0.2,
+        g: i % 4,
+        x: -170 + rand(i, 1) * 340,
+        y: 28 + rand(i, 2) * 15,
+        z: -96 - rand(i, 3) * 108,
+        s: 7 + rand(i, 4) * 10,
+        v: 0.16 + rand(i, 5) * 0.26,
+        rot: rand(i, 6) * Math.PI * 2,
       })),
     []
   );
+  const refs = useRef<(THREE.Mesh | null)[]>([]);
   useFrame(({ clock }) => {
     if (frozen) return;
     const t = clock.elapsedTime;
-    refs.current.forEach((s, i) => {
-      if (!s) return;
+    for (let i = 0; i < refs.current.length; i++) {
+      const m = refs.current[i];
+      if (!m) continue;
       const d = defs[i];
-      // wrap across a 220-unit band
-      const x = ((d.x + t * d.v + 150) % 300) - 150;
-      s.position.set(x, d.y + Math.sin(t * 0.08 + i) * 0.8, d.z);
-    });
+      m.position.x = ((d.x + t * d.v + 210) % 420) - 210;
+      m.position.y = d.y + Math.sin(t * 0.07 + i) * 0.6;
+    }
   });
+  const dim = 1 - night * 0.58;
   return (
     <group renderOrder={-9}>
       {defs.map((d, i) => (
-        <sprite
+        <mesh
           key={i}
+          geometry={geos[d.g]}
+          position={[d.x, d.y, d.z]}
+          rotation={[0, d.rot, 0]}
+          scale={[d.s, d.s * 0.6, d.s * 0.7]}
+          frustumCulled={false}
           ref={(el) => {
             refs.current[i] = el;
           }}
-          position={[d.x, d.y, d.z]}
-          scale={[d.s, d.s * 0.44, 1]}
         >
-          <spriteMaterial map={tex} transparent opacity={d.o} depthWrite={false} fog={false} />
-        </sprite>
+          <meshBasicMaterial vertexColors fog={false} color={new THREE.Color(dim, dim, dim * 1.04)} />
+        </mesh>
       ))}
     </group>
   );
@@ -368,10 +457,14 @@ function Clouds({ frozen }: { frozen: boolean }) {
 
 /* Shared by the JS LOD trim and the GLSL fade — they MUST agree or blades
    pop at the truncation edge. */
-const G_NEAR = 9.0; // full density inside this radius
-const G_FAR = 34.0; // thinned to G_PMIN by here
-const G_PMIN = 0.05;
-const G_BAND = 0.14; // width of the smooth dissolve band, in seed space
+/* Ported from muratkamci/snakey-locomotion (MIT), which holds full density to
+   38 m and only then dissolves to 52 m. Ours used to start thinning at 11 m,
+   which is why the meadow read as sparse scatter: two thirds of every frame
+   was already past the fade. Density is what turns blades into a surface. */
+const G_NEAR = 34.0; // full density inside this radius
+const G_FAR = 56.0; // thinned to G_PMIN by here
+const G_PMIN = 0.06;
+const G_BAND = 0.16; // width of the smooth dissolve band, in seed space
 const G_TILE = 4.0;
 
 const smooth01 = (a: number, b: number, x: number) => {
@@ -438,7 +531,10 @@ function clearance(x: number, z: number): number {
     pd = Math.min(pd, segDist(x, z, G_PATH[i][0], G_PATH[i][1], G_PATH[i + 1][0], G_PATH[i + 1][1]));
     if (pd < 0.3) break;
   }
-  c = Math.min(c, 0.25 + 0.75 * fade(pd, 0.45, 1.1));
+  /* The stepping stones used to keep 25% height ON the path, which put
+     blades poking straight through the slabs. A walked route is mown: the
+     line goes to zero and feathers back up over a metre. */
+  c = Math.min(c, fade(pd, 0.42, 1.15));
   return c;
 }
 
@@ -449,14 +545,20 @@ function clearance(x: number, z: number): number {
  */
 function meadowDensity(x: number, z: number): number {
   const r = Math.hypot(x, z);
-  // the lawn ring around the home
-  const ring = 1 - smooth01(14, 25, r);
+  /* v1's ring was `1 - smooth01(14, 25, r)`, which reaches exactly zero at
+     25 m and left a razor-straight edge across the field — at beat 05 the
+     blades stopped dead along a horizontal line and everything past it was
+     bare plane. Two changes kill it: the ring feathers over 19 m instead of
+     11, and a low scatter carries all the way to the fog line so the ground
+     is never empty. Density, not a cull radius, is what LOD should be. */
+  const ring = 1 - smooth01(16, 35, r);
   // the trail corridor: trailhead at z~34 down to the fence at z~8
   const corridor =
-    (1 - smooth01(8.5, 16.5, Math.abs(x))) * smooth01(5.5, 11, z) * (1 - smooth01(31, 38, z));
-  let d = Math.max(ring, corridor);
+    (1 - smooth01(9, 18, Math.abs(x))) * smooth01(5.5, 11, z) * (1 - smooth01(33, 41, z));
+  const scatter = 0.16 * (1 - smooth01(34, 66, r));
+  let d = Math.max(ring, corridor, scatter);
   // nothing on the deep forest floor behind the home — the camera never goes
-  d *= 1 - smooth01(5, 13, -z);
+  d *= 1 - smooth01(6, 15, -z);
   return clamp01(d);
 }
 
@@ -505,6 +607,7 @@ varying vec3  vNormal;
 varying vec3  vWorld;
 varying float vHue;
 varying vec3  vGround;
+varying float vSpecies;
 
 float h21(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float vnoise(vec2 p){
@@ -544,10 +647,31 @@ void main(){
   // never let a blade flash across the lens as the camera brushes past it
   vis *= smoothstep(0.18, 0.55, dist);
 
-  float bh = aRand.y * aClear * vis;
-  float bw = aRand.z;
-  // widen with distance: a blade thinner than a pixel can only shimmer
-  bw *= 1.0 + dist * 0.028;
+  /* ---- THREE FORMS, CLUMPED ----
+     v1 had one primitive: a straight tapered strip, identical width and
+     identical taper on every instance. Because the trees in this world are
+     cones too, the lawn read as a field of miniature trees. A meadow is at
+     least three things — an arching leaf blade, a short broad tuft, and a
+     seed stem that carries a head — and real meadows grow them in PATCHES,
+     not shuffled per blade. So the species is seeded from a coarse
+     world-space cell (~1.8 m), which clumps them for free and keeps a
+     blade's identity stable no matter which tile it landed in. */
+  float sp = h21(floor(base.xz * 0.55) + 19.3);
+  float isTuft = smoothstep(0.48, 0.54, sp) * (1.0 - smoothstep(0.78, 0.84, sp));
+  float isStem = smoothstep(0.78, 0.84, sp);
+  float hMul = mix(1.0, 0.58, isTuft) * mix(1.0, 1.75, isStem);
+  /* 1.85 made tufts read as cones next to the pines. Species should vary the
+     silhouette, not the mass. */
+  float wMul = mix(1.0, 1.3, isTuft) * mix(1.0, 0.5, isStem);
+  float bendMul = mix(1.0, 1.4, isTuft) * mix(1.0, 0.3, isStem);
+
+  float bh = aRand.y * aClear * vis * hMul;
+  float bw = aRand.z * wMul;
+  /* widen with distance so a sub-pixel blade cannot shimmer — but v1 used
+     0.028/metre, which at 25 m made every blade 1.7x wide on top of the
+     2.2x edge-on term. That compounding is what turned the far field into
+     fat opaque cones. 0.010 is enough to beat the sampler. */
+  bw *= 1.0 + dist * 0.010;
 
   /* ---- wind: two noise frequencies + per-blade flutter, gated by a gust
      front rolling across the meadow so it reads as weather, not a loop ---- */
@@ -561,8 +685,8 @@ void main(){
   // a small static lean per blade, seeded from world position, so the field
   // is never uniform even when the air is still
   float la = h21(floor(base.xz * 3.7)) * 6.2831853;
-  vec2 rest = vec2(cos(la), sin(la)) * mix(0.03, 0.15, h21(base.xz * 1.9 + 7.0));
-  vec2 horiz = rest + wd * wind * 0.45;
+  vec2 rest = vec2(cos(la), sin(la)) * mix(0.03, 0.19, h21(base.xz * 1.9 + 7.0));
+  vec2 horiz = (rest + wd * wind * 0.45) * bendMul;
 
   // quadratic Bezier: root pinned at the ground, curvature grows to the tip
   float hl = length(horiz);
@@ -572,14 +696,20 @@ void main(){
   vec3 curve = 2.0 * omt * t * midOff + t * t * tipOff;
 
   vec3 wDir3 = vec3(cos(aRand.x), 0.0, sin(aRand.x));
-  float w = bw * (1.0 - 0.72 * t * t);
+  /* width profile per form: the blade tapers to a point, the tuft stays
+     broad most of its length, and the stem is a thin shaft that SWELLS into
+     a seed head near the top instead of tapering out. */
+  float taper = mix(1.0 - 0.76 * t * t, 1.0 - 0.40 * t, isTuft);
+  float head = 1.0 + isStem * 3.2 * smoothstep(0.70, 0.85, t) * (1.0 - smoothstep(0.90, 1.0, t));
+  float w = bw * taper * head;
 
   /* view-dependent thickening: a blade turned edge-on projects to a sliver
      and disappears. Widen it as it turns away so the field keeps its mass
-     at grazing angles. */
+     at grazing angles — 1.5x, not 2.2x, which was over-fattening every
+     blade that faced away from the camera. */
   vec3 viewDir = normalize(uCamPos - base);
   float edgeOn = abs(dot(viewDir, wDir3));
-  w *= mix(1.0, 2.2, edgeOn);
+  w *= mix(1.0, 1.5, edgeOn);
 
   vec3 world = base + curve + wDir3 * side * w;
 
@@ -594,6 +724,7 @@ void main(){
   vWorld = world;
   vHue = h21(floor(base.xz * 2.3) + 3.1);
   vGround = groundColor(base.xz);
+  vSpecies = sp;
 
   gl_Position = projectionMatrix * viewMatrix * vec4(world, 1.0);
 }
@@ -612,38 +743,57 @@ uniform float uFogNear;
 uniform float uFogFar;
 uniform vec3  uCamPos;
 uniform float uNight;
+uniform float uSunI;
 
 varying float vT;
 varying vec3  vNormal;
 varying vec3  vWorld;
 varying float vHue;
 varying vec3  vGround;
+varying float vSpecies;
 
 void main(){
-  // root IS the ground colour; only the tip is grass-coloured
-  vec3 col = mix(vGround * 0.90, uColTip, pow(vT, 1.25));
-  col *= vec3(1.0 + vHue * 0.10 - 0.05, 1.0, 1.0 - vHue * 0.08 + 0.04);
+  /* Root IS the ground colour, so the sward has no visible join with the
+     terrain. v1 multiplied the ground by 0.90 and pushed the tip colour in
+     late (pow 1.25), which made the lower two thirds of every blade darker
+     than the ground it grew out of — the "dark speckle on a lawn" read. */
+  vec3 tip = uColTip;
+  // seed heads go straw, which is where the meadow's colour variety comes
+  // from — inside the palette, never an orange
+  tip = mix(tip, tip * vec3(1.10, 1.05, 0.88), smoothstep(0.78, 0.86, vSpecies));
+  /* pow 0.95 pushed tip colour down almost the whole shaft, so a light khaki
+     tip painted the entire blade and the meadow read TAN against green
+     ground. The reference uses pow 1.4: the ground colour holds up the shaft
+     and the tip only lifts at the very end. */
+  vec3 col = mix(vGround, tip, pow(vT, 1.35));
+  // per-clump VALUE variation, and only a whisper of hue: BRAND.md section 2
+  // has no orange, and a wide hue swing is how a field starts inventing one
+  col *= (0.88 + vHue * 0.26) * vec3(1.0 + vHue * 0.04 - 0.02, 1.0, 1.0 - vHue * 0.04 + 0.02);
 
   vec3 N = normalize(vNormal);
   if (!gl_FrontFacing) N = -N;
 
   // wrapped diffuse — grass is thin and scatters, it does not terminate hard
   float ndl = dot(N, uSunDir) * 0.5 + 0.5;
-  vec3 light = uSunCol * ndl * ndl;
-  light += mix(uHemiGround, uHemiSky, N.y * 0.5 + 0.5) * 0.5;
+  vec3 light = uSunCol * uSunI * ndl * ndl;
+  light += mix(uHemiGround, uHemiSky, N.y * 0.5 + 0.5) * 0.55;
 
-  // translucency: sun coming THROUGH the blade, the cue that sells it as living
+  /* Translucency: sun coming THROUGH the blade. Real, but v1 ran it at 0.45
+     which meant every blade the camera happened to view down-sun turned
+     warm at once — whole regions of the field went tan while the rest
+     stayed green. 0.24 keeps the cue and loses the colour cast. */
   vec3 V = normalize(uCamPos - vWorld);
   float back = pow(max(dot(-V, uSunDir), 0.0), 3.0);
-  light += uSunCol * back * 0.45 * vT;
+  light += uSunCol * back * 0.24 * vT;
 
-  // ambient occlusion at the root — light does not reach the bottom of a sward
-  float ao = mix(0.34, 1.0, smoothstep(0.0, 0.55, vT));
+  // ambient occlusion at the root — light does not reach the bottom of a
+  // sward, but 0.34 was a hole, not an occlusion
+  float ao = mix(0.68, 1.04, smoothstep(0.0, 0.6, vT));
   col *= light * ao;
 
   // tip glint
   vec3 H = normalize(V + uSunDir);
-  col += uSunCol * pow(max(dot(N, H), 0.0), 26.0) * 0.10 * vT;
+  col += uSunCol * pow(max(dot(N, H), 0.0), 26.0) * 0.06 * vT;
 
   col = mix(col, col * vec3(0.34, 0.40, 0.54), uNight);
   col = min(col, vec3(2.2)); // no single blade may become a bloom firefly
@@ -671,9 +821,9 @@ function buildGrassTiles(budget: number) {
   const blade = grassBlade();
   const cells = new Map<string, { pos: number[]; rnd: number[]; clr: number[] }>();
 
-  const X0 = -21, X1 = 21, Z0 = -14, Z1 = 38;
+  const X0 = -46, X1 = 46, Z0 = -22, Z1 = 54;
   let placed = 0;
-  const MAX_TRIES = budget * 6;
+  const MAX_TRIES = budget * 9;
   for (let i = 0; i < MAX_TRIES && placed < budget; i++) {
     const x = X0 + rand(i, 41) * (X1 - X0);
     const z = Z0 + rand(i, 42) * (Z1 - Z0);
@@ -688,11 +838,22 @@ function buildGrassTiles(budget: number) {
       c = { pos: [], rnd: [], clr: [] };
       cells.set(key, c);
     }
+    /* Height spread is deliberately skewed rather than uniform: a real
+       sward is mostly medium with a few tall stems, and a flat 0.19-0.39
+       range is what made v1 read as one cloned object. Blades further out
+       also run taller, so the far field keeps mass at a fraction of the
+       instance count. */
+    const far = Math.min(1, Math.max(0, (Math.hypot(x, z) - 16) / 26));
     c.pos.push(x, terrainH(x, z) - 0.02, z);
+    /* Width is baked FLAT here. It used to carry (1 + far * 0.55), which then
+       compounded with the shader's own distance widening, the tuft multiplier
+       and the edge-on term — up to 3.6x, i.e. 15 cm blades, the "fat
+       triangles". The reference widens in ONE place only (the shader, at
+       ~2%/m). Height keeps a mild far-boost so the far field holds mass. */
     c.rnd.push(
       rand(i, 44) * Math.PI * 2, // yaw
-      0.19 + rand(i, 45) * 0.20, // height
-      0.026 + rand(i, 46) * 0.020, // width
+      (0.16 + Math.pow(rand(i, 45), 1.6) * 0.34) * (1 + far * 0.3), // height
+      0.026 + rand(i, 46) * 0.018, // width — reference range, no far term
       rand(i, 47) // fade seed
     );
     c.clr.push(clr);
@@ -783,11 +944,16 @@ function GrassField({
           uCamPos: { value: new THREE.Vector3() },
           uProjScale: { value: 2.7 },
           uGust: { value: 0.4 },
-          uColTip: { value: new THREE.Color("#b9cf8b") },
-          uSunDir: { value: new THREE.Vector3(16, 26, 12).normalize() },
+          /* Greener and a shade deeper than the ground, not lighter: the
+             reference's tip sits BELOW its root in value, which is what reads
+             as depth in a sward. #c2d493 was lighter and yellower than the
+             terrain, so every blade lifted off the lawn as a pale spike. */
+          uColTip: { value: new THREE.Color("#93b06a") },
+          uSunDir: { value: KEY.clone() },
           uSunCol: { value: new THREE.Color("#fff3dd") },
+          uSunI: { value: 1.15 },
           uHemiSky: { value: new THREE.Color("#dcecf4") },
-          uHemiGround: { value: new THREE.Color("#5c7048") },
+          uHemiGround: { value: new THREE.Color("#7a8b5e") },
           uFogColor: { value: new THREE.Color("#e3ede7") },
           uFogNear: { value: 30 },
           uFogFar: { value: 88 },
@@ -803,12 +969,16 @@ function GrassField({
     () =>
       dusk.add((d: number) => {
         const u = mat.uniforms;
-        (u.uSunCol.value as THREE.Color).setHex(0xfff3dd).lerp(new THREE.Color("#ffb46b"), d);
-        (u.uColTip.value as THREE.Color).setHex(0xb9cf8b).lerp(new THREE.Color("#d8c07e"), d * 0.75);
+        (u.uSunCol.value as THREE.Color).setHex(0xfff3dd).lerp(new THREE.Color("#ffc48c"), d);
+        /* v1 warmed the tip toward #d8c07e at 0.75 strength — a genuine
+           orange, and BRAND.md section 2 contains none. #bdb887 is the same
+           move in muted sage-gold and stays inside the palette. */
+        (u.uColTip.value as THREE.Color).setHex(0x93b06a).lerp(new THREE.Color("#9aa863"), d * 0.55);
         (u.uSunDir.value as THREE.Vector3)
-          .set(16, 26, 12)
-          .lerp(new THREE.Vector3(-18, 7, 18), d)
+          .copy(KEY)
+          .lerp(new THREE.Vector3(-18, 7, 18).normalize(), d)
           .normalize();
+        u.uSunI.value = 1.15 - d * 0.3;
       }),
     [dusk, mat]
   );
@@ -1249,6 +1419,82 @@ function TubSteam({ frozen }: { frozen: boolean }) {
   );
 }
 
+/* ============================== SCRUB ===============================
+   Low bush clumps from the edge of the mown ring out to the fog line.
+
+   They exist because of what the grass LOD cannot do. Per-blade grass has
+   to stop somewhere — the honest limit is around 35 m, past which a blade
+   is smaller than a texel and can only alias. v1 simply ended there, and
+   the result was a bare plane behind a straight line. Scrub is the layer
+   that carries the eye across that limit: 130 squashed icosahedra, three
+   sage values, three instanced draw calls, planted on the same terrain
+   function as everything else so nothing floats.
+=================================================================== */
+
+const SCRUB_COLORS = ["#5c7a55", "#6b8a5e", "#4e6b4b"];
+
+function Scrub() {
+  const geo = useMemo(() => {
+    const g = new THREE.IcosahedronGeometry(1, 0);
+    g.scale(1, 0.58, 1);
+    return g;
+  }, []);
+
+  const buckets = useMemo(() => {
+    const out: THREE.Matrix4[][] = [[], [], []];
+    const o = new THREE.Object3D();
+    let k = 0;
+    for (let i = 0; i < 3000 && k < 130; i++) {
+      const a = rand(i, 81) * Math.PI * 2;
+      const r = 19 + Math.pow(rand(i, 82), 0.62) * 42;
+      const x = Math.cos(a) * r;
+      const z = Math.sin(a) * r;
+      // the camera never goes behind the home, so nothing is spent there
+      if (z < -10 && Math.abs(x) < 26) continue;
+      const s = 0.42 + Math.pow(rand(i, 83), 1.4) * 1.5;
+      o.position.set(x, terrainH(x, z) + s * 0.34, z);
+      o.rotation.set((rand(i, 84) - 0.5) * 0.34, rand(i, 85) * 6.2832, (rand(i, 86) - 0.5) * 0.34);
+      o.scale.set(s * (0.8 + rand(i, 87) * 0.7), s, s * (0.8 + rand(i, 88) * 0.7));
+      o.updateMatrix();
+      out[k % 3].push(o.matrix.clone());
+      k++;
+    }
+    return out;
+  }, []);
+
+  return (
+    <group>
+      {buckets.map((mats, b) => (
+        <ScrubBucket key={b} geo={geo} mats={mats} color={SCRUB_COLORS[b]} />
+      ))}
+    </group>
+  );
+}
+
+function ScrubBucket({
+  geo,
+  mats,
+  color,
+}: {
+  geo: THREE.BufferGeometry;
+  mats: THREE.Matrix4[];
+  color: string;
+}) {
+  const ref = useRef<THREE.InstancedMesh>(null);
+  useLayoutEffect(() => {
+    const m = ref.current;
+    if (!m) return;
+    mats.forEach((mat, i) => m.setMatrixAt(i, mat));
+    m.instanceMatrix.needsUpdate = true;
+    m.computeBoundingSphere();
+  }, [mats]);
+  return (
+    <instancedMesh ref={ref} args={[geo, undefined, Math.max(1, mats.length)]} castShadow receiveShadow>
+      <meshStandardMaterial color={color} roughness={1} flatShading />
+    </instancedMesh>
+  );
+}
+
 /* ============================ THE LAYER ============================= */
 
 export default function SceneDetail({
@@ -1293,13 +1539,24 @@ export default function SceneDetail({
      Mobile draws the meadow a few centimetres across, so a third of that is
      indistinguishable and much kinder to the GPU. */
   const { size } = useThree();
-  const grassCount = size.width < 820 ? 18000 : 34000;
+  /* The footprint grew from ~660 m2 to a feathered field that reaches the
+     fog line, so the count grew with it — but only by half. The rest of the
+     coverage comes from taller far blades and from Scrub, which is far
+     cheaper per square metre than instancing more grass out there would be.
+     Measured, not assumed: see the fps figures in the round-1 report. */
+  /* Density is the whole game. The reference plants 16,000 blades per 18 m
+     tile — ~49 blades/m2 — and that is the threshold at which blades stop
+     reading as separate objects and become a surface. 48k spread across this
+     meadow was roughly a third of that, which is exactly why it read as
+     sparse scatter no matter how good the blade itself was. */
+  const grassCount = size.width < 820 ? 34000 : 96000;
 
   return (
     <group>
       <SnowRange night={night} />
-      <Clouds frozen={frozen} />
+      <Clouds frozen={frozen} night={night} />
       <GrassField frozen={frozen} budget={grassCount} night={night} dusk={dusk} />
+      <Scrub />
       <EntranceSteps glassRail={glassRail} />
       <Hammock frozen={frozen} />
       <NetLounge />
