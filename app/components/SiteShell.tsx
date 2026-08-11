@@ -23,6 +23,7 @@ const NAV = [
   { href: "/land", label: "Land" },
   { href: "/design", label: "Design" },
   { href: "/budget", label: "Budget" },
+  { href: "/buy", label: "Buy" },
   { href: "/escrow", label: "Escrow" },
   { href: "/faq", label: "FAQ" },
   { href: "/dashboard", label: "Dashboard" },

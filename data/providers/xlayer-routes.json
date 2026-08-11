@@ -1,0 +1,156 @@
+{
+  "_note": "Every field below is verbatim from the route-verification sweep of Aug 10, 2026, with two app-side additions marked here so nobody mistakes them for findings: `id` is a stable key used only to link a route from the UI, and `recordTruncated` flags a record whose verification text arrived incomplete. Nothing else was edited, summarised or filled in.",
+  "routes": [
+    {
+      "id": "okx-withdraw",
+      "name": "OKX Exchange direct withdrawal to X Layer",
+      "from": "Fiat or any asset held on OKX exchange",
+      "to": "OKB / ETH / USDT / USDC / WBTC / DAI on X Layer (chain 196)",
+      "hops": [
+        "Buy or deposit asset on OKX exchange",
+        "Assets > Withdraw > Withdraw Crypto",
+        "Select token, choose 'On-chain' method",
+        "Set Network = X Layer, paste self-custody X Layer address",
+        "Confirm + 2FA"
+      ],
+      "custody": "mixed",
+      "kyc": "Full KYC required (OKX exchange account). NOT AVAILABLE TO CANADIANS - OKX withdrew from Canada March 2023 and still does not serve Canadian residents in 2026; it closed 14,000+ accounts for geolocation fraud in Sept 2025, so VPN workarounds risk seizure of funds.",
+      "feeEstimate": "OKX withdrawal fee only; OKX states the exchange side is gasless for native USDC/OKB to X Layer. No protocol fee.",
+      "timeEstimate": "Minutes (X Layer docs say 'a short while'); not instant but no rollup challenge window because it is an exchange internal transfer, not a canonical bridge exit.",
+      "verifiedAt": "X Layer's own Medium walkthrough enumerates the exact withdrawal UI steps and the six supported assets (OKB, ETH, USDT, USDC, WBTC, DAI). Cross-checked against OKX help pages on X Layer gas-free stablecoin transfers.",
+      "evidenceUrl": "https://medium.com/xlayer-official/transfer-assets-from-okx-to-x-layer-ee373fdfcaf3",
+      "embeddable": "No embeddable widget - this is a manual exchange flow. A static site can only deep-link users to OKX withdrawal and show a copyable address + 'Network: X Layer' instruction."
+    },
+    {
+      "id": "cctp-v2",
+      "name": "Circle CCTP V2 (native USDC burn-and-mint)",
+      "from": "Native USDC on Ethereum, Base, Arbitrum, Optimism, Polygon, Solana, Linea and ~20 other CCTP domains",
+      "to": "Native USDC on X Layer at 0xB6CEceAB302E2E4948951eE7843FC24E92933061",
+      "hops": [
+        "Approve USDC to TokenMessenger on source chain",
+        "depositForBurn(amount, destinationDomain=37, mintRecipient)",
+        "Circle attestation service signs the burn",
+        "receiveMessage() on X Layer mints native USDC 1:1"
+      ],
+      "custody": "non-custodial",
+      "kyc": "None at protocol level",
+      "feeEstimate": "Source gas + destination gas. Standard Transfer has no Circle fee; Fast Transfer charges a small Circle fee. No slippage, no liquidity-pool spread, strictly 1:1.",
+      "timeEstimate": "Standard Transfer: source-chain finality (~13-19 min from Ethereum). Fast Transfer: seconds to ~1 min.",
+      "verifiedAt": "Circle's own CCTP supported-blockchains table lists X Layer with domain ID 37 on the current (V2) protocol, supporting Standard and Fast transfer (Forwarding Service not available). Circle's launch blog independently gives the native USDC address 0xB6CEceAB302E2E4948951eE7843FC24E92933061 on X Layer mainnet, dated Aug 6-7 2026. I additionally confirmed that address on-chain via eth_call name()/symbol() on X Layer RPC, both returning 'USDC'.",
+      "evidenceUrl": "https://developers.circle.com/cctp/cctp-supported-blockchains",
+      "embeddable": "No first-party Circle widget. CCTP is contract calls, so a static site CAN drive it entirely client-side with viem/ethers + the public Circle attestation REST API (no backend needed) - but you must write that flow yourself. This is the only route that both reaches X Layer and is fully implementable from a static page."
+    },
+    {
+      "id": "xlayer-canonical",
+      "name": "X Layer canonical (official) bridge",
+      "from": "ETH and ERC-20s on Ethereum mainnet",
+      "to": "X Layer (chain 196)",
+      "hops": [
+        "Deposit into the L1 bridge contract on Ethereum",
+        "Sequencer credits the asset on X Layer"
+      ],
+      "custody": "non-custodial",
+      "kyc": "None",
+      "feeEstimate": "Gas only - no protocol fee.",
+      "timeEstimate": "Deposits (Ethereum -> X Layer) are fast, minutes. Withdrawals (X Layer -> Ethereum) carry the ~7-day optimistic-rollup challenge window since the Aug 2025 PP upgrade to an OP Stack architecture.",
+      "verifiedAt": "X Layer developer docs describe the L1 bridge contract and the ETH -> X Layer bridging process as the native path. The 7-day exit window follows from X Layer being an optimistic rollup post-upgrade. NOTE: web3.okx.com/xlayer/bridge does not serve a canonical-bridge UI - it promotes the OKX DEX bridge aggregator instead, so the 'official bridge' is the contract layer rather than a branded app.",
+      "evidenceUrl": "https://web3.okx.com/xlayer/docs/developer/bridge/bridge-to-x-layer",
+      "embeddable": "No official embeddable widget. Contract-level integration only."
+    },
+    {
+      "id": "okx-dex-bridge",
+      "name": "OKX DEX cross-chain bridge aggregator (+ OKX DEX Widget)",
+      "from": "Major EVM chains and Solana",
+      "to": "X Layer (chain 196)",
+      "hops": [
+        "Select source chain + token",
+        "Select X Layer as destination",
+        "OKX DEX routes through its aggregated bridge set",
+        "Sign one transaction"
+      ],
+      "custody": "non-custodial",
+      "kyc": "None for the DEX aggregator (distinct from the OKX exchange account)",
+      "feeEstimate": "Aggregator spread + underlying bridge fee + gas. Not independently verified per-route.",
+      "timeEstimate": "Typically minutes, route-dependent. Not independently verified.",
+      "verifiedAt": "X Layer's own bridge page routes users to 'OKX DEX's bridge aggregator' as the recommended way to bridge to X Layer, with Ethereum as source and X Layer as destination in the linked interface. I did NOT independently confirm per-token liquidity or fees, because the OKX DEX cross-chain support endpoint requires an API key.",
+      "evidenceUrl": "https://web3.okx.com/xlayer/bridge",
+      "embeddable": "YES - and this is the best static-site option. The official @okxweb3/dex-widget npm package exposes createOkxSwapWidget(), is iframe-based, runs fully client-side with an injected EVM/Solana provider, supports theming, language and fee config, and emits events like OkxEvents.ON_TOKEN_CHANGE. It can be bundled into a static build with no backend. Docs: https://web3.okx.com/build/dev-docs/wallet-api/dex-widget"
+    },
+    {
+      "id": "meson-btc",
+      "name": "Meson - USDC on X Layer <-> native BTC (one hop)",
+      "from": "USDC / USDT0 / WETH / WBTC on X Layer",
+      "to": "Native BTC on the Bitcoin mainnet (or 44 other chains)",
+      "hops": [
+        "Connect wallet on X Layer",
+        "Swap USDC (X Layer) -> BTC (Bitcoin), entering the provider's BTC address as recipient",
+        "Meson relayer settles atomically"
+      ],
+      "custody": "non-custodial",
+      "kyc": "None",
+      "feeEstimate": "Meson advertises near-zero fee and near-zero slippage; a small relayer fee applies. Not independently rate-checked.",
+      "timeEstimate": "Advertised as minutes-fast (typically ~1-2 min).",
+      "verifiedAt": "LIVE-VERIFIED against Meson's own relayer API (relayer.meson.fi/api/v1/list and /limits): X Layer is present as id 'xlayer', chainId 0xc4 (=196), Meson contract 0x25aB3Efd52e6470681CE037cD546Dc60726948D3, with USDC/USD-T0/WETH/WBTC. Bitcoin is a separate live chain entry (chainId 'bitcoin:mainnet', native BTC). TWO CRITICAL CAVEATS I confirmed: (1) Meson's X Layer 'USDC' is 0x74b7F16337b8972027F6196A17a631aC6dE26d22, which is the LEGACY BRIDGED token, NOT Circle-native 0xB6CE...3061 - I verified on-chain that both contracts report symbol 'USDC', so they are visually indistinguishable in a wallet. (2) Hard per-swap limits: USDC min 1 / max 20,000, BTC min 0.0005 / max 0.1.",
+      "evidenceUrl": "https://relayer.meson.fi/api/v1/limits",
+      "embeddable": "No documented iframe/SDK widget found in Meson's docs. A static site can deep-link to meson.fi with prefilled params, but I could not verify an official embeddable widget."
+    },
+    {
+      "id": "ca-wealthsimple-base",
+      "name": "CANADIAN PATH - Wealthsimple -> Base -> CCTP -> X Layer (best Canadian route)",
+      "from": "CAD in a Canadian bank account",
+      "to": "Native USDC on X Layer",
+      "hops": [
+        "Fund Wealthsimple with CAD (bank transfer / Interac)",
+        "Buy USDC",
+        "Withdraw USDC choosing the BASE network to a self-custody EVM address",
+        "Bridge Base -> X Layer via Circle CCTP V2 (domain 37) or the OKX DEX widget"
+      ],
+      "custody": "mixed",
+      "kyc": "Full KYC at Wealthsimple (Canadian-regulated, CIRO-registered). No KYC on the CCTP leg.",
+      "feeEstimate": "Wealthsimple crypto spread (~1.5-2% operating spread) + a withdrawal network fee + cheap Base gas + X Layer gas. Materially cheaper than the Ethereum-network alternative.",
+      "timeEstimate": "CAD funding same-day to 1-2 business days depending on method; crypto withdrawal minutes; CCTP leg minutes.",
+      "verifiedAt": "VERIFIED from Wealthsimple's own help-centre article (retrieved via the Zendesk content API after the HTML was Cloudflare-blocked): 'When withdrawing USDC, you can choose between the Base and Solana networks in addition to Ethereum.' Same article confirms self-custody withdrawal and states a $10,000 CAD daily / $25,000 CAD weekly withdrawal limit across all coins. Wealthsimple does NOT support X Layer - Base is the cheapest supported hand-off chain that CCTP also serves.",
+      "evidenceUrl": "https://help.wealthsimple.com/hc/en-ca/articles/4415114270363-Withdraw-crypto-to-an-external-wallet",
+      "embeddable": "No. Wealthsimple has no widget/API for third parties. A static site can only instruct the user. NOTE: the $10k/day, $25k/week cap makes this unusable for a full home purchase - it is a deposit/reservation rail, not a settlement rail."
+    },
+    {
+      "id": "ca-interac-eth",
+      "name": "CANADIAN PATH - Shakepay / Bitbuy / Newton -> Ethereum -> X Layer",
+      "from": "CAD via Interac e-Transfer",
+      "to": "USDC on Ethereum, then bridged to X Layer",
+      "hops": [
+        "Fund with Interac e-Transfer (same-day, often minutes)",
+        "Buy USDC",
+        "Withdraw USDC on the Ethereum ERC-20 network ONLY",
+        "Bridge Ethereum -> X Layer via CCTP V2, the canonical bridge, or OKX DEX"
+      ],
+      "custody": "mixed",
+      "kyc": "Full KYC; all three are Canadian-regulated (CIRO/MSB).",
+      "feeEstimate": "Platform spread + withdrawal fee + Ethereum L1 gas (the expensive part). Newton advertises free Interac e-Transfers and covers up to $5 CAD of gas on the first daily withdrawal.",
+      "timeEstimate": "Interac e-Transfer funding same-day/instant; ERC-20 withdrawal minutes; bridge leg minutes.",
+      "verifiedAt": "Shakepay VERIFIED from its own USDC help article: Ethereum (ERC-20) network ONLY, with an explicit warning that 'sending USDC on a different network such as BEP, Arbitrum or any other network will result in permanent loss of your crypto.' Bitbuy VERIFIED via its Zendesk network-requirements article: 'USD Coin (USDC) ERC-20 Network' with no L2 option and no X Layer anywhere in the table. Newton (search-tier only, NOT page-verified - its site returned 403): supports USDC, free Interac e-Transfers, withdrawals on Bitcoin and Ethereum-network assets. Netcoins: could not retrieve its network table; UNVERIFIED.",
+      "evidenceUrl": "https://help.shakepay.com/en/articles/11128084-usdc",
+      "embeddable": "No. None of these expose a consumer widget or on-ramp API for third-party sites."
+    },
+    {
+      "id": "aave-borrow",
+      "name": "Aave v3 on X Layer - borrow instead of selling",
+      "from": "Crypto collateral held on X Layer (xBTC, xETH, xSOL, xBETH, xOKSOL, USDT0)",
+      "to": "Borrowed stablecoins (USDT0, USDG, GHO) to fund a purchase without a taxable sale",
+      "hops": [
+        "Bridge/withdraw collateral onto X Layer",
+        "Supply collateral to the Aave v3 X Layer market",
+        "Borrow USDT0 / USDG / GHO against it",
+        "Use borrowed stables for the purchase; repay later"
+      ],
+      "custody": "non-custodial",
+      "kyc": "None",
+      "feeEstimate": "Variable borrow APR set by utilisation; no origination fee. E-mode raises LTV to as high as 88% on correlated pairs versus a typical ~70%.",
+      "timeEstimate": "Immediate once collateral is on X Layer.",
+      "verifiedAt": "CONFIRMED LIVE AND INDEPENDENTLY MEASURED. Aave DAO governance ARFC 'Deploy Aave v3 on X Layer' (thread 23175) specifies Aave v3 with 9 assets - collateral-enabled USDT0, xBTC, xETH, xSOL, xBETH, xOKSOL; borrowable USDT0, USDG, GHO, xBTC, xETH, xSOL. Launch reported 30 March 2026.",
+      "recordTruncated": true,
+      "evidenceUrl": null,
+      "embeddable": null
+    }
+  ]
+}
