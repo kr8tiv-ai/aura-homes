@@ -117,8 +117,15 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
     <LazyMotion features={loadDomAnimation} strict>
       <MotionConfig reducedMotion="user">
         {/* Both are inert on touch and under prefers-reduced-motion, and
-            SmoothScroll no-ops on "/" where the camera rig owns scroll. */}
-        <Cursor />
+            SmoothScroll no-ops on "/" where the camera rig owns scroll.
+
+            The pointer ring is OFF on the story route. On a document page a
+            ring that grows over a link is a nice touch; laid over the meadow
+            it is a 56px translucent disc parked on the composition — it reads
+            as a rendering artifact rather than a cursor, which is exactly how
+            it was reported. The scene now draws no circles of any kind: the
+            in-world hotspot markers are gone too. */}
+        {!isStory && <Cursor />}
         <SmoothScroll />
         {isStory ? (
           <>

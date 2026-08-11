@@ -3,7 +3,10 @@
 import { useMemo, useRef, useState, useLayoutEffect } from "react";
 import * as THREE from "three";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useGLTF, Sparkles, Html, Environment, Lightformer, SoftShadows } from "@react-three/drei";
+/* Html is gone with the hotspot markers — the scene now draws nothing on a
+   DOM layer above the canvas, which is also why nothing in the world can
+   overlap the copy plates any more. */
+import { useGLTF, Sparkles, Environment, Lightformer, SoftShadows } from "@react-three/drei";
 import { EffectComposer, Bloom, Vignette, Noise } from "@react-three/postprocessing";
 import { withBase } from "../../lib/basePath";
 import SceneDetail, { meadowShade, trailTrodden } from "./SceneDetail";
@@ -2210,53 +2213,22 @@ function Props({ dusk }: { dusk: Dusk }) {
   );
 }
 
-/* ------------------------------ hotspots ---------------------------- */
+/* ---------------------------- hotspots: REMOVED ----------------------
+   Three <Html> markers used to float over the glass gable, the solar array
+   and the hot tub — a teal dot in a pale ring, drawn on a DOM layer above
+   the canvas. They were removed on request: because they are screen-space
+   HTML rather than scene geometry they never scaled with distance, so at
+   every camera beat they sat on the composition at a fixed 20px like
+   interface stuck to a landscape, and they reappeared at intervals through
+   the whole scroll.
 
-const HOTSPOTS = [
-  {
-    id: "glass",
-    pos: [0, 2.7, 3.15] as [number, number, number],
-    label: "Glass gable",
-    spec: "Triple-glazed units on the south face — passive gain, zone 7A honest.",
-  },
-  {
-    id: "solar",
-    pos: [2.7, 3.4, 0] as [number, number, number],
-    label: "Solar array",
-    spec: "6.4 kW roof array with battery. December needs the wood stove — published, not hidden.",
-  },
-  {
-    id: "tub",
-    pos: [5.9, 1.5, 5.4] as [number, number, number],
-    label: "Wood-fired tub",
-    spec: "Cedar tub, wood-fired — no grid draw, snow optional.",
-  },
-];
-
-function Hotspots() {
-  const [active, setActive] = useState<string | null>(null);
-  return (
-    <group>
-      {HOTSPOTS.map((h) => (
-        <Html key={h.id} position={h.pos} center occlude zIndexRange={[2, 2]}>
-          <div className={`story-hotspot ${active === h.id ? "on" : ""}`}>
-            <button
-              type="button"
-              aria-label={h.label}
-              onClick={() => setActive(active === h.id ? null : h.id)}
-            >
-              <i />
-            </button>
-            <div className="story-hotspot-chip" role="status">
-              <strong>{h.label}</strong>
-              <span>{h.spec}</span>
-            </div>
-          </div>
-        </Html>
-      ))}
-    </group>
-  );
-}
+   WHAT WENT WITH THEM, so it is not silently lost: each carried a one-line
+   published spec — triple-glazed south face for passive gain in zone 7A,
+   the 6.4 kW array with the honest note that December needs the wood stove,
+   and the wood-fired cedar tub drawing no grid power. None of those claims
+   are orphaned; all three are stated on /overview and priced on /budget,
+   which is where a reader can actually act on them.
+------------------------------------------------------------------- */
 
 /* ------------------------------- rig -------------------------------- */
 
@@ -2587,7 +2559,6 @@ export default function Scene({
       />
 
       <BeatProps progressRef={progressRef} reduced={reduced} />
-      <Hotspots />
 
       {/* chimney wisp; tub steam; fire pit smoke */}
       {/* THE CHIMNEY. Was size 0.62 / opacity 0.3 in the shared near-white

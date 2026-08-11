@@ -1222,78 +1222,11 @@ html.story-gated body { overflow: hidden; }
    replaces was about never painting a DARK PANEL onto a paper page —
    which still holds, because at night there is no paper page to violate. */
 
-/* ---- in-scene hotspots ---- */
-
-.story-hotspot {
-  position: relative;
-  width: 0;
-  height: 0;
-}
-.story-hotspot button {
-  position: absolute;
-  left: -10px;
-  top: -10px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 1.5px solid var(--st-emerald-deep);
-  background: rgb(var(--tone-base) / 0.6);
-  cursor: pointer;
-  padding: 0;
-  transition: transform 0.35s var(--st-ease-out), background 0.3s;
-}
-.story-hotspot button i {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 5px;
-  height: 5px;
-  margin: -2.5px 0 0 -2.5px;
-  border-radius: 50%;
-  background: var(--st-emerald);
-  display: block;
-}
-.story-hotspot button:hover,
-.story-hotspot.on button {
-  transform: scale(1.2);
-  background: var(--st-paper);
-}
-.story-hotspot-chip {
-  position: absolute;
-  left: -120px;
-  bottom: 20px;
-  width: 240px;
-  padding: 0.8rem 0.9rem;
-  background: var(--st-paper);
-  border: 1px solid var(--st-hair);
-  box-shadow: 0 10px 34px -22px rgba(23, 36, 28, 0.5);
-  opacity: 0;
-  transform: translateY(6px);
-  pointer-events: none;
-  transition: opacity 0.3s, transform 0.4s var(--st-ease-out);
-  font-family: var(--st-body-font);
-  text-align: left;
-}
-.story-hotspot.on .story-hotspot-chip {
-  opacity: 1;
-  transform: none;
-}
-.story-hotspot-chip strong {
-  display: block;
-  font-family: var(--st-mono-font);
-  font-size: 0.58rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--st-emerald-label);
-  font-weight: 500;
-}
-.story-hotspot-chip span {
-  display: block;
-  margin-top: 0.35rem;
-  font-size: 0.76rem;
-  line-height: 1.5;
-  color: var(--st-ink-dim);
-}
+/* ---- in-scene hotspots: REMOVED ----
+   The three <Html> markers they styled are gone from Scene.tsx. They were
+   the only thing the scene drew on a DOM layer above the canvas, so with
+   them go both the floating dots and any chance of world content landing
+   on top of a copy plate. */
 
 /* ---- closing sheet ---- */
 
