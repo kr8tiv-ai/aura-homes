@@ -38,3 +38,15 @@ test("mobile uses the safe scene tier and a complete menu without horizontal ove
   }));
   expect(widths.scroll).toBe(widths.client);
 });
+
+test("the landing film serves a sharp desktop source without making mobile download it", async ({ page }) => {
+  await page.goto("/");
+  const video = page.locator("video.story-gate-video");
+  await expect(video).toBeVisible();
+  await expect(video.locator('source[media="(min-width: 900px)"]')).toHaveAttribute(
+    "src",
+    /enter-1920\.av1\.webm$/,
+  );
+  await expect(video.locator('source[type="video\/mp4"]')).toHaveAttribute("src", /enter\.mp4$/);
+  await expect(video).toHaveAttribute("poster", /enter-poster\.avif$/);
+});

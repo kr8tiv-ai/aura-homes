@@ -49,8 +49,10 @@ export function EnterGate({
   /* ---- the gate film ----
      The founder's Grok-generated establishing film plays as a muted looping
      cover behind the gate copy. Asset contract (app/public/video/enter.mp4):
-     H.264 yuv420p, faststart, no audio track, seamless loop, currently
-     1280x872 / 15 s / 3.44 MB — keep any replacement in that class.
+     Desktop browsers that decode AV1 receive the 1920-wide, lightly restored
+     source; mobile and compatibility clients keep the 1280-wide H.264 file.
+     Both are yuv420p, silent and 15 s. The media query prevents phones from
+     paying for desktop pixels, while the 1920 AVIF poster costs only 24 KB.
      Degradation is graceful and free of 404 spinners: the file ships with
      the bundle, and if it ever errors (or the visitor asks for reduced
      motion) the video unmounts and the gate is exactly the pre-film paper
@@ -103,10 +105,9 @@ export function EnterGate({
         <>
           <video
             className="story-gate-video"
-            src={withBase("/video/enter.mp4")}
-            /* the film IS the LCP element: a 13KB AVIF poster paints the
+            /* the film IS the LCP element: a 24KB AVIF poster paints the
                first frame immediately while preload="metadata" keeps the
-               3.5MB stream from competing with fonts and the scene for the
+               stream from competing with fonts and the scene for the
                wire (ELEVATION-BRIEF §4.3). autoplay still pulls the stream
                the moment metadata is in; the poster covers the gap. */
             poster={withBase("/video/enter-poster.avif")}
@@ -120,7 +121,14 @@ export function EnterGate({
               if (el) el.muted = true;
             }}
             onError={() => setVideoOk(false)}
-          />
+          >
+            <source
+              src={withBase("/video/enter-1920.av1.webm")}
+              type={'video/webm; codecs="av01.0.08M.08"'}
+              media="(min-width: 900px)"
+            />
+            <source src={withBase("/video/enter.mp4")} type="video/mp4" />
+          </video>
           <div className="story-gate-scrim" aria-hidden />
         </>
       )}
