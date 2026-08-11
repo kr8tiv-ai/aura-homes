@@ -273,8 +273,10 @@ function fromLadder(
   availW: number,
   availH: number,
 ): DrawScale {
+  /* Nothing to measure. Printing "1/4\" = 1'-0\"" on a sheet with nothing on
+     it is a small lie of exactly the kind this set is not allowed to tell. */
   if (!(wFt > 0) || !(hFt > 0) || !Number.isFinite(wFt) || !Number.isFinite(hFt)) {
-    return { label: ladder[0][0], ptPerFt: ladder[0][1], exact: true };
+    return { label: "NOT TO SCALE — NOTHING TO DRAW", ptPerFt: ladder[0][1], exact: false };
   }
   for (const [label, ptPerFt] of ladder) {
     if (wFt * ptPerFt <= availW && hFt * ptPerFt <= availH) {
@@ -446,7 +448,15 @@ export function dim(
   );
 }
 
-/** A level line with a tag — the way a section or elevation calls out a datum. */
+/**
+ * A level line with a tag — the way a section or elevation calls out a datum.
+ *
+ * Label and value share ONE line rather than stacking. Two lines per tag reads
+ * better on a big drawing and collides on a small one: at 1/16" = 1'-0" the
+ * 2'-9" between finished floor and grade is twelve points of paper, and a
+ * two-line tag needs twenty. A drawing that becomes unreadable at the scale it
+ * had to drop to is a drawing that lied about fitting.
+ */
 export function levelTag(
   out: string[],
   x0: number,
@@ -456,9 +466,16 @@ export function levelTag(
   value: string,
 ): void {
   out.push(line(x0, y, x1, y, "adw-hair", 0.5, DASH_CENTRE));
-  out.push(text(x1 + 4, y - 3, "adw-t-dim", "7px", label, ` letter-spacing="0.6"`));
-  out.push(text(x1 + 4, y + 7, "adw-t-ink", "7.5px", value));
+  out.push(text(x1 + 4, y - 2.5, "adw-t-dim", "6.8px", label, ` letter-spacing="0.6"`));
+  // 4.9 pt per uppercase character at 6.8px including the letter-spacing,
+  // plus a word gap. An estimate, but one that under-fills rather than over-
+  // fills, so the value never runs back over the label.
+  out.push(text(x1 + 11 + label.length * 4.9, y - 2.5, "adw-t-ink", "7.2px", value));
 }
+
+/** How wide `levelTag` will be, so a caller can reserve paper for it. */
+export const levelTagWidth = (label: string, value: string): number =>
+  15 + label.length * 4.9 + value.length * 4.4;
 
 /** A leader line with a note at its end — the callout an assembly needs. */
 export function leader(

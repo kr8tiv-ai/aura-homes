@@ -238,6 +238,22 @@ const MATERIAL_LABEL = (m: HomeSpec["material"]): string => m.replace(/_/g, " ")
 const DIM_RESERVE_W = 150;
 const DIM_RESERVE_H = 130;
 
+/**
+ * How a roof pitch is lettered.
+ *
+ * The BUILT angle leads, because that is what the drawing is drawn at and what
+ * a framer sets a rafter to. `Roof.pitchDeg` is a parameter and for two of the
+ * five forms it is not the built angle — `spec.ts` doubles the rise on an
+ * A-frame and slides the ridge off centre on a saltbox. Printing the parameter
+ * beside a rise-over-12 taken from the built slope would put two numbers on
+ * the sheet that contradict each other, so when they differ both appear and
+ * the difference is named.
+ */
+function pitchLabel(builtDeg: number, specDeg: number, slope: number): string {
+  const base = `${deg(builtDeg)} (${riseOver12(slope)})`;
+  return Math.abs(builtDeg - specDeg) < 0.5 ? base : `${base} as built; spec pitch ${deg(specDeg)}`;
+}
+
 /** The nearest of `lib/design/parcel.ts`'s eight facings to a bearing. */
 function nearestFacing(bearingDeg: number): Facing {
   const keys = Object.keys(FACING_DEG) as Exclude<Facing, "unknown">[];
@@ -355,6 +371,28 @@ function drawVolumePlan(out: string[], vm: VolumeModel, m: PlanMap, wallFt: numb
       }
     }
   }
+}
+
+/**
+ * The notice a plan or elevation sheet carries when the model is empty.
+ *
+ * A blank sheet with a title block on it looks like a drawing that failed to
+ * print. A blank sheet that says why is a drawing.
+ */
+function emptyNotice(out: string[], notes: string[], what: string): void {
+  const cx = (CONTENT.x0 + CONTENT.x1) / 2;
+  const cy = (CONTENT.y0 + CONTENT.y1) / 2;
+  out.push(rect(CONTENT.x0 + 60, cy - 44, CONTENT_W - 120, 88, "adw-hair", 0.8, DASH_HIDDEN));
+  out.push(
+    text(cx, cy - 10, "adw-t-accent", "13px", "NOTHING TO DRAW", ` text-anchor="middle" letter-spacing="2"`),
+  );
+  out.push(
+    text(cx, cy + 12, "adw-t-dim", "8px", `This model has no volumes, so there is no ${what} on it.`, ` text-anchor="middle"`),
+  );
+  notes.push(
+    `This model has no volumes, so this sheet has no ${what} on it. It is issued saying so rather ` +
+      `than issued blank — a blank sheet in a set reads as a drawing that failed to print.`,
+  );
 }
 
 const centroid = (pts: readonly (readonly [number, number])[]): readonly [number, number] => {
@@ -481,7 +519,9 @@ function coverSheet(ctx: Ctx, index: { number: string; title: string; scale: str
     const s = archScale(box.maxX - box.minX, box.maxZ - box.minZ, 230, 210);
     const m = planMap(box, s, keyX + (230 - (box.maxX - box.minX) * s.ptPerFt) / 2, keyY + 20);
     out.push(text(keyX, keyY, "adw-t-ink", "10px", "KEY PLAN", ` letter-spacing="1.6"`));
-    out.push(text(keyX + 250, keyY, "adw-t-dim", "7px", s.label, ` text-anchor="end"`));
+    // the scale sits under the title, not out at the right edge where the
+    // north arrow is
+    out.push(text(keyX, keyY + 12, "adw-t-dim", "7px", s.label));
     for (const vm of model.volumes) {
       out.push(poly(vm.roofPlan.map(m.pt), "adw-hair", 0.6, DASH_HIDDEN));
       out.push(poly(vm.outer.map(m.pt), "adw-ink", 1.1));
@@ -578,8 +618,14 @@ function siteSheet(ctx: Ctx): DrawingSheet {
         );
       }
       if (model.deck) out.push(poly(model.deck.corners.map(m.pt), "adw-hair", 0.8, DASH_FINE));
-      dim(out, m.px(box.minX), m.py(box.minZ), m.px(box.maxX), m.py(box.minZ), fmtFt(wFt), -1, 20);
-      dim(out, m.px(box.maxX), m.py(box.minZ), m.px(box.maxX), m.py(box.maxZ), fmtFt(dFt), -1, 20);
+      // the roof extent is the line a setback is measured to when a bylaw
+      // limits projections; the deck is called out separately or not at all
+      const bBox = boxOf(model.volumes.map((vm) => vm.roofPlan));
+      dim(out, m.px(bBox.minX), m.py(bBox.minZ), m.px(bBox.maxX), m.py(bBox.minZ), `${fmtFt(bBox.maxX - bBox.minX)} INCL. OVERHANGS`, -1, 20);
+      dim(out, m.px(bBox.maxX), m.py(bBox.minZ), m.px(bBox.maxX), m.py(bBox.maxZ), `${fmtFt(bBox.maxZ - bBox.minZ)} INCL. OVERHANGS`, -1, 20);
+      if (model.deck) {
+        dim(out, m.px(box.maxX), m.py(box.minZ), m.px(box.maxX), m.py(box.maxZ), `${fmtFt(dFt)} INCL. DECK`, -1, 46);
+      }
       northArrow(out, CONTENT.x1 - 40, drawTop + 20, 14);
       scaleBar(out, CONTENT.x0 + 10, CONTENT.y1 - 12, s);
     }
@@ -634,29 +680,45 @@ function siteSheet(ctx: Ctx): DrawingSheet {
       dim(out, originX, ly(parcel.rearSetbackFt), originX, originY, fmtFt(parcel.rearSetbackFt), -1, 16);
       dim(out, originX, originY + ld, originX, ly(parcel.lotDepthFt - parcel.frontSetbackFt), fmtFt(parcel.frontSetbackFt), -1, 40);
 
-      // ---- the home inside the envelope
+      /* ---- the home inside the envelope.
+         THE ONE ROTATION ON THIS SHEET, and it has to be here. Every other
+         plan in this set is drawn NORTH UP; a site plan is drawn with the
+         FRONT LOT LINE AT THE BOTTOM, which is how one is read. Those two
+         frames are the same thing only when the front faces due south. So the
+         home's world geometry is turned by (180° − front bearing) before it is
+         placed, and the north arrow is turned by the same angle — which is why
+         a lot facing east comes out with north pointing across the page and
+         the house sitting square to the lot lines rather than square to the
+         compass. Drawing the lot one way and the house the other would put the
+         home on the paper at up to ninety degrees to where it really sits. */
       if (model.volumes.length > 0) {
-        const box = model.boundsWithRoof;
-        const homeW = box.maxX - box.minX;
-        const homeD = box.maxZ - box.minZ;
+        const theta = ((180 - spec.siting.frontFacesDeg) * Math.PI) / 180;
+        const ct = Math.cos(theta);
+        const st = Math.sin(theta);
+        const rot = (p: Pt): Pt => [p[0] * ct - p[1] * st, p[0] * st + p[1] * ct];
+
+        const rotRoof = model.volumes.map((vm) => vm.roofPlan.map(rot));
+        const rotOuter = model.volumes.map((vm) => vm.outer.map(rot));
+        const rotDeck = model.deck ? model.deck.corners.map(rot) : null;
+        const rbox = boxOf([...rotRoof, ...(rotDeck ? [rotDeck] : [])]);
+        const homeW = rbox.maxX - rbox.minX;
+        const homeD = rbox.maxZ - rbox.minZ;
+
         const fromLeft = parcel.homeFromLeftFt ?? (parcel.lotWidthFt - homeW) / 2;
         const fromFront = parcel.homeFromFrontFt ?? parcel.frontSetbackFt;
         const hx = lx(fromLeft);
         const hy = ly(parcel.lotDepthFt - fromFront - homeD);
-        const m: PlanMap = {
-          s,
-          px: (x) => hx + (x - box.minX) * s.ptPerFt,
-          py: (z) => hy + (z - box.minZ) * s.ptPerFt,
-          pt: (p) => [hx + (p[0] - box.minX) * s.ptPerFt, hy + (p[1] - box.minZ) * s.ptPerFt] as const,
-          widthPt: homeW * s.ptPerFt,
-          heightPt: homeD * s.ptPerFt,
-        };
-        for (const vm of model.volumes) {
-          out.push(poly(vm.roofPlan.map(m.pt), "adw-hair", 0.6, DASH_HIDDEN));
-          out.push(poly(vm.outer.map(m.pt), "adw-poche", 0, ' opacity="0.14" stroke="none"'));
-          out.push(poly(vm.outer.map(m.pt), "adw-ink", 1.2));
-        }
-        if (model.deck) out.push(poly(model.deck.corners.map(m.pt), "adw-hair", 0.8, DASH_FINE));
+        const P = (p: Pt): readonly [number, number] => [
+          hx + (p[0] - rbox.minX) * s.ptPerFt,
+          hy + (p[1] - rbox.minZ) * s.ptPerFt,
+        ];
+
+        rotOuter.forEach((outer, i) => {
+          out.push(poly(rotRoof[i].map(P), "adw-hair", 0.6, DASH_HIDDEN));
+          out.push(poly(outer.map(P), "adw-poche", 0, ' opacity="0.14" stroke="none"'));
+          out.push(poly(outer.map(P), "adw-ink", 1.2));
+        });
+        if (rotDeck) out.push(poly(rotDeck.map(P), "adw-hair", 0.8, DASH_FINE));
         out.push(
           text(hx + (homeW * s.ptPerFt) / 2, hy + (homeD * s.ptPerFt) / 2, "adw-t-ink", "7.5px", "HOME", ` text-anchor="middle" letter-spacing="1"`),
         );
@@ -730,6 +792,10 @@ function siteSheet(ctx: Ctx): DrawingSheet {
         `Aura has not read your district's land use bylaw and prints no maximum. Most bylaws count ` +
         `accessory buildings and many count decks and covered areas, so the deck and the hot tub ` +
         `are likely part of your real figure.`,
+      `This sheet is composed with the FRONT LOT LINE AT THE BOTTOM, so the north arrow is turned ` +
+        `to the ${deg(spec.siting.frontFacesDeg)} bearing you gave rather than pointing up the page. ` +
+        `Every other plan in this set (A2, A3, A4) is drawn NORTH UP — check the arrow on each sheet ` +
+        `before scaling anything off it against this one.`,
       "The home is drawn SQUARE TO THE LOT LINES. A rotated home is legal and often better for " +
         "solar, and it uses more of the buildable envelope — that case is not modelled here.",
       "Easements, environmental reserve, riparian and daylighting setbacks, right-of-way " +
@@ -774,9 +840,11 @@ function foundationSheet(ctx: Ctx): DrawingSheet {
   const notes: string[] = [];
 
   const box = model.bounds;
+  // raw extents into the scale picker, so an empty model gets "NOTHING TO
+  // DRAW" rather than a scale printed over a blank sheet
+  const s = archScale(box.maxX - box.minX, box.maxZ - box.minZ, CONTENT_W - DIM_RESERVE_W, CONTENT_H - DIM_RESERVE_H);
   const wFt = Math.max(1, box.maxX - box.minX);
   const dFt = Math.max(1, box.maxZ - box.minZ);
-  const s = archScale(wFt, dFt, CONTENT_W - DIM_RESERVE_W, CONTENT_H - DIM_RESERVE_H);
   const m = planMap(
     box,
     s,
@@ -790,6 +858,8 @@ function foundationSheet(ctx: Ctx): DrawingSheet {
   out.push(
     text(CONTENT.x0, CONTENT.y0 + 27, "adw-t-accent", "7.5px", "INDICATIVE LAYOUT — PENDING A P.ENG PILE DESIGN. NO CONCRETE.", ` letter-spacing="0.8"`),
   );
+
+  if (model.volumes.length === 0) emptyNotice(out, notes, "foundation");
 
   for (const vm of model.volumes) {
     const v = vm.volume;
@@ -948,10 +1018,10 @@ function floorSheet(ctx: Ctx, section: BuildingSection | null): DrawingSheet {
   const notes: string[] = [];
 
   const box = model.bounds;
+  // room for dimension strings on all four sides; raw extents into the picker
+  const s = archScale(box.maxX - box.minX, box.maxZ - box.minZ, CONTENT_W - DIM_RESERVE_W, CONTENT_H - DIM_RESERVE_H);
   const wFt = Math.max(1, box.maxX - box.minX);
   const dFt = Math.max(1, box.maxZ - box.minZ);
-  // room for dimension strings on all four sides
-  const s = archScale(wFt, dFt, CONTENT_W - DIM_RESERVE_W, CONTENT_H - DIM_RESERVE_H);
   const m = planMap(
     box,
     s,
@@ -960,6 +1030,8 @@ function floorSheet(ctx: Ctx, section: BuildingSection | null): DrawingSheet {
   );
 
   out.push(text(CONTENT.x0, CONTENT.y0 + 14, "adw-t-ink", "10px", "FLOOR PLAN", ` letter-spacing="1.6"`));
+
+  if (model.volumes.length === 0) emptyNotice(out, notes, "plan");
 
   // ---- the interior room program, when one was supplied AND it matches
   const roomsDrawn = drawRooms(out, ctx, m, input.rooms ?? null, notes);
@@ -983,17 +1055,19 @@ function floorSheet(ctx: Ctx, section: BuildingSection | null): DrawingSheet {
     }
   }
 
-  // ---- volume labels: the name, the footprint and the dimensions
+  /* ---- volume labels. Lifted above the centroid on purpose: the section cut
+     line runs through the centre of the primary volume, and a label sitting on
+     it is the one collision a floor plan cannot have. */
   if (!roomsDrawn) {
     for (const vm of model.volumes) {
       const c = centroid(vm.outer.map(m.pt));
       out.push(
-        text(c[0], c[1] - 4, "adw-t-ink", "9px", vm.volume.name.toUpperCase(), ` text-anchor="middle" letter-spacing="0.8"`),
+        text(c[0], c[1] - 26, "adw-t-ink", "9px", vm.volume.name.toUpperCase(), ` text-anchor="middle" letter-spacing="0.8"`),
       );
       out.push(
         text(
           c[0],
-          c[1] + 9,
+          c[1] - 14,
           "adw-t-dim",
           "6.5px",
           `${sqFt(vm.footprintSqFt)}  ·  ${fmtFt(vm.volume.widthFt)} × ${fmtFt(vm.volume.depthFt)}${vm.volume.storeys === 2 ? "  ·  2 STOREYS" : ""}`,
@@ -1003,13 +1077,21 @@ function floorSheet(ctx: Ctx, section: BuildingSection | null): DrawingSheet {
     }
   }
 
-  // ---- dimensions: overall outside, and each volume inside
-  const px0 = m.px(box.minX);
-  const px1 = m.px(box.maxX);
-  const py0 = m.py(box.minZ);
-  const py1 = m.py(box.maxZ);
-  dim(out, px0, py0, px1, py0, fmtFt(wFt), -1, 30);
-  dim(out, px1, py0, px1, py1, fmtFt(dFt), -1, 30);
+  /* ---- dimensions. The OVERALL string measures the BUILDING, not the
+     building-plus-deck extent the sheet happens to be framed on: a deck is an
+     attachment and lettering it into the overall size of the home is how a
+     dimension string quietly becomes wrong. */
+  const bBox = boxOf(model.volumes.map((v) => v.outer));
+  const bw = Math.max(0, bBox.maxX - bBox.minX);
+  const bd = Math.max(0, bBox.maxZ - bBox.minZ);
+  const px0 = m.px(bBox.minX);
+  const px1 = m.px(bBox.maxX);
+  const py0 = m.py(bBox.minZ);
+  const py1 = m.py(bBox.maxZ);
+  if (model.volumes.length > 0) {
+    dim(out, px0, py0, px1, py0, fmtFt(bw), -1, 30);
+    dim(out, px1, py0, px1, py1, fmtFt(bd), -1, 30);
+  }
 
   for (const vm of model.volumes) {
     const v = vm.volume;
@@ -1017,11 +1099,16 @@ function floorSheet(ctx: Ctx, section: BuildingSection | null): DrawingSheet {
     // inside dimensions, on the two walls that carry them
     const iw = Math.max(0, v.widthFt - 2 * t);
     const id = Math.max(0, v.depthFt - 2 * t);
-    const a = m.pt(toWorldLocal(v, -v.widthFt / 2 + t, v.depthFt / 2 - t));
-    const b = m.pt(toWorldLocal(v, v.widthFt / 2 - t, v.depthFt / 2 - t));
-    dim(out, a[0], a[1], b[0], b[1], `${fmtFt(iw)} CLEAR`, 1, 14);
-    const c = m.pt(toWorldLocal(v, -v.widthFt / 2 + t, -v.depthFt / 2 + t));
-    dim(out, c[0], c[1], a[0], a[1], `${fmtFt(id)} CLEAR`, 1, 14);
+    /* Both CLEAR strings run INSIDE the volume — that is where a clear
+       dimension belongs — and both are taken off the NORTH and WEST inner
+       faces at a deeper offset than the opening strings, so the two never
+       stack on the same line. The openings crowd the south and east faces on
+       most homes, which is exactly why the clear dimensions leave them. */
+    const nw = m.pt(toWorldLocal(v, -v.widthFt / 2 + t, -v.depthFt / 2 + t));
+    const ne = m.pt(toWorldLocal(v, v.widthFt / 2 - t, -v.depthFt / 2 + t));
+    const sw = m.pt(toWorldLocal(v, -v.widthFt / 2 + t, v.depthFt / 2 - t));
+    dim(out, nw[0], nw[1], ne[0], ne[1], `${fmtFt(iw)} CLEAR`, 1, 34);
+    dim(out, nw[0], nw[1], sw[0], sw[1], `${fmtFt(id)} CLEAR`, -1, 34);
 
     // opening positions along each wall — the string a framer sets out from
     for (const wall of vm.walls) {
@@ -1187,9 +1274,9 @@ function roofSheet(ctx: Ctx): DrawingSheet {
   const notes: string[] = [];
 
   const box = model.boundsWithRoof;
+  const s = archScale(box.maxX - box.minX, box.maxZ - box.minZ, CONTENT_W - DIM_RESERVE_W, CONTENT_H - DIM_RESERVE_H);
   const wFt = Math.max(1, box.maxX - box.minX);
   const dFt = Math.max(1, box.maxZ - box.minZ);
-  const s = archScale(wFt, dFt, CONTENT_W - DIM_RESERVE_W, CONTENT_H - DIM_RESERVE_H);
   const m = planMap(
     box,
     s,
@@ -1198,6 +1285,8 @@ function roofSheet(ctx: Ctx): DrawingSheet {
   );
 
   out.push(text(CONTENT.x0, CONTENT.y0 + 14, "adw-t-ink", "10px", "ROOF PLAN", ` letter-spacing="1.6"`));
+
+  if (model.volumes.length === 0) emptyNotice(out, notes, "roof");
 
   let arrayDrawn = false;
 
@@ -1210,19 +1299,29 @@ function roofSheet(ctx: Ctx): DrawingSheet {
     // roof outline
     out.push(poly(vm.roofPlan.map(m.pt), "adw-ink", 1.4));
 
-    // ridge
+    /* ---- ridge. Lettered near ONE END of the ridge rather than at its
+       midpoint, because the midpoint is exactly where the slope arrows and
+       the array label also want to be. */
     if (vm.ridge) {
       const a = m.pt(vm.ridge[0]);
       const b = m.pt(vm.ridge[1]);
       out.push(line(a[0], a[1], b[0], b[1], "adw-ink", 2));
       out.push(
-        text((a[0] + b[0]) / 2, (a[1] + b[1]) / 2 - 5, "adw-t-ink", "6.5px", `RIDGE  ${fmtFt(roof.ridgeY)} A.F.F.`, ` text-anchor="middle"`),
+        text(
+          a[0] + (b[0] - a[0]) * 0.16,
+          a[1] + (b[1] - a[1]) * 0.16 - 5,
+          "adw-t-ink",
+          "6.5px",
+          `RIDGE  ${fmtFt(roof.ridgeY)} A.F.F.`,
+          ` text-anchor="middle"`,
+        ),
       );
     }
 
-    // slope arrows, one per plane, pointing DOWNSLOPE
-    for (const plane of roof.planes) {
-      const midS = (plane.s0 + plane.s1) / 2;
+    // slope arrows, one per plane, pointing DOWNSLOPE. Set off the centre line
+    // of each plane so the pitch call-out never lands on the array label.
+    roof.planes.forEach((plane, pi) => {
+      const midS = plane.s0 + (plane.s1 - plane.s0) * (pi % 2 === 0 ? 0.68 : 0.32);
       const a0 = plane.a0 + (plane.a1 - plane.a0) * 0.22;
       const a1 = plane.a0 + (plane.a1 - plane.a0) * 0.78;
       const p = m.pt(localFall(v, roof.fallAxis, a0, midS));
@@ -1250,9 +1349,9 @@ function roofSheet(ctx: Ctx): DrawingSheet {
       const label =
         roof.form === "flat"
           ? `FALL ${deg(FLAT_ROOF_FALL_DEG)} TO DRAIN`
-          : `${deg(v.roof.pitchDeg)}  ·  ${riseOver12(roof.slope)}`;
+          : pitchLabel((roof.angleRad * 180) / Math.PI, v.roof.pitchDeg, roof.slope);
       out.push(text(mid[0], mid[1] - 5, "adw-t-ink", "7px", label, ` text-anchor="middle"`));
-    }
+    });
 
     // overhang dimension, on one eave
     const ohEdge = roof.overhangFt;
@@ -1269,18 +1368,28 @@ function roofSheet(ctx: Ctx): DrawingSheet {
       if (arr) {
         out.push(poly(arr.corners.map(m.pt), "adw-accent", 1, DASH_HIDDEN));
         const c = centroid(arr.corners.map(m.pt));
+        // set below the plane's centre so it clears the slope arrow's call-out
         out.push(
-          text(c[0], c[1] - 3, "adw-t-accent", "7px", `PV ARRAY ${fmtG(input.solarKw as number)} kW`, ` text-anchor="middle"`),
+          text(c[0], c[1] + 20, "adw-t-accent", "7px", `PV ARRAY ${fmtG(input.solarKw as number)} kW`, ` text-anchor="middle"`),
         );
-        out.push(text(c[0], c[1] + 7, "adw-t-accent", "6px", `${sqFt(arr.areaSqFt)} INDICATIVE`, ` text-anchor="middle"`));
+        out.push(text(c[0], c[1] + 30, "adw-t-accent", "6px", `${sqFt(arr.areaSqFt)} INDICATIVE FOOTPRINT`, ` text-anchor="middle"`));
         arrayDrawn = true;
         notes.push(
           `The PV array is drawn as an INDICATIVE FOOTPRINT of ${sqFt(arr.areaSqFt)} for ` +
-            `${fmtG(input.solarKw as number)} kW, at about ${ARRAY_SQ_FT_PER_KW} sq ft per kW, placed on ` +
-            `the ${arr.faceLabel} plane because that is the one nearest south. It is a footprint, not ` +
-            `a layout: module count, rail spacing, attachment to a standing-seam roof, fire access ` +
-            `setbacks, snow shed and the rapid-shutdown requirement all belong to the array design.`,
+            `${fmtG(input.solarKw as number)} kW, at about ${ARRAY_SQ_FT_PER_KW} sq ft per kW, on the ` +
+            `${arr.faceLabel} plane. It is a footprint, not a layout: module count, rail spacing, ` +
+            `attachment to a standing-seam roof, fire access setbacks, snow shed and the ` +
+            `rapid-shutdown requirement all belong to the array design.`,
         );
+        if (!arr.facesSouth) {
+          notes.push(
+            "WORTH RAISING WITH THE OWNER: no plane on this roof faces south. The Aura spec is " +
+              "passive solar and an off-grid array in this climate is already fighting a 70–77% " +
+              "December collapse in yield; an east or west plane costs more of it. Turning the " +
+              "volume, changing the roof form to a shed facing south, or ground-mounting the array " +
+              "are the three fixes, and all three are model decisions rather than drawing changes.",
+          );
+        }
       }
     }
   }
@@ -1373,7 +1482,7 @@ function localFall(v: Volume, fallAxis: "x" | "z", a: number, sPos: number): Pt 
 function arrayFootprint(
   vm: VolumeModel,
   kw: number,
-): { corners: Pt[]; areaSqFt: number; faceLabel: string } | null {
+): { corners: Pt[]; areaSqFt: number; faceLabel: string; facesSouth: boolean } | null {
   const roof = vm.roof;
   const v = vm.volume;
   if (roof.planes.length === 0 || kw <= 0) return null;
@@ -1423,7 +1532,17 @@ function arrayFootprint(
   return {
     corners,
     areaSqFt: drawnArea,
-    faceLabel: bestScore > 0.3 ? "south-facing" : bestScore < -0.3 ? "north-facing (the only one available)" : "east/west-facing",
+    /* `bestScore` is the world +Z (south) component of the chosen plane's
+       downslope direction: 1 is due south, 0 is east or west, −1 is north.
+       Saying "the one nearest south" about a plane that faces east would be
+       weaselling, so each band gets its own words. */
+    faceLabel:
+      bestScore > 0.3
+        ? "south-facing"
+        : bestScore < -0.3
+          ? "NORTH-FACING — no plane on this roof faces south, and this is the least bad of them"
+          : "EAST/WEST-FACING — no plane on this roof faces south",
+    facesSouth: bestScore > 0.3,
   };
 }
 
@@ -1435,6 +1554,29 @@ function elevationsSheet(ctx: Ctx): DrawingSheet {
   const { model, spec, input } = ctx;
   const out: string[] = [];
   const notes: string[] = [];
+
+  if (model.volumes.length === 0) {
+    emptyNotice(out, notes, "building to draw in elevation");
+    return {
+      number: "A5",
+      title: "ELEVATIONS",
+      scale: "NOT TO SCALE — NOTHING TO DRAW",
+      notes,
+      svg: sheet({
+        number: "A5",
+        title: "ELEVATIONS",
+        scaleLabel: "NOT TO SCALE — NOTHING TO DRAW",
+        projectName: ctx.projectName,
+        dateISO: input.dateISO,
+        drawnBy: input.drawnBy ?? "AURA",
+        revision: input.revision ?? "0",
+        meta: ctx.meta,
+        body: out.join(""),
+        notes,
+        description: "Elevations, issued empty because the model has no volumes.",
+      }),
+    };
+  }
 
   const elevations = allElevations(model);
 
@@ -1480,6 +1622,10 @@ function elevationsSheet(ctx: Ctx): DrawingSheet {
     "The pitch triangle is drawn only where the slope is in TRUE LENGTH. On a view that looks " +
       "along the fall of the roof the pitch is foreshortened, so it is printed as a note instead " +
       "of drawn as a triangle that would measure wrong off the sheet.",
+    "Roof pitches are lettered AS BUILT. On an A-frame and a saltbox the built angle is not the " +
+      "pitch parameter in the model — an A-frame doubles the rise, and a saltbox holds the same " +
+      "ridge over a shorter run — so where the two differ both numbers are printed rather than " +
+      "one of them quietly winning.",
     "MATERIAL AND FINISH: " +
       MATERIAL_KEYWORDS[spec.material].join(", ") +
       ". Cladding pattern, trim, colour and reveal are design decisions, not model outputs, and no " +
@@ -1487,6 +1633,14 @@ function elevationsSheet(ctx: Ctx): DrawingSheet {
     "NOT SHOWN: guards and handrails, exterior lighting, the wood-stove flue and its required " +
       "height above the ridge, meters and service entries, downpipes, and the crawl-space skirt.",
   );
+
+  if (model.deck) {
+    notes.push(
+      "The deck appears in the views it faces and is drawn at its real level, one step below " +
+        "finished floor. It is NOT included in the overall width dimension, which measures the " +
+        "building including its roof overhangs — the deck is dimensioned on the floor plan (A3).",
+    );
+  }
 
   if ((input.solarKw ?? 0) > 0) {
     notes.push(
@@ -1535,12 +1689,12 @@ function closestElevationTo(bearingDeg: number): "n" | "s" | "e" | "w" {
 }
 
 /** Paper reserved inside one elevation cell, in points. */
-const ELEV_PAD_L = 62; // height dimension string
-const ELEV_PAD_R = 52; // level tags
-const ELEV_PAD_T = 26; // view title
-const ELEV_PAD_B = 34; // overall-width dimension + material line
-const ELEV_GAP_X = 24;
-const ELEV_GAP_Y = 22;
+const ELEV_PAD_L = 58; // height dimension string
+const ELEV_PAD_R = 60; // level tags — see `levelTagWidth`
+const ELEV_PAD_T = 24; // view title
+const ELEV_PAD_B = 52; // overall-width dimension + material line
+const ELEV_GAP_X = 14;
+const ELEV_GAP_Y = 14;
 
 function drawElevation(
   out: string[],
@@ -1631,43 +1785,52 @@ function drawElevation(
   if (trueOne) drawPitchTriangle(out, trueOne, X, Y, elev);
 
   // ---- datums and the height string
+  /* Short tag labels here, long ones on the section. Four elevations share one
+     sheet and every point of the right-hand reserve is a point the drawing
+     does not get — and the reserve is what decides whether the whole sheet
+     holds 1/8" or drops to 3/32". A5 gets RIDGE / EAVE / FLOOR / GRADE; A6,
+     with one drawing and room to spare, gets the full names. */
   const rx = X(elev.uMax) + 10;
   const tallest = elev.volumes.reduce((a, b) => (b.ridgeY > a.ridgeY ? b : a), elev.volumes[0]);
   if (tallest) {
     levelTag(out, X(elev.uMin) - 18, rx, Y(tallest.ridgeY), "RIDGE", fmtFt(tallest.ridgeY));
-    levelTag(out, X(elev.uMin) - 18, rx, Y(tallest.eaveY), "T/O WALL", fmtFt(tallest.eaveY));
+    levelTag(out, X(elev.uMin) - 18, rx, Y(tallest.eaveY), "EAVE", fmtFt(tallest.eaveY));
   }
-  levelTag(out, X(elev.uMin) - 18, rx, Y(0), "FIN. FLOOR", `0'-0"`);
+  levelTag(out, X(elev.uMin) - 18, rx, Y(0), "FLOOR", `0'-0"`);
   levelTag(out, X(elev.uMin) - 18, rx, Y(elev.gradeY), "GRADE", fmtFt(elev.gradeY));
 
   const dx = X(elev.uMin) - 20;
   if (tallest) {
-    dim(out, dx, Y(0), dx, Y(tallest.eaveY), fmtFt(tallest.eaveY), -1, 14);
-    dim(out, dx, Y(tallest.eaveY), dx, Y(tallest.ridgeY), fmtFt(tallest.ridgeY - tallest.eaveY), -1, 14);
-    dim(out, dx, Y(elev.gradeY), dx, Y(tallest.ridgeY), `${fmtFt(tallest.ridgeY - elev.gradeY)} OVERALL`, -1, 34);
+    dim(out, dx, Y(0), dx, Y(tallest.eaveY), fmtFt(tallest.eaveY), -1, 12);
+    dim(out, dx, Y(tallest.eaveY), dx, Y(tallest.ridgeY), fmtFt(tallest.ridgeY - tallest.eaveY), -1, 12);
+    dim(out, dx, Y(elev.gradeY), dx, Y(tallest.ridgeY), `${fmtFt(tallest.ridgeY - elev.gradeY)} OVERALL`, -1, 30);
   }
-  dim(out, dx, Y(elev.gradeY), dx, Y(0), fmtFt(-elev.gradeY), -1, 14);
+  dim(out, dx, Y(elev.gradeY), dx, Y(0), fmtFt(-elev.gradeY), -1, 12);
 
-  /* ---- the overall width. The BUILDING extent (overhangs included, deck
-     excluded) is the number that belongs on a building elevation; when a deck
-     pushes the view wider than that, it gets its own dimension rather than
-     being quietly absorbed into the building's width. */
+  /* ---- the overall width. The BUILDING extent — overhangs included, deck
+     excluded — is the number that belongs on a building elevation. A deck
+     visible in this view is dimensioned on the floor plan, not absorbed into
+     the building's width where it would read as part of the house. */
   const bw = elev.buildingUMax - elev.buildingUMin;
-  dim(out, X(elev.buildingUMin), gY + 16, X(elev.buildingUMax), gY + 16, `${fmtFt(bw)} INCL. OVERHANGS`, 1, 12);
-  if (wFt > bw + 0.05) {
-    dim(out, X(elev.uMin), gY + 16, X(elev.uMax), gY + 16, `${fmtFt(wFt)} OVERALL INCL. DECK`, 1, 30);
-  }
+  dim(out, X(elev.buildingUMin), gY + 14, X(elev.buildingUMax), gY + 14, `${fmtFt(bw)} INCL. OVERHANGS`, 1, 10);
 
-  // ---- the material and pitch note under the drawing
+  // ---- the material and pitch note, keyed off the grade line so it cannot
+  //      drift into the dimension string when the drawing is short
   const pitchNote = withRoof
-    .map((v) =>
-      v.pitchTrue
-        ? `${v.name}: ${deg(v.pitchDeg)} (${riseOver12(v.slope)})`
-        : `${v.name}: ${deg(v.pitchDeg)} (${riseOver12(v.slope)}) — foreshortened in this view`,
+    .map(
+      (v) =>
+        `${v.name}: ${pitchLabel(v.builtPitchDeg, v.pitchDeg, v.slope)}` +
+        (v.pitchTrue ? "" : " — foreshortened in this view"),
     )
     .join("   ·   ");
   out.push(
-    text(cellX, cellY + cellH - 4, "adw-t-dim", "6.4px", `${MATERIAL_LABEL(model.spec.material)} · ${WALL_THICKNESS_MM[model.spec.material]} mm WALL${pitchNote ? "   ·   " + pitchNote : ""}`),
+    text(
+      cellX,
+      Math.min(gY + 44, cellY + cellH - 4),
+      "adw-t-dim",
+      "6.4px",
+      `${MATERIAL_LABEL(model.spec.material)} · ${WALL_THICKNESS_MM[model.spec.material]} mm WALL${pitchNote ? "   ·   " + pitchNote : ""}`,
+    ),
   );
 }
 
@@ -1809,7 +1972,7 @@ function sectionSheet(ctx: Ctx, section: BuildingSection | null): DrawingSheet {
   const dx = X(section.uMin) - 24;
   dim(out, dx, Y(0), dx, Y(section.eaveY), `${fmtFt(section.eaveY)} FLOOR TO T/O WALL`, -1, 16);
   dim(out, dx, Y(section.gradeY), dx, Y(section.ridgeY), `${fmtFt(section.ridgeY - section.gradeY)} OVERALL`, -1, 40);
-  dim(out, X(section.uMin), gY + 22, X(section.uMax), gY + 22, fmtFt(wFt), 1, 12);
+  dim(out, X(section.uMin), gY + 12, X(section.uMax), gY + 12, fmtFt(wFt), 1, 10);
   // clear height, measured at the high point of the cut
   const midU = (section.uMin + section.uMax) / 2;
   dim(out, X(midU) + 6, Y(0), X(midU) + 6, Y(section.clearHeightFt), `${fmtFt(section.clearHeightFt)} CLEAR`, 1, 10);
@@ -1851,10 +2014,10 @@ function sectionSheet(ctx: Ctx, section: BuildingSection | null): DrawingSheet {
   );
   leader(
     out,
-    X((section.uMin + section.uMax) / 2 - 2),
+    X(section.uMin + (section.uMax - section.uMin) * 0.28),
     Y(-FLOOR_SLAB_FT / 2),
     CONTENT.x0 + 6,
-    CONTENT.y1 - 34,
+    CONTENT.y1 - 46,
     [
       "FLOOR ASSEMBLY",
       `${fmtFt(FLOOR_SLAB_FT)} structure over screw piles`,
@@ -1864,7 +2027,8 @@ function sectionSheet(ctx: Ctx, section: BuildingSection | null): DrawingSheet {
     "start",
   );
 
-  scaleBar(out, CONTENT.x0 + 10, CONTENT.y1 - 12, s);
+  // scale bar to the right, clear of the floor callout in the bottom-left
+  scaleBar(out, CONTENT.x1 - 210, CONTENT.y1 - 22, s);
 
   notes.push(
     ...section.notes,

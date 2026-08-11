@@ -1040,7 +1040,21 @@ export interface ElevationVolume {
   ridgeY: number;
   /** the pitch is in TRUE LENGTH in this view — a pitch triangle may be drawn */
   pitchTrue: boolean;
+  /** `Roof.pitchDeg` as the owner set it — a PARAMETER, not always the angle */
   pitchDeg: number;
+  /**
+   * The angle the roof plane is actually BUILT at, degrees.
+   *
+   * For a gable, a shed and a flat roof this equals `pitchDeg`. It does NOT
+   * for the other two, and both departures are deliberate in `spec.ts`:
+   * an A-frame DOUBLES the rise (`rise(width, pitch) * 2`), which is what
+   * makes it read as the Aura reference home rather than a steep cottage; a
+   * saltbox slides its ridge off centre and holds the same ridge height over
+   * a shorter run. Lettering `pitchDeg` next to a rise-over-12 derived from
+   * the built slope would put two numbers on the sheet that contradict each
+   * other, so both are carried and the sheet prints the built one.
+   */
+  builtPitchDeg: number;
   slope: number;
   /** u of the high line, when it reads as a point in this view */
   apexU: number | null;
@@ -1259,10 +1273,53 @@ export function elevationOf(model: HomeModel, view: ElevationView): Elevation {
       ridgeY: roof.ridgeY,
       pitchTrue,
       pitchDeg: v.roof.pitchDeg,
+      builtPitchDeg: (roof.angleRad * 180) / Math.PI,
       slope: roof.slope,
       apexU,
     };
   });
+
+  /* The deck is its own body with its own depth, not an extra shape bolted to
+     whichever volume happened to sort last. On a north elevation of a home
+     with a south deck, that distinction is the difference between the deck
+     being correctly hidden behind the house and it being drawn over the
+     front of it. */
+  if (model.deck) {
+    const us = model.deck.corners.map((p) => project(ax, p));
+    const e = extentOf(us);
+    const top = -DECK_STEP_FT;
+    let cx = 0;
+    let cz = 0;
+    for (const p of model.deck.corners) {
+      cx += p[0] / model.deck.corners.length;
+      cz += p[1] / model.deck.corners.length;
+    }
+    volumes.push({
+      volumeId: "__deck",
+      name: "Deck",
+      shapes: [
+        {
+          layer: "deck",
+          pts: [
+            [e.min, top - DECK_SLAB_FT - DECK_BEAM_FT],
+            [e.max, top - DECK_SLAB_FT - DECK_BEAM_FT],
+            [e.max, top],
+            [e.min, top],
+          ],
+          depth: depthOf(ax, [cx, cz]),
+        },
+      ],
+      openings: [],
+      depth: depthOf(ax, [cx, cz]),
+      eaveY: 0,
+      ridgeY: 0,
+      pitchTrue: false,
+      pitchDeg: 0,
+      builtPitchDeg: 0,
+      slope: 0,
+      apexU: null,
+    });
+  }
 
   // Painter's algorithm: draw far first. Correct for masses that do not
   // interpenetrate, which is the case the builder's overlap check enforces.
@@ -1274,26 +1331,6 @@ export function elevationOf(model: HomeModel, view: ElevationView): Elevation {
         "interpenetrate — a model with overlapping volumes needs the overlap fixed before this " +
         "elevation can be trusted.",
     );
-  }
-
-  // deck, drawn once — it belongs to the first volume
-  if (model.deck) {
-    const us = model.deck.corners.map((p) => project(ax, p));
-    const e = extentOf(us);
-    const top = -DECK_STEP_FT;
-    const target = volumes[volumes.length - 1];
-    if (target) {
-      target.shapes.push({
-        layer: "deck",
-        pts: [
-          [e.min, top - DECK_SLAB_FT - DECK_BEAM_FT],
-          [e.max, top - DECK_SLAB_FT - DECK_BEAM_FT],
-          [e.max, top],
-          [e.min, top],
-        ],
-        depth: depthOf(ax, model.deck.corners[0]),
-      });
-    }
   }
 
   // the exposed piles, deduped by u so the field reads as the columns you
