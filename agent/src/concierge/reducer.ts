@@ -217,6 +217,17 @@ export function offlineAnswer(order: Order, question: string, ctx: ConciergeCont
       "not a promise in the fine print."
     );
   }
+  if (/(changenow|global.*buy|buy.*manufacturer|manufacturer.*crypto|third.party.*purchase)/.test(q)) {
+    return (
+      "For a third-party manufacturer purchase, I guide rather than transact: first confirm the " +
+      "legal seller, product, destination, code path, written price and delivery terms; then verify " +
+      "the exact native X Layer USDC contract and a live conversion pair; finally obtain a fresh " +
+      "quote, independently confirm the seller's receiving network/address and send a test amount. " +
+      "The ChangeNOW partner API is not connected in this static build, and its credential must " +
+      "never be exposed in the browser. Aura's X Layer testnet escrow is a separate build-order " +
+      "demo and does not protect a purchase from an outside manufacturer."
+    );
+  }
   if (/(usdc|crypto|pay|payment|wallet|x layer|stablecoin)/.test(q)) {
     return (
       "Prices are in Canadian dollars; settlement is native Circle USDC on X Layer (testnet 1952 for " +

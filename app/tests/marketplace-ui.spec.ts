@@ -36,3 +36,19 @@ test("contractor evidence filters and legal-name verification stay explicit", as
   await expect(page.getByText("Current WCB clearance is not confirmed.")).toHaveCount(0);
   await expect(page.getByText("Active Alberta residential builder licence is not confirmed.")).toBeVisible();
 });
+
+test("the global buy guide filters evidence and blocks an unconnected ChangeNOW path", async ({ page }) => {
+  await page.goto("/buy");
+  await page.getByRole("combobox", { name: "Destination", exact: true }).selectOption("europe");
+  await page.getByRole("combobox", { name: "What you want to buy", exact: true }).selectOption("existing-property");
+  await expect(page.locator("article")).toHaveCount(1);
+  await expect(page.getByRole("heading", { name: "Crypto Emporium", exact: true })).toBeVisible();
+  await expect(page.getByText("ChangeNOW partner path")).toBeVisible();
+  await expect(page.getByText("Not connected", { exact: true })).toBeVisible();
+  await expect(page.getByText("0xB6CEceAB302E2E4948951eE7843FC24E92933061")).toBeVisible();
+  await expect(page.getByText("The conversion quote is missing or expired.")).toBeVisible();
+  await expect(page.getByRole("button", { name: /send|swap|pay/i })).toHaveCount(0);
+  await page.getByRole("link", { name: "Walk through with Aura" }).click();
+  await expect(page).toHaveURL(/\/concierge\?ask=/);
+  await expect(page.getByText(/For a third-party manufacturer purchase, I guide rather than transact/)).toBeVisible();
+});

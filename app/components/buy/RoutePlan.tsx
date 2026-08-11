@@ -1,302 +1,174 @@
 "use client";
 
-/* THE ROUTE.
-
-   Three legs, and the page automates none of them. That is the point:
-   Aura shows the hops, the fees, the custody, the KYC and the gaps, then
-   hands you the link and gets out of the way. Nothing here simulates a
-   transfer, quotes a rate, or moves a token.
-
-   The legs are honest about their own seams — including the one that
-   breaks: leg 1 can deliver a different USDC contract than leg 2 accepts,
-   and both report the symbol "USDC". That is stated where it bites. */
-
+import Link from "next/link";
 import { Reveal, Stagger, StaggerItem } from "@/components/Reveal";
-import type { Provider, XRoute } from "./data";
-import {
-  BORROW_ROUTE_ID,
-  CONVERT_ROUTE_ID,
-  DEFAULT_ENTRY_ROUTE_ID,
-  ENTRY_ROUTE_IDS,
-  routeById,
-  settlementAsset,
-} from "./data";
+import { changeNowReadiness } from "@/lib/marketplace/buyReadiness";
+import type { Provider } from "./data";
+import { BORROW_ROUTE_ID, CONVERT_ROUTE_ID, routeById, settlementAsset } from "./data";
 
-/* The only two routes in the dataset with a first-party app a reader can
-   actually open. Everything else is contract-level, an exchange screen
-   inside an account, or a help article — so it gets its evidence link and
-   an instruction, never an invented deep link. */
-const APP_LINK: Record<string, { href: string; label: string }> = {
-  "okx-dex-bridge": { href: "https://web3.okx.com/xlayer/bridge", label: "Open the OKX bridge" },
-  "meson-btc": { href: "https://meson.fi/", label: "Open Meson" },
-};
+const NATIVE_USDC_XLAYER = "0xB6CEceAB302E2E4948951eE7843FC24E92933061";
+const LEGACY_USDC_XLAYER = "0x74b7F16337b8972027F6196A17a631aC6dE26d22";
 
-function Fact({ label, children }: { label: string; children: React.ReactNode }) {
+function StepHeading({ n, eyebrow, title }: { n: number; eyebrow: string; title: string }) {
   return (
-    <div>
-      <p className="aura-label mb-1">{label}</p>
-      <p className="text-xs leading-relaxed text-aura-text/75">{children}</p>
-    </div>
-  );
-}
-
-function LegCard({
-  n,
-  title,
-  route,
-  note,
-}: {
-  n: number;
-  title: string;
-  route: XRoute;
-  note?: React.ReactNode;
-}) {
-  const app = APP_LINK[route.id];
-  return (
-    <div className="aura-panel aura-panel-lift p-7">
-      <div className="flex flex-wrap items-baseline gap-4">
-        <span className="font-mono text-sm text-aura-violet">{String(n).padStart(2, "0")}</span>
-        <div className="min-w-[14rem] flex-1">
-          <p className="aura-label">{title}</p>
-          <h3 className="mt-1.5 font-display text-[1.05rem] font-medium tracking-[-0.01em]">
-            {route.name}
-          </h3>
-          <p className="mt-1.5 text-xs text-aura-text/65">
-            {route.from} <span className="text-aura-teal">&rarr;</span> {route.to}
-          </p>
-        </div>
-      </div>
-
-      <ol className="mt-5 space-y-2 border-t aura-hairline pt-5">
-        {route.hops.map((hop, i) => (
-          <li key={hop} className="flex gap-3 text-xs leading-relaxed text-aura-text/80">
-            <span className="font-mono text-aura-teal">{i + 1}</span>
-            <span>{hop}</span>
-          </li>
-        ))}
-      </ol>
-
-      <div className="mt-5 grid gap-4 border-t aura-hairline pt-5 sm:grid-cols-2">
-        <Fact label="Custody">{route.custody}</Fact>
-        <Fact label="KYC">{route.kyc}</Fact>
-        <Fact label="Fees">{route.feeEstimate}</Fact>
-        <Fact label="Time">{route.timeEstimate}</Fact>
-      </div>
-
-      <div className="mt-5 rounded-lg bg-aura-sunken p-4">
-        <p className="aura-label mb-2">What was actually verified</p>
-        <p className="text-xs leading-relaxed text-aura-text/80">{route.verifiedAt}</p>
-        {route.recordTruncated ? (
-          <p className="mt-2 text-[0.68rem] uppercase leading-relaxed tracking-label text-aura-violet">
-            This verification record arrived incomplete. The rest of it — including the evidence
-            URL — is missing, and is not reconstructed here.
-          </p>
-        ) : null}
-      </div>
-
-      {note ? <div className="mt-5">{note}</div> : null}
-
-      <div className="mt-5 border-t aura-hairline pt-5">
-        <p className="text-xs leading-relaxed text-aura-text/70">
-          <span className="font-medium text-aura-text">You do this leg yourself,</span> in your own
-          wallet or account. This page does not run it, cannot run it, and never holds your funds.
-          {route.embeddable ? (
-            <>
-              {" "}
-              <span className="text-aura-text/55">Technical note: {route.embeddable}</span>
-            </>
-          ) : null}
-        </p>
-        <div className="mt-4 flex flex-wrap items-center gap-5">
-          {app ? (
-            <a
-              href={app.href}
-              target="_blank"
-              rel="noreferrer"
-              data-cursor="Open"
-              className="rounded-full bg-aura-ink px-4 py-2 font-mono text-[0.65rem] uppercase tracking-label text-aura-paper transition-opacity hover:opacity-85"
-            >
-              {app.label}
-            </a>
-          ) : null}
-          {route.evidenceUrl ? (
-            <a
-              href={route.evidenceUrl}
-              target="_blank"
-              rel="noreferrer"
-              data-cursor="Evidence"
-              className="font-mono text-[0.65rem] uppercase tracking-label text-aura-emerald underline underline-offset-4"
-            >
-              Read the evidence
-            </a>
-          ) : (
-            <span className="font-mono text-[0.65rem] uppercase tracking-label text-aura-text/45">
-              No evidence URL on record
-            </span>
-          )}
-        </div>
+    <div className="flex flex-wrap items-baseline gap-4">
+      <span className="font-mono text-sm text-aura-violet">{String(n).padStart(2, "0")}</span>
+      <div className="min-w-[14rem] flex-1">
+        <p className="aura-label">{eyebrow}</p>
+        <h3 className="mt-1.5 font-display text-[1.05rem] font-medium tracking-[-0.01em]">
+          {title}
+        </h3>
       </div>
     </div>
   );
 }
 
-export default function RoutePlan({
-  provider,
-  entryRouteId,
-  onEntryRoute,
-}: {
-  provider: Provider;
-  entryRouteId: string;
-  onEntryRoute: (id: string) => void;
-}) {
-  const entry = routeById(entryRouteId) ?? routeById(DEFAULT_ENTRY_ROUTE_ID)!;
-  const convert = routeById(CONVERT_ROUTE_ID)!;
-  const borrow = routeById(BORROW_ROUTE_ID)!;
+export default function RoutePlan({ provider }: { provider: Provider }) {
   const settles = settlementAsset(provider);
+  const meson = routeById(CONVERT_ROUTE_ID)!;
+  const borrow = routeById(BORROW_ROUTE_ID)!;
+  const changeNow = changeNowReadiness(
+    {
+      partnerApiConfigured: false,
+      exactPairVerified: false,
+      quoteExpiresAtISO: null,
+      recipientVerified: false,
+      termsAccepted: false,
+    },
+    new Date(),
+  );
+  const guideQuestion = `Guide me through buying from ${provider.name} with native USDC on X Layer. Explain the ChangeNOW and manufacturer verification gates without moving funds.`;
 
   return (
     <div>
       <Reveal y={12}>
-        <p className="aura-label">The route</p>
+        <p className="aura-label">The guided route</p>
         <h2 className="mt-2 font-display text-[1.6rem] font-medium tracking-[-0.02em]">
-          From USDC on X Layer to {provider.name}
+          From native USDC on X Layer to {provider.name}
         </h2>
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-aura-text/75">
-          {settles ? (
-            <>
-              {provider.name} names {settles} among the assets it takes, and {settles} is what the
-              one live-verified X Layer hop actually settles into. Meson lists 44 other chains, but
-              the Bitcoin leg is the one that was checked against its relayer API in this sweep, so
-              it is the one drawn here. Three legs: get onto X Layer, convert, then send it
-              yourself. Aura runs none of them.
-            </>
-          ) : (
-            <>
-              No route can be planned. {provider.name} has never named a coin it accepts, so there
-              is no destination asset to route into — the source calls it
-              &ldquo;cryptocurrencies&rdquo; and stops there.
-            </>
-          )}
+        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-aura-text/75">
+          This starts where you said the buyer starts: already holding native USDC on X Layer.
+          It is a read-only mainnet route guide; Aura&rsquo;s own checkout remains X Layer testnet-only.
+          No swap, bridge or manufacturer payment is created here, and no API key or recipient
+          address is trusted from page copy.
         </p>
       </Reveal>
 
       {settles ? (
         <Stagger className="mt-8 space-y-6">
           <StaggerItem>
-            <div className="aura-panel p-6">
-              <p className="aura-label mb-3">Leg 01 — choose how you arrive on X Layer</p>
-              <div className="flex flex-wrap gap-2" role="group" aria-label="Choose the entry route">
-                {ENTRY_ROUTE_IDS.map((id) => {
-                  const r = routeById(id);
-                  if (!r) return null;
-                  const on = r.id === entry.id;
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => onEntryRoute(id)}
-                      aria-pressed={on}
-                      data-cursor="Choose"
-                      className={
-                        on
-                          ? "rounded-full bg-aura-ink px-4 py-2 font-mono text-[0.6rem] uppercase tracking-label text-aura-paper"
-                          : "rounded-full border aura-hairline px-4 py-2 font-mono text-[0.6rem] uppercase tracking-label text-aura-text/70 transition-colors hover:border-aura-emerald"
-                      }
-                    >
-                      {r.name}
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="mt-4 text-xs leading-relaxed text-aura-text/70">
-                Default is the OKX DEX bridge aggregator: non-custodial, no exchange account, and
-                the rail X Layer&rsquo;s own bridge page sends people to.{" "}
-                <span className="text-aura-violet">
-                  If you are Canadian, read the KYC line before you pick the OKX exchange
-                  withdrawal — OKX does not serve Canadian residents.
-                </span>
-              </p>
-            </div>
-          </StaggerItem>
-
-          <StaggerItem>
-            <LegCard n={1} title="Arrive on X Layer" route={entry} />
-          </StaggerItem>
-
-          <StaggerItem>
-            <LegCard
-              n={2}
-              title={`Convert to ${settles}`}
-              route={convert}
-              note={
-                <div className="rounded-lg border border-aura-violet/40 bg-aura-violet/[0.06] p-4">
-                  <p className="aura-label mb-2 text-aura-violet">Where these two legs do not meet</p>
-                  <p className="text-xs leading-relaxed text-aura-text/80">
-                    Leg 1 and leg 2 do not necessarily mean the same token. Meson lists X Layer USDC
-                    as the legacy bridged contract 0x74b7&hellip;6d22; Circle&rsquo;s CCTP mints the
-                    native contract 0xB6CE&hellip;3061. Both report the symbol
-                    &ldquo;USDC&rdquo; and are indistinguishable in a wallet. Nothing in this dataset
-                    verifies how to convert one into the other on X Layer, so check the contract
-                    address before you swap. That gap is real and it is not solved here.
-                  </p>
-                  <p className="mt-3 text-xs leading-relaxed text-aura-text/80">
-                    Hard per-swap limits also apply: USDC min 1 / max 20,000, BTC min 0.0005 / max
-                    0.1. A home does not fit in one swap.
-                  </p>
-                </div>
-              }
-            />
-          </StaggerItem>
-
-          <StaggerItem>
-            <div className="aura-panel p-7">
-              <div className="flex flex-wrap items-baseline gap-4">
-                <span className="font-mono text-sm text-aura-violet">03</span>
-                <div className="min-w-[14rem] flex-1">
-                  <p className="aura-label">Send it, and talk to them</p>
-                  <h3 className="mt-1.5 font-display text-[1.05rem] font-medium tracking-[-0.01em]">
-                    You do this one entirely on your own
-                  </h3>
-                </div>
-              </div>
+            <section className="aura-panel aura-panel-lift p-7">
+              <StepHeading n={1} eyebrow="Prove the starting asset" title="The ticker is not enough" />
               <p className="mt-5 border-t aura-hairline pt-5 text-xs leading-relaxed text-aura-text/80">
-                There is no automated last leg and this page will not pretend otherwise. Contact{" "}
-                {provider.name} directly, agree terms in writing, get the receiving address from
-                them on a channel you trust, and send a small test amount first.{" "}
-                {provider.howToPay}
+                The intended source is native Circle USDC on X Layer mainnet (chain 196), contract{" "}
+                <span className="break-all font-mono text-aura-emerald">{NATIVE_USDC_XLAYER}</span>.
+                The legacy bridged token at{" "}
+                <span className="break-all font-mono text-aura-violet">{LEGACY_USDC_XLAYER}</span>{" "}
+                also reports “USDC”. A route is blocked until wallet chain, token contract, balance,
+                destination asset, and recipient network are all exact.
+              </p>
+            </section>
+          </StaggerItem>
+
+          <StaggerItem>
+            <section className="aura-panel aura-panel-lift p-7">
+              <StepHeading n={2} eyebrow={`Convert to ${settles}`} title="Two candidates; neither is silently executable" />
+              <div className="mt-5 grid gap-4 border-t aura-hairline pt-5 lg:grid-cols-2">
+                <div className="rounded-lg border aura-hairline p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="aura-label">ChangeNOW partner path</p>
+                      <p className="mt-2 text-sm font-medium">Not connected</p>
+                    </div>
+                    <span className="rounded-full border border-aura-violet px-3 py-1 font-mono text-[0.58rem] uppercase tracking-label text-aura-violet">
+                      {changeNow.status.replaceAll("-", " ")}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-xs leading-relaxed text-aura-text/70">
+                    ChangeNOW documents a partner API, cross-chain pairs, fixed and standard flows,
+                    and a non-custodial service. Aura has no partner agreement or credential in this
+                    static build, and X Layer native USDC → {settles} has not been returned by a live
+                    currencies/estimate request. The site therefore does not invent a quote or deposit address.
+                  </p>
+                  <ul className="mt-4 space-y-2">
+                    {changeNow.blockers.map((blocker) => (
+                      <li key={blocker} className="flex gap-2 text-[0.68rem] leading-relaxed text-aura-text/60">
+                        <span className="text-aura-violet">·</span><span>{blocker}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-4 flex flex-wrap gap-4 text-[0.62rem] uppercase tracking-label">
+                    <a href="https://changenow.io/api" target="_blank" rel="noreferrer" className="text-aura-emerald underline underline-offset-4">Partner API</a>
+                    <a href="https://changenow.io/terms-of-use/changenow-api" target="_blank" rel="noreferrer" className="text-aura-text/55 underline underline-offset-4">API terms</a>
+                    <a href="https://changenow.io/terms-of-use" target="_blank" rel="noreferrer" className="text-aura-text/55 underline underline-offset-4">User terms</a>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border aura-hairline p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="aura-label">Meson direct path</p>
+                      <p className="mt-2 text-sm font-medium">Legacy token only</p>
+                    </div>
+                    <span className="rounded-full border border-aura-violet px-3 py-1 font-mono text-[0.58rem] uppercase tracking-label text-aura-violet">
+                      Not native USDC
+                    </span>
+                  </div>
+                  <p className="mt-3 text-xs leading-relaxed text-aura-text/70">
+                    {meson.name} was checked for X Layer → native BTC, but the relayer lists the
+                    legacy bridged USDC contract—not the native Circle contract above. Its USDC
+                    limit was 20,000 per swap and BTC 0.1 per swap at the evidence date. That is
+                    not a safe automatic route for a home purchase and is shown only as a researched alternative.
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-4 text-[0.62rem] uppercase tracking-label">
+                    <a href="https://meson.fi/" target="_blank" rel="noreferrer" className="text-aura-emerald underline underline-offset-4">Open Meson</a>
+                    {meson.evidenceUrl ? <a href={meson.evidenceUrl} target="_blank" rel="noreferrer" className="text-aura-text/55 underline underline-offset-4">Evidence record</a> : null}
+                  </div>
+                </div>
+              </div>
+              <p className="mt-5 rounded-lg bg-aura-sunken p-4 text-xs leading-relaxed text-aura-text/75">
+                The likely partner architecture is native X Layer USDC → a verified outbound CCTP
+                destination → a live ChangeNOW pair for {settles}. It does not become a route until
+                the partner API confirms the exact contracts, limits, estimate, expiry and deposit
+                instructions for that transaction. API credentials must stay server-side; this
+                static, account-free app cannot safely contain them.
+              </p>
+            </section>
+          </StaggerItem>
+
+          <StaggerItem>
+            <section className="aura-panel aura-panel-lift p-7">
+              <StepHeading n={3} eyebrow="Pay the manufacturer" title="Invoice first, address second, test transfer third" />
+              <p className="mt-5 border-t aura-hairline pt-5 text-xs leading-relaxed text-aura-text/80">
+                Contact {provider.name}, confirm product availability and delivery in writing,
+                reconcile the legal seller against the invoice, and verify the {settles} network,
+                address and any memo on a second trusted channel. Send a small test amount before
+                any milestone. {provider.howToPay}
               </p>
               <p className="mt-4 text-xs leading-relaxed text-aura-text/70">
-                Aura is not a party to whatever you agree. It holds no funds, takes no deposit,
-                offers no escrow over this purchase, and has no relationship with {provider.name}.
+                Aura is not a party, holds no funds, supplies no international-purchase escrow,
+                and has no relationship with {provider.name}. Tax, customs, code acceptance,
+                warranty, installation and dispute recourse remain buyer due diligence.
               </p>
-              <a
-                href={provider.url}
-                target="_blank"
-                rel="noreferrer"
-                data-cursor="Contact"
-                className="mt-5 inline-block rounded-full bg-aura-ink px-5 py-2.5 font-mono text-[0.65rem] uppercase tracking-label text-aura-paper transition-opacity hover:opacity-85"
-              >
+              <a href={provider.url} target="_blank" rel="noreferrer" className="mt-5 inline-block rounded-full bg-aura-ink px-5 py-2.5 font-mono text-[0.65rem] uppercase tracking-label text-aura-paper transition-opacity hover:opacity-85">
                 Contact {provider.name}
               </a>
-            </div>
+              <Link href={`/concierge?ask=${encodeURIComponent(guideQuestion)}`} className="ml-4 mt-5 inline-block rounded-full border aura-hairline px-5 py-2.5 font-mono text-[0.65rem] uppercase tracking-label transition-colors hover:border-aura-emerald">
+                Walk through with Aura
+              </Link>
+            </section>
           </StaggerItem>
 
           <StaggerItem>
-            <div className="aura-panel p-7">
-              <p className="aura-label mb-2">Optional — don&rsquo;t want to sell?</p>
-              <h3 className="font-display text-[1.05rem] font-medium tracking-[-0.01em]">
-                {borrow.name}
-              </h3>
+            <section className="aura-panel p-7">
+              <p className="aura-label mb-2">Optional research · borrowing is not payment magic</p>
+              <h3 className="font-display text-[1.05rem] font-medium tracking-[-0.01em]">{borrow.name}</h3>
               <p className="mt-3 text-xs leading-relaxed text-aura-text/75">
-                Supply collateral on X Layer and borrow stables against it instead of selling.
-                Liquidation risk is real and this is not financial advice. {borrow.kyc === "None" ? "No KYC." : borrow.kyc}{" "}
-                {borrow.feeEstimate}
+                The dataset records an Aave X Layer market, but its source record is incomplete and
+                no evidence URL survived. Liquidation, variable-rate, tax and smart-contract risk
+                are material. Aura does not recommend or execute this path.
               </p>
-              <p className="mt-3 text-[0.68rem] uppercase leading-relaxed tracking-label text-aura-violet">
-                Record incomplete — no evidence URL survived in this dataset. Verify the market
-                yourself before supplying anything.
-              </p>
-            </div>
+            </section>
           </StaggerItem>
         </Stagger>
       ) : (
@@ -305,16 +177,10 @@ export default function RoutePlan({
             <p className="aura-label mb-2">Nothing to route into</p>
             <p className="text-xs leading-relaxed text-aura-text/80">{provider.caveat}</p>
             <p className="mt-4 text-xs leading-relaxed text-aura-text/70">
-              Ask them which coin, on which chain, to which address, and get it in writing before
-              anything else. Until then there is no route to draw.
+              Ask which asset, on which network, to which legal seller and invoice. Until the
+              destination asset is named and independently confirmed, no conversion route exists.
             </p>
-            <a
-              href={provider.url}
-              target="_blank"
-              rel="noreferrer"
-              data-cursor="Contact"
-              className="mt-5 inline-block rounded-full border aura-hairline px-5 py-2.5 font-mono text-[0.65rem] uppercase tracking-label transition-colors hover:border-aura-emerald"
-            >
+            <a href={provider.url} target="_blank" rel="noreferrer" className="mt-5 inline-block rounded-full border aura-hairline px-5 py-2.5 font-mono text-[0.65rem] uppercase tracking-label transition-colors hover:border-aura-emerald">
               Contact {provider.name}
             </a>
           </div>

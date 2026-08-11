@@ -22,7 +22,7 @@ import BuyDirectory from "@/components/buy/BuyDirectory";
 export const metadata = {
   title: "Buy an eco home with crypto — Aura Homes",
   description:
-    "Seven providers verified to take crypto for homes or buildings, thirteen leads refuted, and the hop-by-hop route from USDC on X Layer to what each provider actually accepts. Aura facilitates; it does not sell.",
+    "Seven evidence-backed provider records, thirteen leads refuted, and a guarded route from native USDC on X Layer to assets a seller may accept. Aura facilitates; it does not sell.",
 };
 
 export default function BuyPage() {
@@ -38,10 +38,10 @@ export default function BuyPage() {
       <Reveal delay={0.08} y={12} className="mt-4">
         <p className="max-w-2xl text-[0.95rem] leading-[1.65] text-aura-text/75">
           You hold crypto. Somewhere out there a company will take it for a building. This page is
-          the list of the ones that verifiably do — with what each of them actually accepts, how
-          the payment really happens, whether a Canadian can use them at all, and the route from
-          USDC on X Layer to their hands. Also the thirteen leads that looked right and were not,
-          because a directory that only publishes its wins is an advertisement.
+          the evidence record: live acceptance where it exists, announcements and stale claims
+          labelled as such, where each product is actually available, and what must be proven
+          before native USDC on X Layer can reach the seller. Also the thirteen leads that looked
+          right and were not, because a directory that only publishes its wins is an advertisement.
         </p>
       </Reveal>
 
@@ -64,7 +64,8 @@ export default function BuyPage() {
             carries no liability for it. It has{" "}
             <span className="font-medium text-aura-text">no relationship</span> — commercial,
             referral, or otherwise — with any company named here. They are listed because they are
-            publicly documented as accepting crypto. That is the entire basis for their inclusion.
+            supported by a public acceptance claim or launch record. That is the entire basis for
+            inclusion; it is not a vetted-seller designation.
           </p>
           <p className="mt-4 max-w-3xl text-sm leading-relaxed text-aura-text/80">
             Nothing on this page executes a transfer, quotes a rate, or takes a fee. Every leg of

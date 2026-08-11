@@ -217,6 +217,7 @@ export default function ConciergeApp() {
       const project = params.get("project");
       const home = params.get("home");
       const parcel = params.get("parcel");
+      const ask = params.get("ask")?.trim().slice(0, 500) ?? null;
       if (project) {
         try {
           const { loadBuilderOrderSnapshot } = await import("@/lib/builder/orderSnapshot");
@@ -244,6 +245,7 @@ export default function ConciergeApp() {
         dispatch({ type: "selectHome", homeId: home }, `I want the ${home}.`);
       }
       if (parcel) dispatch({ type: "selectParcel", parcelId: parcel }, `Check parcel ${parcel} for me.`);
+      if (ask) dispatch({ type: "askAbout", question: ask }, ask);
     };
     void boot();
     return () => {

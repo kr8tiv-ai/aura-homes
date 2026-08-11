@@ -1,7 +1,7 @@
 /* ---------------------------------------------------------------------
    THE BUY SURFACE — data layer.
 
-   Two verified datasets, loaded straight out of /data. Nothing here edits
+   Two researched datasets, loaded straight out of /data. Nothing here edits
    a finding: the JSON is the record of what was fetched, refuted, and
    left open, and this module only types it and derives the handful of
    facts the UI needs to sort and filter honestly.
@@ -13,10 +13,11 @@
 
 import providersJson from "@data/providers/crypto-home-providers.json";
 import routesJson from "@data/providers/xlayer-routes.json";
+import type { BuyReadinessProvider } from "@/lib/marketplace/buyReadiness";
 
 export type EvidenceTier = "A-own-site" | "B-reputable-press";
 
-export type Provider = {
+export type Provider = BuyReadinessProvider & {
   name: string;
   url: string;
   country: string;
@@ -139,7 +140,7 @@ export const reachLabel: Record<Reach, string> = {
 /* ------------------------------------------------------------------ routes */
 
 /* THE ROUTE MODEL, and the one honest fact it is built on:
-   NOT ONE of the seven verified providers names USDC. Six of seven name
+   NOT ONE of the seven researched provider records names USDC. Six name
    BTC. So a buyer holding USDC on X Layer always has a conversion leg,
    and the X Layer -> native BTC hop is the one that was live-verified
    against Meson's own relayer API. Meson lists 44 other chains; they were

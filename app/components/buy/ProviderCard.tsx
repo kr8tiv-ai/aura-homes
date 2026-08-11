@@ -11,6 +11,7 @@
 import type { Provider } from "./data";
 import { needsPhoneCheck, reachLabel, reachesCanada } from "./data";
 import EvidenceBadge from "./EvidenceBadge";
+import type { ProviderPurchaseReadiness } from "@/lib/marketplace/buyReadiness";
 
 const reachSkin: Record<string, string> = {
   yes: "text-aura-emerald",
@@ -29,10 +30,12 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 export default function ProviderCard({
   provider,
+  readiness,
   selected,
   onSelect,
 }: {
   provider: Provider;
+  readiness: ProviderPurchaseReadiness;
   selected: boolean;
   onSelect: () => void;
 }) {
@@ -66,6 +69,60 @@ export default function ProviderCard({
       </div>
 
       <p className="mt-4 text-sm leading-relaxed text-aura-text/80">{provider.productType}</p>
+
+      <div className="mt-4 rounded-lg border aura-hairline p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="aura-label">Purchase evidence</p>
+            <p className={`mt-1 text-xs font-medium ${readiness.verdict === "ready-to-contact" ? "text-aura-emerald" : "text-aura-violet"}`}>
+              {readiness.label}
+            </p>
+          </div>
+          <p className="font-display text-xl tabular-nums">
+            {readiness.score}<span className="text-xs text-aura-text/45">/100</span>
+          </p>
+        </div>
+        <div className="mt-3 grid grid-cols-5 gap-1" aria-label="Purchase evidence score contributions">
+          {readiness.contributions.map((item) => (
+            <div
+              key={item.id}
+              tabIndex={0}
+              title={`${item.label}: ${item.detail}`}
+              aria-label={`${item.label}: ${item.points} of ${item.possiblePoints}. ${item.detail}`}
+            >
+              <div className="h-1 overflow-hidden rounded-full bg-aura-ink/10">
+                <div
+                  className={`h-full ${item.state === "confirmed" ? "bg-aura-emerald" : item.state === "mismatch" ? "bg-aura-violet" : "bg-aura-teal"}`}
+                  style={{ width: `${item.possiblePoints > 0 ? (item.points / item.possiblePoints) * 100 : 0}%` }}
+                />
+              </div>
+              <p className="mt-1 truncate text-center font-mono text-[0.5rem] uppercase text-aura-text/45">
+                {item.id}
+              </p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-[0.65rem] leading-relaxed text-aura-text/55">
+          Product, destination, acceptance evidence, payment mechanics and price. Hover or focus
+          a segment for its basis; the full caveat remains below.
+        </p>
+        <details className="mt-3 border-t aura-hairline pt-3">
+          <summary className="cursor-pointer text-[0.62rem] uppercase tracking-label text-aura-emerald">
+            Explain this score
+          </summary>
+          <div className="mt-3 space-y-3">
+            {readiness.contributions.map((item) => (
+              <div key={item.id}>
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-[0.68rem] font-medium">{item.label}</p>
+                  <span className="font-mono text-[0.6rem] text-aura-text/50">{item.points}/{item.possiblePoints}</span>
+                </div>
+                <p className="mt-1 text-[0.65rem] leading-relaxed text-aura-text/60">{item.detail}</p>
+              </div>
+            ))}
+          </div>
+        </details>
+      </div>
 
       {/* what they take, in their own words */}
       <div className="mt-5 flex flex-wrap gap-1.5">
