@@ -14,13 +14,24 @@ used within its license terms; nothing here carries NC or ND restrictions.
   assets, writing, or visual identity were taken from the kage page.
 
 - **MengTo — towers** — [github.com/MengTo/towers](https://github.com/MengTo/towers)
-  Offered by our founder as a source of ideas for the parametric home builder, and
-  credited here on principle *before* anything is taken from it. Towers is a
-  procedural building generator; what is relevant to us is the idea of composing a
-  structure from stacked, parameterised volumes rather than from hand-modelled
-  meshes. If any of its code or approach is used in `app/lib/builder/`, this entry
-  gains the specific line and the licence; until then this is an
-  inspiration-and-intent credit, and the builder's geometry is our own.
+  Offered by our founder as a source of ideas for the parametric home builder, so
+  we looked, and saying so is the honest thing to do. **Nothing from it is used,
+  and nothing from it can be:** the repository carries no LICENSE file and the
+  GitHub API reports `"license": null`, which is all-rights-reserved by default.
+  No licence is granted for reuse.
+
+  It is also, on inspection, a different kind of program — a single-file WebGL
+  generative-art demo (a 2.4 MB `index.html`, most of it a vendored Three.js
+  build plus base64 textures and audio) that stacks procedural towers behind a
+  descending clip plane. There is no SVG output, no orthographic projection, and
+  no dimension, schedule or sheet machinery in it — none of the things a
+  TypeScript drawing engine would want to borrow.
+
+  So two independent reasons: we may not, and there is nothing to take. Every
+  line of `app/lib/builder/` is original, continuing the drafting conventions
+  already established in `app/lib/design/blueprint.ts`. This entry stands as
+  conceptual prior art and as a record that we checked the licence before
+  writing code, rather than after.
 
 ## Interface pattern reference
 
