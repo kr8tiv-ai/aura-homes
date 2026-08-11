@@ -55,6 +55,7 @@
    =========================================================================== */
 
 import type { HomeSpec } from "@/lib/builder/spec";
+import { resolveBuilderExportSource, type BuilderExportSource } from "./exportSource";
 
 import { buildHomeModel, type HomeModel } from "./drawings/model";
 import {
@@ -70,6 +71,12 @@ import {
 export { drawingDataUrl } from "./drawings/kit";
 export { PROFESSIONAL_NOTE };
 export type { DrawingParcel, DrawingRooms, DrawingSetInput, DrawingSetResult, DrawingSheet };
+
+export type DrawingDocumentInput = Omit<DrawingSetInput, "spec"> & {
+  document: BuilderExportSource;
+};
+
+export type DrawingSourceInput = DrawingSetInput | DrawingDocumentInput;
 
 /* Re-exported so a caller can inspect the geometry the sheets were drawn
    from — a UI that wants to show the ridge height, the pile count or the
@@ -108,7 +115,13 @@ export type {
  * Total: it never throws for a bad spec. A model with no volumes returns eight
  * sheets that say so.
  */
-export function drawingSet(input: DrawingSetInput): DrawingSetResult {
+export function drawingSet(input: DrawingSourceInput): DrawingSetResult {
+  if ("document" in input) {
+    const { document, ...facts } = input;
+    const { spec } = resolveBuilderExportSource(document);
+    const model = buildHomeModel(spec);
+    return buildSheets({ ...facts, spec }, model);
+  }
   const model = buildHomeModel(input.spec);
   return buildSheets(input, model);
 }
@@ -120,7 +133,7 @@ export function drawingSet(input: DrawingSetInput): DrawingSetResult {
  * scale decision, and building one in isolation would let A0's sheet index
  * disagree with the scale A5 actually used.
  */
-export function drawingSheet(input: DrawingSetInput, number: string): DrawingSheet | null {
+export function drawingSheet(input: DrawingSourceInput, number: string): DrawingSheet | null {
   return drawingSet(input).sheets.find((s) => s.number === number.toUpperCase()) ?? null;
 }
 
@@ -129,6 +142,12 @@ export function drawingSheet(input: DrawingSetInput, number: string): DrawingShe
 export const drawingSetForSpec = (spec: HomeSpec, dateISO: string): DrawingSetResult =>
   drawingSet({ spec, dateISO });
 
+export const drawingSetForDocument = (
+  document: BuilderExportSource,
+  dateISO: string,
+): DrawingSetResult => drawingSet({ document, dateISO });
+
 /** The drawing model on its own, for a caller that wants the numbers without
  *  the ink — the ridge heights, the pile grid, the opening schedule. */
-export const drawingModel = (spec: HomeSpec): HomeModel => buildHomeModel(spec);
+export const drawingModel = (source: BuilderExportSource): HomeModel =>
+  buildHomeModel(resolveBuilderExportSource(source).spec);

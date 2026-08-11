@@ -12,6 +12,8 @@ import {
   restoreQuarantinedEntry,
   validateBuilderDocument,
 } from "@/lib/builder/document";
+import { resolveBuilderExportSource } from "@/lib/builder/exportSource";
+import { exportGltf, exportSpecJson } from "@/lib/builder/exportSpec";
 import { addFixture, emptyFixtureSet } from "@/lib/builder/fixtures";
 import { defaultSpec } from "@/lib/builder/spec";
 
@@ -288,4 +290,100 @@ test("quarantine preserves newer work that reuses a held semantic id", () => {
       entry.kind === "partition" ? entry.value.atFt : null,
     ),
   ).toEqual([0, 2]);
+});
+
+test("an export source resolves the complete durable document and its identity", () => {
+  const base = defaultBuilderDocument();
+  const withFixture = addFixture(base.spec, base.fixtures, "wood-stove").set;
+  const document = {
+    ...base,
+    partitions: [
+      {
+        id: "partition-1",
+        volumeId: base.spec.volumes[0].id,
+        axis: "x" as const,
+        atFt: 0,
+        fromFt: -4,
+        toFt: 4,
+        thicknessFt: 0.4,
+        door: null,
+      },
+    ],
+    finishes: {
+      [`vol:${base.spec.volumes[0].id}/wall:n`]: "timber-cladding" as const,
+    },
+    fixtures: withFixture,
+  };
+
+  const source = resolveBuilderExportSource(document);
+
+  expect(source.document).toEqual(document);
+  expect(source.spec).toEqual(document.spec);
+  expect(source.hash).toBe(hashBuilderDocument(document));
+  expect(source.canonicalJson).toBe(canonicalBuilderDocumentJson(document));
+  expect(source.migratedFromLegacySpec).toBe(false);
+  expect(source.durableDetailCounts).toEqual({
+    partitions: 1,
+    finishes: 1,
+    fixtures: 1,
+    quarantinedItems: 0,
+  });
+});
+
+test("legacy HomeSpec export callers remain readable through migration", () => {
+  const spec = defaultSpec();
+  const source = resolveBuilderExportSource(spec);
+
+  expect(source.spec).toEqual(spec);
+  expect(source.migratedFromLegacySpec).toBe(true);
+  expect(source.document.format).toBe(BUILDER_DOCUMENT_FORMAT);
+  expect(source.durableDetailCounts).toEqual({
+    partitions: 0,
+    finishes: 0,
+    fixtures: 0,
+    quarantinedItems: 0,
+  });
+});
+
+test("the Aura JSON handoff writes the canonical complete document", async () => {
+  const document = defaultBuilderDocument();
+  const artifact = exportSpecJson(document);
+
+  expect(artifact.filename).toMatch(/\.aura\.json$/);
+  expect(await artifact.blob.text()).toBe(`${canonicalBuilderDocumentJson(document)}\n`);
+  expect(artifact.note).toContain(hashBuilderDocument(document));
+});
+
+test("glTF metadata carries the complete document, hash and legacy omissions", async () => {
+  const THREE = await import("three");
+  const base = defaultBuilderDocument();
+  const document = {
+    ...base,
+    partitions: [
+      {
+        id: "partition-in-gltf",
+        volumeId: base.spec.volumes[0].id,
+        axis: "z" as const,
+        atFt: 0,
+        fromFt: -2,
+        toFt: 2,
+        thicknessFt: 0.4,
+        door: null,
+      },
+    ],
+  };
+  const root = new THREE.Group();
+
+  const artifact = await exportGltf(root, document);
+  const payload = await artifact.blob.text();
+  const gltf = JSON.parse(payload) as {
+    nodes: Array<{
+      extras?: { aura?: { durableDocumentDetailCounts?: { partitions?: number } } };
+    }>;
+  };
+
+  expect(payload).toContain(hashBuilderDocument(document));
+  expect(payload).toContain("partition-in-gltf");
+  expect(gltf.nodes[0]?.extras?.aura?.durableDocumentDetailCounts?.partitions).toBe(1);
+  expect(payload).toContain("rendered scene does not represent them");
 });

@@ -7,6 +7,7 @@ import {
   sensationWord,
 } from "@/lib/builder/comfort";
 import { defaultSpec } from "@/lib/builder/spec";
+import { defaultBuilderDocument, hashBuilderDocument } from "@/lib/builder/document";
 import { homeToIfc } from "@/lib/builder/exportPro";
 import { specToIfcJson } from "@/lib/builder/exportSemantic";
 
@@ -70,4 +71,25 @@ test("professional exports label unmodelled sleeping verdicts without boolean cl
     expect(block).not.toContain("'WinterMeetsTarget'");
     expect(block).not.toContain("'SummerMeetsTarget'");
   }
+});
+
+test("professional document exports default to the saved comfort intent", () => {
+  const base = defaultBuilderDocument();
+  const document = {
+    ...base,
+    comfort: {
+      ...base.comfort,
+      conditions: { ...base.comfort.conditions, winterIndoorC: 19.25 },
+    },
+  };
+
+  const ifc = homeToIfc(document, { dateISO: "2026-08-11" });
+  const ifcJson = JSON.stringify(specToIfcJson(document));
+
+  expect(ifc).toContain("'AssumedWinterTemperatureC'");
+  expect(ifc).toContain("IFCREAL(19.25)");
+  expect(ifc).toContain(hashBuilderDocument(document));
+  expect(ifcJson).toContain('"name":"AssumedWinterTemperatureC"');
+  expect(ifcJson).toContain('"value":19.25');
+  expect(ifcJson).toContain(hashBuilderDocument(document));
 });

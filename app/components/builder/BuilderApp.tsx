@@ -438,7 +438,7 @@ function reducer(state: EditorState, action: Action): EditorState {
    say "this is a drawing of an earlier version of your home" rather than
    showing a stale sheet as though it were current. */
 interface Drawn {
-  spec: HomeSpec;
+  document: BuilderDocument;
   /** the plan engine's sheet, plus the account of what the translation cost */
   handoff: PlanHandoff;
   /** the eight-sheet set drawn from the model itself */
@@ -831,7 +831,7 @@ export default function BuilderApp() {
   }, []);
 
   /* ---- the drawing */
-  const stale = drawn !== null && drawn.spec !== spec;
+  const stale = drawn !== null && drawn.document !== state.doc;
   const generate = useCallback(() => {
     const handoff = planFromSpec(spec);
 
@@ -858,12 +858,12 @@ export default function BuilderApp() {
     const dateISO = new Date().toISOString().slice(0, 10);
 
     setDrawn({
-      spec,
+      document: state.doc,
       handoff,
-      set: drawingSet({ spec, dateISO, projectName: spec.name, rooms }),
+      set: drawingSet({ document: state.doc, dateISO, projectName: spec.name, rooms }),
       dateISO,
     });
-  }, [spec]);
+  }, [spec, state.doc]);
 
   const partitionCount = partitions.length;
   const finishCount = countOverrides(overrides);
@@ -1257,7 +1257,11 @@ export default function BuilderApp() {
           {/* The account of the translation leads, then the plan engine's own
               sheet, then the eight sheets drawn from the model itself. */}
           <PlanSheet handoff={drawn.handoff} />
-          <DrawingSheets set={drawn.set} name={drawn.spec.name} dateISO={drawn.dateISO} />
+          <DrawingSheets
+            set={drawn.set}
+            name={drawn.document.spec.name}
+            dateISO={drawn.dateISO}
+          />
         </>
       ) : null}
 
@@ -1307,7 +1311,7 @@ export default function BuilderApp() {
             by the module itself — and it re-runs on every spec change. */}
         {workspace === "export" ? (
           <div className="mt-6">
-            <SemanticExport spec={spec} comfort={comfort} />
+            <SemanticExport document={state.doc} comfort={comfort} />
           </div>
         ) : null}
       </Pane>

@@ -210,6 +210,11 @@ import {
   exportFilename,
   type ExportArtifact,
 } from "./exportSpec";
+import {
+  exportSourceLimitation,
+  resolveBuilderExportSource,
+  type BuilderExportSource,
+} from "./exportSource";
 import { modelledGlazingRatio, modelledWallAreaSqFt } from "./toPlan";
 import {
   COMFORT_DISCLAIMER,
@@ -580,6 +585,9 @@ export interface SemanticExportOptions {
 
 interface Ctx {
   spec: HomeSpec;
+  documentVersion: number;
+  documentHash: string;
+  sourceLimitation: string | null;
   slug: string;
   systems: EcoSystems;
   withGeometry: boolean;
@@ -913,12 +921,18 @@ function emitSpine(ctx: Ctx): void {
       "not a buildingSMART Pset.",
     props: [
       ["SpecVersion", int(SPEC_VERSION)],
+      ["BuilderDocumentVersion", int(ctx.documentVersion)],
+      ["BuilderDocumentHash", txt(ctx.documentHash)],
       ["HomeName", txt(spec.name)],
       ["Material", txt(spec.material)],
       ["ClimateZone", txt(spec.climateZone)],
       ["Notes", txt(spec.notes)],
       ["Generator", txt(ORIGINATING_SYSTEM)],
       ["Disclaimer", txt(EXPORT_DISCLAIMER)],
+      [
+        "DocumentDetailsNotRepresented",
+        txt(ctx.sourceLimitation ?? "No active document details are omitted by this source."),
+      ],
     ],
   });
 
@@ -1994,6 +2008,9 @@ export interface SemanticBundle {
   "@type": string;
   "aura:generator": string;
   "aura:specVersion": number;
+  "aura:documentVersion": number;
+  "aura:documentHash": string;
+  "aura:geometryLimitation": string | null;
   "aura:disclaimer": string;
   "aura:formatStatus": string;
   "aura:brickExtensionPoint": Readonly<Record<string, string>>;
@@ -2014,9 +2031,22 @@ export const FORMAT_STATUS =
    THE PUBLIC WRITERS
    =========================================================================== */
 
-function build(spec: HomeSpec, opts: SemanticExportOptions = {}): Ctx {
+function build(
+  spec: HomeSpec,
+  opts: SemanticExportOptions = {},
+  identity: {
+    documentVersion: number;
+    documentHash: string;
+    sourceLimitation: string | null;
+  } = {
+    documentVersion: 1,
+    documentHash: "legacy-home-spec",
+    sourceLimitation: null,
+  },
+): Ctx {
   const ctx: Ctx = {
     spec,
+    ...identity,
     slug: urnSlug(spec.name),
     systems: ecoSystems(opts.systems ?? {}),
     withGeometry: opts.geometry !== false,
@@ -2033,12 +2063,34 @@ function build(spec: HomeSpec, opts: SemanticExportOptions = {}): Ctx {
   return ctx;
 }
 
+function buildFromSource(
+  source: BuilderExportSource,
+  opts: SemanticExportOptions = {},
+): Ctx {
+  const resolved = resolveBuilderExportSource(source);
+  return build(
+    resolved.spec,
+    {
+      ...opts,
+      comfort:
+        opts.comfort === undefined
+          ? comfortReport(resolved.spec, resolved.document.comfort)
+          : opts.comfort,
+    },
+    {
+      documentVersion: resolved.document.version,
+      documentHash: resolved.hash,
+      sourceLimitation: exportSourceLimitation(source),
+    },
+  );
+}
+
 /** The ifcJSON document for a spec. Pure and deterministic. */
 export function specToIfcJson(
-  spec: HomeSpec,
+  source: BuilderExportSource,
   opts: SemanticExportOptions = {},
 ): IfcJsonDocument {
-  const ctx = build(spec, opts);
+  const ctx = buildFromSource(source, opts);
   return {
     type: "ifcJSON",
     version: IFCJSON_VERSION,
@@ -2050,16 +2102,19 @@ export function specToIfcJson(
 
 /** The JSON-LD bundle: BOT topology plus the whole ifcJSON document. */
 export function specToSemanticBundle(
-  spec: HomeSpec,
+  source: BuilderExportSource,
   opts: SemanticExportOptions = {},
 ): SemanticBundle {
-  const ctx = build(spec, opts);
+  const ctx = buildFromSource(source, opts);
   return {
     "@context": AURA_JSONLD_CONTEXT,
     "@id": `${AURA_URN_PREFIX}${ctx.slug}`,
     "@type": "aura:Home",
     "aura:generator": ORIGINATING_SYSTEM,
     "aura:specVersion": SPEC_VERSION,
+    "aura:documentVersion": ctx.documentVersion,
+    "aura:documentHash": ctx.documentHash,
+    "aura:geometryLimitation": ctx.sourceLimitation,
     "aura:disclaimer": EXPORT_DISCLAIMER,
     "aura:formatStatus": FORMAT_STATUS,
     "aura:brickExtensionPoint": BRICK_EXTENSION_POINT,
@@ -2097,10 +2152,11 @@ const artifact = (
  * is the extension the buildingSMART converters take.
  */
 export function exportIfcJson(
-  spec: HomeSpec,
+  source: BuilderExportSource,
   opts: SemanticExportOptions = {},
 ): ExportArtifact {
-  const doc = specToIfcJson(spec, opts);
+  const { spec } = resolveBuilderExportSource(source);
+  const doc = specToIfcJson(source, opts);
   return artifact(
     ifcJsonToText(doc),
     exportFilename(spec, "ifcjson"),
@@ -2113,10 +2169,11 @@ export function exportIfcJson(
 
 /** The JSON-LD bundle, as `aura-<name>.jsonld`. */
 export function exportSemanticJsonLd(
-  spec: HomeSpec,
+  source: BuilderExportSource,
   opts: SemanticExportOptions = {},
 ): ExportArtifact {
-  const bundle = specToSemanticBundle(spec, opts);
+  const { spec } = resolveBuilderExportSource(source);
+  const bundle = specToSemanticBundle(source, opts);
   return artifact(
     semanticBundleToText(bundle),
     exportFilename(spec, "jsonld"),
@@ -2750,10 +2807,11 @@ function diffSpecs(a: HomeSpec, b: HomeSpec): string[] {
  * asserted once in a comment.
  */
 export function roundTripReport(
-  spec: HomeSpec,
+  source: BuilderExportSource,
   opts: SemanticExportOptions = {},
 ): RoundTripReport {
-  const bundle = specToSemanticBundle(spec, opts);
+  const { spec } = resolveBuilderExportSource(source);
+  const bundle = specToSemanticBundle(source, opts);
   const ifcText = ifcJsonToText(bundle.ifcJSON);
   const bundleText = semanticBundleToText(bundle);
   const bytes = (s: string): number =>

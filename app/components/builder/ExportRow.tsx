@@ -69,8 +69,6 @@ import type { ProExportFormat } from "@/lib/builder/exportPro";
 import type { DxfReport, SourceDrawing } from "@/lib/builder/dxfCheck";
 import type { ComfortReport } from "@/lib/builder/comfort";
 import {
-  canonicalBuilderDocumentJson,
-  hashBuilderDocument,
   validateBuilderDocument,
   type BuilderDocument,
 } from "@/lib/builder/document";
@@ -243,7 +241,7 @@ export default function ExportRow({
     try {
       // sceneUnits stays the default "feet": the builder's scene is built
       // straight from the spec, and the exporter converts to metres itself.
-      finish(job === "glb" ? await exportGlb(root, spec) : await exportObj(root, spec));
+      finish(job === "glb" ? await exportGlb(root, value) : await exportObj(root, value));
     } catch (err) {
       fail(err);
     } finally {
@@ -263,7 +261,7 @@ export default function ExportRow({
     setError(null);
     try {
       const pro = await loadPro();
-      finish(pro.exportIfc(spec, { dateISO: issueDate(), comfort: comfort ?? undefined }));
+      finish(pro.exportIfc(value, { dateISO: issueDate(), comfort: comfort ?? undefined }));
     } catch (err) {
       fail(err);
     } finally {
@@ -276,7 +274,7 @@ export default function ExportRow({
     setError(null);
     try {
       const semantic = await loadSemantic();
-      finish(semantic.exportIfcJson(spec, { comfort: comfort ?? undefined }));
+      finish(semantic.exportIfcJson(value, { comfort: comfort ?? undefined }));
     } catch (err) {
       fail(err);
     } finally {
@@ -299,9 +297,9 @@ export default function ExportRow({
     setError(null);
     try {
       const [pro, check] = await Promise.all([loadPro(), loadCheck()]);
-      const artifact = pro.exportDxf(spec, { dateISO: issueDate() });
+      const artifact = pro.exportDxf(value, { dateISO: issueDate() });
       const text = await artifact.blob.text();
-      const source = check.sourceFromModel(drawingModel(spec));
+      const source = check.sourceFromModel(drawingModel(value));
       const report = check.checkDxf(text, source);
       const ok = report.ok;
       setDxfRun({ spec, text, artifact, source, report, saved: ok });
@@ -358,20 +356,7 @@ export default function ExportRow({
 
   const saveJson = () => {
     setBusy("json");
-    const base = exportSpecJson(spec);
-    const text = `${canonicalBuilderDocumentJson(value)}\n`;
-    const blob = new Blob([text], { type: "application/json" });
-    finish({
-      blob,
-      filename: base.filename.replace(/\.json$/i, ".aura.json"),
-      mimeType: "application/json",
-      byteLength: blob.size,
-      note: `Complete Aura project · document v${value.version} · design hash ${hashBuilderDocument(value)} · ${partitions.length} partition${
-        partitions.length === 1 ? "" : "s"
-      }, ${countOverrides(overrides)} finish${
-        countOverrides(overrides) === 1 ? "" : "es"
-      }, ${fixtures.items.length} fixture${fixtures.items.length === 1 ? "" : "s"} and comfort targets included`,
-    });
+    finish(exportSpecJson(value));
     setBusy(null);
   };
 
