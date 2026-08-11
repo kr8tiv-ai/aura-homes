@@ -23,8 +23,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from .config import settings
-from .models import ArtifactSet, DesignRequest, DesignResponse
-from .services import blueprint, images, layout, llm
+from .routers_design import router as design_router
+from .services import blueprint, images
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("aura.design")
@@ -66,66 +66,10 @@ def health() -> dict:
     }
 
 
-@app.post("/design", response_model=DesignResponse)
-def design(req: DesignRequest) -> DesignResponse:
-    notes: list[str] = []
-
-    # --- TASK A.1 — reasoning (or the deterministic program)
-    plan_program, render_prompts, offline = llm.design_program(req)
-    if offline:
-        notes.append(
-            "No LLM credential configured — room program derived arithmetically. "
-            "The drawing is fully valid; only the naming and proportioning judgement "
-            "came from rules rather than a model."
-        )
-
-    # --- geometry — always deterministic
-    try:
-        solved = layout.solve(req, plan_program)
-    except Exception as e:  # noqa: BLE001
-        raise HTTPException(status_code=422, detail=f"layout could not be solved: {e}") from e
-    notes.extend(solved.warnings)
-
-    did = _design_id(req)
-    out = settings.out_dir / did
-    art = ArtifactSet()
-
-    # --- TASK B — the blueprint
-    try:
-        svg = blueprint.render_svg(solved, req, out / "plan.svg")
-        art.svg_url = f"/design/{did}.svg"
-        if blueprint.svg_to_pdf(svg, out / "plan.pdf"):
-            art.pdf_url = f"/design/{did}.pdf"
-        else:
-            notes.append("PDF unavailable (cairosvg not installed) — SVG provided.")
-        if blueprint.render_dxf(solved, out / "plan.dxf"):
-            art.dxf_url = f"/design/{did}.dxf"
-        else:
-            notes.append("DXF unavailable (ezdxf not installed) — SVG/PDF provided.")
-    except Exception as e:  # noqa: BLE001
-        log.exception("blueprint failed")
-        notes.append(f"Blueprint generation failed: {e}")
-
-    # --- TASK A.2 — renders
-    if settings.has_images:
-        art.render_urls = images.generate(render_prompts)
-        if not art.render_urls:
-            notes.append("Image backend returned nothing — blueprint-only response.")
-    else:
-        notes.append(
-            "No image credential configured — rendering prompts returned so they can "
-            "be run elsewhere, but no images generated."
-        )
-
-    return DesignResponse(
-        request=req,
-        layout=plan_program,
-        plan=solved,
-        render_prompts=render_prompts,
-        artifacts=art,
-        offline=offline,
-        notes=notes,
-    )
+#: /design, /design/materials, /design/procure and /design/full all live in
+#: routers_design.py so the design → materials → procurement chain reads as one
+#: pipeline instead of being spread across this file.
+app.include_router(design_router)
 
 
 def _serve(did: str, name: str, media: str) -> FileResponse:

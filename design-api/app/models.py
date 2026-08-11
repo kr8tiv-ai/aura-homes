@@ -20,18 +20,19 @@ from pydantic import BaseModel, Field, field_validator
 # --------------------------------------------------------------------------
 
 
-class EcoMaterial(str, Enum):
-    """Primary structural material.
-
-    Wall thickness is a real consequence of this choice, not a label — see
-    WALL_THICKNESS_MM. Rammed earth is ~3x a SIP panel, which changes the
-    floor plan, the heated area, and the price per square foot.
-    """
-
-    SIP = "sip"
-    RAMMED_EARTH = "rammed_earth"
-    CLT = "clt"
-    TIMBER_FRAME = "timber_frame"
+#: The material set, wall thicknesses, R-values and render vocabulary all live
+#: in `eco.py` — one source of truth, because the same choice drives the plan
+#: geometry, the bill of materials and the render prompt. Re-exported here so
+#: existing imports keep working.
+from .eco import (
+    NON_STRUCTURAL,
+    WALL_R_VALUE,
+    WALL_THICKNESS_MM,
+    EcoMaterial,
+    EcoSystems,
+    Orientation,
+    SiteContext,
+)
 
 
 class HomeStyle(str, Enum):
@@ -52,16 +53,6 @@ class ClimateZone(str, Enum):
     Z7B = "7B"
     Z8 = "8"
 
-
-#: Structural wall thickness in millimetres, by material. These drive the
-#: drawn wall weight and the net internal area — the blueprint is only
-#: "accurate" if the walls are the thickness the material actually is.
-WALL_THICKNESS_MM: dict[EcoMaterial, int] = {
-    EcoMaterial.SIP: 165,  # 6.5" panel, typical R-40 wall
-    EcoMaterial.RAMMED_EARTH: 450,  # stabilised, insulated core
-    EcoMaterial.CLT: 128,  # 5-ply
-    EcoMaterial.TIMBER_FRAME: 190,  # 2x8 + service cavity
-}
 
 #: Interior partitions are the same everywhere — they are not structural.
 PARTITION_MM = 90
@@ -85,6 +76,15 @@ class DesignRequest(BaseModel):
     storeys: Literal[1, 2] = 1
     off_grid: bool = True
     notes: str | None = Field(default=None, max_length=500)
+
+    #: The eco kit. Defaults ARE the Aura standard — AWG, solar, battery,
+    #: generator, wood stove, greywater, rainwater, wood-fired tub, HRV, cork
+    #: floors, reclaimed joinery — so an empty questionnaire still produces a
+    #: proper Aura eco-home rather than a generic box.
+    systems: EcoSystems = Field(default_factory=EcoSystems)
+    site: SiteContext = Field(default_factory=SiteContext)
+    #: Glass-forward is the house style, held to FDWR ≤ 22%.
+    glass_forward: bool = True
 
     @field_validator("bathrooms")
     @classmethod

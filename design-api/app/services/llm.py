@@ -25,9 +25,8 @@ from ..config import settings
 from ..models import DesignRequest, LayoutPlan, RenderPrompt
 from .layout import default_program
 from .prompts import (
-    MATERIAL_VOCAB,
-    STYLE_VOCAB,
     build_offline_render_prompts,
+    eco_keywords,
     system_prompt,
     user_prompt,
 )
@@ -157,4 +156,4 @@ def design_program(req: DesignRequest) -> tuple[LayoutPlan, list[RenderPrompt], 
     return layout, renders, True
 
 
-__all__ = ["design_program", "MATERIAL_VOCAB", "STYLE_VOCAB", "DESIGN_SCHEMA"]
+__all__ = ["design_program", "eco_keywords", "DESIGN_SCHEMA"]
