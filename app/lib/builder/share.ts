@@ -69,6 +69,13 @@ import {
   type Volume,
   type Wall,
 } from "./spec";
+import {
+  BUILDER_DOCUMENT_VERSION,
+  builderDocumentFromLegacySpec,
+  canonicalBuilderDocumentJson,
+  validateBuilderDocument,
+  type BuilderDocument,
+} from "./document";
 import type { ClimateZone, EcoMaterial } from "@/lib/designApi";
 
 /* ---------------------------------------------------------------------------
@@ -745,6 +752,115 @@ export function decodeSpecSync(token: string): HomeSpec | null {
 }
 
 /* ---------------------------------------------------------------------------
+   COMPLETE BUILDER DOCUMENT LINKS
+
+   `A` tokens above remain readable forever as legacy HomeSpec links. New
+   links use `D` and carry the validated BuilderDocument, including partitions,
+   finishes, fixtures, comfort targets and quarantine. The version is still
+   checked before a payload is inflated or parsed.
+   --------------------------------------------------------------------------- */
+
+const DOCUMENT_TOKEN_RE = /^D(\d+)([rz])([A-Za-z0-9_-]+)$/;
+export const MAX_SHARE_TOKEN_CHARS = 16_000;
+
+function encodeDocumentBody(document: BuilderDocument): Uint8Array {
+  return new TextEncoder().encode(canonicalBuilderDocumentJson(document));
+}
+
+export function encodeDocumentSync(document: BuilderDocument): string {
+  return `D${BUILDER_DOCUMENT_VERSION}r${bytesToBase64Url(encodeDocumentBody(document))}`;
+}
+
+export async function encodeDocument(document: BuilderDocument): Promise<string> {
+  const raw = encodeDocumentSync(document);
+  const packed = await deflateRaw(encodeDocumentBody(document));
+  if (!packed) return raw;
+  const compressed = `D${BUILDER_DOCUMENT_VERSION}z${bytesToBase64Url(packed)}`;
+  return compressed.length < raw.length ? compressed : raw;
+}
+
+function parseDocumentToken(token: unknown): ParsedToken | null {
+  if (typeof token !== "string" || token.length === 0) {
+    console.error("[aura/share] no document token to decode");
+    return null;
+  }
+  if (token.length > MAX_TOKEN_CHARS) {
+    console.error(`[aura/share] document token is ${token.length} characters — refusing to decode`);
+    return null;
+  }
+  const match = DOCUMENT_TOKEN_RE.exec(token);
+  if (!match) {
+    console.error("[aura/share] token is not an Aura project link (expected D<version><codec><payload>)");
+    return null;
+  }
+  const version = Number(match[1]);
+  if (version > BUILDER_DOCUMENT_VERSION) {
+    console.error(
+      `[aura/share] this link was made by a newer version of the builder (document v${version}, this build reads v${BUILDER_DOCUMENT_VERSION}). Refusing to guess at it.`,
+    );
+    return null;
+  }
+  if (version < BUILDER_DOCUMENT_VERSION) {
+    console.error(
+      `[aura/share] this link is document v${version} and no migration to v${BUILDER_DOCUMENT_VERSION} exists yet.`,
+    );
+    return null;
+  }
+  const bytes = base64UrlToBytes(match[3]);
+  if (!bytes) {
+    console.error("[aura/share] project payload is not valid base64url — the link is truncated or corrupt");
+    return null;
+  }
+  return { version, codec: match[2] as "r" | "z", bytes };
+}
+
+function finishDocument(json: Uint8Array): BuilderDocument | null {
+  if (json.byteLength > MAX_INFLATED_BYTES) {
+    console.error(`[aura/share] project payload is ${json.byteLength} bytes — refusing to decode`);
+    return null;
+  }
+  let value: unknown;
+  try {
+    value = JSON.parse(new TextDecoder().decode(json));
+  } catch (error) {
+    console.error("[aura/share] project payload is not valid JSON:", error);
+    return null;
+  }
+  const checked = validateBuilderDocument(value);
+  if (!checked.ok) {
+    console.error(`[aura/share] refusing to load a half-understood project — ${checked.problem}`);
+    return null;
+  }
+  return checked.document;
+}
+
+export async function decodeDocument(token: string): Promise<BuilderDocument | null> {
+  const parsed = parseDocumentToken(token);
+  if (!parsed) return null;
+  if (parsed.codec === "r") return finishDocument(parsed.bytes);
+  const json = await inflateRaw(parsed.bytes);
+  if (!json) {
+    console.error(
+      hasCompressionStreams()
+        ? "[aura/share] compressed project payload would not inflate — the link is corrupt or truncated"
+        : "[aura/share] this project link is compressed and this browser has no DecompressionStream",
+    );
+    return null;
+  }
+  return finishDocument(json);
+}
+
+export function decodeDocumentSync(token: string): BuilderDocument | null {
+  const parsed = parseDocumentToken(token);
+  if (!parsed) return null;
+  if (parsed.codec === "z") {
+    console.error("[aura/share] this project token is compressed — use decodeDocument()");
+    return null;
+  }
+  return finishDocument(parsed.bytes);
+}
+
+/* ---------------------------------------------------------------------------
    URLs
    --------------------------------------------------------------------------- */
 
@@ -766,6 +882,20 @@ export async function specToShareUrl(spec: HomeSpec, base?: string): Promise<str
   return `${cut}#${SHARE_PARAM}=${token}`;
 }
 
+export async function documentToShareUrl(
+  document: BuilderDocument,
+  base?: string,
+): Promise<string> {
+  const token = await encodeDocument(document);
+  if (token.length > MAX_SHARE_TOKEN_CHARS) {
+    throw new Error(
+      `This project needs ${token.length.toLocaleString("en-US")} characters, above Aura's ${MAX_SHARE_TOKEN_CHARS.toLocaleString("en-US")} character share-link limit. Download the .aura.json project file instead; nothing was omitted.`,
+    );
+  }
+  const href = base ?? (typeof window === "undefined" ? "" : window.location.href);
+  return `${href.replace(/[?#].*$/, "")}#${SHARE_PARAM}=${token}`;
+}
+
 /**
  * Pull a spec out of a URL, a `location.hash`, a `location.search`, or a bare
  * token. Accepts all four because callers will inevitably pass all four.
@@ -783,7 +913,7 @@ export async function specFromShareUrl(source: string): Promise<HomeSpec | null>
  *  one, or `null` if there is nothing that looks like a token here. */
 export function extractToken(source: string): string | null {
   if (typeof source !== "string" || source.length === 0) return null;
-  if (TOKEN_RE.test(source)) return source;
+  if (TOKEN_RE.test(source) || DOCUMENT_TOKEN_RE.test(source)) return source;
   const marker = new RegExp(`[?#&]${SHARE_PARAM}=([^&#]+)`);
   const m = marker.exec(source);
   if (!m) return null;
@@ -794,6 +924,20 @@ export function extractToken(source: string): string | null {
   } catch {
     return m[1];
   }
+}
+
+export async function documentFromString(source: string): Promise<BuilderDocument | null> {
+  const token = extractToken(source);
+  if (token === null) return null;
+  if (DOCUMENT_TOKEN_RE.test(token)) return decodeDocument(token);
+  const spec = await decodeSpec(token);
+  return spec ? builderDocumentFromLegacySpec(spec) : null;
+}
+
+export async function documentFromLocation(): Promise<BuilderDocument | null> {
+  if (typeof window === "undefined") return null;
+  const { hash, search } = window.location;
+  return (await documentFromString(hash)) ?? (await documentFromString(search));
 }
 
 /**

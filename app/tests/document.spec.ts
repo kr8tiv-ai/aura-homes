@@ -8,6 +8,8 @@ import {
   canonicalBuilderDocumentJson,
   defaultBuilderDocument,
   hashBuilderDocument,
+  reconcileBuilderDocumentSpec,
+  restoreQuarantinedEntry,
   validateBuilderDocument,
 } from "@/lib/builder/document";
 import { addFixture, emptyFixtureSet } from "@/lib/builder/fixtures";
@@ -168,4 +170,122 @@ test("the default document has a stable known keccak256 identity", () => {
     "0x46fadeafd22a70cadb756721e1c1e6cddb5d7184b735644132ff957314ce2f3c",
   );
   expect(hashBuilderDocument(changed)).not.toBe(hashBuilderDocument(document));
+});
+
+test("geometry edits quarantine every orphan instead of silently deleting it", () => {
+  const document = defaultBuilderDocument();
+  const volumeId = document.spec.volumes[0].id;
+  const withFixture = addFixture(document.spec, document.fixtures, "wood-stove").set;
+  const edited = {
+    ...document,
+    partitions: [
+      {
+        id: "p1",
+        volumeId,
+        axis: "x" as const,
+        atFt: 0,
+        fromFt: -3,
+        toFt: 3,
+        thicknessFt: 0.4,
+        door: null,
+      },
+    ],
+    finishes: { [`vol:${volumeId}/wall:n`]: "timber-cladding" as const },
+    fixtures: withFixture,
+    comfort: {
+      ...document.comfort,
+      targets: {
+        bedroom: {
+          winterMinC: 17,
+          winterMaxC: 21,
+          summerMinC: 19,
+          summerMaxC: 24,
+          humidityMinPct: 30,
+          humidityMaxPct: 50,
+          illuminanceMinLux: 100,
+        },
+      },
+    },
+  };
+  const noVolumes = { ...document.spec, volumes: [], deck: null };
+
+  const reconciled = reconcileBuilderDocumentSpec(edited, noVolumes);
+  expect(reconciled.partitions).toEqual([]);
+  expect(reconciled.finishes).toEqual({});
+  expect(reconciled.fixtures.items).toEqual([]);
+  expect(reconciled.comfort.targets).toEqual({});
+  expect(reconciled.quarantine.entries.map((entry) => entry.kind).sort()).toEqual([
+    "comfort-target",
+    "finish",
+    "fixture",
+    "partition",
+  ]);
+
+  const repeated = reconcileBuilderDocumentSpec(reconciled, noVolumes);
+  expect(repeated.quarantine.entries).toHaveLength(4);
+});
+
+test("a quarantined item can be restored after its host returns", () => {
+  const document = defaultBuilderDocument();
+  const volumeId = document.spec.volumes[0].id;
+  const withPartition = {
+    ...document,
+    partitions: [
+      {
+        id: "p1",
+        volumeId,
+        axis: "z" as const,
+        atFt: 0,
+        fromFt: -3,
+        toFt: 3,
+        thicknessFt: 0.4,
+        door: null,
+      },
+    ],
+  };
+  const removed = reconcileBuilderDocumentSpec(withPartition, {
+    ...document.spec,
+    volumes: [],
+    deck: null,
+  });
+  const hostReturned = { ...removed, spec: document.spec };
+
+  const restored = restoreQuarantinedEntry(hostReturned, 0);
+  expect(restored.ok).toBe(true);
+  if (!restored.ok) return;
+  expect(restored.document.partitions.map((partition) => partition.id)).toContain("p1");
+  expect(restored.document.quarantine.entries).toEqual([]);
+});
+
+test("quarantine preserves newer work that reuses a held semantic id", () => {
+  const document = defaultBuilderDocument();
+  const volumeId = document.spec.volumes[0].id;
+  const partition = {
+    id: "p1",
+    volumeId,
+    axis: "z" as const,
+    atFt: 0,
+    fromFt: -3,
+    toFt: 3,
+    thicknessFt: 0.4,
+    door: null,
+  };
+  const withoutVolumes = { ...document.spec, volumes: [], deck: null };
+  const firstRemoval = reconcileBuilderDocumentSpec(
+    { ...document, partitions: [partition] },
+    withoutVolumes,
+  );
+  const reusedId = {
+    ...firstRemoval,
+    spec: document.spec,
+    partitions: [{ ...partition, atFt: 2 }],
+  };
+
+  const secondRemoval = reconcileBuilderDocumentSpec(reusedId, withoutVolumes);
+  expect(secondRemoval.quarantine.entries).toHaveLength(2);
+  expect(
+    secondRemoval.quarantine.entries.map((entry) =>
+      entry.kind === "partition" ? entry.value.atFt : null,
+    ),
+  ).toEqual([0, 2]);
 });

@@ -15,3 +15,16 @@ test("comfort room rows can be selected from the keyboard", async ({ page }) => 
   await page.keyboard.press("Enter");
   await expect(row).toHaveAttribute("aria-selected", "true");
 });
+
+test("durable comfort assumptions participate in builder undo", async ({ page }) => {
+  await page.goto("/build");
+  await page.getByRole("button", { name: "Comfort" }).click();
+
+  const winterTemperature = page.getByLabel("Winter indoor air temperature");
+  await expect(winterTemperature).toHaveValue("21");
+  await winterTemperature.fill("22");
+  await expect(winterTemperature).toHaveValue("22");
+
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(winterTemperature).toHaveValue("21");
+});

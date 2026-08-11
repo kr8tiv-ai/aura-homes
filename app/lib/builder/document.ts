@@ -10,6 +10,7 @@ import { keccak256, stringToHex, type Hex } from "viem";
 
 import {
   DEFAULT_SETTINGS,
+  comfortReport,
   type ComfortSettings,
   type ComfortTarget,
 } from "./comfort";
@@ -23,6 +24,7 @@ import {
 import { defaultSpec, type HomeSpec } from "./spec";
 import {
   NO_OVERRIDES,
+  pruneOverrides,
   validateOverrides,
   type MaterialId,
   type SurfaceOverrides,
@@ -454,4 +456,205 @@ export function canonicalBuilderDocumentJson(document: BuilderDocument): string 
 
 export function hashBuilderDocument(document: BuilderDocument): Hex {
   return keccak256(stringToHex(canonicalBuilderDocumentJson(document)));
+}
+
+function fixtureHostExists(spec: HomeSpec, fixture: PlacedFixture): boolean {
+  const placement = fixture.placement;
+  if (placement.mount === "floor") {
+    const host = placement.host;
+    if (host.kind === "deck") return spec.deck !== null;
+    return spec.volumes.some((volume) => volume.id === host.volumeId);
+  }
+  return spec.volumes.some((volume) => volume.id === placement.volumeId);
+}
+
+function finishExists(spec: HomeSpec, surfaceId: string, materialId: MaterialId): boolean {
+  const candidate = { [surfaceId]: materialId } as SurfaceOverrides;
+  return Object.keys(pruneOverrides(spec, candidate)).length === 1;
+}
+
+/**
+ * Change the legacy spec while moving anything whose semantic host vanished
+ * into quarantine. Nothing is destroyed and nothing is silently reattached to
+ * a newly reused id.
+ */
+export function reconcileBuilderDocumentSpec(
+  document: BuilderDocument,
+  nextSpec: HomeSpec,
+): BuilderDocument {
+  const specResult = validateHomeSpec(nextSpec);
+  if (!specResult.ok) throw new Error(`Cannot apply an invalid spec: ${specResult.problem}`);
+  const spec = specResult.spec;
+  const volumeIds = new Set(spec.volumes.map((volume) => volume.id));
+  const quarantined: QuarantineEntry[] = [];
+
+  const partitions = document.partitions.filter((partition) => {
+    if (volumeIds.has(partition.volumeId)) return true;
+    quarantined.push({
+      kind: "partition",
+      reason: `Volume ${partition.volumeId} no longer exists in the edited geometry.`,
+      value: partition,
+    });
+    return false;
+  });
+
+  const finishPairs: Array<readonly [string, MaterialId]> = [];
+  for (const [surfaceId, materialId] of Object.entries(document.finishes)) {
+    if (finishExists(spec, surfaceId, materialId)) {
+      finishPairs.push([surfaceId, materialId]);
+    } else {
+      quarantined.push({
+        kind: "finish",
+        reason: `Surface ${surfaceId} no longer exists in the edited geometry.`,
+        value: { surfaceId, materialId },
+      });
+    }
+  }
+  const finishes = Object.fromEntries(finishPairs) as SurfaceOverrides;
+
+  const fixtureItems = document.fixtures.items.filter((fixture) => {
+    if (fixtureHostExists(spec, fixture)) return true;
+    quarantined.push({
+      kind: "fixture",
+      reason: `The host for fixture ${fixture.id} no longer exists in the edited geometry.`,
+      value: fixture,
+    });
+    return false;
+  });
+
+  // The default document has no per-room targets. Avoid running the comfort
+  // plan solver on every geometry drag until there is durable room data to
+  // reconcile.
+  const solvedRooms =
+    Object.keys(document.comfort.targets).length === 0
+      ? new Set<string>()
+      : new Set(comfortReport(spec, document.comfort).rooms.map((room) => room.room.id));
+  const targets: Record<string, ComfortTarget> = {};
+  for (const roomId of Object.keys(document.comfort.targets).sort()) {
+    const target = document.comfort.targets[roomId];
+    if (solvedRooms.has(roomId)) {
+      targets[roomId] = target;
+    } else {
+      quarantined.push({
+        kind: "comfort-target",
+        reason: `Solved room ${roomId} no longer exists after the geometry edit.`,
+        value: { roomId, target },
+      });
+    }
+  }
+
+  return {
+    ...document,
+    spec,
+    partitions,
+    finishes,
+    fixtures: { version: FIXTURES_VERSION, items: fixtureItems },
+    comfort: { conditions: document.comfort.conditions, targets },
+    quarantine: {
+      // Existing entries may deliberately share a semantic id with a newer
+      // edit. Preserve both values; collapsing by id would silently discard
+      // one version of the user's work.
+      entries: [...document.quarantine.entries, ...quarantined],
+    },
+  };
+}
+
+export type RestoreQuarantineResult =
+  | { ok: true; document: BuilderDocument }
+  | { ok: false; problem: string };
+
+/** Restore one quarantined value only when its original semantic host exists. */
+export function restoreQuarantinedEntry(
+  document: BuilderDocument,
+  index: number,
+): RestoreQuarantineResult {
+  const entry = document.quarantine.entries[index];
+  if (!entry) return { ok: false, problem: "That quarantined item no longer exists." };
+  const remaining = document.quarantine.entries.filter((_, itemIndex) => itemIndex !== index);
+
+  if (entry.kind === "partition") {
+    if (!document.spec.volumes.some((volume) => volume.id === entry.value.volumeId))
+      return { ok: false, problem: "Its original volume has not returned yet." };
+    if (document.partitions.some((partition) => partition.id === entry.value.id))
+      return { ok: false, problem: "A partition with that id is already active." };
+    return {
+      ok: true,
+      document: {
+        ...document,
+        partitions: [...document.partitions, entry.value],
+        quarantine: { entries: remaining },
+      },
+    };
+  }
+
+  if (entry.kind === "finish") {
+    if (!finishExists(document.spec, entry.value.surfaceId, entry.value.materialId))
+      return { ok: false, problem: "Its original surface has not returned yet." };
+    if (document.finishes[entry.value.surfaceId] !== undefined)
+      return { ok: false, problem: "That surface already has an active finish." };
+    return {
+      ok: true,
+      document: {
+        ...document,
+        finishes: {
+          ...document.finishes,
+          [entry.value.surfaceId]: entry.value.materialId,
+        },
+        quarantine: { entries: remaining },
+      },
+    };
+  }
+
+  if (entry.kind === "fixture") {
+    if (!fixtureHostExists(document.spec, entry.value))
+      return { ok: false, problem: "Its original fixture host has not returned yet." };
+    if (document.fixtures.items.some((fixture) => fixture.id === entry.value.id))
+      return { ok: false, problem: "A fixture with that id is already active." };
+    return {
+      ok: true,
+      document: {
+        ...document,
+        fixtures: {
+          version: FIXTURES_VERSION,
+          items: [...document.fixtures.items, entry.value],
+        },
+        quarantine: { entries: remaining },
+      },
+    };
+  }
+
+  const rooms = new Set(
+    comfortReport(document.spec, document.comfort).rooms.map((room) => room.room.id),
+  );
+  if (!rooms.has(entry.value.roomId))
+    return { ok: false, problem: "Its original solved room has not returned yet." };
+  if (document.comfort.targets[entry.value.roomId] !== undefined)
+    return { ok: false, problem: "That room already has an active comfort target." };
+  return {
+    ok: true,
+    document: {
+      ...document,
+      comfort: {
+        ...document.comfort,
+        targets: {
+          ...document.comfort.targets,
+          [entry.value.roomId]: entry.value.target,
+        },
+      },
+      quarantine: { entries: remaining },
+    },
+  };
+}
+
+export function discardQuarantinedEntry(
+  document: BuilderDocument,
+  index: number,
+): BuilderDocument {
+  if (!document.quarantine.entries[index]) return document;
+  return {
+    ...document,
+    quarantine: {
+      entries: document.quarantine.entries.filter((_, itemIndex) => itemIndex !== index),
+    },
+  };
 }

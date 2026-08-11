@@ -31,12 +31,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useThree } from "@react-three/fiber";
 import { feetInches, sqft } from "@/components/design/ecoSpec";
-import type { HomeSpec } from "@/lib/builder/spec";
+import type { BuilderDocument } from "@/lib/builder/document";
 import {
   MAX_NAME_CHARS,
   canvasThumbnail,
   clearAutosave,
   deleteDesign,
+  documentSignature,
   duplicateDesign,
   estimateStorage,
   explainStoreError,
@@ -50,7 +51,6 @@ import {
   registerThumbnailSource,
   renameDesign,
   saveDesign,
-  specSignature,
   storageAvailable,
   writeAutosave,
   type DesignSummary,
@@ -140,18 +140,19 @@ const CONFIRM_MS = 5_000;
 /* =========================================================================== */
 
 export default function ProjectLibrary({
-  spec,
+  value,
   onOpen,
   autosaveDelayMs = 4_000,
 }: {
   /** the design currently in the builder */
-  spec: HomeSpec;
+  value: BuilderDocument;
   /** hand a stored design back to the builder. The label goes into the undo
    *  stack, so a restore or an open is always one Ctrl+Z from undone. */
-  onOpen: (spec: HomeSpec, label: string) => void;
+  onOpen: (document: BuilderDocument, label: string) => void;
   /** idle time before the working design is written to the autosave slot */
   autosaveDelayMs?: number;
 }) {
+  const spec = value.spec;
   const [phase, setPhase] = useState<Phase>("boot");
   const [designs, setDesigns] = useState<DesignSummary[]>([]);
   const [estimate, setEstimate] = useState<StorageEstimate>({ usageBytes: null, quotaBytes: null });
@@ -177,11 +178,11 @@ export default function ProjectLibrary({
   /* The content signature of what is on screen. Cheap to compare, and it is
      what lets a card say "this is the design you are looking at" without a
      deep compare of two buildings. */
-  const signature = useMemo(() => specSignature(spec), [spec]);
+  const signature = useMemo(() => documentSignature(value), [value]);
   const signatureRef = useRef(signature);
   signatureRef.current = signature;
-  const specRef = useRef(spec);
-  specRef.current = spec;
+  const documentRef = useRef(value);
+  documentRef.current = value;
 
   const report = useCallback((err: unknown) => {
     setError(explainStoreError(err).message);
@@ -242,13 +243,13 @@ export default function ProjectLibrary({
   useEffect(() => {
     if (phase !== "live" || autosaveError) return;
     const timer = setTimeout(() => {
-      void writeAutosave(spec).then(
+      void writeAutosave(value).then(
         () => setAutosavedAt(Date.now()),
         (err) => setAutosaveError(explainStoreError(err).message),
       );
     }, autosaveDelayMs);
     return () => clearTimeout(timer);
-  }, [spec, phase, autosaveDelayMs, autosaveError]);
+  }, [value, phase, autosaveDelayMs, autosaveError]);
 
   /* ---- and on the way out of the tab, where the debounce would never fire.
          `visibilitychange` is the last event a browser reliably delivers;
@@ -257,7 +258,7 @@ export default function ProjectLibrary({
     if (phase !== "live" || autosaveError) return;
     const onHide = () => {
       if (document.visibilityState === "hidden") {
-        void writeAutosave(specRef.current).catch(() => {
+        void writeAutosave(documentRef.current).catch(() => {
           /* a failure while the tab is hiding has nowhere to be shown; the
              next foreground tick reports it */
         });
@@ -304,7 +305,7 @@ export default function ProjectLibrary({
 
   const save = () =>
     act("save", async () => {
-      const saved = await saveDesign({ name: saveName, spec });
+      const saved = await saveDesign({ name: saveName, document: value });
       return `Saved “${saved.name}” to this browser${
         saved.thumbnail ? "" : " — no thumbnail: the 3D view had nothing readable to capture"
       }.`;
@@ -312,14 +313,14 @@ export default function ProjectLibrary({
 
   const overwrite = (d: DesignSummary) =>
     act("overwrite", async () => {
-      const saved = await saveDesign({ id: d.id, name: d.name, spec });
+      const saved = await saveDesign({ id: d.id, name: d.name, document: value });
       return `“${saved.name}” now holds the design on screen.`;
     });
 
   const open = (d: DesignSummary) =>
     act("open", async () => {
       const record = await readDesign(d.id);
-      onOpen(record.spec, `library:${record.id}`);
+      onOpen(record.document, `library:${record.id}`);
       return `Opened “${record.name}”. Ctrl+Z puts your previous home back — nothing was lost.`;
     });
 
@@ -345,7 +346,7 @@ export default function ProjectLibrary({
 
   const restore = () => {
     if (!pending) return;
-    onOpen(pending.spec, "autosave-restore");
+    onOpen(pending.document, "autosave-restore");
     setNote(
       `Restored the design autosaved ${formatWhen(pending.updatedAt)}. Ctrl+Z puts back what was on screen a moment ago.`,
     );
