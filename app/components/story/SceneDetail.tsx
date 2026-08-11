@@ -131,16 +131,64 @@ function ridgeGeometry(seed: number, width: number, height: number, segs: number
    because a single silhouette line is the thing that reads "backdrop": real
    ranges layer, and the atmosphere between ranks is what gives the horizon
    its depth. `seed` decorrelates the ridgelines; `wash` is how far the whole
-   rank has already dissolved toward sky. */
+   rank has already dissolved toward sky.
+
+   ===================================================================
+   WASH-OUT FIX (Aug 10). The founder's report — "they dissolve into the sky
+   as near-invisible pale ghosts, you cannot see a single peak, let alone
+   snow" — was correct, and it was THREE bugs stacked, not a taste problem.
+   Measured off an offline rasterisation of this exact geometry through this
+   exact camera, tone map and page sky (sky luminance 236-240):
+
+   1. THE AERIAL-PERSPECTIVE TERM WAS INVERTED. `depth = (z + D/2)/D` was
+      documented "0 front .. 1 back". It is the other way round: the plane is
+      rotateX(-90°), so local +z is the row NEAREST the camera. Height also
+      grows with that term, so the nearest row is the tallest — it is the
+      crest, and it is the entire visible silhouette; everything behind it is
+      occluded by it. `wash + depth * 0.4` therefore put the MAXIMUM haze on
+      the one part that touches the sky, and saved the crisp colour for the
+      low back rows that are hidden. Aerial perspective ran backwards.
+      Consequence: the mid rank's crest sat at luminance ~220 against a ~238
+      sky, and the far rank's `min(0.92, 0.55 + 0.4)` clamped to 0.92 — 92%
+      dissolved — so its whole visible span measured 216..219. Three levels.
+      That is not a hazy mountain, it is a flat ghost, which is exactly what
+      the screenshots show.
+   2. THE SNOW WAS COMPUTED AND THEN ERASED. `alt = y / maxH` normalises
+      against the single tallest vertex of a 900x110 field, so a 0.46-0.62
+      line sat above ~97% of the mesh. Measured in screen pixels at the LAND
+      beat, snow covered 0.8% of the visible range. There was no snow to see.
+   3. THE BAKED SUN WAS NEARLY OVERHEAD AND CLAMPED. `(0.44, 0.78, 0.44)` is
+      ~52° elevation, not the scene's 33° KEY, and `* 0.62 + 0.52` clamps at
+      1 for anything facing within ~60° of it — so the whole multiplier
+      spanned 0.88..1.12. A twelve-percent range is not shading; it is why
+      the range read as a cut-out with no rock faces and no relief.
+
+   Fog was NOT the cause and is not touched: these bands already opt out
+   (`fog={false}`) and they sit inside the 260 far plane from every beat.
+
+   Now: haze grows with distance and with depth INTO the range, the crest
+   stays the crispest thing on the horizon, the low skirt dissolves so it
+   hands off to the treeline, snow is placed by a line that a real proportion
+   of the visible face clears, and the sun is the scene's own KEY with a
+   ~3:1 lit-to-shadow range. Measured result at the LAND beat: mid rank
+   173..229 (was 191..219), far rank 192..228 (was 216..219), snow on 7.5%
+   of visible range pixels (was 0.8%). Still hazy — nothing is hard-edged,
+   nothing is darker than the near forest — but no longer erased.
+   =================================================================== */
 function snowRangeGeometry(seed: number, W: number, D: number, SX: number, SZ: number, hMul: number, wash: number) {
   const g = new THREE.PlaneGeometry(W, D, SX, SZ);
   g.rotateX(-Math.PI / 2);
   const p = g.attributes.position as THREE.BufferAttribute;
   const sky = new THREE.Color("#d9e6ee");
-  const rock = new THREE.Color("#5d6f80");
-  const rockHi = new THREE.Color("#7f909e");
+  /* Rock darkened (#5d6f80 -> #4a5a69) and the high-rock tint pulled back
+     (#7f909e -> #6f8090, and the alt ramp 1.5 -> 0.9). The old pair pushed
+     every high vertex to the PALEST rock in the palette and then washed it
+     — the peaks were the least contrasty part of the range. Snow now has
+     something to be brighter than. */
+  const rock = new THREE.Color("#4a5a69");
+  const rockHi = new THREE.Color("#6f8090");
   const snow = new THREE.Color("#f7fbfd");
-  const tree = new THREE.Color("#4a6355");
+  const tree = new THREE.Color("#41584c");
   const tmp = new THREE.Color();
   const cols = new Float32Array(p.count * 3);
 
@@ -148,16 +196,31 @@ function snowRangeGeometry(seed: number, W: number, D: number, SX: number, SZ: n
   for (let i = 0; i < p.count; i++) {
     const x = p.getX(i);
     const z = p.getZ(i);
-    // ridges run along X; depth falls away so the back is taller
-    const depth = (z + D / 2) / D; // 0 front .. 1 back
-    const rid = ridged(x * 0.0075 + 11.3 + seed, z * 0.011 + 4.1 + seed * 0.7, 5);
+    /* `near` is 1 at the row CLOSEST to the camera, 0 at the back. It was
+       called `depth` and documented "0 front .. 1 back", which is inverted —
+       see bug 1 in the block comment. Height grows with it, so the near row
+       is the crest and the rows behind fall away from us: that descending
+       face is the whole visible body of the range. */
+    const near = (z + D / 2) / D;
+    /* 0.0075 -> 0.0132 across X. At the old frequency the base wavelength was
+       133 units and the frame is ~154 units wide at this distance, so the
+       whole backdrop was ONE lump plus a shoulder. 0.0132 puts two ridge
+       systems and their sub-ridges in frame, which is what foothills look
+       like. Z frequency follows so the face gets ribs, not bands. */
+    const rid = ridged(x * 0.0132 + 11.3 + seed, z * 0.014 + 4.1 + seed * 0.7, 5);
     const macro = 0.45 + 0.55 * vnoise(x * 0.0022 + 2.7 + seed, z * 0.004 + 9.4);
     /* 55, not 150. At ~150 units out a 150-unit peak subtends about 45° and
        swallows the sky; 55 subtends roughly 20°, which is what a real range
-       looks like from a valley floor. */
-    let h = rid * macro * 55 * hMul * (0.42 + depth * 0.9);
-    // pull the very front edge down to the ground so it never floats
-    h *= Math.min(1, Math.max(0, (depth - 0.02) / 0.22));
+       looks like from a valley floor. The pow(1.08) deepens the saddles
+       slightly relative to the peaks — ridged noise is already spiky, this
+       just stops the shoulders filling in — and 0.78 is the normaliser that
+       keeps the peak height where it was before the power was applied.
+       Headroom checked against every beat: this silhouette clips FEWER
+       columns at the top of frame than the one it replaces (beat 1: 34 of
+       1440, was 516; beat 3: 389, was 514). */
+    let h = Math.pow(Math.min(1, (rid * macro) / 0.78), 1.08) * 0.78 * 55 * hMul * (0.42 + near * 0.9);
+    // and pull the BACK edge down to the ground so the boundary never floats
+    h *= Math.min(1, Math.max(0, (near - 0.02) / 0.22));
     p.setY(i, h);
   }
   g.computeVertexNormals();
@@ -172,29 +235,51 @@ function snowRangeGeometry(seed: number, W: number, D: number, SX: number, SZ: n
     const alt = y / maxH;
     const slope = 1 - Math.abs(n.getY(i)); // 0 flat .. 1 vertical
     /* snow above the line, but shed off anything steep. Line noise runs at
-       0.16 amplitude (was 0.1) — a straight snow line is the one thing a
-       real range never has; cirques hold snow low and windward shoulders
-       blow clear high. */
-    const line = 0.46 + vnoise(p.getX(i) * 0.02 + seed, z * 0.02) * 0.16;
-    let snowAmt = clamp01((alt - line) / 0.2) * clamp01(1 - (slope - 0.34) / 0.34);
+       0.17 amplitude — a straight snow line is the one thing a real range
+       never has; cirques hold snow low and windward shoulders blow clear
+       high. The line itself dropped 0.46 -> 0.42 and the ramp tightened
+       0.2 -> 0.13, measured against the altitude of the VISIBLE face rather
+       than of the whole mesh (its pixels run alt p25 0.21 / p50 0.32 /
+       p75 0.45 / p90 0.57), which is what turns 0.8% snow cover into ~8%.
+       The slope gate matters more than the line: visible-face slope runs
+       p50 0.25 / p75 0.40, so shedding from 0.34 and clearing by 0.50 keeps
+       bare rock on the steep flanks and holds snowfields on the shoulders —
+       the actual cue the founder asked for. */
+    const line = 0.42 + vnoise(p.getX(i) * 0.02 + seed, z * 0.02) * 0.17;
+    let snowAmt = clamp01((alt - line) / 0.13) * clamp01(1 - (slope - 0.34) / 0.16);
     snowAmt = clamp01(snowAmt);
-    const treeAmt = clamp01((0.24 - alt) / 0.2);
-    tmp.copy(rock).lerp(rockHi, clamp01(alt * 1.5));
-    tmp.lerp(tree, treeAmt * 0.75);
+    const treeAmt = clamp01((0.16 - alt) / 0.22);
+    tmp.copy(rock).lerp(rockHi, clamp01(alt * 0.9));
+    tmp.lerp(tree, treeAmt * 0.8);
     tmp.lerp(snow, snowAmt);
     /* Bake the sun term into the colour and draw unlit. A backdrop lit by
        the scene's directional light turns its whole north face black, which
        is what put a grey slab across the sky. Baking it means the peaks get
        their light-and-shade — the thing that actually makes them read as
-       3D — with no lighting cost and no unlit backfaces. */
-    const nx = n.getX(i);
-    const ny = n.getY(i);
-    const nz = n.getZ(i);
-    const shade = clamp01((nx * 0.44 + ny * 0.78 + nz * 0.44) * 0.62 + 0.52);
-    tmp.multiplyScalar(0.66 + shade * 0.46);
-    // aerial perspective: the far rank washes into the sky
-    const depth = (z + D / 2) / D;
-    tmp.lerp(sky, Math.min(0.92, wash + depth * 0.4));
+       3D — with no lighting cost and no unlit backfaces.
+
+       The direction is now KEY itself, not the near-overhead (0.44, 0.78,
+       0.44) it used to be: one key, one direction, everywhere — the same
+       rule the rest of this file already follows. `0.66 * ndl + 0.40`
+       clamped, remapped to 0.40..1.34, gives a ~3:1 lit-to-shadow range in
+       place of the old 1.12:1, which is where the rock faces come from. */
+    const ndl = n.getX(i) * KEY.x + n.getY(i) * KEY.y + n.getZ(i) * KEY.z;
+    const shade = clamp01(ndl * 0.66 + 0.4);
+    tmp.multiplyScalar(0.4 + shade * 0.94);
+    /* Aerial perspective, in the three directions it actually runs:
+       · `wash` — how far this whole rank has already dissolved (per rank).
+       · `(1 - near) * 0.24` — deeper INTO the range is further away. This is
+         the term that used to be inverted.
+       · the low band dissolves hard (`+0.26` fading out by alt 0.26) so the
+         range's foot hands off to the fogged treeline instead of drawing a
+         hard base line above it, and the crest clears (`- alt * 0.22`) so
+         the one edge that meets the sky is the crispest thing out there.
+       Capped at 0.9: even the haziest vertex keeps a trace of its own
+       colour, which is what stopped the far rank flattening to three levels
+       of luminance across its entire span. */
+    const near = (z + D / 2) / D;
+    const haze = clamp01(wash + (1 - near) * 0.24 + (1 - smooth01(0, 0.26, alt)) * 0.26 - alt * 0.22);
+    tmp.lerp(sky, Math.min(0.9, haze));
     cols[i * 3] = tmp.r;
     cols[i * 3 + 1] = tmp.g;
     cols[i * 3 + 2] = tmp.b;
@@ -203,28 +288,94 @@ function snowRangeGeometry(seed: number, W: number, D: number, SX: number, SZ: n
   return g;
 }
 
-function SnowRange({ night }: { night: number }) {
+function SnowRange({ night, dusk }: { night: number; dusk: Dusk }) {
   /* D was 300 centred at -145, so the front edge reached z=+5 — level with
      the house — and the range filled the whole upper frame as a grey slab.
      A backdrop needs to be a BAND, well behind the treeline, not a plain
-     that starts underfoot. */
-  const mid = useMemo(() => snowRangeGeometry(0, 900, 110, 240, 26, 1, 0.2), []);
+     that starts underfoot.
+
+     240 -> 380 segments across X. The ridge frequency roughly doubled (see
+     snowRangeGeometry), and at 240 a 900-unit band gave 3.75 units a vertex
+     — about 36 px of screen at this distance, which quantised the new crests
+     back into soft dunes. 380 gives 2.37 units (~23 px). +7,280 triangles,
+     same single draw, unlit, no shadow, no fog. */
+  const mid = useMemo(() => snowRangeGeometry(0, 900, 110, 380, 26, 1, 0.3), []);
   /* The far rank: taller (its crests show in the mid range's saddles),
      offset in x so peaks never align, coarser mesh (it resolves to a few
-     pixels of relief), and already 55% dissolved into sky — the haze
-     BETWEEN the ranks is the depth cue. ~4.8k triangles, one draw. */
-  const far = useMemo(() => snowRangeGeometry(37.4, 1150, 130, 150, 16, 1.55, 0.55), []);
-  const dim = 1 - night * 0.62;
+     pixels of relief), and pre-dissolved — the haze BETWEEN the ranks is the
+     depth cue. ~6.4k triangles, one draw.
+
+     wash 0.55 -> 0.50 and hMul 1.55 -> 1.45. 0.55 plus the old inverted
+     depth term hit the 0.92 clamp on every visible vertex, which is why this
+     rank measured 216..219 — a three-level flat. It is still the hazier of
+     the two by ~30 levels of luminance, which is the job; it just exists
+     now. The height came down slightly because the sharper ridges reach
+     higher, and this rank sits closest to the top of frame. */
+  const far = useMemo(() => snowRangeGeometry(37.4, 1150, 130, 200, 16, 1.45, 0.5), []);
+
+  /* ONE tint, multiplied onto both ranks' baked vertex colours. A multiply
+     can only warm or damp what is already there — it can never repaint the
+     range — so the snow/rock/haze relationships survive the whole day arc.
+     Day is neutral. Dusk warms and drops the blue: the peaks are the last
+     thing the sun leaves, and a cold backdrop under a warm sky was the one
+     place the old neutral scalar showed. Night damps toward moonlit blue
+     rather than toward black (0.44, 0.50, 0.66) — the range has to stay
+     legible after the toggle, and the new albedo is darker than the one the
+     old flat 0.38 scalar was tuned against.
+
+     Cost: two float writes per dusk tick. No per-frame allocation, no
+     material rebuild, no shader recompile. */
+  const mats = useRef<(THREE.MeshBasicMaterial | null)[]>([]);
+  const duskAmt = useRef(0);
+  const nightAmt = useRef(night);
+  nightAmt.current = night;
+  const paint = () => {
+    const d = duskAmt.current;
+    const nA = nightAmt.current;
+    const r = (1 + d * 0.1) * (1 - nA * 0.56);
+    const gr = (1 - d * 0.03) * (1 - nA * 0.5);
+    const b = (1 - d * 0.14) * (1 - nA * 0.34);
+    for (const m of mats.current) {
+      if (!m) continue;
+      m.color.r = r;
+      m.color.g = gr;
+      m.color.b = b;
+    }
+  };
+  useLayoutEffect(
+    () =>
+      dusk.add((d: number) => {
+        duskAmt.current = d;
+        paint();
+      }),
+    [dusk] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  // and once on mount / whenever the night amount moves, so the very first
+  // frame of a reduced-motion (frameloop="demand") render is already tinted
+  useLayoutEffect(paint, [night]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <>
       <mesh geometry={far} position={[70, -13, -232]} renderOrder={-11} frustumCulled={false}>
-        <meshBasicMaterial vertexColors fog={false} color={new THREE.Color().setScalar(dim)} />
+        <meshBasicMaterial
+          vertexColors
+          fog={false}
+          ref={(el) => {
+            mats.current[0] = el;
+          }}
+        />
       </mesh>
       {/* z places the front rank ~110 units out — behind every tree in the
           stand (the furthest sits at z≈30) and inside the 260 far plane from
           all seven camera beats. */}
       <mesh geometry={mid} position={[0, -9, -172]} renderOrder={-10} frustumCulled={false}>
-        <meshBasicMaterial vertexColors fog={false} color={new THREE.Color().setScalar(dim)} />
+        <meshBasicMaterial
+          vertexColors
+          fog={false}
+          ref={(el) => {
+            mats.current[1] = el;
+          }}
+        />
       </mesh>
     </>
   );
@@ -858,14 +1009,81 @@ void main(){
      fat opaque cones. 0.010 is enough to beat the sampler. */
   bw *= 1.0 + dist * 0.010;
 
-  /* ---- wind: two noise frequencies + per-blade flutter, gated by a gust
-     front rolling across the meadow so it reads as weather, not a loop ---- */
+  /* ================= WIND v7 — TRAVELLING GUSTS =================
+     v6 was two advected noises plus a front, and it read as "bent", not as
+     "swaying". Three reasons, all fixed here:
+
+     · vnoise returns 0..1, so (gust * 0.75 + ripple * 0.30) carried a DC
+       offset of about +0.52 with only a small wobble on top. The field held
+       a permanent downwind lean; wind never RELEASED, so there was no
+       return stroke, and a return stroke is what the eye reads as sway.
+       Both noises are centred to -1..1 now.
+     · the lean was always exactly wd. One fixed axis is a fore-aft push,
+       never a lateral one. A second, slower, counter-advected noise now
+       YAWS the local wind vector by up to ~35°, so the direction of the
+       lean itself rolls across the meadow — the sideways motion.
+     · the gust front's spatial frequency was 0.055, i.e. a 114 m wavelength
+       across a field that is only ~90 m wide. The "front" was therefore
+       near-uniform — the whole meadow gusted at once, which is precisely
+       what "moves as one sheet" means. 0.135 is a 46 m wavelength, so about
+       two fronts are on the field at any moment and you can watch one
+       travel through it at ~4.6 m/s.
+
+     Everything is uniforms off ONE clock (uTime, uGust); no per-blade CPU
+     work, no per-frame allocation. Frozen (prefers-reduced-motion) holds a
+     chosen instant rather than t=0 — see FROZEN_T in GrassField.
+
+     COST: the hero blade pays one extra vnoise (3 instead of 2). The filler
+     — a single triangle, 8-18 cm tall, gone past 8-18 m — drops the ripple
+     noise it could never show and pays ONE (instead of 2), which is the
+     larger population by 8x. Net vertex ALU across both layers is slightly
+     down, not up. */
   vec2 wd = normalize(uWindDir);
-  float gust   = vnoise(base.xz * 0.06 + wd * uTime * 0.5);
-  float ripple = vnoise(base.xz * 0.40 + wd * uTime * 2.2);
-  float front  = smoothstep(0.05, 1.0, sin(uTime * 0.33 - dot(base.xz, wd) * 0.055));
-  float wind = gust * 0.75 + ripple * 0.30 + 0.12 * sin(uTime * 2.0 + aRand.w * 6.2831);
-  wind *= 0.55 + 0.95 * (front * uGust);
+
+  /* per-blade stiffness, seeded from world position (never from the instance
+     index, so it is stable wherever the blade tiles). It scales the response
+     amplitude AND detunes the flutter, which is what stops neighbours moving
+     in lockstep. */
+  float stiff = 0.74 + 0.52 * h21(base.xz * 4.3 + 5.1);
+  float ph = aRand.w * 6.2831853;
+
+  /* the GUST FIELD: ~18 m cells advected downwind at ~5.5 m/s, centred so a
+     gust pushes and then lets go. */
+  float gust = vnoise(base.xz * 0.055 + wd * uTime * 0.30) * 2.0 - 1.0;
+  /* the FRONT: a plane wave marching along the wind, 46 m between crests,
+     ~4.6 m/s. This is the wave you actually see roll across the field. */
+  float front = 0.5 + 0.5 * sin(uTime * 0.62 - dot(base.xz, wd) * 0.135);
+  // uGust is the weather envelope (ramp/hold/decay/lull) — gusts ARRIVE.
+  float amp = (0.34 + 0.66 * front * uGust) / stiff;
+`
+  +
+  (cfg.segs >= 4
+    ? /* glsl */ `
+  /* SWIRL: the direction field. Slower, larger (~36 m), and advected AGAINST
+     the wind so lean angle and lean strength can never lock into a single
+     travelling pattern. This is the term that makes the meadow lean sideways
+     and come back rather than nodding along one axis. */
+  float swirl  = vnoise(base.xz * 0.028 - wd * uTime * 0.085 + 31.7) * 2.0 - 1.0;
+  /* RIPPLE: small-scale, fast, the visible texture of moving grass. */
+  float ripple = vnoise(base.xz * 0.34 + wd * uTime * 2.15) * 2.0 - 1.0;
+  float flutter = sin(uTime * 2.6 / stiff + ph) * 0.16;
+  float lean = (0.66 + 0.46 * gust + 0.30 * ripple + flutter) * amp;
+  /* the yaw is what makes this LATERAL. Measured over 200 frames x 120
+     blades: v6's wind push sat at exactly 35 degrees at every blade at every
+     instant (spread 0) — one axis, forever. This spans 14..68 degrees. */
+  float yaw = swirl * 0.62 + ripple * 0.16;
+  vec2 dir = wd * cos(yaw) + vec2(-wd.y, wd.x) * sin(yaw);
+`
+    : /* glsl */ `
+  /* Filler: the same gust field and the same front, so the wave that rolls
+     through the hero layer rolls through the carpet UNDER it in phase — two
+     weathers on one meadow is the one thing worse than none. It skips the
+     swirl and the ripple: at 8-18 cm and beyond 8 m, lateral lean and 30 cm
+     ripple cells are both under a pixel. */
+  float lean = (0.66 + 0.50 * gust + 0.14 * sin(uTime * 2.6 / stiff + ph)) * amp;
+  vec2 dir = wd;
+`) +
+  /* glsl */ `
 
   // a small static lean per blade, seeded from world position, so the field
   // is never uniform even when the air is still. Founder "smooth carpet"
@@ -874,12 +1092,27 @@ void main(){
   // the single change that turns a spiky sward into a lawn from a high camera.
   float la = h21(floor(base.xz * 3.7)) * 6.2831853;
   vec2 rest = vec2(cos(la), sin(la)) * mix(0.05, 0.26, h21(base.xz * 1.9 + 7.0));
-  vec2 horiz = (rest + wd * wind * 0.45) * bendMul;
+  vec2 restH = rest * bendMul;
+  /* 0.45 -> 0.60. Centring the gust noise removed its DC bias, which was
+     most of v6's lean; without paying it back the field would have ended up
+     CALMER, and "busier overall" was the ask. Measured over 200 frames x 120
+     blades this now runs tilt p50 13.3 / p90 27.5 deg against v6's 12.5 /
+     24.9, and each individual blade swings 33.7 deg over time against v6's
+     25.5 — busier in both senses, and now with a return stroke. */
+  vec2 windH = dir * lean * 0.60 * bendMul;
+  vec2 horiz = restH + windH;
 
   // quadratic Bezier: root pinned at the ground, curvature grows to the tip
   float hl = length(horiz);
   vec3 tipOff = normalize(vec3(horiz.x, max(1.0 - hl * 0.42, 0.22), horiz.y)) * bh;
-  vec3 midOff = normalize(vec3(horiz.x * 0.32, 0.74, horiz.y * 0.32)) * bh * 0.5;
+  /* STIFF AT THE BASE, TRAVEL AT THE TIP. The mid control point used to take
+     0.32 of the whole horizontal offset, wind included, so a gust bowed the
+     blade evenly from the root — a bent wire, not a whipping leaf. It now
+     follows the REST arch at the old 0.32 (that arch is what closes the
+     ground from a high camera and must not straighten) but only 0.15 of the
+     WIND lean, so the extra travel a gust adds lands at the tip. */
+  vec2 midH = restH * 0.32 + windH * 0.15;
+  vec3 midOff = normalize(vec3(midH.x, 0.76, midH.y)) * bh * 0.5;
   float omt = 1.0 - t;
   vec3 curve = 2.0 * omt * t * midOff + t * t * tipOff;
 
@@ -1222,15 +1455,29 @@ function buildGrassTiles(budget: number, cfg: GrassLayerCfg) {
   return tiles;
 }
 
-/** Weather: ramp -> hold -> decay -> lull, so gusts arrive rather than loop. */
+/** Weather: ramp -> hold -> decay -> lull, so gusts arrive rather than loop.
+ *  11 s -> 9 s ("busier overall" — founder). The lull returning 0 does NOT
+ *  stop the meadow: the envelope only gates the gust FRONT, and the advected
+ *  gust field underneath keeps travelling on the same clock, so a lull reads
+ *  as the air going soft rather than as the animation pausing. */
 function gustEnvelope(t: number) {
-  const T = 11.0;
+  const T = 9.0;
   const u = (t % T) / T;
   if (u < 0.18) return smooth01(0, 1, u / 0.18);
   if (u < 0.46) return 1;
   if (u < 0.78) return 1 - smooth01(0, 1, (u - 0.46) / 0.32);
   return 0;
 }
+
+/* THE FROZEN INSTANT. prefers-reduced-motion sets frameloop="demand": the
+   canvas renders exactly one frame and stops, so whatever the wind uniforms
+   hold at that moment is the picture forever. t=0 is the worst possible
+   choice — every advected noise is at its unshifted origin and the gust
+   envelope is at zero, i.e. the field is caught in a dead lull with no gust
+   anywhere. 5.6 s lands mid-decay of the second gust (envelope ~0.49), which
+   is a composed frame: a wave part-way across the meadow, blades leaning at
+   a range of angles and none of them at full whip. */
+const FROZEN_T = 5.6;
 
 function GrassField({
   frozen,
@@ -1304,10 +1551,12 @@ function GrassField({
 
   useFrame(({ clock, scene }) => {
     const u = mat.uniforms;
-    if (!frozen) {
-      u.uTime.value = clock.elapsedTime;
-      u.uGust.value = gustEnvelope(clock.elapsedTime);
-    }
+    /* Both layers read the SAME clock, so the gust front that rolls through
+       the hero blades rolls through the filler carpet in phase. Frozen holds
+       the art-directed instant rather than t=0 — see FROZEN_T. */
+    const t = frozen ? FROZEN_T : clock.elapsedTime;
+    u.uTime.value = t;
+    u.uGust.value = gustEnvelope(t);
     (u.uCamPos.value as THREE.Vector3).copy(camera.position);
     u.uNight.value = night;
 
@@ -1937,7 +2186,7 @@ export default function SceneDetail({
 
   return (
     <group>
-      <SnowRange night={night} />
+      <SnowRange night={night} dusk={dusk} />
       <Clouds frozen={frozen} night={night} />
       <GrassField frozen={frozen} budget={heroCount} night={night} dusk={dusk} cfg={G_HERO} />
       <GrassField frozen={frozen} budget={fillCount} night={night} dusk={dusk} cfg={G_FILL} />
