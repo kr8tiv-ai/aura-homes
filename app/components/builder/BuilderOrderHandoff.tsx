@@ -9,7 +9,7 @@ import {
 } from "@/lib/builder/orderSnapshot";
 import { Button, Panel } from "./ui";
 
-type Destination = "quote" | "concierge";
+type Destination = "quote" | "concierge" | "land";
 
 export default function BuilderOrderHandoff({ document }: { document: BuilderDocument }) {
   const [busy, setBusy] = useState<Destination | null>(null);
@@ -23,7 +23,9 @@ export default function BuilderOrderHandoff({ document }: { document: BuilderDoc
       await saveBuilderOrderSnapshot(snapshot);
       const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
       window.location.assign(
-        `${base}/concierge?project=${encodeURIComponent(snapshot.projectId)}&intent=${destination}`,
+        destination === "land"
+          ? `${base}/land?project=${encodeURIComponent(snapshot.projectId)}`
+          : `${base}/concierge?project=${encodeURIComponent(snapshot.projectId)}&intent=${destination}`,
       );
     } catch (cause) {
       setError(
@@ -48,6 +50,9 @@ export default function BuilderOrderHandoff({ document }: { document: BuilderDoc
         </Button>
         <Button disabled={busy !== null} onClick={() => void continueWith("concierge")}>
           {busy === "concierge" ? "Saving handoff…" : "Take this design to concierge"}
+        </Button>
+        <Button disabled={busy !== null} onClick={() => void continueWith("land")}>
+          {busy === "land" ? "Saving handoff…" : "Find land for this design"}
         </Button>
       </div>
       <p className="mt-3 max-w-3xl text-xs leading-relaxed text-aura-text/60">

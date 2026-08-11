@@ -1,161 +1,302 @@
 "use client";
 
-// LAND stage: filter real parcel listings against the design, using the
-// agent's OWN filter and parcel data (agent/src/parcels.ts +
-// agent/samples/parcels.sample.json, imported directly — the old hand-mirrored
-// copy in app/lib/parcels.ts is gone, so this page can never drift from the
-// agent). The district minimum rejection (Lakeside Estates at 1,076 sqft vs an
-// 800 sqft design) is the demo moment — bylaws bite at the district level,
-// never the county. BUY happens in the concierge, where the land gate binds it.
-
 import Link from "next/link";
-import { useState } from "react";
-import { filterParcels } from "@agent/parcels";
-import { BASE_QUESTIONNAIRE, PARCELS } from "@/lib/concierge";
-import { Reveal, Stagger, StaggerItem, GrowBar, Counter } from "@/components/Reveal";
+import { useEffect, useMemo, useState } from "react";
 
-const cad = (n: number) => `$${n.toLocaleString("en-CA")}`;
-// Module-level so <Counter>'s effect deps stay referentially stable: an inline
-// arrow would be a new function every keystroke in the filter above, and the
-// price would restart its count-up on each one.
-const cadCount = (n: number) => cad(Math.round(n));
+import { Counter, GrowBar, Reveal, Stagger, StaggerItem } from "@/components/Reveal";
+import {
+  DEMO_LAND_LISTINGS,
+  LAND_LISTING_PROVIDERS,
+  evaluateLandListing,
+  type LandDesignRequirements,
+  type LandFitResult,
+} from "@/lib/marketplace/discovery";
+
+const CAD = new Intl.NumberFormat("en-CA", {
+  style: "currency",
+  currency: "CAD",
+  maximumFractionDigits: 0,
+});
+
+const DEFAULT_REQUIREMENTS: LandDesignRequirements = {
+  floorAreaSqft: 800,
+  footprintSqft: 800,
+  storeys: 1,
+  maxHeightFt: 18,
+  preferredWater: "cistern",
+};
+
+const VERDICT_LABEL: Record<LandFitResult["verdict"], string> = {
+  "potential-match": "Potential match",
+  "manual-review": "Needs evidence",
+  "does-not-match": "Does not match",
+};
+
+const VERDICT_ORDER: Record<LandFitResult["verdict"], number> = {
+  "potential-match": 0,
+  "manual-review": 1,
+  "does-not-match": 2,
+};
+
+function numberValue(value: string, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
 
 export default function LandPage() {
-  const [sizeSqft, setSizeSqft] = useState("800");
-  const [waterSource, setWaterSource] = useState<"cistern" | "well">("cistern");
+  const [requirements, setRequirements] = useState(DEFAULT_REQUIREMENTS);
+  const [projectState, setProjectState] = useState<
+    | { kind: "manual" }
+    | { kind: "loading"; id: string }
+    | { kind: "loaded"; id: string; name: string; hash: string }
+    | { kind: "error"; message: string }
+  >({ kind: "manual" });
+  const [show, setShow] = useState<"all" | LandFitResult["verdict"]>("all");
 
-  const size = Number.parseInt(sizeSqft, 10);
-  const results =
-    Number.isFinite(size) && size > 0
-      ? filterParcels(PARCELS, {
-          ...BASE_QUESTIONNAIRE,
-          home: { ...BASE_QUESTIONNAIRE.home, sizeSqft: size },
-          water: { ...BASE_QUESTIONNAIRE.water, source: waterSource },
-        })
-      : [];
-  const passCount = results.filter((r) => r.verdict === "PASS").length;
-  const passPct = results.length > 0 ? (passCount / results.length) * 100 : 0;
+  useEffect(() => {
+    const projectId = new URLSearchParams(window.location.search).get("project");
+    if (!projectId) return;
+    let alive = true;
+    setProjectState({ kind: "loading", id: projectId });
+    void Promise.all([
+      import("@/lib/builder/orderSnapshot"),
+      import("@/lib/marketplace/designLandRequirements"),
+    ])
+      .then(([orders, requirementsAdapter]) =>
+        orders
+          .loadBuilderOrderSnapshot(projectId)
+          .then((snapshot) => ({ snapshot, requirementsAdapter })),
+      )
+      .then(({ snapshot, requirementsAdapter }) => {
+        if (!alive) return;
+        setRequirements(requirementsAdapter.deriveLandRequirements(snapshot.design));
+        setProjectState({
+          kind: "loaded",
+          id: snapshot.projectId,
+          name: snapshot.home.name,
+          hash: snapshot.home.documentHash,
+        });
+      })
+      .catch((cause) => {
+        if (!alive) return;
+        setProjectState({
+          kind: "error",
+          message: cause instanceof Error ? cause.message : String(cause),
+        });
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const results = useMemo(
+    () =>
+      DEMO_LAND_LISTINGS.map((listing) => evaluateLandListing(listing, requirements)).sort(
+        (a, b) => VERDICT_ORDER[a.verdict] - VERDICT_ORDER[b.verdict] || b.score - a.score,
+      ),
+    [requirements],
+  );
+  const shown = show === "all" ? results : results.filter((result) => result.verdict === show);
+  const potential = results.filter((result) => result.verdict === "potential-match").length;
+  const review = results.filter((result) => result.verdict === "manual-review").length;
+
+  const updateNumber = (key: "floorAreaSqft" | "footprintSqft" | "maxHeightFt", raw: string) =>
+    setRequirements((current) => ({ ...current, [key]: numberValue(raw, current[key]) }));
 
   return (
     <div className="py-16">
       <Reveal y={12}>
-        <p className="aura-label mb-4">Land discovery</p>
-        <h1 className="font-display text-[2.35rem] font-medium leading-[1.08] tracking-[-0.025em]">Find land that passes</h1>
+        <p className="aura-label mb-4">Land discovery · evidence before enthusiasm</p>
+        <h1 className="max-w-3xl font-display text-[2.35rem] font-medium leading-[1.08] tracking-[-0.025em]">
+          Find land for the home you actually designed
+        </h1>
       </Reveal>
-      <Reveal className="mt-4 max-w-xl" delay={0.08} y={12}>
+      <Reveal className="mt-4 max-w-2xl" delay={0.08} y={12}>
         <p className="text-[0.95rem] leading-[1.65] text-aura-text/75">
-          Every parcel is checked against the district land-use bylaw, aquifer reliability,
-          grid distance, and septic soils before you spend a dollar on it. The same check gates
-          the BUY button in the concierge — a failing parcel cannot take a deposit.
+          Aura compares the design&rsquo;s exact floor area, ground footprint, storeys and height
+          with parcel evidence. Unknown zoning, setbacks, access, water or wastewater stays
+          unknown. A high fit score is a screening result, never a permit or purchase opinion.
         </p>
       </Reveal>
 
-      <Reveal className="mt-10" delay={0.16} y={16}>
-        <div className="aura-panel aura-panel-lift flex flex-wrap items-end gap-6 p-6">
-          <label className="block">
-            <span className="aura-label mb-2 block">Design size (sqft)</span>
-            <input
-              value={sizeSqft}
-              onChange={(e) => setSizeSqft(e.target.value)}
-              inputMode="numeric"
-              className="w-40 rounded-md border aura-hairline bg-aura-bg px-4 py-2.5 text-sm text-aura-text"
-            />
-          </label>
-          <label className="block">
-            <span className="aura-label mb-2 block">Water source</span>
-            <select
-              value={waterSource}
-              onChange={(e) => setWaterSource(e.target.value as "cistern" | "well")}
-              className="w-48 rounded-md border aura-hairline bg-aura-bg px-4 py-2.5 text-sm text-aura-text"
-            >
-              <option value="cistern">Buried cistern</option>
-              <option value="well">Drilled well</option>
-            </select>
-          </label>
-          <p className="ml-auto text-xs uppercase tracking-label text-aura-text/70">
-            {results.length > 0
-              ? `${passCount} of ${results.length} parcels pass`
-              : "Enter a design size"}
-          </p>
-          {/* the pass ratio already stated above, drawn — GrowBar so it fills
-              from zero on entry instead of appearing pre-filled */}
-          <div className="h-1 w-full overflow-hidden rounded-full bg-aura-ink/10">
-            <GrowBar pct={passPct} className="h-full rounded-full bg-aura-emerald-bright" delay={0.2} />
+      <Reveal className="mt-9" delay={0.12} y={14}>
+        <div className="aura-panel p-6 sm:p-7">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="aura-label">Listing access</p>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-aura-text/75">
+                Active MLS inventory is not scraped or copied. In-app MLS browsing turns on only
+                through an authorized CREA DDF® or board/provider feed with the required
+                attribution and permissions. Until then, the cards below are product demonstrations.
+              </p>
+            </div>
+            <span className="rounded-full border border-aura-violet px-3 py-1 font-mono text-[0.62rem] uppercase tracking-label text-aura-violet">
+              Live MLS not connected
+            </span>
+          </div>
+          <div className="mt-6 grid gap-3 lg:grid-cols-3">
+            {LAND_LISTING_PROVIDERS.map((provider) => (
+              <div key={provider.id} className="rounded-md border aura-hairline p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-sm font-semibold">{provider.name}</p>
+                  <span className="font-mono text-[0.58rem] uppercase tracking-label text-aura-text/50">
+                    {provider.status.replace("-", " ")}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-aura-text/65">{provider.note}</p>
+                <div className="mt-3 flex gap-4 text-[0.65rem] uppercase tracking-label">
+                  <a className="text-aura-emerald underline underline-offset-4" href={provider.sourceUrl} target="_blank" rel="noreferrer">
+                    Source
+                  </a>
+                  <a className="text-aura-text/55 underline underline-offset-4" href={provider.termsUrl} target="_blank" rel="noreferrer">
+                    Terms
+                  </a>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </Reveal>
 
-      <Stagger className="mt-6 space-y-4">
-        {results.map(({ parcel, verdict, reasons }) => (
-          <StaggerItem key={parcel.id}>
-            <div className="aura-panel aura-panel-lift p-6">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold">{parcel.name}</p>
-                  <p className="mt-1 text-xs text-aura-text/70">
-                    {parcel.county} &middot; {parcel.district} district
-                    {parcel.acreage ? ` · ${parcel.acreage} acres` : ""}
-                  </p>
-                </div>
-                <div className="flex items-center gap-6">
-                  <p className="text-sm tabular-nums">
-                    <Counter value={parcel.priceCad} format={cadCount} />
-                  </p>
-                  <span
-                    className={`rounded-md border px-3 py-1 text-xs font-medium uppercase tracking-label ${
-                      verdict === "PASS"
-                        ? "border-aura-emerald text-aura-lime"
-                        : "border-aura-violet text-aura-violet"
-                    }`}
-                  >
-                    {verdict}
-                  </span>
-                </div>
-              </div>
-              <div className="mt-4 grid gap-x-8 gap-y-1 text-xs text-aura-text/70 md:grid-cols-3">
-                <p>
-                  District minimum:{" "}
-                  {parcel.minDwellingSizeSqft
-                    ? `${parcel.minDwellingSizeSqft.toLocaleString("en-CA")} sqft`
-                    : "not verified — unconfirmed against the bylaw"}
-                </p>
-                <p>Aquifer: {parcel.aquifer}</p>
-                <p>Grid: ~{parcel.gridDistanceKm} km</p>
-              </div>
-              <ul className="mt-4 space-y-2">
-                {reasons.map((reason, i) => (
-                  <li
-                    key={i}
-                    className={`text-sm leading-relaxed ${
-                      /^rejected/i.test(reason) ? "text-aura-violet" : "text-aura-text/70"
-                    }`}
-                  >
-                    {reason}
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-4">
-                <Link
-                  href={`/concierge?parcel=${parcel.id}`}
-                  data-cursor="Continue"
-                  className="inline-block rounded-md border aura-hairline px-4 py-2 text-xs font-medium uppercase tracking-label transition-colors hover:border-aura-emerald hover:text-aura-emerald"
-                >
-                  Take this parcel to the concierge
-                </Link>
-              </div>
+      <Reveal className="mt-8" delay={0.16} y={16}>
+        <section className="aura-panel p-6 sm:p-7" aria-labelledby="design-fit-heading">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="aura-label">Design fit</p>
+              <h2 id="design-fit-heading" className="mt-2 font-display text-xl font-medium">
+                {projectState.kind === "loaded" ? projectState.name : "Manual requirements"}
+              </h2>
             </div>
+            {projectState.kind === "loaded" ? (
+              <p className="max-w-sm break-all text-right font-mono text-[0.6rem] leading-relaxed text-aura-text/50">
+                Builder snapshot {projectState.hash.slice(0, 18)}…
+              </p>
+            ) : (
+              <Link href="/build" className="text-xs text-aura-emerald underline underline-offset-4">
+                Open the builder
+              </Link>
+            )}
+          </div>
+
+          {projectState.kind === "loading" ? (
+            <p className="mt-4 text-sm text-aura-text/65">Loading design snapshot {projectState.id}…</p>
+          ) : null}
+          {projectState.kind === "error" ? (
+            <p role="alert" className="mt-4 rounded-md border border-aura-violet px-4 py-3 text-sm leading-relaxed text-aura-violet">
+              {projectState.message} The manual controls remain available; no design was replaced.
+            </p>
+          ) : null}
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <label className="block">
+              <span className="aura-label mb-2 block">Floor area · sqft</span>
+              <input type="number" min="100" step="25" value={Math.round(requirements.floorAreaSqft)} onChange={(event) => updateNumber("floorAreaSqft", event.target.value)} className="w-full rounded-md border aura-hairline bg-aura-bg px-3 py-2.5 text-sm" />
+            </label>
+            <label className="block">
+              <span className="aura-label mb-2 block">Footprint · sqft</span>
+              <input type="number" min="100" step="25" value={Math.round(requirements.footprintSqft)} onChange={(event) => updateNumber("footprintSqft", event.target.value)} className="w-full rounded-md border aura-hairline bg-aura-bg px-3 py-2.5 text-sm" />
+            </label>
+            <label className="block">
+              <span className="aura-label mb-2 block">Storeys</span>
+              <select value={requirements.storeys} onChange={(event) => setRequirements((current) => ({ ...current, storeys: Number(event.target.value) as 1 | 2 }))} className="w-full rounded-md border aura-hairline bg-aura-bg px-3 py-2.5 text-sm">
+                <option value={1}>One</option>
+                <option value={2}>Two</option>
+              </select>
+            </label>
+            <label className="block">
+              <span className="aura-label mb-2 block">Max height · ft</span>
+              <input type="number" min="8" step="0.5" value={Number(requirements.maxHeightFt.toFixed(1))} onChange={(event) => updateNumber("maxHeightFt", event.target.value)} className="w-full rounded-md border aura-hairline bg-aura-bg px-3 py-2.5 text-sm" />
+            </label>
+            <label className="block">
+              <span className="aura-label mb-2 block">Water preference</span>
+              <select value={requirements.preferredWater} onChange={(event) => setRequirements((current) => ({ ...current, preferredWater: event.target.value as LandDesignRequirements["preferredWater"] }))} className="w-full rounded-md border aura-hairline bg-aura-bg px-3 py-2.5 text-sm">
+                <option value="cistern">Cistern</option>
+                <option value="well">Well</option>
+                <option value="either">Either</option>
+              </select>
+            </label>
+          </div>
+        </section>
+      </Reveal>
+
+      <Stagger className="mt-6 grid gap-4 sm:grid-cols-3">
+        {[
+          ["all", results.length, "Demonstration records"],
+          ["potential-match", potential, "Potential matches"],
+          ["manual-review", review, "Need evidence"],
+        ].map(([id, count, label]) => (
+          <StaggerItem key={id}>
+            <button type="button" onClick={() => setShow(id as typeof show)} aria-pressed={show === id} className={`aura-panel aura-panel-lift w-full p-5 text-left ${show === id ? "ring-1 ring-aura-emerald" : ""}`}>
+              <p className="font-display text-2xl tabular-nums"><Counter value={Number(count)} /></p>
+              <p className="aura-label mt-2">{label}</p>
+            </button>
           </StaggerItem>
         ))}
       </Stagger>
 
-      <Reveal className="mt-8" y={12}>
-        <p className="text-xs text-aura-text/65">
-          Sample listings researched Aug 2026 (realtor.ca). District minimums: Lac Ste. Anne
-          Agricultural 592 sqft, Country Residential 1,076 sqft. The Sturgeon County parcel&rsquo;s
-          minimum is not yet verified against its land-use bylaw, and it is labeled that way rather
-          than guessed — always verify the parcel district before purchase.
-        </p>
-      </Reveal>
+      <Stagger className="mt-6 space-y-5">
+        {shown.map((result) => (
+          <StaggerItem key={result.listing.id}>
+            <article className="aura-panel aura-panel-lift p-6 sm:p-7">
+              <div className="flex flex-wrap items-start justify-between gap-5">
+                <div>
+                  <p className="text-base font-semibold">{result.listing.title}</p>
+                  <p className="mt-1 text-xs text-aura-text/65">
+                    {result.listing.region}{result.listing.acreage ? ` · ${result.listing.acreage} acres` : ""}
+                  </p>
+                  <p className="mt-3 text-[0.65rem] uppercase tracking-label text-aura-violet">
+                    Demonstration only · not an active listing
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm tabular-nums">{result.listing.priceCad === null ? "Price unknown" : CAD.format(result.listing.priceCad)}</p>
+                  <p className={`mt-2 text-xs font-medium uppercase tracking-label ${result.verdict === "does-not-match" ? "text-aura-violet" : "text-aura-emerald"}`}>
+                    {VERDICT_LABEL[result.verdict]} · {result.score}/100
+                  </p>
+                </div>
+              </div>
+              <div className="mt-5 h-1 overflow-hidden rounded-full bg-aura-ink/10">
+                <GrowBar pct={result.score} className={`h-full ${result.verdict === "does-not-match" ? "bg-aura-violet" : "bg-aura-emerald"}`} />
+              </div>
+              <div className="mt-5 grid gap-3 md:grid-cols-2">
+                {result.findings.map((finding) => (
+                  <div key={finding.id} className="rounded-md border aura-hairline p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-xs font-semibold">{finding.label}</p>
+                      <span className={`font-mono text-[0.58rem] uppercase tracking-label ${finding.severity === "block" ? "text-aura-violet" : finding.severity === "pass" ? "text-aura-emerald" : "text-aura-text/50"}`}>
+                        {finding.severity}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs leading-relaxed text-aura-text/65">{finding.detail}</p>
+                    {finding.sourceUrl ? (
+                      <a href={finding.sourceUrl} target="_blank" rel="noreferrer" className="mt-2 inline-block text-[0.62rem] uppercase tracking-label text-aura-emerald underline underline-offset-4">
+                        Evidence source
+                      </a>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-5 flex flex-wrap items-center gap-4">
+                <Link href={`/concierge?parcel=${result.listing.id}`} className="rounded-md border aura-hairline px-4 py-2 text-xs font-medium uppercase tracking-label transition-colors hover:border-aura-emerald hover:text-aura-emerald">
+                  Test in concierge
+                </Link>
+                <Link href="/contractors" className="text-xs text-aura-emerald underline underline-offset-4">
+                  Find the build team
+                </Link>
+              </div>
+            </article>
+          </StaggerItem>
+        ))}
+      </Stagger>
+
+      {shown.length === 0 ? (
+        <Reveal className="mt-6" y={10}>
+          <div className="aura-panel p-7 text-sm leading-relaxed text-aura-text/70">
+            No demonstration record is in that state for this design. Change the filter or adjust
+            the requirements; Aura will not turn missing evidence into a match.
+          </div>
+        </Reveal>
+      ) : null}
     </div>
   );
 }

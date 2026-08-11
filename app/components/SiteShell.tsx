@@ -21,6 +21,7 @@ const NAV = [
   { href: "/overview", label: "Overview" },
   { href: "/concierge", label: "Concierge" },
   { href: "/land", label: "Land" },
+  { href: "/contractors", label: "Contractors" },
   { href: "/design", label: "Design" },
   { href: "/build", label: "Build" },
   { href: "/budget", label: "Budget" },

@@ -10,7 +10,7 @@
     "gridDistanceKm": 0.3,
     "septicSoils": true,
     "acreage": 3.1,
-    "basis": "realtor.ca Aug 2026; Lac Ste. Anne Agricultural district minimum 592 sqft (land-use bylaw)"
+    "basis": "Fictionalized Aura demonstration record; Lac Ste. Anne Agricultural district minimum scenario 592 sqft. Not an active listing."
   },
   {
     "id": "lsa-lakeside-estates",
@@ -23,7 +23,7 @@
     "gridDistanceKm": 0.1,
     "septicSoils": true,
     "acreage": 1.2,
-    "basis": "realtor.ca Aug 2026; Country Residential district minimum 1,076 sqft (land-use bylaw)"
+    "basis": "Fictionalized Aura demonstration record; Country Residential district minimum scenario 1,076 sqft. Not an active listing."
   },
   {
     "id": "lsa-twp572-hwy33",
@@ -36,7 +36,7 @@
     "gridDistanceKm": 2.5,
     "septicSoils": true,
     "acreage": 4.6,
-    "basis": "realtor.ca Aug 2026; Agricultural district minimum 592 sqft (land-use bylaw)"
+    "basis": "Fictionalized Aura demonstration record; Agricultural district minimum scenario 592 sqft. Not an active listing."
   },
   {
     "id": "sturgeon-range-rd",
@@ -49,6 +49,6 @@
     "gridDistanceKm": 0.8,
     "septicSoils": false,
     "acreage": 5.0,
-    "basis": "realtor.ca Aug 2026 (Sturgeon pricier than Lac Ste. Anne); district minimum NOT yet verified against Sturgeon LUB"
+    "basis": "Fictionalized Aura demonstration record; district minimum intentionally unknown to exercise manual review. Not an active listing."
   }
 ]
