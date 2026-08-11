@@ -8,7 +8,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test": "playwright test tests/comfort.spec.ts",
+    "test:ui": "playwright test --config=playwright.ui.config.ts"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",

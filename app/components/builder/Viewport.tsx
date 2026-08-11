@@ -419,11 +419,13 @@ function ComfortLayer({ comfort, theme }: { comfort: ViewportComfort; theme: The
           >
             <planeGeometry args={[w, d]} />
             <meshBasicMaterial
-              color={heatColor(p.sPmv, theme)}
+              color={
+                p.modelled ? heatColor(p.sPmv, theme) : theme === "light" ? "#817f76" : "#858a84"
+              }
               transparent
               /* louder when the room misses its target, quieter when it meets
                  — the colour says which way, the weight says whether */
-              opacity={p.meets ? 0.4 : 0.62}
+              opacity={p.meets === null ? 0.24 : p.meets ? 0.4 : 0.62}
               depthTest={false}
               depthWrite={false}
             />

@@ -1801,6 +1801,23 @@ function emitComfort(ctx: Ctx): void {
       ],
     });
 
+    const comfortVerdicts: Array<[string, PropValue]> = [
+      [
+        "WinterVerdict",
+        txt(rc.winter.meets === null ? "UNMODELLED" : rc.winter.meets ? "MEETS" : "MISSES"),
+      ],
+      [
+        "SummerVerdict",
+        txt(rc.summer.meets === null ? "UNMODELLED" : rc.summer.meets ? "MEETS" : "MISSES"),
+      ],
+    ];
+    if (rc.winter.meets !== null) {
+      comfortVerdicts.push(["WinterMeetsTarget", bool(rc.winter.meets)]);
+    }
+    if (rc.summer.meets !== null) {
+      comfortVerdicts.push(["SummerMeetsTarget", bool(rc.summer.meets)]);
+    }
+
     attachPset(ctx, `comforteval:${rc.room.id}`, [{ type: "IfcSpace", globalId: spaceId }], {
       name: "Aura_ComfortEvaluation",
       description:
@@ -1814,8 +1831,7 @@ function emitComfort(ctx: Ctx): void {
         ["SummerVapourPressureKPa", real(rc.summer.terms.vapourKPa)],
         ["WinterSPmv", real(rc.winter.terms.value)],
         ["SummerSPmv", real(rc.summer.terms.value)],
-        ["WinterMeetsTarget", bool(rc.winter.meets)],
-        ["SummerMeetsTarget", bool(rc.summer.meets)],
+        ...comfortVerdicts,
         ["NeutralBand", real(NEUTRAL_BAND)],
         ["ClothingCaseModelled", bool(rc.modelled)],
         [
@@ -1856,6 +1872,10 @@ function emitComfort(ctx: Ctx): void {
       "aura:assumedSummerRhPct": c.summerRhPct,
       "aura:winterSPmv": round9(rc.winter.terms.value),
       "aura:summerSPmv": round9(rc.summer.terms.value),
+      "aura:winterComfortVerdict":
+        rc.winter.meets === null ? "UNMODELLED" : rc.winter.meets ? "MEETS" : "MISSES",
+      "aura:summerComfortVerdict":
+        rc.summer.meets === null ? "UNMODELLED" : rc.summer.meets ? "MEETS" : "MISSES",
       "aura:comfortDisclaimer": COMFORT_DISCLAIMER,
     });
     asNodeList(storey, "hasSpace").push({ "@id": spaceIri });
@@ -1873,6 +1893,8 @@ function emitComfort(ctx: Ctx): void {
       ["AssumedSummerTemperatureC", real(c.summerIndoorC)],
       ["AssumedSummerHumidityPct", real(c.summerRhPct)],
       ["SolvedRoomCount", int(report.rooms.length)],
+      ["RoomsModelled", int(report.winter.roomsModelled)],
+      ["RoomsUnmodelled", int(report.winter.roomsUnmodelled)],
       ["RoomsMeetingWinterTarget", int(report.winter.roomsMeeting)],
       ["RoomsMeetingSummerTarget", int(report.summer.roomsMeeting)],
       ["MeanWinterDeviation", real(report.winter.meanAbsDeviation)],

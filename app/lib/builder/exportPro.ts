@@ -2745,8 +2745,20 @@ export function homeToIfc(spec: HomeSpec, options: IfcOptions): string {
             realProp("SummerVapourPressureKPa", rc.summer.terms.vapourKPa),
             realProp("WinterSPmv", rc.winter.terms.value),
             realProp("SummerSPmv", rc.summer.terms.value),
-            boolProp("WinterMeetsTarget", rc.winter.meets),
-            boolProp("SummerMeetsTarget", rc.summer.meets),
+            labelProp(
+              "WinterVerdict",
+              rc.winter.meets === null ? "UNMODELLED" : rc.winter.meets ? "MEETS" : "MISSES",
+            ),
+            labelProp(
+              "SummerVerdict",
+              rc.summer.meets === null ? "UNMODELLED" : rc.summer.meets ? "MEETS" : "MISSES",
+            ),
+            ...(rc.winter.meets === null
+              ? []
+              : [boolProp("WinterMeetsTarget", rc.winter.meets)]),
+            ...(rc.summer.meets === null
+              ? []
+              : [boolProp("SummerMeetsTarget", rc.summer.meets)]),
             realProp("NeutralBand", NEUTRAL_BAND),
             boolProp("ClothingCaseModelled", rc.modelled),
             textProp(
@@ -2787,6 +2799,8 @@ export function homeToIfc(spec: HomeSpec, options: IfcOptions): string {
           realProp("AssumedSummerTemperatureC", c.summerIndoorC),
           realProp("AssumedSummerHumidityPct", c.summerRhPct),
           realProp("SolvedRoomCount", comfort.rooms.length),
+          realProp("RoomsModelled", comfort.winter.roomsModelled),
+          realProp("RoomsUnmodelled", comfort.winter.roomsUnmodelled),
           realProp("RoomsMeetingWinterTarget", comfort.winter.roomsMeeting),
           realProp("RoomsMeetingSummerTarget", comfort.summer.roomsMeeting),
           realProp("MeanWinterDeviation", comfort.winter.meanAbsDeviation),

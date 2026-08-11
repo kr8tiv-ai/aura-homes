@@ -243,12 +243,12 @@ export default function ComfortPanel({
               <Stat
                 k="Mean deviation"
                 v={fmt2(kpi.meanAbsDeviation)}
-                sub={`mean |sPMV| across ${kpi.roomCount} room${kpi.roomCount === 1 ? "" : "s"}`}
+                sub={`mean |sPMV| across ${kpi.roomsModelled} modelled room${kpi.roomsModelled === 1 ? "" : "s"}`}
               />
               <Stat
                 k="Rooms meeting target"
-                v={`${kpi.roomsMeeting} / ${kpi.roomCount}`}
-                sub={`temperature, humidity and |sPMV| ≤ ${NEUTRAL_BAND}, all three`}
+                v={`${kpi.roomsMeeting} / ${kpi.roomsModelled}`}
+                sub={`all three checks · ${kpi.roomsUnmodelled} unmodelled`}
               />
               <Stat
                 k="Worst room"
@@ -292,9 +292,18 @@ export default function ComfortPanel({
                     return (
                       <tr
                         key={r.room.id}
+                        role="row"
+                        tabIndex={0}
+                        aria-selected={on}
                         onClick={() => setSelectedId(r.room.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            setSelectedId(r.room.id);
+                          }
+                        }}
                         data-cursor="Select"
-                        className={`cursor-pointer border-b aura-hairline transition-colors ${
+                        className={`cursor-pointer border-b aura-hairline transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-aura-emerald ${
                           on ? "text-aura-text" : "text-aura-text/70 hover:text-aura-text"
                         }`}
                       >
@@ -326,8 +335,16 @@ export default function ComfortPanel({
                           <span className="text-aura-text/50">{sensationWord(s.terms.value)}</span>
                         </Td>
                         <Td>
-                          <span className={s.meets ? "text-aura-emerald" : "text-aura-violet"}>
-                            {s.meets ? "meets" : "misses"}
+                          <span
+                            className={
+                              s.meets === null
+                                ? "text-aura-text/55"
+                                : s.meets
+                                  ? "text-aura-emerald"
+                                  : "text-aura-violet"
+                            }
+                          >
+                            {s.meets === null ? "unmodelled" : s.meets ? "meets" : "misses"}
                           </span>
                         </Td>
                       </tr>
@@ -454,10 +471,16 @@ function RoomDetail({
         </ul>
         <p
           className={`mt-3 text-xs leading-relaxed ${
-            s.meets ? "text-aura-emerald" : "text-aura-violet"
+            s.meets === null
+              ? "text-aura-text/60"
+              : s.meets
+                ? "text-aura-emerald"
+                : "text-aura-violet"
           }`}
         >
-          {s.meets
+          {s.meets === null
+            ? `No sleeping/resting verdict is claimed for this room. The displayed arithmetic uses the living/active coefficient set only.`
+            : s.meets
             ? `Under these assumed conditions, this room meets its stated ${SEASON_LABEL[season].toLowerCase()} target.`
             : s.misses.join(" ")}
         </p>
