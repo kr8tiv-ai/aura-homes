@@ -37,8 +37,13 @@ const faqs = [
     link: { href: REPO, label: "Star the repo on GitHub" },
   },
   {
-    q: "Is there a token?",
-    a: "It has a name: HOMES, and it launches on X Layer as part of the phased rollout. Its utility is deliberately undecided and will be announced as a phase of its own — the token follows the product rather than leading it, and the conditions are public in the repo.",
+    /* Replaces "Is there a token?" (removed Aug 10, 2026). The old answer
+       named HOMES and said it would launch — which is a promise no matter how
+       carefully the utility is hedged, and there is no token. The question
+       still gets asked, so it still gets answered; it is just answered with
+       what is true today rather than with a roadmap item. */
+    q: "How does Aura make money?",
+    a: "Not by taking a cut of your house. The build budget on this site is the build budget — every line goes to land, materials, trades, and permits. Aura earns on the supply side and on work that stands alone: design packages, parcel feasibility reports, and tools sold to the contractors and suppliers in the Locality Hub. There is no token.",
   },
   {
     q: "Where does it start?",
@@ -95,7 +100,7 @@ function withCountingFigures(text: string): ReactNode[] {
 export const metadata = {
   title: "FAQ — Aura Homes",
   description:
-    "Plain answers: the card-first onboarding design, no architect needed, honest costs, the AWG winter truth, resale rules, and the HOMES token.",
+    "Plain answers: the card-first onboarding design, no architect needed, honest costs, the AWG winter truth, resale rules, and how Aura makes money.",
 };
 
 export default function FaqPage() {

@@ -2,7 +2,7 @@ import Link from "next/link";
 import RevealWords from "@/components/RevealWords";
 import { Reveal, Stagger, StaggerItem, GrowBar, Counter } from "@/components/Reveal";
 
-// The site tells the same rollout story as docs/ROADMAP.md — three arcs,
+// The site tells the same rollout story as docs/ROADMAP.md — two arcs,
 // honest labels on every one. If the roadmap changes, this page changes.
 const arcs = [
   {
@@ -21,15 +21,14 @@ const arcs = [
     detail:
       "Design your own eco home (SIP sandwich panels, solar), source every material and contractor locally, and choose buy-versus-build. A vendor directory purchasable in USDC, with bridge-in guidance where vendors take CAD. Pay contractors, manage inventory, track the build, and discover the latest building technology — one hub per locality.",
   },
-  {
-    n: "03",
-    status: "Announced",
-    name: "The HOMES token",
-    line: "A token named HOMES will launch on X Layer as part of the phased rollout.",
-    detail:
-      "Its utility is deliberately undecided and will be announced as a phase of its own — the token follows the product rather than leading it. The research and the exact conditions are public in the repo.",
-  },
 ] as const;
+/* THE TOKEN ARC IS GONE FROM THE SITE (Aug 10, 2026, founder's call).
+   It read "The HOMES token — announced", and announcing a token is a promise
+   whether or not the copy hedges the utility. There is no token, the build is
+   what is being judged, and a roadmap card is not the place to carry a
+   financial expectation the product has not earned yet. Nothing replaced it:
+   inventing a third arc to keep the rhythm would be worse than shipping two
+   honest ones. If an arc three returns it will be a product, not an asset. */
 
 const pipeline = [
   { step: "01", name: "Land", detail: "Real parcels filtered against district bylaws, aquifers, grid distance, and septic soils" },
@@ -42,7 +41,7 @@ const pipeline = [
 export const metadata = {
   title: "Overview — Aura Homes",
   description:
-    "The rollout: the USDC buy arc in build, the Locality Hub next, and the HOMES token as its own phase.",
+    "The rollout: the USDC buy arc in build, and the Locality Hub next — design your own eco home and source it locally.",
 };
 
 export default function OverviewPage() {
@@ -83,7 +82,7 @@ export default function OverviewPage() {
         </StaggerItem>
       </Stagger>
 
-      {/* ---- the rollout: the same three arcs as docs/ROADMAP.md ---- */}
+      {/* ---- the rollout: the same arcs as docs/ROADMAP.md ---- */}
       <div className="mt-28">
         <Reveal y={10}>
           <p className="aura-label">The rollout</p>
@@ -95,10 +94,12 @@ export default function OverviewPage() {
         </Reveal>
         <RevealWords
           as="h2"
-          text="One story, three arcs — each one ships whole, not sliced."
+          text="One story, two arcs — each one ships whole, not sliced."
           className="mt-5 max-w-2xl text-3xl font-semibold leading-snug"
         />
-        <Stagger className="mt-10 grid gap-6 md:grid-cols-3">
+        {/* two columns, not three — a three-column grid with two cards leaves
+            a hole where the token card used to be */}
+        <Stagger className="mt-10 grid gap-6 md:grid-cols-2">
           {arcs.map((a) => (
             /* StaggerItem is the grid child now, so the card keeps its own
                equal-height stretch via h-full on both. */

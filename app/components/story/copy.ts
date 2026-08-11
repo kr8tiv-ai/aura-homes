@@ -101,9 +101,11 @@ export const END = {
   season: "BuildX AI Season 2026",
   /* The app is the destination: one primary door, the stages as side doors. */
   cta: { href: "/dashboard", label: "Open the build dashboard" },
-  /* One line of rollout honesty — the same three arcs as /overview and docs/ROADMAP.md. */
+  /* One line of rollout honesty — the same arcs as /overview and docs/ROADMAP.md.
+     The token line is gone: there is no token, and a roadmap sentence that
+     announces one is a promise however carefully it is hedged. */
   rollout: {
-    text: "Three arcs from here: the hackathon MVP in build, the Locality Hub next, and the HOMES token announced.",
+    text: "Two arcs from here: the hackathon MVP in build, and the Locality Hub next — design your own eco home and source it locally.",
     href: "/overview",
     label: "See the rollout",
   },
