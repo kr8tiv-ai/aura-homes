@@ -7,6 +7,11 @@
  */
 
 import { keccak256, stringToHex, type Hex } from "viem";
+import {
+  legacySpecToBuildingGraph,
+  validateBuildingGraph,
+  type BuildingGraph,
+} from "./buildingGraph";
 
 import {
   DEFAULT_SETTINGS,
@@ -33,7 +38,7 @@ import { validateHomeSpec } from "./share";
 import type { Partition, PartitionDoor } from "./walls";
 
 export const BUILDER_DOCUMENT_FORMAT = "aura-builder-document" as const;
-export const BUILDER_DOCUMENT_VERSION = 1 as const;
+export const BUILDER_DOCUMENT_VERSION = 2 as const;
 
 /**
  * Version 1 still derives its shell geometry from `spec.volumes`. Naming that
@@ -45,7 +50,15 @@ export interface LegacyVolumeGeometry {
   source: "spec.volumes";
 }
 
-export type BuilderGeometry = LegacyVolumeGeometry;
+export interface PlanarGraphGeometry {
+  kind: "building-graph";
+  graph: BuildingGraph;
+  /** Exact pre-conversion geometry for recovery and future migrations. */
+  legacyRecovery: HomeSpec;
+  migrationWarnings: string[];
+}
+
+export type BuilderGeometry = LegacyVolumeGeometry | PlanarGraphGeometry;
 
 export type QuarantineEntry =
   | { kind: "partition"; reason: string; value: Partition }
@@ -77,7 +90,11 @@ export interface BuilderDocument {
   quarantine: BuilderQuarantine;
 }
 
-export type BuilderDocumentMigration = "home-spec" | "editor-doc" | null;
+export type BuilderDocumentMigration =
+  | "home-spec"
+  | "editor-doc"
+  | "builder-document-v1"
+  | null;
 
 export type BuilderDocumentValidation =
   | {
@@ -327,6 +344,38 @@ function validateQuarantine(raw: unknown): { ok: true; quarantine: BuilderQuaran
   return { ok: true, quarantine: { entries } };
 }
 
+function validateGeometry(raw: unknown): { ok: true; geometry: BuilderGeometry } | { ok: false; problem: string } {
+  if (!isObject(raw)) return { ok: false, problem: "geometry is not an object" };
+  if (raw.kind === "legacy-volumes" && raw.source === "spec.volumes") {
+    return { ok: true, geometry: geometryFromLegacySpec() };
+  }
+  if (raw.kind !== "building-graph")
+    return { ok: false, problem: "geometry is not a supported builder geometry" };
+  const recovery = validateHomeSpec(raw.legacyRecovery);
+  if (!recovery.ok) return { ok: false, problem: `geometry.legacyRecovery: ${recovery.problem}` };
+  if (!Array.isArray(raw.migrationWarnings) || raw.migrationWarnings.some((item) => typeof item !== "string"))
+    return { ok: false, problem: "geometry.migrationWarnings is not a string array" };
+  let graph;
+  try {
+    graph = validateBuildingGraph(raw.graph as BuildingGraph);
+  } catch (cause) {
+    return {
+      ok: false,
+      problem: `geometry.graph could not be validated: ${cause instanceof Error ? cause.message : String(cause)}`,
+    };
+  }
+  if (!graph.ok) return { ok: false, problem: `geometry.graph: ${graph.problem}` };
+  return {
+    ok: true,
+    geometry: {
+      kind: "building-graph",
+      graph: graph.graph,
+      legacyRecovery: recovery.spec,
+      migrationWarnings: [...raw.migrationWarnings],
+    },
+  };
+}
+
 function assembleDocument(
   source: Record<string, unknown>,
   migratedFrom: BuilderDocumentMigration,
@@ -334,13 +383,8 @@ function assembleDocument(
   const spec = validateHomeSpec(source.spec);
   if (!spec.ok) return { ok: false, problem: `spec: ${spec.problem}` };
 
-  if (
-    !isObject(source.geometry) ||
-    source.geometry.kind !== "legacy-volumes" ||
-    source.geometry.source !== "spec.volumes"
-  ) {
-    return { ok: false, problem: "geometry is not a supported builder geometry" };
-  }
+  const geometry = validateGeometry(source.geometry);
+  if (!geometry.ok) return geometry;
   const partitions = validatePartitions(source.partitions);
   if (!partitions.ok) return partitions;
   const finishes = validateFinishes(source.finishes);
@@ -359,7 +403,7 @@ function assembleDocument(
       format: BUILDER_DOCUMENT_FORMAT,
       version: BUILDER_DOCUMENT_VERSION,
       spec: spec.spec,
-      geometry: geometryFromLegacySpec(),
+      geometry: geometry.geometry,
       partitions: partitions.partitions,
       finishes: finishes.finishes,
       fixtures: fixtures.fixtures,
@@ -402,6 +446,9 @@ export function validateBuilderDocument(value: unknown): BuilderDocumentValidati
         problem: `This project was written by a newer version of the builder (document v${value.version}; this build reads v${BUILDER_DOCUMENT_VERSION}). Nothing was imported or overwritten.`,
         futureVersion: value.version,
       };
+    }
+    if (value.version === 1) {
+      return assembleDocument(value, "builder-document-v1");
     }
     if (value.version !== BUILDER_DOCUMENT_VERSION) {
       return {
@@ -482,6 +529,11 @@ export function reconcileBuilderDocumentSpec(
   document: BuilderDocument,
   nextSpec: HomeSpec,
 ): BuilderDocument {
+  if (document.geometry.kind === "building-graph") {
+    throw new Error(
+      "This project uses BuildingGraph geometry. Edit the graph rather than its recovery HomeSpec.",
+    );
+  }
   const specResult = validateHomeSpec(nextSpec);
   if (!specResult.ok) throw new Error(`Cannot apply an invalid spec: ${specResult.problem}`);
   const spec = specResult.spec;
@@ -570,6 +622,13 @@ export function restoreQuarantinedEntry(
 ): RestoreQuarantineResult {
   const entry = document.quarantine.entries[index];
   if (!entry) return { ok: false, problem: "That quarantined item no longer exists." };
+  if (document.geometry.kind === "building-graph") {
+    return {
+      ok: false,
+      problem:
+        "This item belongs to the legacy volume model and cannot be placed reliably on the planar graph yet. Its recovery source is still retained.",
+    };
+  }
   const remaining = document.quarantine.entries.filter((_, itemIndex) => itemIndex !== index);
 
   if (entry.kind === "partition") {
@@ -657,4 +716,75 @@ export function discardQuarantinedEntry(
       entries: document.quarantine.entries.filter((_, itemIndex) => itemIndex !== index),
     },
   };
+}
+
+export type ConvertBuilderDocumentToGraphResult =
+  | { ok: true; document: BuilderDocument }
+  | { ok: false; problem: string; document: BuilderDocument };
+
+/**
+ * Explicit, loss-aware geometry migration. Legacy sidecars are held for
+ * repair because silently reattaching them to new graph ids would be a guess.
+ */
+export function convertBuilderDocumentToGraph(
+  source: BuilderDocument,
+  wallThicknessFt: number,
+): ConvertBuilderDocumentToGraphResult {
+  const checked = validateBuilderDocument(source);
+  if (!checked.ok) return { ok: false, problem: checked.problem, document: source };
+  const document = checked.document;
+  if (document.geometry.kind === "building-graph") return { ok: true, document };
+  const converted = legacySpecToBuildingGraph(document.spec, wallThicknessFt);
+  if (!converted.ok) return { ok: false, problem: converted.problem, document };
+
+  const held: QuarantineEntry[] = [
+    ...document.quarantine.entries,
+    ...document.partitions.map(
+      (value): QuarantineEntry => ({
+        kind: "partition",
+        reason: "Held during planar graph conversion; its volume-local axis is not a graph wall id.",
+        value,
+      }),
+    ),
+    ...Object.entries(document.finishes).map(
+      ([surfaceId, materialId]): QuarantineEntry => ({
+        kind: "finish",
+        reason: "Held during planar graph conversion; its legacy surface id is not a graph surface id.",
+        value: { surfaceId, materialId },
+      }),
+    ),
+    ...document.fixtures.items.map(
+      (value): QuarantineEntry => ({
+        kind: "fixture",
+        reason: "Held during planar graph conversion; its legacy host has no verified graph placement.",
+        value,
+      }),
+    ),
+    ...Object.entries(document.comfort.targets).map(
+      ([roomId, target]): QuarantineEntry => ({
+        kind: "comfort-target",
+        reason: "Held during planar graph conversion; solved legacy rooms do not map to graph room faces by id.",
+        value: { roomId, target },
+      }),
+    ),
+  ];
+
+  const candidate: BuilderDocument = {
+    ...document,
+    geometry: {
+      kind: "building-graph",
+      graph: converted.graph,
+      legacyRecovery: converted.legacyRecovery,
+      migrationWarnings: converted.warnings,
+    },
+    partitions: [],
+    finishes: NO_OVERRIDES,
+    fixtures: emptyFixtureSet(),
+    comfort: { ...document.comfort, targets: {} },
+    quarantine: { entries: held },
+  };
+  const result = validateBuilderDocument(candidate);
+  return result.ok
+    ? { ok: true, document: result.document }
+    : { ok: false, problem: result.problem, document };
 }

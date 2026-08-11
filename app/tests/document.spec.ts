@@ -6,13 +6,17 @@ import {
   BUILDER_DOCUMENT_VERSION,
   builderDocumentFromLegacySpec,
   canonicalBuilderDocumentJson,
+  convertBuilderDocumentToGraph,
   defaultBuilderDocument,
   hashBuilderDocument,
   reconcileBuilderDocumentSpec,
   restoreQuarantinedEntry,
   validateBuilderDocument,
 } from "@/lib/builder/document";
-import { resolveBuilderExportSource } from "@/lib/builder/exportSource";
+import {
+  resolveBuilderExportSource,
+  resolveLegacyGeometryExportSource,
+} from "@/lib/builder/exportSource";
 import { exportGltf, exportSpecJson } from "@/lib/builder/exportSpec";
 import { addFixture, emptyFixtureSet } from "@/lib/builder/fixtures";
 import { defaultSpec } from "@/lib/builder/spec";
@@ -82,6 +86,70 @@ test("future document versions fail visibly without being interpreted", () => {
 
   expect(result.futureVersion).toBe(BUILDER_DOCUMENT_VERSION + 1);
   expect(result.problem).toContain("newer version");
+});
+
+test("v1 builder documents migrate to v2 without changing their legacy geometry", () => {
+  const current = defaultBuilderDocument();
+  const legacyV1 = { ...current, version: 1 };
+
+  const result = validateBuilderDocument(legacyV1);
+  expect(result.ok).toBe(true);
+  if (!result.ok) return;
+  expect(result.migratedFrom).toBe("builder-document-v1");
+  expect(result.document.version).toBe(BUILDER_DOCUMENT_VERSION);
+  expect(result.document.geometry).toEqual({ kind: "legacy-volumes", source: "spec.volumes" });
+});
+
+test("explicit graph conversion preserves a recovery spec and quarantines unplaced sidecars", () => {
+  const base = defaultBuilderDocument();
+  const volumeId = base.spec.volumes[0].id;
+  const fixture = addFixture(base.spec, base.fixtures, "wood-stove").set;
+  const detailed = {
+    ...base,
+    partitions: [
+      {
+        id: "legacy-partition",
+        volumeId,
+        axis: "x" as const,
+        atFt: 0,
+        fromFt: -3,
+        toFt: 3,
+        thicknessFt: 0.4,
+        door: null,
+      },
+    ],
+    finishes: { [`vol:${volumeId}/wall:n`]: "timber-cladding" as const },
+    fixtures: fixture,
+  };
+
+  const converted = convertBuilderDocumentToGraph(detailed, 0.5);
+
+  expect(converted.ok).toBe(true);
+  if (!converted.ok) return;
+  expect(converted.document.geometry.kind).toBe("building-graph");
+  if (converted.document.geometry.kind !== "building-graph") return;
+  expect(converted.document.geometry.legacyRecovery).toEqual(base.spec);
+  expect(converted.document.geometry.graph.storeys[0].rooms).toHaveLength(1);
+  expect(converted.document.partitions).toEqual([]);
+  expect(converted.document.finishes).toEqual({});
+  expect(converted.document.fixtures.items).toEqual([]);
+  expect(converted.document.quarantine.entries.map((entry) => entry.kind).sort()).toEqual([
+    "finish",
+    "fixture",
+    "partition",
+  ]);
+  expect(validateBuilderDocument(converted.document).ok).toBe(true);
+});
+
+test("legacy-only writers refuse a graph instead of substituting its recovery rectangle", () => {
+  const converted = convertBuilderDocumentToGraph(defaultBuilderDocument(), 0.5);
+  expect(converted.ok).toBe(true);
+  if (!converted.ok) return;
+
+  expect(() => resolveLegacyGeometryExportSource(converted.document)).toThrow(
+    /does not support planar BuildingGraph geometry/,
+  );
+  expect(resolveBuilderExportSource(converted.document).document).toEqual(converted.document);
 });
 
 test("canonical JSON and keccak256 identity ignore object key insertion order", () => {
@@ -169,7 +237,7 @@ test("the default document has a stable known keccak256 identity", () => {
   const changed = { ...document, spec: { ...document.spec, notes: "Changed" } };
 
   expect(hashBuilderDocument(document)).toBe(
-    "0x46fadeafd22a70cadb756721e1c1e6cddb5d7184b735644132ff957314ce2f3c",
+    "0x0c22743657a3c6f6c64e692b53d471baf958155fbf42ff6cc2fdd9a1e695cfa3",
   );
   expect(hashBuilderDocument(changed)).not.toBe(hashBuilderDocument(document));
 });

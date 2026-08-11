@@ -800,10 +800,11 @@ function parseDocumentToken(token: unknown): ParsedToken | null {
     );
     return null;
   }
-  if (version < BUILDER_DOCUMENT_VERSION) {
-    console.error(
-      `[aura/share] this link is document v${version} and no migration to v${BUILDER_DOCUMENT_VERSION} exists yet.`,
-    );
+  // Older durable links reach `validateBuilderDocument`, which owns the
+  // explicit migrations. Token framing and document schema are separate
+  // boundaries; rejecting here would strand a readable v1 payload.
+  if (version < 1) {
+    console.error(`[aura/share] document version ${version} is invalid.`);
     return null;
   }
   const bytes = base64UrlToBytes(match[3]);

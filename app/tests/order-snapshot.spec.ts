@@ -2,7 +2,13 @@ import { expect, test } from "playwright/test";
 
 import { createOrder } from "@agent/concierge/order";
 import { reduce } from "@agent/concierge/reducer";
-import { defaultBuilderDocument, hashBuilderDocument } from "@/lib/builder/document";
+import {
+  convertBuilderDocumentToGraph,
+  defaultBuilderDocument,
+  hashBuilderDocument,
+} from "@/lib/builder/document";
+import { moveGraphVertex } from "@/lib/builder/buildingGraph";
+import { summarizeBuildingGraph } from "@/lib/builder/graphGeometry";
 import {
   createBuilderOrderSnapshot,
   createQuotedBuilderOrderSnapshot,
@@ -37,6 +43,31 @@ test("an edited design cannot pass as the immutable order snapshot", () => {
   const checked = validateBuilderOrderSnapshot(edited);
   expect(checked.ok).toBe(false);
   if (!checked.ok) expect(checked.problem).toContain("hash mismatch");
+});
+
+test("a planar order is priced from graph area rather than its recovery rectangle", () => {
+  const converted = convertBuilderDocumentToGraph(defaultBuilderDocument(), 0.5);
+  expect(converted.ok).toBe(true);
+  if (!converted.ok || converted.document.geometry.kind !== "building-graph") return;
+  const moved = moveGraphVertex(
+    converted.document.geometry.graph,
+    "storey-1",
+    "vol:main:vertex:1",
+    [-10, -10],
+    0.5,
+  );
+  expect(moved.ok).toBe(true);
+  if (!moved.ok) return;
+  const document = {
+    ...converted.document,
+    geometry: { ...converted.document.geometry, graph: moved.graph },
+  };
+  const graphArea = summarizeBuildingGraph(moved.graph).totalFloorAreaSqFt;
+  const snapshot = createBuilderOrderSnapshot(document, now, "project-graph");
+
+  expect(snapshot.home.sizeSqft).toBe(graphArea);
+  expect(snapshot.home.sizeSqft).not.toBe(34 * 23.5);
+  expect(validateBuilderOrderSnapshot(snapshot).ok).toBe(true);
 });
 
 test("the concierge quotes a builder choice against its bound design hash", () => {

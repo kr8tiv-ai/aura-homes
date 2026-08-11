@@ -100,7 +100,7 @@ import { fmtFt, fmtFtFrac, fmtG, pyRound, riseOver12, sqFt, wrap } from "./drawi
 import { EXPORT_DISCLAIMER, FEET_TO_METRES, exportFilename, type ExportArtifact } from "./exportSpec";
 import {
   exportSourceLimitation,
-  resolveBuilderExportSource,
+  resolveLegacyGeometryExportSource,
   type BuilderExportSource,
 } from "./exportSource";
 import type { HomeSpec, RoofForm } from "./spec";
@@ -1353,7 +1353,7 @@ const LAYOUT_COLUMNS = 3;
  * they can XREF or copy out of. That is what this produces.
  */
 export function homeToDxf(source: BuilderExportSource, options: DxfOptions = {}): string {
-  const resolved = resolveBuilderExportSource(source);
+  const resolved = resolveLegacyGeometryExportSource(source);
   const { spec } = resolved;
   const model = buildHomeModel(spec);
   const section = sectionOf(model);
@@ -1448,7 +1448,7 @@ export function homeToDxf(source: BuilderExportSource, options: DxfOptions = {})
 
 /** The DXF as a downloadable artifact. */
 export function exportDxf(source: BuilderExportSource, options: DxfOptions = {}): ExportArtifact {
-  const { spec } = resolveBuilderExportSource(source);
+  const { spec } = resolveLegacyGeometryExportSource(source);
   const text = homeToDxf(source, options);
   const model = buildHomeModel(spec);
   const units = options.units ?? "feet";
@@ -1734,7 +1734,7 @@ interface WallFrameRec {
  * answer, and better than a parse error.
  */
 export function homeToIfc(source: BuilderExportSource, options: IfcOptions): string {
-  const resolved = resolveBuilderExportSource(source);
+  const resolved = resolveLegacyGeometryExportSource(source);
   const { spec } = resolved;
   const model = buildHomeModel(spec);
   const s = new Step();
@@ -2948,7 +2948,7 @@ function ccwRing(ring: readonly Pt[]): Pt[] {
 
 /** The IFC as a downloadable artifact. */
 export function exportIfc(source: BuilderExportSource, options: IfcOptions): ExportArtifact {
-  const { spec } = resolveBuilderExportSource(source);
+  const { spec } = resolveLegacyGeometryExportSource(source);
   const text = homeToIfc(source, options);
   const model = buildHomeModel(spec);
   const blob = new Blob([text], { type: "application/x-step" });

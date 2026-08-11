@@ -14,6 +14,7 @@ import {
   type BuilderDocument,
 } from "./document";
 import { groundFootprintSqFt, totalFloorAreaSqFt } from "./spec";
+import { summarizeBuildingGraph } from "./graphGeometry";
 
 export type BuilderOrderSnapshot = OrderSnapshot<BuilderDocument>;
 
@@ -60,6 +61,34 @@ export function newOrderProjectId(): string {
   return `project-${Date.now().toString(36)}`;
 }
 
+interface DocumentMeasures {
+  area: number;
+  footprint: number;
+  storeys: 1 | 2;
+  volumeCount: number;
+}
+
+function documentMeasures(document: BuilderDocument): DocumentMeasures {
+  if (document.geometry.kind === "building-graph") {
+    const summary = summarizeBuildingGraph(document.geometry.graph);
+    return {
+      area: summary.totalFloorAreaSqFt,
+      footprint: summary.groundFootprintSqFt,
+      storeys: document.geometry.graph.storeys.length === 1 ? (1 as const) : (2 as const),
+      volumeCount: document.geometry.graph.storeys.reduce(
+        (sum, storey) => sum + storey.slabs.length,
+        0,
+      ),
+    };
+  }
+  return {
+    area: totalFloorAreaSqFt(document.spec),
+    footprint: groundFootprintSqFt(document.spec),
+    storeys: document.spec.volumes.some((volume) => volume.storeys > 1) ? 2 : 1,
+    volumeCount: document.spec.volumes.length,
+  };
+}
+
 export function createBuilderOrderSnapshot(
   source: BuilderDocument,
   now: Date,
@@ -70,13 +99,13 @@ export function createBuilderOrderSnapshot(
   const id = safeProjectId(projectId);
   const design = JSON.parse(canonicalBuilderDocumentJson(checked.document)) as BuilderDocument;
   const documentHash = hashBuilderDocument(design);
-  const storeys = design.spec.volumes.some((volume) => volume.storeys > 1) ? 2 : 1;
+  const measures = documentMeasures(design);
   const atISO = now.toISOString();
   const home: BuilderOrderHomeChoice = {
     kind: "builder",
     projectId: id,
     name: design.spec.name,
-    sizeSqft: totalFloorAreaSqFt(design.spec),
+    sizeSqft: measures.area,
     fulfillment: "sip-site-built",
     fulfillmentPath: "aura-concierge",
     documentVersion: design.version,
@@ -84,9 +113,9 @@ export function createBuilderOrderSnapshot(
     designSummary: {
       material: design.spec.material,
       climateZone: design.spec.climateZone,
-      volumeCount: design.spec.volumes.length,
-      storeys,
-      footprintSqft: groundFootprintSqFt(design.spec),
+      volumeCount: measures.volumeCount,
+      storeys: measures.storeys,
+      footprintSqft: measures.footprint,
     },
     artifactHashes: { designDocument: documentHash },
     quoteBasis: {
@@ -102,7 +131,7 @@ export function createBuilderOrderSnapshot(
       ],
       assumptions: [
         "Design geometry is fixed to the BuilderDocument hash shown in the order.",
-        "The current cost model scales the reference Alberta build by floor area; it is not a takeoff from graph geometry.",
+        "The current cost model scales the reference Alberta build by graph-derived floor area; it is not a material takeoff.",
         "Room programme and system sizing use the concierge baseline until confirmed with the owner.",
       ],
     },
@@ -188,13 +217,11 @@ export function validateBuilderOrderSnapshot(value: unknown): BuilderOrderSnapsh
   }
   if (value.home.projectId !== value.projectId || value.home.documentVersion !== document.document.version)
     return { ok: false, problem: "Order home identity does not match its project or document version." };
-  const expectedArea = totalFloorAreaSqFt(document.document.spec);
-  const expectedFootprint = groundFootprintSqFt(document.document.spec);
-  const expectedStoreys = document.document.spec.volumes.some((volume) => volume.storeys > 1) ? 2 : 1;
+  const measures = documentMeasures(document.document);
   if (
     typeof value.home.name !== "string" ||
     value.home.name !== document.document.spec.name ||
-    value.home.sizeSqft !== expectedArea ||
+    value.home.sizeSqft !== measures.area ||
     value.home.fulfillment !== "sip-site-built" ||
     value.home.fulfillmentPath !== "aura-concierge" ||
     typeof value.home.atISO !== "string" ||
@@ -206,9 +233,9 @@ export function validateBuilderOrderSnapshot(value: unknown): BuilderOrderSnapsh
     !isObject(value.home.designSummary) ||
     value.home.designSummary.material !== document.document.spec.material ||
     value.home.designSummary.climateZone !== document.document.spec.climateZone ||
-    value.home.designSummary.volumeCount !== document.document.spec.volumes.length ||
-    value.home.designSummary.storeys !== expectedStoreys ||
-    value.home.designSummary.footprintSqft !== expectedFootprint
+    value.home.designSummary.volumeCount !== measures.volumeCount ||
+    value.home.designSummary.storeys !== measures.storeys ||
+    value.home.designSummary.footprintSqft !== measures.footprint
   ) {
     return { ok: false, problem: "Order design summary does not match its geometry." };
   }

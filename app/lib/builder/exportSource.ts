@@ -64,6 +64,22 @@ export function resolveBuilderExportSource(
   };
 }
 
+/**
+ * Boundary for writers that have not moved to BuildingGraph yet. Refusing is
+ * safer than exporting `legacyRecovery` and labelling it as the current home.
+ */
+export function resolveLegacyGeometryExportSource(
+  source: BuilderExportSource,
+): ResolvedBuilderExportSource {
+  const resolved = resolveBuilderExportSource(source);
+  if (resolved.document.geometry.kind === "building-graph") {
+    throw new Error(
+      "This writer does not support planar BuildingGraph geometry yet. Export the current 3D scene or the complete .aura.json project instead; the recovery HomeSpec was not substituted.",
+    );
+  }
+  return resolved;
+}
+
 export function exportSourceLimitation(
   source: BuilderExportSource,
   representation: "legacy-volume" | "rendered-scene" = "legacy-volume",

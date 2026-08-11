@@ -212,7 +212,7 @@ import {
 } from "./exportSpec";
 import {
   exportSourceLimitation,
-  resolveBuilderExportSource,
+  resolveLegacyGeometryExportSource,
   type BuilderExportSource,
 } from "./exportSource";
 import { modelledGlazingRatio, modelledWallAreaSqFt } from "./toPlan";
@@ -2067,7 +2067,7 @@ function buildFromSource(
   source: BuilderExportSource,
   opts: SemanticExportOptions = {},
 ): Ctx {
-  const resolved = resolveBuilderExportSource(source);
+  const resolved = resolveLegacyGeometryExportSource(source);
   return build(
     resolved.spec,
     {
@@ -2155,7 +2155,7 @@ export function exportIfcJson(
   source: BuilderExportSource,
   opts: SemanticExportOptions = {},
 ): ExportArtifact {
-  const { spec } = resolveBuilderExportSource(source);
+  const { spec } = resolveLegacyGeometryExportSource(source);
   const doc = specToIfcJson(source, opts);
   return artifact(
     ifcJsonToText(doc),
@@ -2172,7 +2172,7 @@ export function exportSemanticJsonLd(
   source: BuilderExportSource,
   opts: SemanticExportOptions = {},
 ): ExportArtifact {
-  const { spec } = resolveBuilderExportSource(source);
+  const { spec } = resolveLegacyGeometryExportSource(source);
   const bundle = specToSemanticBundle(source, opts);
   return artifact(
     semanticBundleToText(bundle),
@@ -2810,7 +2810,7 @@ export function roundTripReport(
   source: BuilderExportSource,
   opts: SemanticExportOptions = {},
 ): RoundTripReport {
-  const { spec } = resolveBuilderExportSource(source);
+  const { spec } = resolveLegacyGeometryExportSource(source);
   const bundle = specToSemanticBundle(source, opts);
   const ifcText = ifcJsonToText(bundle.ifcJSON);
   const bundleText = semanticBundleToText(bundle);

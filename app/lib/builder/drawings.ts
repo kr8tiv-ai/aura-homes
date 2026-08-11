@@ -55,7 +55,7 @@
    =========================================================================== */
 
 import type { HomeSpec } from "@/lib/builder/spec";
-import { resolveBuilderExportSource, type BuilderExportSource } from "./exportSource";
+import { resolveLegacyGeometryExportSource, type BuilderExportSource } from "./exportSource";
 
 import { buildHomeModel, type HomeModel } from "./drawings/model";
 import {
@@ -118,7 +118,7 @@ export type {
 export function drawingSet(input: DrawingSourceInput): DrawingSetResult {
   if ("document" in input) {
     const { document, ...facts } = input;
-    const { spec } = resolveBuilderExportSource(document);
+    const { spec } = resolveLegacyGeometryExportSource(document);
     const model = buildHomeModel(spec);
     return buildSheets({ ...facts, spec }, model);
   }
@@ -150,4 +150,4 @@ export const drawingSetForDocument = (
 /** The drawing model on its own, for a caller that wants the numbers without
  *  the ink — the ridge heights, the pile grid, the opening schedule. */
 export const drawingModel = (source: BuilderExportSource): HomeModel =>
-  buildHomeModel(resolveBuilderExportSource(source).spec);
+  buildHomeModel(resolveLegacyGeometryExportSource(source).spec);

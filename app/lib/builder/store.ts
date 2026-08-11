@@ -475,8 +475,10 @@ function versionProblem(specVersion: unknown, documentVersion: unknown = 0): str
   if (typeof documentVersion === "number" && Number.isFinite(documentVersion) && documentVersion > 0) {
     if (documentVersion > BUILDER_DOCUMENT_VERSION)
       return `Saved by a newer version of the builder (document v${documentVersion}; this build reads v${BUILDER_DOCUMENT_VERSION}). Refusing to guess at it — update the page, or open it in the browser that wrote it.`;
-    if (documentVersion < BUILDER_DOCUMENT_VERSION)
-      return `Saved as document v${documentVersion} and no migration to v${BUILDER_DOCUMENT_VERSION} exists yet, so it is refused rather than mis-read.`;
+    /* Older BuilderDocuments are readable only through document.ts's explicit
+       migrations. The metadata gate lets them reach that validator; it never
+       rewrites their source record merely because they were listed. */
+    if (documentVersion < BUILDER_DOCUMENT_VERSION) return null;
     return null;
   }
   if (typeof specVersion !== "number" || !Number.isFinite(specVersion))
