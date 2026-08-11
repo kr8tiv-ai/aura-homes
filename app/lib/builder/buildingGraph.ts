@@ -16,7 +16,7 @@ const EPS = 1e-8;
 export type GraphPoint = readonly [xFt: number, zFt: number];
 export type GraphWallKind = "external" | "partition";
 export type GraphOpeningKind = "window" | "door" | "glazing-wall";
-export type GraphRoofForm = "gable" | "shed" | "flat";
+export type GraphRoofForm = "gable" | "hipped" | "shed" | "flat";
 
 export interface GraphVertex {
   id: string;
@@ -90,11 +90,45 @@ export interface GraphStorey {
   roofZones: GraphRoofZone[];
 }
 
+export interface GraphStair {
+  id: string;
+  fromStoreyId: string;
+  toStoreyId: string;
+  /** Flight centreline in the shared site plan frame. */
+  start: GraphPoint;
+  end: GraphPoint;
+  widthFt: number;
+  /** Explicit void in the upper slab; never inferred by the renderer. */
+  openingVoidId: string;
+}
+
+export interface GraphShaft {
+  id: string;
+  fromStoreyId: string;
+  toStoreyId: string;
+  centre: GraphPoint;
+  widthFt: number;
+  depthFt: number;
+  openingVoidId: string;
+}
+
+export interface GraphStackedRoomRelationship {
+  lowerStoreyId: string;
+  lowerRoomId: string;
+  upperStoreyId: string;
+  upperRoomId: string;
+  overlapSqft: number;
+}
+
 export interface BuildingGraph {
   kind: "building-graph";
   version: typeof BUILDING_GRAPH_VERSION;
   units: "feet";
   storeys: GraphStorey[];
+  /** Additive v1 field. Older graph documents omit it and read as empty. */
+  stairs?: GraphStair[];
+  /** Additive v1 field. A shaft always owns explicit referenced voids. */
+  shafts?: GraphShaft[];
 }
 
 export type BuildingGraphValidation =
@@ -112,6 +146,31 @@ export type GraphFactoryResult =
 export type RoofZoneResult =
   | { ok: true; zone: GraphRoofZone }
   | { ok: false; problem: string };
+
+export interface DuplicateStoreyOptions {
+  id: string;
+  name: string;
+  elevationFt: number;
+  heightFt?: number;
+}
+
+export interface GraphStairInput {
+  id: string;
+  fromStoreyId: string;
+  toStoreyId: string;
+  start: GraphPoint;
+  end: GraphPoint;
+  widthFt: number;
+}
+
+export interface GraphShaftInput {
+  id: string;
+  fromStoreyId: string;
+  toStoreyId: string;
+  centre: GraphPoint;
+  widthFt: number;
+  depthFt: number;
+}
 
 export type LegacyGraphConversion =
   | {
@@ -493,7 +552,7 @@ export function validateBuildingGraph(value: BuildingGraph): BuildingGraphValida
       if (!roof.id || globalIds.has(roof.id)) return { ok: false, problem: `Duplicate graph id ${roof.id}.` };
       globalIds.add(roof.id);
       if (
-        !["gable", "shed", "flat"].includes(roof.form) ||
+        !["gable", "hipped", "shed", "flat"].includes(roof.form) ||
         !finite(roof.pitchDeg) ||
         roof.pitchDeg < 0 ||
         roof.boundaryVertexIds.length < 3 ||
@@ -534,6 +593,76 @@ export function validateBuildingGraph(value: BuildingGraph): BuildingGraphValida
         return { ok: false, problem: `Room ${room.id} is not an exact face of the wall graph.` };
       if (globalIds.has(room.id)) return { ok: false, problem: `Duplicate graph id ${room.id}.` };
       globalIds.add(room.id);
+    }
+  }
+
+  const levels = [...value.storeys].sort(
+    (a, b) => a.elevationFt - b.elevationFt || a.id.localeCompare(b.id),
+  );
+  for (let index = 0; index < levels.length - 1; index += 1) {
+    const lower = levels[index];
+    const upper = levels[index + 1];
+    if (lower.elevationFt + lower.heightFt > upper.elevationFt + EPS) {
+      return {
+        ok: false,
+        problem: `Storeys ${lower.id} and ${upper.id} overlap vertically.`,
+      };
+    }
+  }
+
+  if (value.stairs !== undefined && !Array.isArray(value.stairs)) {
+    return { ok: false, problem: "Building graph stairs must be an array." };
+  }
+  for (const stair of value.stairs ?? []) {
+    if (!stair.id || globalIds.has(stair.id))
+      return { ok: false, problem: `Duplicate or empty stair id ${stair.id}.` };
+    globalIds.add(stair.id);
+    const lower = value.storeys.find((storey) => storey.id === stair.fromStoreyId);
+    const upper = value.storeys.find((storey) => storey.id === stair.toStoreyId);
+    if (!lower || !upper || lower === upper || lower.elevationFt >= upper.elevationFt) {
+      return { ok: false, problem: `Stair ${stair.id} has invalid connected storeys.` };
+    }
+    if (
+      !finite(stair.start[0]) ||
+      !finite(stair.start[1]) ||
+      !finite(stair.end[0]) ||
+      !finite(stair.end[1]) ||
+      distance(stair.start, stair.end) <= EPS ||
+      !finite(stair.widthFt) ||
+      stair.widthFt <= 0
+    ) {
+      return { ok: false, problem: `Stair ${stair.id} has invalid flight geometry.` };
+    }
+    const opening = upper.voids.find((item) => item.id === stair.openingVoidId);
+    if (!opening || !upper.slabs.some((slab) => slab.voidIds.includes(opening.id))) {
+      return { ok: false, problem: `Stair ${stair.id} has no explicit opening in ${upper.id}.` };
+    }
+  }
+  if (value.shafts !== undefined && !Array.isArray(value.shafts)) {
+    return { ok: false, problem: "Building graph shafts must be an array." };
+  }
+  for (const shaft of value.shafts ?? []) {
+    if (!shaft.id || globalIds.has(shaft.id))
+      return { ok: false, problem: `Duplicate or empty shaft id ${shaft.id}.` };
+    globalIds.add(shaft.id);
+    const lower = value.storeys.find((storey) => storey.id === shaft.fromStoreyId);
+    const upper = value.storeys.find((storey) => storey.id === shaft.toStoreyId);
+    if (!lower || !upper || lower === upper || lower.elevationFt >= upper.elevationFt) {
+      return { ok: false, problem: `Shaft ${shaft.id} has invalid connected storeys.` };
+    }
+    if (
+      !finite(shaft.centre[0]) ||
+      !finite(shaft.centre[1]) ||
+      !finite(shaft.widthFt) ||
+      !finite(shaft.depthFt) ||
+      shaft.widthFt <= 0 ||
+      shaft.depthFt <= 0
+    ) {
+      return { ok: false, problem: `Shaft ${shaft.id} has invalid footprint geometry.` };
+    }
+    const opening = upper.voids.find((item) => item.id === shaft.openingVoidId);
+    if (!opening || !upper.slabs.some((slab) => slab.voidIds.includes(opening.id))) {
+      return { ok: false, problem: `Shaft ${shaft.id} has no explicit opening in ${upper.id}.` };
     }
   }
   return { ok: true, graph: value };
@@ -592,6 +721,8 @@ export function singleStoreyGraphFromPolygon(
     version: BUILDING_GRAPH_VERSION,
     units: "feet",
     storeys: [storey],
+    stairs: [],
+    shafts: [],
   };
   const checked = validateBuildingGraph(graph);
   return checked.ok ? { ok: true, graph } : checked;
@@ -803,6 +934,351 @@ export function addGraphOpening(
   return checked.ok ? { ok: true, graph: candidate } : fail(graph, checked.problem);
 }
 
+/** Duplicate one complete planar level, aligned in the shared site frame. */
+export function duplicateGraphStorey(
+  graph: BuildingGraph,
+  sourceStoreyId: string,
+  options: DuplicateStoreyOptions,
+): GraphMutation {
+  const source = graph.storeys.find((storey) => storey.id === sourceStoreyId);
+  if (!source) return fail(graph, `Storey ${sourceStoreyId} does not exist.`);
+  if (!options.id || graph.storeys.some((storey) => storey.id === options.id))
+    return fail(graph, `Storey id ${options.id} is empty or already exists.`);
+  if (!finite(options.elevationFt) || !finite(options.heightFt ?? source.heightFt) || (options.heightFt ?? source.heightFt) <= 0)
+    return fail(graph, "Duplicated storey levels must be finite and its height must be positive.");
+
+  const vertexIds = new Map(source.vertices.map((vertex) => [vertex.id, `${options.id}:${vertex.id}`]));
+  const wallIds = new Map(source.walls.map((wall) => [wall.id, `${options.id}:${wall.id}`]));
+  const voidIds = new Map(source.voids.map((item) => [item.id, `${options.id}:${item.id}`]));
+  let duplicated: GraphStorey = {
+    id: options.id,
+    name: options.name,
+    elevationFt: options.elevationFt,
+    heightFt: options.heightFt ?? source.heightFt,
+    vertices: source.vertices.map((vertex) => ({ ...vertex, id: vertexIds.get(vertex.id)! })),
+    walls: source.walls.map((wall) => ({
+      ...wall,
+      id: wallIds.get(wall.id)!,
+      startVertexId: vertexIds.get(wall.startVertexId)!,
+      endVertexId: vertexIds.get(wall.endVertexId)!,
+      openings: wall.openings.map((opening) => ({
+        ...opening,
+        id: `${options.id}:${opening.id}`,
+      })),
+    })),
+    rooms: [],
+    slabs: source.slabs.map((slab) => ({
+      ...slab,
+      id: `${options.id}:${slab.id}`,
+      boundaryVertexIds: slab.boundaryVertexIds.map((id) => vertexIds.get(id)!),
+      voidIds: slab.voidIds.map((id) => voidIds.get(id)!),
+    })),
+    voids: source.voids.map((item) => ({
+      ...item,
+      id: voidIds.get(item.id)!,
+      boundaryVertexIds: item.boundaryVertexIds.map((id) => vertexIds.get(id)!),
+    })),
+    roofZones: source.roofZones.map((zone) => ({
+      ...zone,
+      id: `${options.id}:${zone.id}`,
+      boundaryVertexIds: zone.boundaryVertexIds.map((id) => vertexIds.get(id)!),
+    })),
+  };
+  duplicated = { ...duplicated, rooms: deriveRoomFaces(duplicated, []) };
+  const sourceWithoutRoof = { ...source, roofZones: [] };
+  const candidate: BuildingGraph = {
+    ...graph,
+    storeys: [
+      ...graph.storeys.map((storey) => (storey.id === source.id ? sourceWithoutRoof : storey)),
+      duplicated,
+    ].sort((a, b) => a.elevationFt - b.elevationFt || a.id.localeCompare(b.id)),
+    stairs: [...(graph.stairs ?? [])],
+    shafts: [...(graph.shafts ?? [])],
+  };
+  const checked = validateBuildingGraph(candidate);
+  return checked.ok ? { ok: true, graph: candidate } : fail(graph, checked.problem);
+}
+
+export function setGraphStoreyLevels(
+  graph: BuildingGraph,
+  storeyId: string,
+  levels: { elevationFt?: number; heightFt?: number },
+): GraphMutation {
+  const storey = graph.storeys.find((item) => item.id === storeyId);
+  if (!storey) return fail(graph, `Storey ${storeyId} does not exist.`);
+  const elevationFt = levels.elevationFt ?? storey.elevationFt;
+  const heightFt = levels.heightFt ?? storey.heightFt;
+  if (!finite(elevationFt) || !finite(heightFt) || heightFt <= 0)
+    return fail(graph, "Storey elevation must be finite and height must be positive.");
+  const candidate = graphWithStorey(graph, { ...storey, elevationFt, heightFt });
+  const checked = validateBuildingGraph(candidate);
+  return checked.ok ? { ok: true, graph: candidate } : fail(graph, checked.problem);
+}
+
+function stairRectangle(input: GraphStairInput): GraphPoint[] | null {
+  const dx = input.end[0] - input.start[0];
+  const dz = input.end[1] - input.start[1];
+  const run = Math.hypot(dx, dz);
+  if (run <= EPS || input.widthFt <= 0) return null;
+  const px = (-dz / run) * (input.widthFt / 2);
+  const pz = (dx / run) * (input.widthFt / 2);
+  return [
+    [input.start[0] + px, input.start[1] + pz],
+    [input.end[0] + px, input.end[1] + pz],
+    [input.end[0] - px, input.end[1] - pz],
+    [input.start[0] - px, input.start[1] - pz],
+  ];
+}
+
+/** Add one design-intent stair and the explicit void it requires above. */
+export function addGraphStair(graph: BuildingGraph, input: GraphStairInput): GraphMutation {
+  if (!input.id || (graph.stairs ?? []).some((stair) => stair.id === input.id))
+    return fail(graph, `Stair id ${input.id} is empty or already exists.`);
+  if (
+    !finite(input.start[0]) ||
+    !finite(input.start[1]) ||
+    !finite(input.end[0]) ||
+    !finite(input.end[1]) ||
+    !finite(input.widthFt)
+  ) {
+    return fail(graph, "Stair geometry must be finite.");
+  }
+  const lower = graph.storeys.find((storey) => storey.id === input.fromStoreyId);
+  const upper = graph.storeys.find((storey) => storey.id === input.toStoreyId);
+  if (!lower || !upper || lower.elevationFt >= upper.elevationFt)
+    return fail(graph, "A stair must connect an existing lower storey to an existing upper storey.");
+  const rectangle = stairRectangle(input);
+  if (!rectangle) return fail(graph, "A stair needs a positive run and width.");
+  const lowerSlab = lower.slabs.find((slab) => {
+    const polygon = boundaryPointsForStorey(lower, slab.boundaryVertexIds);
+    return rectangle.every((item) => pointInPolygon(item, polygon));
+  });
+  const upperSlab = upper.slabs.find((slab) => {
+    const polygon = boundaryPointsForStorey(upper, slab.boundaryVertexIds);
+    return rectangle.every((item) => pointInPolygon(item, polygon));
+  });
+  if (!lowerSlab || !upperSlab)
+    return fail(graph, "The complete stair and upper opening must fit inside aligned floor plates.");
+  for (const existing of upper.voids) {
+    const polygon = boundaryPointsForStorey(upper, existing.boundaryVertexIds);
+    if (
+      rectangle.some((item) => pointInPolygon(item, polygon)) ||
+      polygon.some((item) => pointInPolygon(item, rectangle))
+    ) {
+      return fail(graph, `The stair opening overlaps void ${existing.id}.`);
+    }
+  }
+
+  const openingVoidId = `${input.id}:opening`;
+  const vertexIds = rectangle.map((_, index) => `${input.id}:opening:vertex-${index + 1}`);
+  const candidateUpper: GraphStorey = {
+    ...upper,
+    vertices: [
+      ...upper.vertices,
+      ...rectangle.map(([xFt, zFt], index): GraphVertex => ({ id: vertexIds[index], xFt, zFt })),
+    ],
+    voids: [
+      ...upper.voids,
+      { id: openingVoidId, boundaryVertexIds: vertexIds },
+    ],
+    slabs: upper.slabs.map((slab) =>
+      slab.id === upperSlab.id ? { ...slab, voidIds: [...slab.voidIds, openingVoidId] } : slab,
+    ),
+  };
+  const candidate: BuildingGraph = {
+    ...graphWithStorey(graph, candidateUpper),
+    stairs: [
+      ...(graph.stairs ?? []),
+      {
+        id: input.id,
+        fromStoreyId: input.fromStoreyId,
+        toStoreyId: input.toStoreyId,
+        start: [...input.start] as GraphPoint,
+        end: [...input.end] as GraphPoint,
+        widthFt: input.widthFt,
+        openingVoidId,
+      },
+    ],
+  };
+  const checked = validateBuildingGraph(candidate);
+  return checked.ok ? { ok: true, graph: candidate } : fail(graph, checked.problem);
+}
+
+/** Add a rectangular design-intent service shaft with an explicit upper void. */
+export function addGraphShaft(graph: BuildingGraph, input: GraphShaftInput): GraphMutation {
+  if (!input.id || (graph.shafts ?? []).some((shaft) => shaft.id === input.id))
+    return fail(graph, `Shaft id ${input.id} is empty or already exists.`);
+  if (
+    !finite(input.centre[0]) ||
+    !finite(input.centre[1]) ||
+    !finite(input.widthFt) ||
+    !finite(input.depthFt) ||
+    input.widthFt <= 0 ||
+    input.depthFt <= 0
+  ) {
+    return fail(graph, "A shaft needs a finite centre and positive dimensions.");
+  }
+  const lower = graph.storeys.find((storey) => storey.id === input.fromStoreyId);
+  const upper = graph.storeys.find((storey) => storey.id === input.toStoreyId);
+  if (!lower || !upper || lower.elevationFt >= upper.elevationFt)
+    return fail(graph, "A shaft must connect an existing lower storey to an existing upper storey.");
+  const halfWidth = input.widthFt / 2;
+  const halfDepth = input.depthFt / 2;
+  const rectangle: GraphPoint[] = [
+    [input.centre[0] - halfWidth, input.centre[1] - halfDepth],
+    [input.centre[0] + halfWidth, input.centre[1] - halfDepth],
+    [input.centre[0] + halfWidth, input.centre[1] + halfDepth],
+    [input.centre[0] - halfWidth, input.centre[1] + halfDepth],
+  ];
+  const fits = (storey: GraphStorey) =>
+    storey.slabs.find((slab) => {
+      const polygon = boundaryPointsForStorey(storey, slab.boundaryVertexIds);
+      return rectangle.every((item) => pointInPolygon(item, polygon));
+    });
+  const lowerSlab = fits(lower);
+  const upperSlab = fits(upper);
+  if (!lowerSlab || !upperSlab)
+    return fail(graph, "The complete service shaft must fit inside aligned floor plates.");
+  for (const existing of upper.voids) {
+    const polygon = boundaryPointsForStorey(upper, existing.boundaryVertexIds);
+    if (
+      rectangle.some((item) => pointInPolygon(item, polygon)) ||
+      polygon.some((item) => pointInPolygon(item, rectangle))
+    ) {
+      return fail(graph, `The shaft opening overlaps void ${existing.id}.`);
+    }
+  }
+  const openingVoidId = `${input.id}:opening`;
+  const vertexIds = rectangle.map((_, index) => `${input.id}:opening:vertex-${index + 1}`);
+  const candidateUpper: GraphStorey = {
+    ...upper,
+    vertices: [
+      ...upper.vertices,
+      ...rectangle.map(([xFt, zFt], index): GraphVertex => ({ id: vertexIds[index], xFt, zFt })),
+    ],
+    voids: [...upper.voids, { id: openingVoidId, boundaryVertexIds: vertexIds }],
+    slabs: upper.slabs.map((slab) =>
+      slab.id === upperSlab.id ? { ...slab, voidIds: [...slab.voidIds, openingVoidId] } : slab,
+    ),
+  };
+  const candidate: BuildingGraph = {
+    ...graphWithStorey(graph, candidateUpper),
+    shafts: [
+      ...(graph.shafts ?? []),
+      {
+        id: input.id,
+        fromStoreyId: input.fromStoreyId,
+        toStoreyId: input.toStoreyId,
+        centre: [...input.centre] as GraphPoint,
+        widthFt: input.widthFt,
+        depthFt: input.depthFt,
+        openingVoidId,
+      },
+    ],
+  };
+  const checked = validateBuildingGraph(candidate);
+  return checked.ok ? { ok: true, graph: candidate } : fail(graph, checked.problem);
+}
+
+function boundaryPointsForStorey(storey: GraphStorey, ids: readonly string[]): GraphPoint[] {
+  const vertices = vertexMap(storey);
+  return ids.map((id) => vertices.get(id)).filter((item): item is GraphVertex => !!item).map(pointOf);
+}
+
+function roomPolygon(storey: GraphStorey, room: GraphRoomFace): GraphPoint[] {
+  const walls = new Map(storey.walls.map((wall) => [wall.id, wall]));
+  const vertices = vertexMap(storey);
+  return room.boundary
+    .map((edge) => {
+      const wall = walls.get(edge.wallId);
+      if (!wall) return null;
+      const id = edge.forward ? wall.startVertexId : wall.endVertexId;
+      const vertex = vertices.get(id);
+      return vertex ? pointOf(vertex) : null;
+    })
+    .filter((item): item is GraphPoint => item !== null);
+}
+
+function isConvexPolygon(polygon: readonly GraphPoint[]): boolean {
+  let sign = 0;
+  for (let index = 0; index < polygon.length; index += 1) {
+    const value = cross(polygon[index], polygon[(index + 1) % polygon.length], polygon[(index + 2) % polygon.length]);
+    if (Math.abs(value) <= EPS) continue;
+    const next = Math.sign(value);
+    if (sign !== 0 && sign !== next) return false;
+    sign = next;
+  }
+  return true;
+}
+
+function lineIntersection(a: GraphPoint, b: GraphPoint, c: GraphPoint, d: GraphPoint): GraphPoint {
+  const ab: GraphPoint = [b[0] - a[0], b[1] - a[1]];
+  const cd: GraphPoint = [d[0] - c[0], d[1] - c[1]];
+  const denominator = ab[0] * cd[1] - ab[1] * cd[0];
+  if (Math.abs(denominator) <= EPS) return b;
+  const delta: GraphPoint = [c[0] - a[0], c[1] - a[1]];
+  const t = (delta[0] * cd[1] - delta[1] * cd[0]) / denominator;
+  return [a[0] + ab[0] * t, a[1] + ab[1] * t];
+}
+
+function convexIntersection(subject: GraphPoint[], clip: readonly GraphPoint[]): GraphPoint[] {
+  let output = subject;
+  const orientation = polygonArea(clip) >= 0 ? 1 : -1;
+  for (let index = 0; index < clip.length; index += 1) {
+    const a = clip[index];
+    const b = clip[(index + 1) % clip.length];
+    const input = output;
+    output = [];
+    for (let itemIndex = 0; itemIndex < input.length; itemIndex += 1) {
+      const current = input[itemIndex];
+      const previous = input[(itemIndex + input.length - 1) % input.length];
+      const currentInside = cross(a, b, current) * orientation >= -EPS;
+      const previousInside = cross(a, b, previous) * orientation >= -EPS;
+      if (currentInside) {
+        if (!previousInside) output.push(lineIntersection(previous, current, a, b));
+        output.push(current);
+      } else if (previousInside) {
+        output.push(lineIntersection(previous, current, a, b));
+      }
+    }
+    if (output.length === 0) break;
+  }
+  return output;
+}
+
+/** Exact overlap relationships for adjacent convex room faces; complex faces are left unclaimed. */
+export function deriveStackedRoomRelationships(
+  graph: BuildingGraph,
+): GraphStackedRoomRelationship[] {
+  const storeys = [...graph.storeys].sort(
+    (a, b) => a.elevationFt - b.elevationFt || a.id.localeCompare(b.id),
+  );
+  const relationships: GraphStackedRoomRelationship[] = [];
+  for (let index = 0; index < storeys.length - 1; index += 1) {
+    const lower = storeys[index];
+    const upper = storeys[index + 1];
+    for (const lowerRoom of lower.rooms) {
+      const lowerPolygon = roomPolygon(lower, lowerRoom);
+      if (!isConvexPolygon(lowerPolygon)) continue;
+      for (const upperRoom of upper.rooms) {
+        const upperPolygon = roomPolygon(upper, upperRoom);
+        if (!isConvexPolygon(upperPolygon)) continue;
+        const overlap = convexIntersection([...lowerPolygon], upperPolygon);
+        const overlapSqft = Math.round(Math.abs(polygonArea(overlap)) * 1e6) / 1e6;
+        if (overlapSqft <= EPS) continue;
+        relationships.push({
+          lowerStoreyId: lower.id,
+          lowerRoomId: lowerRoom.id,
+          upperStoreyId: upper.id,
+          upperRoomId: upperRoom.id,
+          overlapSqft,
+        });
+      }
+    }
+  }
+  return relationships;
+}
+
 function polygonCentroid(points: readonly GraphPoint[]): GraphPoint {
   let crossSum = 0;
   let x = 0;
@@ -858,6 +1334,16 @@ export function deriveRoofZone(
     pitchDeg,
   };
   if (form === "flat") return { ok: true, zone: base };
+  if (form === "hipped") {
+    if (!isConvexPolygon(polygon)) {
+      return {
+        ok: false,
+        problem:
+          "A single automatic hipped roof only fits a convex zone. Define explicit roof zones for this concave footprint instead of inventing joins.",
+      };
+    }
+    return { ok: true, zone: base };
+  }
 
   const external = storey.walls
     .filter((wall) => wall.kind === "external")
@@ -1044,6 +1530,8 @@ export function legacySpecToBuildingGraph(
     version: BUILDING_GRAPH_VERSION,
     units: "feet",
     storeys: [storey],
+    stairs: [],
+    shafts: [],
   };
   const checked = validateBuildingGraph(graph);
   if (!checked.ok) {

@@ -9,7 +9,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "playwright test tests/comfort.spec.ts tests/document.spec.ts tests/store.spec.ts tests/share-document.spec.ts tests/order-snapshot.spec.ts tests/building-graph.spec.ts tests/graph-geometry.spec.ts",
+    "test": "playwright test tests/comfort.spec.ts tests/document.spec.ts tests/store.spec.ts tests/share-document.spec.ts tests/order-snapshot.spec.ts tests/building-graph.spec.ts tests/building-graph-multistorey.spec.ts tests/graph-geometry.spec.ts",
     "test:ui": "playwright test --config=playwright.ui.config.ts"
   },
   "dependencies": {

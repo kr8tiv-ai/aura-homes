@@ -152,7 +152,7 @@ test("an opening crossing a proposed split is quarantined by refusal, not cut", 
   if (!split.ok) expect(split.problem).toContain("opening-wide");
 });
 
-test("gable, shed and flat roof intent derive deterministically from one polygon", () => {
+test("gable, hipped, shed and flat roof intent derive deterministically from one polygon", () => {
   const made = singleStoreyGraphFromPolygon([
     [0, 0],
     [24, 0],
@@ -165,6 +165,7 @@ test("gable, shed and flat roof intent derive deterministically from one polygon
   const flat = deriveRoofZone(made.graph.storeys[0], "flat", 0);
   const shed = deriveRoofZone(made.graph.storeys[0], "shed", 12);
   const gable = deriveRoofZone(made.graph.storeys[0], "gable", 35);
+  const hipped = deriveRoofZone(made.graph.storeys[0], "hipped", 30);
 
   expect(flat.ok && flat.zone.form).toBe("flat");
   expect(shed.ok && shed.zone.fallVector).toEqual([0, 1]);
@@ -172,6 +173,23 @@ test("gable, shed and flat roof intent derive deterministically from one polygon
     start: [0, 6],
     end: [24, 6],
   });
+  expect(hipped.ok && hipped.zone.form).toBe("hipped");
+});
+
+test("a complex concave hipped roof is refused until explicit roof zones exist", () => {
+  const made = singleStoreyGraphFromPolygon([
+    [0, 0],
+    [20, 0],
+    [20, 8],
+    [10, 8],
+    [10, 18],
+    [0, 18],
+  ]);
+  expect(made.ok).toBe(true);
+  if (!made.ok) return;
+  const roof = deriveRoofZone(made.graph.storeys[0], "hipped", 30);
+  expect(roof.ok).toBe(false);
+  if (!roof.ok) expect(roof.problem).toContain("explicit roof zones");
 });
 
 test("a rotated legacy volume migrates with opening ids and a recovery copy", () => {

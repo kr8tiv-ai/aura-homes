@@ -85,6 +85,18 @@ function roofPeak(storey: GraphStorey, zone: GraphRoofZone): number {
     const span = Math.max(...points.map((item) => distanceToLine(item, zone.ridge!.start, zone.ridge!.end)), 0);
     return eave + span * pitch;
   }
+  if (zone.form === "hipped") {
+    const centre: GraphPoint = [
+      points.reduce((sum, item) => sum + item[0], 0) / points.length,
+      points.reduce((sum, item) => sum + item[1], 0) / points.length,
+    ];
+    const inset = Math.min(
+      ...points.map((item, index) =>
+        distanceToLine(centre, item, points[(index + 1) % points.length]),
+      ),
+    );
+    return eave + inset * pitch;
+  }
   if (zone.form === "shed" && zone.fallVector) {
     const length = Math.hypot(zone.fallVector[0], zone.fallVector[1]) || 1;
     const projections = points.map(
@@ -295,6 +307,28 @@ function roofPart(storey: GraphStorey, zone: GraphRoofZone): Part | null {
   if (boundary.length < 3) return null;
   const eave = storey.elevationFt + storey.heightFt;
   const pitch = Math.tan((zone.pitchDeg * Math.PI) / 180);
+  if (zone.form === "hipped") {
+    const peak = roofPeak(storey, zone);
+    const centre: GraphPoint = [
+      boundary.reduce((sum, item) => sum + item[0], 0) / boundary.length,
+      boundary.reduce((sum, item) => sum + item[1], 0) / boundary.length,
+    ];
+    const vertices: number[] = [];
+    const indices: number[] = [];
+    for (let index = 0; index < boundary.length; index += 1) {
+      const a = boundary[index];
+      const b = boundary[(index + 1) % boundary.length];
+      const base = vertices.length / 3;
+      vertices.push(a[0], eave, a[1], b[0], eave, b[1], centre[0], peak, centre[1]);
+      indices.push(base, base + 1, base + 2);
+    }
+    return {
+      id: `${storey.id}:roof:${zone.id}`,
+      surface: "roof",
+      volumeId: storey.id,
+      geometry: indexedGeometry(vertices, indices),
+    };
+  }
   if (zone.form === "gable" && zone.ridge) {
     const peak = roofPeak(storey, zone);
     const vertices: number[] = [];
@@ -345,13 +379,57 @@ function roofPart(storey: GraphStorey, zone: GraphRoofZone): Part | null {
   };
 }
 
+function stairParts(graph: BuildingGraph, storey: GraphStorey): Part[] {
+  const parts: Part[] = [];
+  for (const stair of graph.stairs ?? []) {
+    if (stair.fromStoreyId !== storey.id) continue;
+    const upper = graph.storeys.find((item) => item.id === stair.toStoreyId);
+    if (!upper) continue;
+    const dx = stair.end[0] - stair.start[0];
+    const dz = stair.end[1] - stair.start[1];
+    const run = Math.hypot(dx, dz);
+    const rise = upper.elevationFt - storey.elevationFt;
+    if (run <= EPS || rise <= EPS) continue;
+    const count = Math.max(3, Math.ceil(rise / (7.5 / 12)));
+    const treadRun = run / count;
+    const ux = dx / run;
+    const uz = dz / run;
+    const yaw = -Math.atan2(dz, dx);
+    for (let index = 0; index < count; index += 1) {
+      const height = (rise * (index + 1)) / count;
+      const along = treadRun * (index + 0.5);
+      const part = boxPart(
+        storey,
+        `${stair.id}:tread:${index + 1}`,
+        "floor",
+        treadRun,
+        height,
+        stair.widthFt,
+        [
+          stair.start[0] + ux * along,
+          storey.elevationFt + height / 2,
+          stair.start[1] + uz * along,
+        ],
+        yaw,
+      );
+      if (part) parts.push(part);
+    }
+  }
+  return parts;
+}
+
 /** Build a HomeGeometry-compatible export root directly from the graph. */
 export function buildGraphHome(graph: BuildingGraph): HomeGeometry {
   const summary = summarizeBuildingGraph(graph);
   const warnings: string[] = [];
   const volumes: VolumeGeometry[] = graph.storeys.map((storey) => {
     const roofParts = storey.roofZones.map((zone) => roofPart(storey, zone)).filter((item): item is Part => !!item);
-    if (storey.roofZones.length === 0) {
+    const cappedByStorey = graph.storeys.some(
+      (candidate) =>
+        candidate.id !== storey.id &&
+        candidate.elevationFt >= storey.elevationFt + storey.heightFt - EPS,
+    );
+    if (storey.roofZones.length === 0 && !cappedByStorey) {
       warnings.push(`${storey.name}: no explicit roof zone is defined; the walls remain open at the top.`);
     }
     const summaryVolume = summary.volumes.find((volume) => volume.id === storey.id)!;
@@ -365,7 +443,7 @@ export function buildGraphHome(graph: BuildingGraph): HomeGeometry {
       ridgeHeightFt: summaryVolume.ridgeHeightFt,
       builtPitchDeg: storey.roofZones[0]?.pitchDeg ?? 0,
       roofThicknessFt: ROOF_THICKNESS_FT,
-      parts: [...floorParts(storey), ...wallParts(storey), ...roofParts],
+      parts: [...floorParts(storey), ...wallParts(storey), ...roofParts, ...stairParts(graph, storey)],
     };
   });
   return { volumes, deck: null, summary, warnings };

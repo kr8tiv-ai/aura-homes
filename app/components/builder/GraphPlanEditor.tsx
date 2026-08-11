@@ -1,10 +1,22 @@
 "use client";
 
-import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 
 import {
+  addGraphShaft,
+  addGraphStair,
   addPartitionEdge,
+  deriveStackedRoomRelationships,
+  duplicateGraphStorey,
   moveGraphVertex,
+  setGraphStoreyLevels,
   splitWallAt,
   type BuildingGraph,
   type GraphPoint,
@@ -48,35 +60,45 @@ export default function GraphPlanEditor({
   graph: BuildingGraph;
   onEdit: (graph: BuildingGraph, label: string) => void;
 }) {
-  const storey = graph.storeys[0];
+  const [activeStoreyId, setActiveStoreyId] = useState(graph.storeys[0]?.id ?? "");
+  const storey = graph.storeys.find((item) => item.id === activeStoreyId) ?? graph.storeys[0];
   const [tool, setTool] = useState<Tool>("shape");
   const [selectedWallId, setSelectedWallId] = useState<string | null>(null);
   const [partitionEnds, setPartitionEnds] = useState<string[]>([]);
   const [preview, setPreview] = useState<BuildingGraph | null>(null);
+  const previewRef = useRef<BuildingGraph | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
-  const drag = useRef<{ vertexId: string; graph: BuildingGraph } | null>(null);
+  const drag = useRef<{
+    vertexId: string;
+    graph: BuildingGraph;
+    capture?: SVGCircleElement;
+  } | null>(null);
+  const stopMouseDrag = useRef<(() => void) | null>(null);
   const svg = useRef<SVGSVGElement | null>(null);
   const shown = preview ?? graph;
-  const shownStorey = shown.storeys[0];
+  const shownStorey = shown.storeys.find((item) => item.id === storey.id) ?? shown.storeys[0];
   // Keep the pointer transform fixed for the whole gesture. Reframing around
   // every preview vertex would move the coordinate system under the cursor.
   const bounds = useMemo(() => graphBounds(storey), [storey]);
 
-  const toGraphPoint = (event: ReactPointerEvent<SVGSVGElement>): GraphPoint => {
-    const rect = svg.current!.getBoundingClientRect();
-    return [
-      bounds.x + ((event.clientX - rect.left) / rect.width) * bounds.width,
-      bounds.y + ((event.clientY - rect.top) / rect.height) * bounds.height,
-    ];
+  const toGraphPoint = (clientX: number, clientY: number): GraphPoint => {
+    const element = svg.current!;
+    const matrix = element.getScreenCTM();
+    if (!matrix) return [0, 0];
+    const client = element.createSVGPoint();
+    client.x = clientX;
+    client.y = clientY;
+    const local = client.matrixTransform(matrix.inverse());
+    return [local.x, local.y];
   };
 
-  const pointerMove = (event: ReactPointerEvent<SVGSVGElement>) => {
+  const moveDrag = (clientX: number, clientY: number) => {
     if (!drag.current) return;
     const moved = moveGraphVertex(
       drag.current.graph,
       storey.id,
       drag.current.vertexId,
-      toGraphPoint(event),
+      toGraphPoint(clientX, clientY),
       0.5,
     );
     if (!moved.ok) {
@@ -84,15 +106,49 @@ export default function GraphPlanEditor({
       return;
     }
     setProblem(null);
+    previewRef.current = moved.graph;
     setPreview(moved.graph);
   };
 
-  const finishDrag = (event: ReactPointerEvent<SVGSVGElement>) => {
+  const finishDrag = (pointerId?: number) => {
     if (!drag.current) return;
-    if (preview && preview !== graph) onEdit(preview, `graph:vertex:${drag.current.vertexId}`);
+    const active = drag.current;
+    const candidate = previewRef.current;
+    if (candidate && candidate !== graph) onEdit(candidate, `graph:vertex:${active.vertexId}`);
     drag.current = null;
+    previewRef.current = null;
     setPreview(null);
-    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    if (pointerId !== undefined && active.capture?.hasPointerCapture(pointerId)) {
+      active.capture.releasePointerCapture(pointerId);
+    }
+  };
+
+  useEffect(() => () => stopMouseDrag.current?.(), []);
+
+  const startMouseVertexDrag = (
+    event: ReactMouseEvent<SVGCircleElement>,
+    vertexId: string,
+  ) => {
+    if (tool !== "shape") return;
+    event.preventDefault();
+    event.stopPropagation();
+    stopMouseDrag.current?.();
+    drag.current = { vertexId, graph };
+    previewRef.current = graph;
+    setPreview(graph);
+    const move = (next: MouseEvent) => moveDrag(next.clientX, next.clientY);
+    const up = () => {
+      finishDrag();
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+      stopMouseDrag.current = null;
+    };
+    stopMouseDrag.current = () => {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
   };
 
   const selectVertex = (vertexId: string) => {
@@ -147,6 +203,135 @@ export default function GraphPlanEditor({
     onEdit(added.graph, `graph:partition:${partitionEnds.join(":")}`);
   };
 
+  const changeLevels = (levels: { elevationFt?: number; heightFt?: number }, label: string) => {
+    const changed = setGraphStoreyLevels(graph, storey.id, levels);
+    if (!changed.ok) {
+      setProblem(changed.problem);
+      return;
+    }
+    setProblem(null);
+    onEdit(changed.graph, label);
+  };
+
+  const duplicateStorey = () => {
+    const ids = new Set(graph.storeys.map((item) => item.id));
+    const id = nextId(ids, "storey");
+    const top = Math.max(...graph.storeys.map((item) => item.elevationFt + item.heightFt));
+    const duplicated = duplicateGraphStorey(graph, storey.id, {
+      id,
+      name: `Storey ${graph.storeys.length + 1}`,
+      elevationFt: top,
+    });
+    if (!duplicated.ok) {
+      setProblem(duplicated.problem);
+      return;
+    }
+    setProblem(null);
+    setActiveStoreyId(id);
+    onEdit(duplicated.graph, `graph:duplicate-storey:${storey.id}`);
+  };
+
+  const addStairCore = () => {
+    const levels = [...graph.storeys].sort(
+      (a, b) => a.elevationFt - b.elevationFt || a.id.localeCompare(b.id),
+    );
+    if (levels.length < 2) {
+      setProblem("Duplicate an aligned upper storey before adding a stair core.");
+      return;
+    }
+    const lower = levels[levels.length - 2];
+    const upper = levels[levels.length - 1];
+    const lowerVertices = lower.vertices;
+    const upperVertices = upper.vertices;
+    const minX = Math.max(
+      Math.min(...lowerVertices.map((vertex) => vertex.xFt)),
+      Math.min(...upperVertices.map((vertex) => vertex.xFt)),
+    );
+    const maxX = Math.min(
+      Math.max(...lowerVertices.map((vertex) => vertex.xFt)),
+      Math.max(...upperVertices.map((vertex) => vertex.xFt)),
+    );
+    const minZ = Math.max(
+      Math.min(...lowerVertices.map((vertex) => vertex.zFt)),
+      Math.min(...upperVertices.map((vertex) => vertex.zFt)),
+    );
+    const maxZ = Math.min(
+      Math.max(...lowerVertices.map((vertex) => vertex.zFt)),
+      Math.max(...upperVertices.map((vertex) => vertex.zFt)),
+    );
+    const run = Math.min(10, maxX - minX - 2);
+    if (run < 6 || maxZ - minZ < 5) {
+      setProblem("The aligned floor overlap is too small for Aura's 3 × 6 ft minimum stair core.");
+      return;
+    }
+    const centreX = (minX + maxX) / 2;
+    const centreZ = (minZ + maxZ) / 2;
+    const ids = new Set((graph.stairs ?? []).map((stair) => stair.id));
+    const added = addGraphStair(graph, {
+      id: nextId(ids, "stair"),
+      fromStoreyId: lower.id,
+      toStoreyId: upper.id,
+      start: [centreX - run / 2, centreZ],
+      end: [centreX + run / 2, centreZ],
+      widthFt: 3,
+    });
+    if (!added.ok) {
+      setProblem(added.problem);
+      return;
+    }
+    setProblem(null);
+    onEdit(added.graph, `graph:add-stair:${lower.id}:${upper.id}`);
+  };
+
+  const addServiceShaft = () => {
+    const levels = [...graph.storeys].sort(
+      (a, b) => a.elevationFt - b.elevationFt || a.id.localeCompare(b.id),
+    );
+    if (levels.length < 2) {
+      setProblem("Duplicate an aligned upper storey before adding a service shaft.");
+      return;
+    }
+    const lower = levels[levels.length - 2];
+    const upper = levels[levels.length - 1];
+    const minX = Math.max(
+      Math.min(...lower.vertices.map((vertex) => vertex.xFt)),
+      Math.min(...upper.vertices.map((vertex) => vertex.xFt)),
+    );
+    const maxX = Math.min(
+      Math.max(...lower.vertices.map((vertex) => vertex.xFt)),
+      Math.max(...upper.vertices.map((vertex) => vertex.xFt)),
+    );
+    const minZ = Math.max(
+      Math.min(...lower.vertices.map((vertex) => vertex.zFt)),
+      Math.min(...upper.vertices.map((vertex) => vertex.zFt)),
+    );
+    const maxZ = Math.min(
+      Math.max(...lower.vertices.map((vertex) => vertex.zFt)),
+      Math.max(...upper.vertices.map((vertex) => vertex.zFt)),
+    );
+    if (maxX - minX < 4 || maxZ - minZ < 4) {
+      setProblem("The aligned floor overlap is too small for a 2 × 2 ft service shaft.");
+      return;
+    }
+    const ids = new Set((graph.shafts ?? []).map((shaft) => shaft.id));
+    const added = addGraphShaft(graph, {
+      id: nextId(ids, "shaft"),
+      fromStoreyId: lower.id,
+      toStoreyId: upper.id,
+      centre: [minX + 2, minZ + 2],
+      widthFt: 2,
+      depthFt: 2,
+    });
+    if (!added.ok) {
+      setProblem(added.problem);
+      return;
+    }
+    setProblem(null);
+    onEdit(added.graph, `graph:add-shaft:${lower.id}:${upper.id}`);
+  };
+
+  const stacked = deriveStackedRoomRelationships(graph);
+
   return (
     <section className="rounded-xl border border-aura-emerald p-5" aria-labelledby="graph-plan-heading">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -166,6 +351,50 @@ export default function GraphPlanEditor({
         }} />
       </div>
 
+      <div className="mt-5 grid gap-4 rounded-lg border aura-hairline p-4 lg:grid-cols-[1fr_auto]">
+        <Segmented
+          label="Storey"
+          value={storey.id}
+          options={graph.storeys.map((item) => ({ id: item.id, label: item.name }))}
+          onChange={(id) => {
+            setActiveStoreyId(id);
+            setSelectedWallId(null);
+            setPartitionEnds([]);
+            setProblem(null);
+          }}
+        />
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="mr-2">
+            <p className="aura-label mb-2">Elevation</p>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => changeLevels({ elevationFt: storey.elevationFt - 0.5 }, `graph:elevation:${storey.id}`)}>−</Button>
+              <span className="min-w-16 text-center font-mono text-xs tabular-nums">{storey.elevationFt.toFixed(1)} ft</span>
+              <Button onClick={() => changeLevels({ elevationFt: storey.elevationFt + 0.5 }, `graph:elevation:${storey.id}`)}>+</Button>
+            </div>
+          </div>
+          <div className="mr-2">
+            <p className="aura-label mb-2">Floor to floor</p>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => changeLevels({ heightFt: Math.max(7, storey.heightFt - 0.5) }, `graph:height:${storey.id}`)}>−</Button>
+              <span className="min-w-16 text-center font-mono text-xs tabular-nums">{storey.heightFt.toFixed(1)} ft</span>
+              <Button onClick={() => changeLevels({ heightFt: storey.heightFt + 0.5 }, `graph:height:${storey.id}`)}>+</Button>
+            </div>
+          </div>
+          <Button onClick={duplicateStorey} disabled={graph.storeys.length >= 2}>Duplicate aligned</Button>
+          <Button onClick={addStairCore} disabled={graph.storeys.length < 2 || (graph.stairs ?? []).length > 0}>Add stair core</Button>
+          <Button onClick={addServiceShaft} disabled={graph.storeys.length < 2 || (graph.shafts ?? []).length > 0}>Add service shaft</Button>
+        </div>
+      </div>
+
+      {graph.storeys.length > 1 ? (
+        <p className="mt-3 text-xs leading-relaxed text-aura-text/60">
+          {graph.storeys.length} aligned storeys · {stacked.length} exact stacked-room relationship
+          {stacked.length === 1 ? "" : "s"} · {(graph.stairs ?? []).length} explicit stair core
+          {(graph.stairs ?? []).length === 1 ? "" : "s"}. Roof zones stay on the uppermost duplicated level.
+          {" "}{(graph.shafts ?? []).length} service shaft{(graph.shafts ?? []).length === 1 ? "" : "s"}.
+        </p>
+      ) : null}
+
       <div className="mt-5 overflow-hidden rounded-lg border aura-hairline bg-aura-sunken">
         <svg
           ref={svg}
@@ -173,9 +402,6 @@ export default function GraphPlanEditor({
           className="aspect-[16/10] min-h-[20rem] w-full touch-none"
           role="img"
           aria-label="Editable building graph plan, north is up"
-          onPointerMove={pointerMove}
-          onPointerUp={finishDrag}
-          onPointerCancel={finishDrag}
         >
           <defs>
             <pattern id="graph-grid" width="2" height="2" patternUnits="userSpaceOnUse">
@@ -265,12 +491,23 @@ export default function GraphPlanEditor({
                 tabIndex={0}
                 aria-label={`Vertex ${vertex.id} at ${vertex.xFt}, ${vertex.zFt} feet`}
                 onClick={() => selectVertex(vertex.id)}
+                onMouseDown={(event) => startMouseVertexDrag(event, vertex.id)}
+                onPointerMove={(event) => {
+                  if (event.pointerType !== "mouse") moveDrag(event.clientX, event.clientY);
+                }}
+                onPointerUp={(event) => {
+                  if (event.pointerType !== "mouse") finishDrag(event.pointerId);
+                }}
+                onPointerCancel={(event) => {
+                  if (event.pointerType !== "mouse") finishDrag(event.pointerId);
+                }}
                 onPointerDown={(event) => {
-                  if (tool !== "shape") return;
+                  if (tool !== "shape" || event.pointerType === "mouse") return;
                   event.stopPropagation();
-                  drag.current = { vertexId: vertex.id, graph };
+                  drag.current = { vertexId: vertex.id, graph, capture: event.currentTarget };
+                  previewRef.current = graph;
                   setPreview(graph);
-                  svg.current?.setPointerCapture(event.pointerId);
+                  event.currentTarget.setPointerCapture(event.pointerId);
                 }}
               />
             );

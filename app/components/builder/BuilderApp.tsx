@@ -338,6 +338,7 @@ function reconcileFixtures(spec: HomeSpec, set: FixtureSet): FixtureSet {
 function commit(state: EditorState, doc: EditorDoc, label: string): EditorState {
   if (
     doc.spec === state.doc.spec &&
+    doc.geometry === state.doc.geometry &&
     doc.partitions === state.doc.partitions &&
     doc.finishes === state.doc.finishes &&
     doc.fixtures === state.doc.fixtures &&
