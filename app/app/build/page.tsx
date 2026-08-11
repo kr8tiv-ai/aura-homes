@@ -41,45 +41,36 @@ const BuilderApp = dynamic(() => import("@/components/builder/BuilderApp"), {
 
 export default function BuildPage() {
   return (
-    <div className="py-16">
-      <Reveal y={10}>
-        <p className="aura-label mb-4">03 · Build</p>
-      </Reveal>
-      <RevealWords
-        text="Build the home, then take the drawing"
-        className="font-display text-[2.35rem] font-medium leading-[1.08] tracking-[-0.025em]"
-      />
-      <Reveal delay={0.12} y={12}>
-        <p className="mt-6 max-w-2xl text-base leading-relaxed text-aura-text/75">
-          Compose your home out of rectangular volumes with real roofs, real openings and the
-          floor-to-eave glass wall that makes a Nordic home a Nordic home. Move the sun and watch
-          what the overhang does in June and what the low winter light does through the south
-          glazing. Switch to the plan and push one wall, drag a corner, slide a window or draw the
-          interior partitions yourself — it is the same home, from above, and an edit in either
-          view is an edit in both. Click a surface in the model to say what it is made of, and put
-          the wood stove in — it tells you what has to stay clear around it before a wall is in the
-          way. When it is yours, the <span className="text-aura-text/90">Drawings</span> tab turns
-          the same object into a dimensioned floor plan with a room schedule — and an itemised
-          account of everything the translation had to drop.
-        </p>
-      </Reveal>
-      <Reveal delay={0.18} y={12}>
-        <p className="mt-4 max-w-2xl text-sm leading-relaxed text-aura-text/55">
-          Then take it with you: a DXF a drafter opens in any CAD program — written, read back by a
-          separate parser and checked against your model before it will download — an IFC a designer
-          imports into Revit or ArchiCAD as a building rather than a shape, ifcJSON and glTF for a
-          browser or a script, or the HomeSpec itself. Your designs are saved in this browser, with
-          no account and nothing sent anywhere. A massing and layout tool — not a structural design,
-          not an energy model, and not a permit set. Everything runs in this browser: no account, no
-          server, no key. Already answered the{" "}
-          <Link href="/design" className="text-aura-teal underline-offset-4 hover:underline">
-            design questionnaire
-          </Link>
-          ? That path asks how many bedrooms you want; this one asks what shape the house is.
-        </p>
-      </Reveal>
+    <div className="py-8 sm:py-10">
+      <header className="grid gap-6 border-b aura-hairline pb-7 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.52fr)] lg:items-end">
+        <div>
+          <Reveal y={8}>
+            <p className="aura-label mb-3">03 · Build</p>
+          </Reveal>
+          <RevealWords
+            text="Shape the home. Keep every decision."
+            className="max-w-4xl font-display text-[clamp(2rem,4vw,3.7rem)] font-medium leading-[0.98] tracking-[-0.045em]"
+          />
+        </div>
+        <Reveal delay={0.1} y={10}>
+          <div>
+            <p className="max-w-xl text-sm leading-relaxed text-aura-text/68">
+              Work in model or plan. One local project carries the geometry, rooms, finishes,
+              fixtures, comfort targets, exports, and quote handoff.
+            </p>
+            <p className="mt-3 text-xs leading-relaxed text-aura-text/50">
+              Design intent only—not structural, energy, manufacturing, or permit compliance. A
+              licensed professional completes the build set. Prefer a guided start? Use the{" "}
+              <Link href="/design" className="text-aura-teal underline-offset-4 hover:underline">
+                questionnaire
+              </Link>
+              .
+            </p>
+          </div>
+        </Reveal>
+      </header>
 
-      <div className="mt-12">
+      <div className="mt-6">
         <BuilderApp />
       </div>
     </div>

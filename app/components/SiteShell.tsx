@@ -17,19 +17,45 @@ import ThemeToggle from "./ThemeToggle";
    prefers-reduced-motion — BRAND.md §8's "a still of equal beauty". */
 const loadDomAnimation = () => import("./motion-features").then((mod) => mod.default);
 
-const NAV = [
+const JOURNEY_NAV = [
+  { href: "/build", label: "Design a home" },
+  { href: "/land", label: "Find land" },
+  { href: "/contractors", label: "Build team" },
+  { href: "/buy", label: "Buy a home" },
+  { href: "/concierge", label: "Ask Aura" },
+] as const;
+
+const UTILITY_NAV = [
   { href: "/overview", label: "Overview" },
-  { href: "/concierge", label: "Concierge" },
-  { href: "/land", label: "Land" },
-  { href: "/contractors", label: "Contractors" },
-  { href: "/design", label: "Design" },
-  { href: "/build", label: "Build" },
+  { href: "/design", label: "Questionnaire" },
   { href: "/budget", label: "Budget" },
-  { href: "/buy", label: "Buy" },
   { href: "/escrow", label: "Escrow" },
   { href: "/faq", label: "FAQ" },
   { href: "/dashboard", label: "Dashboard" },
 ] as const;
+
+const ALL_NAV = [...JOURNEY_NAV, ...UTILITY_NAV] as const;
+
+function UtilityMenu({ pathname, story = false }: { pathname: string; story?: boolean }) {
+  const hasCurrent = UTILITY_NAV.some((item) => item.href === pathname);
+  return (
+    <details key={pathname} className={`site-utility${story ? " site-utility-story" : ""}`}>
+      <summary className={hasCurrent ? "is-current" : ""}>More</summary>
+      <nav aria-label="More Aura tools">
+        {UTILITY_NAV.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            aria-current={pathname === item.href ? "page" : undefined}
+          >
+            <span>{item.label}</span>
+            <i aria-hidden>&rarr;</i>
+          </Link>
+        ))}
+      </nav>
+    </details>
+  );
+}
 
 /* ---------------------------------------------------------------------
    THE STORY HEADER
@@ -70,22 +96,25 @@ function StoryHeader() {
         <Link href="/" className="story-chrome-mark">
           Aura <em>Homes</em>
         </Link>
-        <nav className="story-chrome-nav" aria-label="Product">
-          {NAV.map((item) => (
-            <Link key={item.href} href={item.href}>
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-        <button
-          type="button"
-          className="story-chrome-menu"
-          aria-expanded={open}
-          aria-controls="story-menu"
-          onClick={() => setOpen((v) => !v)}
-        >
-          {open ? "Close" : "Menu"}
-        </button>
+        <div className="story-chrome-actions">
+          <nav className="story-chrome-nav" aria-label="Customer journey">
+            {JOURNEY_NAV.map((item) => (
+              <Link key={item.href} href={item.href}>
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+          <UtilityMenu pathname={pathname} story />
+          <button
+            type="button"
+            className="story-chrome-menu"
+            aria-expanded={open}
+            aria-controls="story-menu"
+            onClick={() => setOpen((v) => !v)}
+          >
+            {open ? "Close" : "Menu"}
+          </button>
+        </div>
       </header>
 
       {/* Day/night is reachable from the menu sheet too — the story HUD's
@@ -93,7 +122,7 @@ function StoryHeader() {
           way to travel to undo an accidental flip. */}
       <div id="story-menu" className={`story-sheet${open ? " on" : ""}`} hidden={!open}>
         <nav aria-label="All pages">
-          {NAV.map((item, i) => (
+          {ALL_NAV.map((item, i) => (
             <Link key={item.href} href={item.href} onClick={() => setOpen(false)}>
               <span className="story-sheet-n">{String(i + 1).padStart(2, "0")}</span>
               <span className="story-sheet-l">{item.label}</span>
@@ -105,6 +134,87 @@ function StoryHeader() {
           <ThemeToggle />
         </div>
         <p className="story-sheet-foot">A KR8TIV AI product · Open source (MIT)</p>
+      </div>
+    </>
+  );
+}
+
+function StandardHeader() {
+  const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+
+  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  return (
+    <>
+      <header className="site-header">
+        <div className="site-header-inner">
+          <Link href="/" className="site-wordmark">
+            Aura <span>Homes</span>
+          </Link>
+          <div className="site-header-actions">
+            <nav className="site-journey-nav" aria-label="Customer journey">
+              {JOURNEY_NAV.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`aura-nav-link aura-label${pathname === item.href ? " is-current" : ""}`}
+                  aria-current={pathname === item.href ? "page" : undefined}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+            <UtilityMenu pathname={pathname} />
+            <div className="site-theme-control">
+              <ThemeToggle />
+            </div>
+            <button
+              type="button"
+              className="site-menu-button"
+              aria-expanded={open}
+              aria-controls="site-mobile-menu"
+              onClick={() => setOpen((value) => !value)}
+            >
+              {open ? "Close" : "Menu"}
+            </button>
+          </div>
+        </div>
+      </header>
+      <div id="site-mobile-menu" className={`site-nav-sheet${open ? " is-open" : ""}`} hidden={!open}>
+        <div>
+          <p className="site-nav-sheet-label">Your route</p>
+          <nav aria-label="Customer journey">
+            {JOURNEY_NAV.map((item, index) => (
+              <Link key={item.href} href={item.href} onClick={() => setOpen(false)}>
+                <span className="story-sheet-n">{String(index + 1).padStart(2, "0")}</span>
+                <span className="story-sheet-l">{item.label}</span>
+                <i aria-hidden>&rarr;</i>
+              </Link>
+            ))}
+          </nav>
+          <p className="site-nav-sheet-label site-nav-sheet-label-secondary">Tools and records</p>
+          <nav aria-label="Aura tools">
+            {UTILITY_NAV.map((item) => (
+              <Link key={item.href} href={item.href} onClick={() => setOpen(false)}>
+                <span className="story-sheet-l">{item.label}</span>
+                <i aria-hidden>&rarr;</i>
+              </Link>
+            ))}
+          </nav>
+        </div>
+        <div>
+          <ThemeToggle />
+          <p className="story-sheet-foot">A KR8TIV AI product · Open source (MIT)</p>
+        </div>
       </div>
     </>
   );
@@ -139,29 +249,11 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
         ) : (
           <>
             <CardFXLayer />
-            <header className="border-b aura-hairline">
-              <div className="mx-auto flex max-w-5xl flex-col gap-3 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
-                <Link href="/" className="font-display text-sm font-semibold tracking-label uppercase">
-                  Aura <span className="text-aura-emerald">Homes</span>
-                </Link>
-                <nav className="flex flex-wrap items-center gap-x-6 gap-y-2 sm:gap-8">
-                  {NAV.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`aura-nav-link aura-label transition-colors hover:text-aura-emerald${
-                        pathname === item.href ? " is-current" : ""
-                      }`}
-                      aria-current={pathname === item.href ? "page" : undefined}
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
-                  <ThemeToggle />
-                </nav>
-              </div>
-            </header>
-            <main id="main" className="mx-auto max-w-5xl px-6">
+            <StandardHeader />
+            <main
+              id="main"
+              className={pathname === "/build" ? "mx-auto max-w-[90rem] px-4 sm:px-6" : "mx-auto max-w-5xl px-6"}
+            >
               {/* One tasteful entrance per route arrival: fade + 8px rise on
                   the fluid-deceleration curve. Damped, never bouncy; under
                   reduced motion MotionConfig strips the transform. */}

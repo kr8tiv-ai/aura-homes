@@ -53,7 +53,7 @@ import {
   type ReactNode,
 } from "react";
 import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
+import { ContactShadows, Environment, Lightformer, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import {
   GRADE_Y_FT,
@@ -72,6 +72,7 @@ import {
   type SurfaceOverrides,
 } from "@/lib/builder/surfaces";
 import { currentTheme, onThemeChange, type Theme } from "@/lib/theme";
+import { NORDIC_MATERIALS } from "@/lib/three/nordicMaterials";
 import { ThumbnailProbe } from "./ProjectLibrary";
 import { SurfacePickLayer } from "./SurfacePicker";
 import { bearingWords, hourLabel, type SunPosition } from "./sun";
@@ -123,24 +124,27 @@ interface SurfaceStyle {
   metalness: number;
   /** translucent surfaces: glass and the water in the tub */
   opacity?: number;
+  transmission?: number;
+  ior?: number;
+  clearcoat?: number;
   /** flat shading is the low-poly language; smooth is for the cylinders */
   smooth?: boolean;
   noShadow?: boolean;
 }
 
 const SURFACES: Record<Surface, SurfaceStyle> = {
-  wall: { color: "#e7e1d5", roughness: 0.94, metalness: 0 },
-  floor: { color: "#b08a5e", roughness: 0.78, metalness: 0 },
-  roof: { color: "#2a302c", roughness: 0.55, metalness: 0.3 },
-  trim: { color: "#8f9a94", roughness: 0.4, metalness: 0.6 },
-  glass: { color: "#a8cfd4", roughness: 0.08, metalness: 0.15, opacity: 0.34, noShadow: true },
-  door: { color: "#6a5442", roughness: 0.85, metalness: 0 },
-  frame: { color: "#20261f", roughness: 0.6, metalness: 0.25 },
-  sill: { color: "#8d968f", roughness: 0.7, metalness: 0.1 },
+  wall: NORDIC_MATERIALS.limeRender,
+  floor: NORDIC_MATERIALS.ash,
+  roof: NORDIC_MATERIALS.standingSeam,
+  trim: { ...NORDIC_MATERIALS.blackAluminium, color: "#8f9a94", metalness: 0.6 },
+  glass: { ...NORDIC_MATERIALS.glass, noShadow: true },
+  door: { ...NORDIC_MATERIALS.cedar, color: "#6a5442" },
+  frame: NORDIC_MATERIALS.blackAluminium,
+  sill: NORDIC_MATERIALS.stone,
   pile: { color: "#6c7370", roughness: 0.6, metalness: 0.35, smooth: true },
-  deck: { color: "#a97e57", roughness: 0.86, metalness: 0 },
+  deck: NORDIC_MATERIALS.cedar,
   tub: { color: "#6d523c", roughness: 0.9, metalness: 0, smooth: true },
-  water: { color: "#4f8d86", roughness: 0.2, metalness: 0.1, opacity: 0.88, smooth: true, noShadow: true },
+  water: { ...NORDIC_MATERIALS.water, smooth: true, noShadow: true },
 };
 
 /** The two worlds the site already has: paper daylight, and the night the
@@ -252,6 +256,7 @@ function PartMesh({
     ? materialForPart(part, surfaces.index, surfaces.overrides)
     : SURFACES[part.surface];
   const lit = night && part.surface === "glass";
+  const physical = part.surface === "glass" || part.surface === "water";
   return (
     <mesh
       geometry={part.geometry}
@@ -260,16 +265,33 @@ function PartMesh({
       castShadow={!s.noShadow}
       receiveShadow={!s.noShadow}
     >
-      <meshStandardMaterial
-        color={s.color}
-        roughness={s.roughness}
-        metalness={s.metalness}
-        flatShading={!s.smooth}
-        transparent={s.opacity !== undefined}
-        opacity={s.opacity ?? 1}
-        emissive={lit ? "#ffc98a" : "#000000"}
-        emissiveIntensity={lit ? WORLD.dark.glow : 0}
-      />
+      {physical ? (
+        <meshPhysicalMaterial
+          color={s.color}
+          roughness={s.roughness}
+          metalness={s.metalness}
+          flatShading={false}
+          transparent
+          opacity={s.opacity ?? 0.88}
+          transmission={part.surface === "glass" ? Math.min(0.42, s.transmission ?? 0.28) : 0}
+          thickness={part.surface === "glass" ? 0.12 : 0.04}
+          ior={s.ior ?? 1.4}
+          clearcoat={s.clearcoat ?? (part.surface === "water" ? 0.72 : 0.35)}
+          clearcoatRoughness={part.surface === "water" ? 0.08 : 0.22}
+          emissive={lit ? "#ffc98a" : "#000000"}
+          emissiveIntensity={lit ? WORLD.dark.glow : 0}
+          side={THREE.DoubleSide}
+        />
+      ) : (
+        <meshStandardMaterial
+          color={s.color}
+          roughness={s.roughness}
+          metalness={s.metalness}
+          flatShading={!s.smooth}
+          emissive={lit ? "#ffc98a" : "#000000"}
+          emissiveIntensity={lit ? WORLD.dark.glow : 0}
+        />
+      )}
     </mesh>
   );
 }
@@ -506,11 +528,22 @@ function Scene({
   const shadowSpan = radius + 25;
   const sunDistance = Math.max(150, radius * 4);
   const [sx, sy, sz] = sun.direction;
+  const shadowKey = `${home.volumes.length}-${b.minX}-${b.maxX}-${b.minZ}-${b.maxZ}-${home.summary.totalFloorAreaSqFt}`;
 
   return (
     <>
       <Refresh />
       <color attach="background" args={[w.sky]} />
+      <fog attach="fog" args={[w.sky, Math.max(120, radius * 4), Math.max(700, radius * 18)]} />
+
+      <Environment resolution={32} frames={1}>
+        <mesh scale={90}>
+          <sphereGeometry args={[1, 12, 12]} />
+          <meshBasicMaterial color={w.sky} side={THREE.BackSide} />
+        </mesh>
+        <Lightformer intensity={night ? 0.7 : 2.2} position={[8, 12, 7]} scale={[10, 7, 1]} color={w.sun} />
+        <Lightformer intensity={night ? 0.35 : 0.8} position={[-10, 6, -8]} scale={[12, 5, 1]} color={w.sky} />
+      </Environment>
 
       <hemisphereLight color={w.sky} groundColor={w.ground} intensity={w.hemi} />
       <ambientLight intensity={w.ambient} />
@@ -537,6 +570,17 @@ function Scene({
       <directionalLight position={[-radius, radius * 1.4, -radius * 1.6]} color={w.sky} intensity={0.18} />
 
       <Site theme={theme} />
+      <ContactShadows
+        key={shadowKey}
+        position={[0, GRADE_Y_FT + 0.045, 0]}
+        scale={shadowSpan * 2}
+        opacity={night ? 0.58 : 0.38}
+        blur={2.6}
+        far={Math.max(45, radius * 3)}
+        resolution={512}
+        frames={1}
+        color={night ? "#050807" : "#314137"}
+      />
       <SunMarker sun={sun} distance={sunDistance} theme={theme} />
       {selected && selectedSummary ? (
         <SelectionPlate volume={selected} summary={selectedSummary} />
@@ -639,8 +683,8 @@ export default function Viewport({
   const frame = () => controls.current?.reset();
 
   return (
-    <div className="relative overflow-hidden rounded-xl border aura-hairline bg-aura-sunken">
-      <div className="aspect-[16/10] min-h-[20rem] w-full">
+    <div className="builder-viewport relative overflow-hidden rounded-2xl bg-aura-sunken">
+      <div className="aspect-[16/10] min-h-[22rem] w-full lg:aspect-[16/9] lg:min-h-[34rem]">
         <Canvas
           shadows
           dpr={[1, 1.75]}

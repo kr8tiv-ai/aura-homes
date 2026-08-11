@@ -2103,11 +2103,13 @@ export default function SceneDetail({
   night,
   glassRail,
   dusk,
+  qualityScale = 1,
 }: {
   frozen: boolean;
   night: number;
   glassRail: THREE.Material;
   dusk: Dusk;
+  qualityScale?: number;
 }) {
   /* Blade budget by device. A phone draws the whole meadow a few centimetres
      across, so blades past a few thousand are texels it physically cannot
@@ -2175,14 +2177,14 @@ export default function SceneDetail({
      the BASE density back at v9 levels — the doubling stays where it was
      aimed (the yard), paid for by the far field, not by new instances. */
   const mobile = size.width < 820;
-  const heroCount = mobile ? 42000 : 120000;
+  const heroCount = Math.max(12000, Math.round((mobile ? 42000 : 120000) * qualityScale));
   /* Founder "ridiculously good and smooth, no spacing" round: the filler
      count climbs (desktop 715k -> 980k, mobile 250k -> 340k) AND the far
      reach tightens (below) so the extra blades all land where the eye judges
      coverage — the first ~22 m the story cameras sit in. Paired with wider
      blades, a relaxed near-field height gate, and a deeper ground shade, the
      near field reads as one closed sward instead of separable spikes. */
-  const fillCount = mobile ? 340000 : 980000;
+  const fillCount = Math.max(80000, Math.round((mobile ? 340000 : 980000) * qualityScale));
 
   return (
     <group>

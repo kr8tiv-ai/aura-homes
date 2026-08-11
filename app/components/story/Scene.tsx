@@ -9,6 +9,8 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useGLTF, Sparkles, Environment, Lightformer, SoftShadows } from "@react-three/drei";
 import { EffectComposer, Bloom, Vignette, Noise } from "@react-three/postprocessing";
 import { withBase } from "../../lib/basePath";
+import type { SceneQuality } from "@/lib/three/sceneQuality";
+import { NORDIC_MATERIALS } from "@/lib/three/nordicMaterials";
 import SceneDetail, { meadowShade, trailTrodden } from "./SceneDetail";
 
 /* ------------------------------------------------------------------ */
@@ -1076,8 +1078,8 @@ function AFrameHome({ dusk, archGlass, glassRoof }: { dusk: Dusk; archGlass: THR
     return t;
   }, []);
 
-  const mullion = "#20261f";
-  const cedar = ["#a97e57", "#9b7350", "#b0855e"];
+  const mullion = NORDIC_MATERIALS.blackAluminium.color;
+  const cedar = [NORDIC_MATERIALS.cedar.color, "#9b7350", "#b0855e"];
 
   return (
     <group>
@@ -1109,7 +1111,12 @@ function AFrameHome({ dusk, archGlass, glassRoof }: { dusk: Dusk; archGlass: THR
             rotation={[0, 0, s * ROOF_A]}
           >
             <boxGeometry args={[0.16, SLOPE_L + 0.5, 6.9]} />
-            <meshStandardMaterial color="#242a27" roughness={0.5} metalness={0.35} flatShading />
+            <meshStandardMaterial
+              color={NORDIC_MATERIALS.standingSeam.color}
+              roughness={NORDIC_MATERIALS.standingSeam.roughness}
+              metalness={NORDIC_MATERIALS.standingSeam.metalness}
+              flatShading
+            />
           </mesh>
         ) : (
           <group key={s} position={[(s * EAVE) / 2, (RIDGE_H + EAVE_H) / 2, 0]} rotation={[0, 0, s * ROOF_A]}>
@@ -1117,7 +1124,12 @@ function AFrameHome({ dusk, archGlass, glassRoof }: { dusk: Dusk; archGlass: THR
             {([[0, 2.53, 1.84], [0, -2.53, 1.84]] as [number, number, number][]).map(([x, z, d], i) => (
               <mesh key={i} castShadow receiveShadow position={[x, 0, z]}>
                 <boxGeometry args={[0.16, SLOPE_L + 0.5, d]} />
-                <meshStandardMaterial color="#242a27" roughness={0.5} metalness={0.35} flatShading />
+                <meshStandardMaterial
+                  color={NORDIC_MATERIALS.standingSeam.color}
+                  roughness={NORDIC_MATERIALS.standingSeam.roughness}
+                  metalness={NORDIC_MATERIALS.standingSeam.metalness}
+                  flatShading
+                />
               </mesh>
             ))}
             {/* the glazing itself, inset so the seam frames read proud of it */}
@@ -1196,13 +1208,13 @@ function AFrameHome({ dusk, archGlass, glassRoof }: { dusk: Dusk; archGlass: THR
       {/* oak floor, laid on top of the structural slab (slab top = y 0.38) */}
       <mesh position={[0, 0.392, 0]} receiveShadow>
         <boxGeometry args={[7.1, 0.03, 6.0]} />
-        <meshStandardMaterial map={floorTex} color="#b08a5e" roughness={0.72} />
+        <meshStandardMaterial map={floorTex} color={NORDIC_MATERIALS.ash.color} roughness={NORDIC_MATERIALS.ash.roughness} />
       </mesh>
       {/* a wool rug: the one soft, light thing in the room, and the reason
           the floor does not read as one flat plank field through the glass */}
       <mesh position={[-0.7, 0.412, 0.5]} receiveShadow>
         <boxGeometry args={[3.0, 0.012, 2.2]} />
-        <meshStandardMaterial color="#cbbfa6" roughness={0.98} />
+        <meshStandardMaterial color={NORDIC_MATERIALS.wool.color} roughness={NORDIC_MATERIALS.wool.roughness} />
       </mesh>
 
       {/* bed, with linen and a headboard rather than a single beige slab */}
@@ -2617,11 +2629,13 @@ function LightArc({
   progressRef,
   reduced,
   dusk,
+  shadowMapSize,
   night = 0,
 }: {
   progressRef: React.MutableRefObject<number>;
   reduced: boolean;
   dusk: Dusk;
+  shadowMapSize: 1024 | 2048;
   night?: number;
 }) {
   const sun = useRef<THREE.DirectionalLight>(null);
@@ -2699,7 +2713,7 @@ function LightArc({
         position={[27, 24, 19.5]}
         color="#fff3dd"
         intensity={2.6}
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={[shadowMapSize, shadowMapSize]}
         shadow-bias={-0.00025}
         shadow-normalBias={0.012}
         /* tightened from +/-30 to +/-24: the story never leaves this box,
@@ -2727,10 +2741,12 @@ function LightArc({
 export default function Scene({
   progressRef,
   reduced,
+  quality,
   night = false,
 }: {
   progressRef: React.MutableRefObject<number>;
   reduced: boolean;
+  quality: SceneQuality;
   night?: boolean;
 }) {
   const dusk = useDuskRegistry();
@@ -2771,10 +2787,16 @@ export default function Scene({
           foot, softening with distance, which is the single strongest
           "expensive light" cue a shadow can carry. Mounted with the scene
           so shaders compile once, naturally. */}
-      <SoftShadows size={14} samples={10} focus={0.4} />
-      <LightArc progressRef={progressRef} reduced={reduced} dusk={dusk} night={nightAmt} />
+      {quality.softShadows ? <SoftShadows size={14} samples={10} focus={0.4} /> : null}
+      <LightArc
+        progressRef={progressRef}
+        reduced={reduced}
+        dusk={dusk}
+        night={nightAmt}
+        shadowMapSize={quality.shadowMapSize}
+      />
 
-      <Environment resolution={64} frames={1}>
+      <Environment resolution={quality.environmentResolution} frames={1}>
         <mesh scale={90}>
           <sphereGeometry args={[1, 16, 16]} />
           <meshBasicMaterial color="#dcebe2" side={THREE.BackSide} />
@@ -2796,7 +2818,13 @@ export default function Scene({
 
       {/* The additive detail layer — mountains, clouds, grass, steps,
           hammock, netting, wildlife, outdoor lighting, tub steam. */}
-      <SceneDetail frozen={reduced} night={nightAmt} glassRail={glassRail} dusk={dusk} />
+      <SceneDetail
+        frozen={reduced}
+        night={nightAmt}
+        glassRail={glassRail}
+        dusk={dusk}
+        qualityScale={quality.grassScale}
+      />
       <HotTub position={[5.9, 0, 5.4]} dusk={dusk} frozen={reduced} />
       <FirePit dusk={dusk} />
       <Bench position={[8.6, terrainH(8.6, 18.0) - 0.14, 18.0]} rotY={Math.PI * 1.12} />
@@ -2848,7 +2876,7 @@ export default function Scene({
       <Birds frozen={reduced} />
       {/* size 2.2 / opacity 0.4 read as UFO orbs once dusk emissives pushed
           them over the bloom threshold — dust motes, not fireflies */}
-      <Sparkles count={80} scale={[28, 8, 28]} position={[0, 3.5, 2]} size={1.6} speed={reduced ? 0 : 0.25} opacity={0.28} color="#fff6dd" />
+      <Sparkles count={quality.sparkleCount} scale={[28, 8, 28]} position={[0, 3.5, 2]} size={1.6} speed={reduced ? 0 : 0.25} opacity={0.28} color="#fff6dd" />
       <SunShafts progressRef={progressRef} night={nightAmt} reduced={reduced} />
 
       <CameraRig progressRef={progressRef} reduced={reduced} />
@@ -2863,11 +2891,13 @@ export default function Scene({
           MSAA 4 stays: it super-samples the thin grass/tree silhouettes better
           than a post SMAA pass could, and with no depth-reading effect in the
           chain it is completely clean. */}
-      <EffectComposer multisampling={4}>
-        <Bloom mipmapBlur intensity={0.25} luminanceThreshold={0.9} luminanceSmoothing={0.3} />
-        <Vignette eskil={false} offset={0.16} darkness={0.26} />
-        <Noise opacity={0.03} />
-      </EffectComposer>
+      {quality.postprocessing ? (
+        <EffectComposer multisampling={4}>
+          <Bloom mipmapBlur intensity={0.25} luminanceThreshold={0.9} luminanceSmoothing={0.3} />
+          <Vignette eskil={false} offset={0.16} darkness={0.26} />
+          <Noise opacity={0.03} />
+        </EffectComposer>
+      ) : null}
     </>
   );
 }

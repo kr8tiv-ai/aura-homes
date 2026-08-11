@@ -1,8 +1,13 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useFrame } from "@react-three/fiber";
+import {
+  degradeSceneQuality,
+  selectSceneQuality,
+  type SceneQuality,
+} from "@/lib/three/sceneQuality";
 import Scene from "./Scene";
 import StillScene from "./StillScene";
 import SceneLoader, { SceneReady } from "./Loader";
@@ -43,6 +48,59 @@ function probeWebGL(): boolean | null {
   }
 }
 
+interface NavigatorWithMemory extends Navigator {
+  deviceMemory?: number;
+}
+
+function runtimeQuality(reduced: boolean): SceneQuality {
+  const nav = navigator as NavigatorWithMemory;
+  return selectSceneQuality({
+    width: window.innerWidth,
+    devicePixelRatio: window.devicePixelRatio || 1,
+    deviceMemoryGb: nav.deviceMemory,
+    hardwareConcurrency: nav.hardwareConcurrency,
+    reducedMotion: reduced,
+  });
+}
+
+/**
+ * Capability hints choose the opening composition; delivered frames get the
+ * final word. A full scene that cannot clear 42 fps after a short warm-up is
+ * reduced once to the balanced budget. There is no oscillation and no
+ * quality-up event halfway through somebody's scroll.
+ */
+function SceneQualityGovernor({
+  quality,
+  onDegrade,
+}: {
+  quality: SceneQuality;
+  onDegrade: () => void;
+}) {
+  const sample = useRef({ warmup: 0, frames: 0, elapsed: 0, decided: false });
+
+  useEffect(() => {
+    sample.current = { warmup: 0, frames: 0, elapsed: 0, decided: quality.tier !== "full" };
+  }, [quality.tier]);
+
+  useFrame((_, delta) => {
+    const state = sample.current;
+    if (state.decided || quality.tier !== "full") return;
+    // Background tabs are intentionally throttled by the browser; that says
+    // nothing about the device's ability to render the scene while visible.
+    if (document.visibilityState !== "visible") return;
+    if (state.warmup < 8) {
+      state.warmup += 1;
+      return;
+    }
+    state.frames += 1;
+    state.elapsed += Math.min(delta, 0.25);
+    if (state.elapsed < 1.6) return;
+    state.decided = true;
+    if (state.frames / state.elapsed < 42) onDegrade();
+  });
+  return null;
+}
+
 /** Fixed full-viewport canvas behind the copy. Detects WebGL up front and
  *  falls back to the still illustration so the page never renders blank. */
 export default function StoryCanvas({
@@ -76,20 +134,37 @@ export default function StoryCanvas({
      which is the only thing that needs it. */
   const [ready, setReady] = useState(false);
   const markReady = useCallback(() => setReady(true), []);
+  const [quality, setQuality] = useState<SceneQuality>(() => runtimeQuality(reduced));
+  const runtimeDegraded = useRef(false);
+  const degrade = useCallback(() => {
+    runtimeDegraded.current = true;
+    setQuality((current) => degradeSceneQuality(current));
+  }, []);
 
   useEffect(() => {
     if (webgl === null) setWebgl(probeWebGL() ?? false);
   }, [webgl]);
+
+  useEffect(() => {
+    const refreshQuality = () => {
+      const next = runtimeQuality(reduced);
+      setQuality(runtimeDegraded.current ? degradeSceneQuality(next) : next);
+    };
+    refreshQuality();
+    window.addEventListener("resize", refreshQuality, { passive: true });
+    return () => window.removeEventListener("resize", refreshQuality);
+  }, [reduced]);
 
   if (webgl === null) return null;
   if (webgl === false) return <StillScene />;
 
   return (
     <>
-      <Canvas
-        shadows
-        dpr={[1, 1.75]}
-        frameloop={reduced ? "demand" : "always"}
+      <div data-scene-quality={quality.tier} className="story-scene-root">
+        <Canvas
+          shadows
+          dpr={[1, quality.maxDpr]}
+          frameloop={quality.frameloop}
         /* far was 140 — the mountain range sits well beyond that and was being
            clipped into a grey slab across the sky. 260 clears the range from
            every camera beat while keeping the near/far ratio modest enough not
@@ -106,6 +181,12 @@ export default function StoryCanvas({
              fixed was never actually a problem here. */
           gl.toneMapping = THREE.ACESFilmicToneMapping;
           gl.toneMappingExposure = 1.12;
+          const context = gl.getContext();
+          const debug = context.getExtension("WEBGL_debug_renderer_info");
+          const renderer = String(
+            debug ? context.getParameter(debug.UNMASKED_RENDERER_WEBGL) : context.getParameter(context.RENDERER),
+          );
+          if (/swiftshader|llvmpipe|software/i.test(renderer)) degrade();
         }}
         style={{ position: "fixed", inset: 0, zIndex: 0 }}
         aria-hidden
@@ -117,10 +198,12 @@ export default function StoryCanvas({
             suspended, so its effect firing is the exact instant <Scene> is
             really on screen. See Loader.tsx for the full argument. */}
         <Suspense fallback={null}>
-          <Scene progressRef={progressRef} reduced={reduced} night={night} />
+          <SceneQualityGovernor quality={quality} onDegrade={degrade} />
+          <Scene progressRef={progressRef} reduced={reduced} night={night} quality={quality} />
           <SceneReady onReady={markReady} />
         </Suspense>
-      </Canvas>
+        </Canvas>
+      </div>
       {/* Outside the canvas: a plain fixed div, no R3F context, no <Html>
           portal, no second render loop. Honours prefers-reduced-motion and
           both themes in CSS (globals.css, "THE SCENE LOADER"). */}

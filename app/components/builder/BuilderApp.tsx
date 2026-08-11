@@ -976,7 +976,7 @@ export default function BuilderApp() {
       ) : null}
 
       {/* --------------------------------------------------------- the toggle */}
-      <div className="rounded-xl border aura-hairline px-5 py-4">
+      <div className="builder-view-switch rounded-2xl px-4 py-3 sm:px-5 sm:py-4">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <Segmented<ViewMode> label="View" value={mode} options={VIEW_MODES} onChange={setMode} />
           <p className="max-w-md text-xs leading-relaxed text-aura-text/55">
@@ -987,23 +987,22 @@ export default function BuilderApp() {
         </div>
 
         {/* Two views over one durable project document. */}
-        <p className="mt-4 border-t aura-hairline pt-4 max-w-3xl text-xs leading-relaxed text-aura-text/60">
-          Both views edit one versioned <span className="font-mono">BuilderDocument</span>: push a
-          wall in the plan and the model moves; drag a slider in Shape and the plan moves. The same
-          document owns <span className="text-aura-text/80">partitions, finishes, fixtures, comfort
-          targets and repair-held details</span>. They now survive undo, autosave, library storage,
-          share links and <span className="font-mono">.aura.json</span> round trips together. The
-          legacy drawing, DXF and IFC writers still derive their shell from HomeSpec, so their
-          limitations are named again beside those export actions.
-          {durableDetailCount > 0 ? (
-            <>
-              {" "}
-              Right now: {partitionCount} partition{partitionCount === 1 ? "" : "s"},{" "}
-              {finishCount} finish{finishCount === 1 ? "" : "es"} and {fixtureCount} fixture
-              {fixtureCount === 1 ? "" : "s"}.
-            </>
-          ) : null}
-        </p>
+        <details className="builder-document-note mt-3 border-t aura-hairline pt-3">
+          <summary>One document drives every view and handoff</summary>
+          <p className="mt-3 max-w-3xl text-xs leading-relaxed text-aura-text/60">
+            Push a wall in plan and the model moves. The same versioned project keeps partitions,
+            finishes, fixtures, comfort targets, repair-held details, autosave, share links, and
+            <span className="font-mono"> .aura.json</span> together. Legacy DXF and IFC consumers
+            still state their HomeSpec limits beside their actions.
+            {durableDetailCount > 0 ? (
+              <>
+                {" "}Current detail: {partitionCount} partition{partitionCount === 1 ? "" : "s"},{" "}
+                {finishCount} finish{finishCount === 1 ? "" : "es"}, and {fixtureCount} fixture
+                {fixtureCount === 1 ? "" : "s"}.
+              </>
+            ) : null}
+          </p>
+        </details>
       </div>
 
       {/* The 3D canvas is never unmounted — it is the export root. See
