@@ -33,6 +33,7 @@ import { createOrder, fmtCad, fmtUsdc6 } from "@agent/concierge/order";
 import { buildContext, chipsForStatus, parseIntent } from "@/lib/concierge";
 import { CHAIN_ID, ESCROW_ADDRESS, FAUCET_URL, USDC_TESTNET, oklinkTx, shortAddr } from "@/lib/contracts";
 import { auraBuildEscrowAbi, erc20Abi, fmtUsdcUnits, useEscrowLive, useUsdcState } from "@/lib/hooks";
+import type { BuilderOrderSnapshot } from "@/lib/builder/orderSnapshot";
 import LiveEscrowCard from "@/components/chain/LiveEscrowCard";
 import { Counter, GrowBar, Reveal, Stagger, StaggerItem } from "@/components/Reveal";
 
@@ -58,7 +59,7 @@ interface Gate {
 }
 
 const WELCOME =
-  "Welcome to the Aura concierge. Three homes, four parcels, one rule: the land gate runs " +
+  "Welcome to the Aura concierge. Choose a catalog home or bring your builder design; one rule: the land gate runs " +
   "before any money moves. Every reply here is computed by the same deterministic reducer the " +
   "agent runs — real bylaw data, the open Alberta cost model, no model call needed. Ask " +
   "anything, or take the suggestions below.";
@@ -73,6 +74,7 @@ export default function ConciergeApp() {
 
   const [order, setOrder] = useState<Order>(() => createOrder({ id: "aura-order-01", now: new Date(0) }));
   const orderRef = useRef(order);
+  const handoffRef = useRef<BuilderOrderSnapshot | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
   const msgSeq = useRef(0);
   const [gate, setGate] = useState<Gate>({
@@ -161,6 +163,31 @@ export default function ConciergeApp() {
       if (
         intent.type === "requestQuote" &&
         res.order.quote &&
+        res.order.home?.kind === "builder" &&
+        handoffRef.current?.projectId === res.order.home.projectId
+      ) {
+        const handoff = handoffRef.current;
+        const quote = res.order.quote;
+        void (async () => {
+          try {
+            const snapshot = await import("@/lib/builder/orderSnapshot");
+            const quoted = snapshot.createQuotedBuilderOrderSnapshot(handoff, quote);
+            await snapshot.saveBuilderOrderSnapshot(quoted);
+            push(
+              "system",
+              `Immutable quote snapshot saved locally: design ${quoted.home.documentHash}, budget ${quoted.artifactHashes.budget}, quote ${quoted.artifactHashes.quote}. Full documents stay off-chain.`,
+            );
+          } catch (cause) {
+            push(
+              "system",
+              `The quote could not be bound to a durable local snapshot: ${cause instanceof Error ? cause.message : String(cause)}. Do not pay until you create a fresh saved handoff.`,
+            );
+          }
+        })();
+      }
+      if (
+        intent.type === "requestQuote" &&
+        res.order.quote &&
         liveRef.current.refundWindowHours === undefined
       ) {
         push(
@@ -179,15 +206,49 @@ export default function ConciergeApp() {
 
   useEffect(() => {
     if (!mounted) return;
+    let active = true;
     orderRef.current = createOrder({ id: "aura-order-01", now: new Date() });
     setOrder(orderRef.current);
     push("aura", WELCOME);
-    // Deep link: /concierge?home=<id>&parcel=<id> (from /land hand-off).
-    const params = new URLSearchParams(window.location.search);
-    const home = params.get("home");
-    const parcel = params.get("parcel");
-    if (home) dispatch({ type: "selectHome", homeId: home }, `I want the ${home}.`);
-    if (parcel) dispatch({ type: "selectParcel", parcelId: parcel }, `Check parcel ${parcel} for me.`);
+    const boot = async () => {
+      // Deep links support either a same-origin builder snapshot or the
+      // catalog/parcel handoff. The complete design never rides in the URL.
+      const params = new URLSearchParams(window.location.search);
+      const project = params.get("project");
+      const home = params.get("home");
+      const parcel = params.get("parcel");
+      if (project) {
+        try {
+          const { loadBuilderOrderSnapshot } = await import("@/lib/builder/orderSnapshot");
+          const snapshot = await loadBuilderOrderSnapshot(project);
+          if (!active) return;
+          handoffRef.current = snapshot;
+          dispatch(
+            { type: "selectBuilderHome", home: snapshot.home },
+            `Continue with my saved builder design ${snapshot.home.name}.`,
+          );
+          if (params.get("intent") === "quote") {
+            push(
+              "system",
+              "Continue to quote is ready. Choose a parcel first: the district land gate is mandatory, then the cost-model quote can be issued against this exact design hash.",
+            );
+          }
+        } catch (cause) {
+          if (!active) return;
+          push(
+            "system",
+            `${cause instanceof Error ? cause.message : String(cause)} The URL carries only a same-origin project id, never the full design. Import the .aura.json file in Build on this device, then continue again.`,
+          );
+        }
+      } else if (home) {
+        dispatch({ type: "selectHome", homeId: home }, `I want the ${home}.`);
+      }
+      if (parcel) dispatch({ type: "selectParcel", parcelId: parcel }, `Check parcel ${parcel} for me.`);
+    };
+    void boot();
+    return () => {
+      active = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted]);
 
@@ -849,6 +910,12 @@ function OrderPanel({
           <span className="text-aura-text/55">Home:</span>{" "}
           {order.home ? `${order.home.name} — ${order.home.sizeSqft.toLocaleString("en-CA")} sqft` : "not chosen"}
         </p>
+        {order.home?.kind === "builder" ? (
+          <p className="break-all font-mono text-[10px] text-aura-text/60">
+            <span className="font-sans text-aura-text/55">Builder design:</span>{" "}
+            v{order.home.documentVersion} · {order.home.documentHash}
+          </p>
+        ) : null}
         <p>
           <span className="text-aura-text/55">Parcel:</span>{" "}
           {order.parcel
@@ -875,6 +942,10 @@ function OrderPanel({
             <p>
               <span className="text-aura-text/55">Refund window:</span> {q.refundWindowHours} hours (
               {Math.round((q.refundWindowHours / 24) * 10) / 10} days)
+            </p>
+            <p>
+              <span className="text-aura-text/55">Basis:</span> {q.basis.kind} · {q.basis.source} ·
+              valid until {new Date(q.validUntilISO).toLocaleDateString("en-CA")}
             </p>
           </>
         )}

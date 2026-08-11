@@ -88,7 +88,6 @@ import {
 } from "./drawings/model";
 import {
   COMFORT_DISCLAIMER,
-  DEFAULT_SETTINGS,
   NEUTRAL_BAND,
   SPACE_USE_LABEL,
   SPMV_METHOD_NOTE,
@@ -99,6 +98,11 @@ import {
 } from "./comfort";
 import { fmtFt, fmtFtFrac, fmtG, pyRound, riseOver12, sqFt, wrap } from "./drawings/kit";
 import { EXPORT_DISCLAIMER, FEET_TO_METRES, exportFilename, type ExportArtifact } from "./exportSpec";
+import {
+  exportSourceLimitation,
+  resolveLegacyGeometryExportSource,
+  type BuilderExportSource,
+} from "./exportSource";
 import type { HomeSpec, RoofForm } from "./spec";
 
 /* ===========================================================================
@@ -1235,7 +1239,14 @@ function drawSchedule(model: HomeModel, rows: readonly ScheduleRow[]): Draft {
 
 /* ------------------------------------------------------------ notes block */
 
-function drawNotes(model: HomeModel, spec: HomeSpec, dateISO: string | undefined, unitLabel: string): Draft {
+function drawNotes(
+  model: HomeModel,
+  spec: HomeSpec,
+  dateISO: string | undefined,
+  unitLabel: string,
+  documentHash: string,
+  sourceLimitation: string | null,
+): Draft {
   const d = new Draft(`${spec.name.toUpperCase()} — GENERAL NOTES`);
   const lh = 0.95;
   let y = 0;
@@ -1245,6 +1256,7 @@ function drawNotes(model: HomeModel, spec: HomeSpec, dateISO: string | undefined
   };
 
   put(`PROJECT: ${spec.name}`, TX.label);
+  put(`AURA DESIGN HASH: ${documentHash}`);
   put(`DRAWING UNITS: ${unitLabel.toUpperCase()}. MODEL SPACE IS 1:1 — SET YOUR PLOT SCALE, NOT A DRAWING SCALE.`);
   put(
     `${MATERIAL_NAME[spec.material].toUpperCase()} · ${WALL_THICKNESS_MM[spec.material]} MM WALL (${fmtFt(
@@ -1266,6 +1278,9 @@ function drawNotes(model: HomeModel, spec: HomeSpec, dateISO: string | undefined
   put("NOT IN THIS FILE:", TX.label);
   for (const gap of PRO_EXPORT_GAPS) {
     for (const line of wrap(gap, 110)) put(`  ${line}`, TX.small);
+  }
+  if (sourceLimitation) {
+    for (const line of wrap(sourceLimitation, 110)) put(`  ${line}`, TX.small);
   }
   y -= lh * 0.5;
 
@@ -1337,7 +1352,9 @@ const LAYOUT_COLUMNS = 3;
  * actually want is the geometry at full size, on named layers, in one file
  * they can XREF or copy out of. That is what this produces.
  */
-export function homeToDxf(spec: HomeSpec, options: DxfOptions = {}): string {
+export function homeToDxf(source: BuilderExportSource, options: DxfOptions = {}): string {
+  const resolved = resolveLegacyGeometryExportSource(source);
+  const { spec } = resolved;
   const model = buildHomeModel(spec);
   const section = sectionOf(model);
   const elevations = allElevations(model);
@@ -1349,7 +1366,14 @@ export function homeToDxf(spec: HomeSpec, options: DxfOptions = {}): string {
   const build = (view: DxfView): Draft | null => {
     switch (view) {
       case "notes":
-        return drawNotes(model, spec, options.dateISO, units);
+        return drawNotes(
+          model,
+          spec,
+          options.dateISO,
+          units,
+          resolved.hash,
+          exportSourceLimitation(source),
+        );
       case "floor-plan":
         return drawFloorPlan(model, section);
       case "roof-plan":
@@ -1423,8 +1447,9 @@ export function homeToDxf(spec: HomeSpec, options: DxfOptions = {}): string {
 }
 
 /** The DXF as a downloadable artifact. */
-export function exportDxf(spec: HomeSpec, options: DxfOptions = {}): ExportArtifact {
-  const text = homeToDxf(spec, options);
+export function exportDxf(source: BuilderExportSource, options: DxfOptions = {}): ExportArtifact {
+  const { spec } = resolveLegacyGeometryExportSource(source);
+  const text = homeToDxf(source, options);
   const model = buildHomeModel(spec);
   const units = options.units ?? "feet";
   const views = (options.views ?? DXF_VIEWS).length;
@@ -1708,14 +1733,18 @@ interface WallFrameRec {
  * project, a site, a building and an empty storey — which is a truthful
  * answer, and better than a parse error.
  */
-export function homeToIfc(spec: HomeSpec, options: IfcOptions): string {
+export function homeToIfc(source: BuilderExportSource, options: IfcOptions): string {
+  const resolved = resolveLegacyGeometryExportSource(source);
+  const { spec } = resolved;
   const model = buildHomeModel(spec);
   const s = new Step();
   const guids = new GuidPool();
   const includePiles = options.includePiles ?? true;
   const includeDeck = options.includeDeck ?? true;
   const comfort =
-    options.comfort === undefined ? comfortReport(spec, DEFAULT_SETTINGS) : options.comfort;
+    options.comfort === undefined
+      ? comfortReport(spec, resolved.document.comfort)
+      : options.comfort;
 
   /* ---- the timestamp, derived from the parameter and never from a clock */
   const parsed = Date.parse(options.dateISO);
@@ -2585,6 +2614,8 @@ export function homeToIfc(spec: HomeSpec, options: IfcOptions): string {
       ),
       L([
         labelProp("Generator", "Aura Homes builder"),
+        labelProp("BuilderDocumentVersion", String(resolved.document.version)),
+        textProp("BuilderDocumentHash", resolved.hash),
         labelProp("Material", MATERIAL_NAME[spec.material]),
         labelProp("ClimateZone", spec.climateZone),
         lengthProp("WallThickness", model.wallThicknessFt),
@@ -2597,6 +2628,10 @@ export function homeToIfc(spec: HomeSpec, options: IfcOptions): string {
         labelProp("PileCount", String(totalPiles(model))),
         textProp("Disclaimer", EXPORT_DISCLAIMER),
         textProp("NotModelled", PRO_EXPORT_GAPS.join(" ")),
+        textProp(
+          "DocumentDetailsNotRepresented",
+          exportSourceLimitation(source) ?? "No active document details are omitted by this source.",
+        ),
         textProp(
           "ModelWarnings",
           model.warnings.length > 0
@@ -2745,8 +2780,20 @@ export function homeToIfc(spec: HomeSpec, options: IfcOptions): string {
             realProp("SummerVapourPressureKPa", rc.summer.terms.vapourKPa),
             realProp("WinterSPmv", rc.winter.terms.value),
             realProp("SummerSPmv", rc.summer.terms.value),
-            boolProp("WinterMeetsTarget", rc.winter.meets),
-            boolProp("SummerMeetsTarget", rc.summer.meets),
+            labelProp(
+              "WinterVerdict",
+              rc.winter.meets === null ? "UNMODELLED" : rc.winter.meets ? "MEETS" : "MISSES",
+            ),
+            labelProp(
+              "SummerVerdict",
+              rc.summer.meets === null ? "UNMODELLED" : rc.summer.meets ? "MEETS" : "MISSES",
+            ),
+            ...(rc.winter.meets === null
+              ? []
+              : [boolProp("WinterMeetsTarget", rc.winter.meets)]),
+            ...(rc.summer.meets === null
+              ? []
+              : [boolProp("SummerMeetsTarget", rc.summer.meets)]),
             realProp("NeutralBand", NEUTRAL_BAND),
             boolProp("ClothingCaseModelled", rc.modelled),
             textProp(
@@ -2787,6 +2834,8 @@ export function homeToIfc(spec: HomeSpec, options: IfcOptions): string {
           realProp("AssumedSummerTemperatureC", c.summerIndoorC),
           realProp("AssumedSummerHumidityPct", c.summerRhPct),
           realProp("SolvedRoomCount", comfort.rooms.length),
+          realProp("RoomsModelled", comfort.winter.roomsModelled),
+          realProp("RoomsUnmodelled", comfort.winter.roomsUnmodelled),
           realProp("RoomsMeetingWinterTarget", comfort.winter.roomsMeeting),
           realProp("RoomsMeetingSummerTarget", comfort.summer.roomsMeeting),
           realProp("MeanWinterDeviation", comfort.winter.meanAbsDeviation),
@@ -2898,8 +2947,9 @@ function ccwRing(ring: readonly Pt[]): Pt[] {
 }
 
 /** The IFC as a downloadable artifact. */
-export function exportIfc(spec: HomeSpec, options: IfcOptions): ExportArtifact {
-  const text = homeToIfc(spec, options);
+export function exportIfc(source: BuilderExportSource, options: IfcOptions): ExportArtifact {
+  const { spec } = resolveLegacyGeometryExportSource(source);
+  const text = homeToIfc(source, options);
   const model = buildHomeModel(spec);
   const blob = new Blob([text], { type: "application/x-step" });
   const openings = model.volumes.reduce(

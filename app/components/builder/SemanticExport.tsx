@@ -36,7 +36,7 @@ import {
   type ToolSupportFact,
 } from "@/lib/builder/exportSemantic";
 import type { ComfortReport } from "@/lib/builder/comfort";
-import type { HomeSpec } from "@/lib/builder/spec";
+import type { BuilderDocument } from "@/lib/builder/document";
 import { Button, Panel } from "./ui";
 
 type Job = "ifcjson" | "jsonld" | null;
@@ -50,10 +50,10 @@ const kb = (bytes: number): string => `${(bytes / 1024).toFixed(1)} kB`;
  * computed against exactly the file the buttons write.
  */
 export default function SemanticExport({
-  spec,
+  document,
   comfort = null,
 }: {
-  spec: HomeSpec;
+  document: BuilderDocument;
   comfort?: ComfortReport | null;
 }) {
   const opts = useMemo(() => ({ comfort: comfort ?? undefined }), [comfort]);
@@ -72,7 +72,7 @@ export default function SemanticExport({
      two later. No debounce timer to tune, no new dependency, and the number on
      screen is still the real answer for the real house — just, briefly, for the
      house as it was half a frame ago. */
-  const settled = useDeferredValue(spec);
+  const settled = useDeferredValue(document);
   const report = useMemo(() => roundTripReport(settled, opts), [settled, opts]);
 
   const write = (job: Job, make: () => ExportArtifact) => {
@@ -112,7 +112,7 @@ export default function SemanticExport({
             action={
               <Button
                 tone="loud"
-                onClick={() => write("ifcjson", () => exportIfcJson(spec, opts))}
+                onClick={() => write("ifcjson", () => exportIfcJson(document, opts))}
                 disabled={busy !== null}
               >
                 {busy === "ifcjson" ? "Writing…" : "Download .ifcjson"}
@@ -124,7 +124,7 @@ export default function SemanticExport({
             body="The same building as JSON-LD 1.1: a Building Topology Ontology graph — Site contains Building contains Storey contains Space, spaces bounded by wall and window interfaces — with the whole ifcJSON document riding inside as a JSON literal. One file, two readers, neither one shredding the other."
             action={
               <Button
-                onClick={() => write("jsonld", () => exportSemanticJsonLd(spec, opts))}
+                onClick={() => write("jsonld", () => exportSemanticJsonLd(document, opts))}
                 disabled={busy !== null}
               >
                 {busy === "jsonld" ? "Writing…" : "Download .jsonld"}

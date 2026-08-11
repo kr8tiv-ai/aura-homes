@@ -1,26 +1,22 @@
 "use client";
 
 /* ===========================================================================
-   THE BUILDER — one HomeSpec, held in one place, read by everything.
+   THE BUILDER — one BuilderDocument, held in one place, read by everything.
 
    The founder's ask, in his words: "we have to create a builder that somebody
    can actually build their own smart homes, kind of like Nordic style type
    deal with beautiful polycarbonate glass ... and then they can go directly
    from a little thing that they're playing with all the way to production."
 
-   That sentence is the whole architecture of this file. There is exactly ONE
-   `HomeSpec` in the component. The 3D view reads it, the 2D plan editor reads
-   it, the read-out reads it, the plan bridge reads it, the exporters read it.
-   Nothing keeps a second copy, nothing derives a quantity
-   `lib/builder/spec.ts` already defines, and nothing writes back a concept of
-   its own. The toy and the drawing are the same object, or the promise is a
-   lie.
+   That sentence is the whole architecture of this file. There is exactly one
+   versioned `BuilderDocument` in the component. The 3D view, 2D plan, library,
+   share codec and project export all read that same immutable value. HomeSpec
+   remains its legacy shell-geometry field while BuildingGraph is introduced.
 
-   THREE THINGS LIVE BESIDE THE SPEC, AND THIS IS THE HONEST PART
-   --------------------------------------------------------------
-   The plan editor, the surface picker and the fixture palette each produced a
-   value `HomeSpec` cannot hold, and not one of those modules went and widened
-   the contract:
+   DURABLE DETAILS LIVE BESIDE THE LEGACY SPEC, INSIDE THE DOCUMENT
+   ----------------------------------------------------------------
+   The plan editor, surface picker, fixture palette and comfort panel produce
+   values HomeSpec cannot hold. BuilderDocument owns them explicitly:
 
    · PARTITIONS (`lib/builder/walls.ts`). Interior walls. `spec.ts` has no
      field for them and `validateHomeSpec` rebuilds a spec from known
@@ -33,14 +29,10 @@
      bank and what has to stay clear around them. Same story again, and it
      carries its own `FIXTURES_VERSION`.
 
-   So this component holds a DOCUMENT of four immutable values rather than one
-   spec, and every one of them is in the same history entry. The consequences
-   are stated on the page rather than left for somebody to discover from a
-   drawing: partitions are drawn only in 2D, finishes and fixtures only in 3D,
-   all three survive undo and all three are written into the .json — and none
-   of them is in a share link, on the sheet set, in the DXF or in the IFC,
-   because every one of those is generated from the HomeSpec and the HomeSpec
-   does not have them.
+   Every durable value is in the same history entry and survives autosave,
+   library storage, share links and `.aura.json`. The professional drawing,
+   DXF and IFC writers still derive from HomeSpec and state that limitation at
+   their actions until they move to BuildingGraph.
 
    FIVE DECISIONS WORTH THE COMMENT
    --------------------------------
@@ -100,14 +92,9 @@
       because it holds no state of its own: the targets, the season and the
       heatmap toggle all live here.
 
-   8. COMFORT IS AN ASSUMPTION, NOT AN EDIT, so it sits beside `sun` in plain
-      `useState` rather than in the undo document. Nothing on that tab changes
-      a dimension; it changes what you are ASKING of the dimensions. The four
-      sidecar values in `EditorDoc` are things the house has and the spec
-      cannot hold. A comfort target is a thing the OWNER holds about the house,
-      and Ctrl+Z on a design should not undo what you want the bedroom to feel
-      like. It does travel into the IFC and the ifcJSON — the two exports take
-      the report as an option — which is the one place it genuinely matters.
+   8. COMFORT ASSUMPTIONS ARE DURABLE. Conditions and room targets participate
+      in undo, sharing, storage, export and hashing. Active season and heatmap
+      visibility remain transient because they only change the current view.
    7. THE LIBRARY IS LIVE BEFORE ANYBODY OPENS IT, and a recovery prompt
       nobody sees is not a prompt. `ProjectLibrary` performs a read-before-write
       handshake on mount and holds autosaving until the visitor decides, which
@@ -132,37 +119,42 @@ import {
 } from "react";
 import type * as THREE from "three";
 import {
-  DEFAULT_SETTINGS as DEFAULT_COMFORT,
   SEASON_LABEL,
   comfortPlates,
   comfortReport,
   fmt0,
   fmt1,
-  type ComfortSettings,
   type Season,
 } from "@/lib/builder/comfort";
+import {
+  convertBuilderDocumentToGraph,
+  defaultBuilderDocument,
+  discardQuarantinedEntry,
+  reconcileBuilderDocumentSpec,
+  restoreQuarantinedEntry,
+  type BuilderDocument,
+  type QuarantineEntry,
+} from "@/lib/builder/document";
+import type { BuildingGraph } from "@/lib/builder/buildingGraph";
 import { drawingSet, type DrawingRooms, type DrawingSetResult } from "@/lib/builder/drawings";
 import { buildHome, disposeHome, type HomeGeometry } from "@/lib/builder/geometry";
-import { defaultSpec, type HomeSpec } from "@/lib/builder/spec";
-import { specFromLocation } from "@/lib/builder/share";
+import { buildGraphHome } from "@/lib/builder/graphGeometry";
+import type { HomeSpec } from "@/lib/builder/spec";
+import { documentFromLocation } from "@/lib/builder/share";
 import {
-  NO_OVERRIDES,
   buildSurfaceIndex,
   countOverrides,
-  pruneOverrides,
   type SurfaceId,
   type SurfaceIndex,
   type SurfaceOverrides,
 } from "@/lib/builder/surfaces";
 import {
   fitPartition,
-  pruneOrphanPartitions,
   structThicknessOf,
   type Partition,
 } from "@/lib/builder/walls";
 import {
   disposeFixtureGeometry,
-  emptyFixtureSet,
   reSnap,
   type FixtureGeometry,
   type FixturePlacement,
@@ -172,13 +164,15 @@ import {
   type RoofPlacement,
   type WallPlacement,
 } from "@/lib/builder/fixtures";
-import { readAutosave, specSignature } from "@/lib/builder/store";
+import { documentSignature, readAutosave } from "@/lib/builder/store";
 import { planFromSpec, type PlanHandoff } from "@/lib/builder/toPlan";
 import AxonSheet from "./AxonSheet";
+import BuilderOrderHandoff from "./BuilderOrderHandoff";
 import ComfortPanel from "./ComfortPanel";
 import DrawingSheets from "./DrawingSheets";
 import ExportRow from "./ExportRow";
 import FixturePalette, { FixtureLayer, useFixtureGeometry } from "./FixturePalette";
+import GraphPlanEditor from "./GraphPlanEditor";
 import Plan2D from "./Plan2D";
 import PlanSheet from "./PlanSheet";
 import ProjectLibrary from "./ProjectLibrary";
@@ -206,14 +200,19 @@ const SemanticExport = dynamic(() => import("./SemanticExport"), {
    here has to be safe to hold eighty copies of: plain data, no three.js
    objects, no closures, nothing that owns a GPU buffer. */
 
-export interface EditorDoc {
-  spec: HomeSpec;
-  /** interior walls — see the header on why they are not in the spec */
-  partitions: Partition[];
-  /** surface id → material — same reason */
-  overrides: SurfaceOverrides;
-  /** placed fixtures and their clearances — same reason again */
-  fixtures: FixtureSet;
+export type EditorDoc = BuilderDocument;
+
+function quarantineEntryLabel(entry: QuarantineEntry): string {
+  switch (entry.kind) {
+    case "partition":
+      return `Partition ${entry.value.id}`;
+    case "finish":
+      return `Finish on ${entry.value.surfaceId}`;
+    case "fixture":
+      return `Fixture ${entry.value.id}`;
+    case "comfort-target":
+      return `Comfort target for ${entry.value.roomId}`;
+  }
 }
 
 interface EditorState {
@@ -226,9 +225,11 @@ interface EditorState {
 
 type Action =
   | { type: "edit"; spec: HomeSpec; label: string }
+  | { type: "graph"; graph: BuildingGraph; label: string }
   | { type: "partitions"; partitions: Partition[]; label: string }
   | { type: "surfaces"; overrides: SurfaceOverrides; label: string }
   | { type: "fixtures"; fixtures: FixtureSet; label: string }
+  | { type: "comfort"; comfort: BuilderDocument["comfort"]; label: string }
   | { type: "load"; doc: EditorDoc; label: string }
   | { type: "undo" }
   | { type: "redo" };
@@ -251,10 +252,9 @@ const HISTORY_MAX = 80;
  * does not invalidate every memo downstream of it.
  */
 function reconcilePartitions(spec: HomeSpec, list: Partition[]): Partition[] {
-  const pruned = pruneOrphanPartitions(spec, list).partitions;
   const th = structThicknessOf(spec);
-  let changed = pruned.length !== list.length;
-  const out = pruned.map((p) => {
+  let changed = false;
+  const out = list.map((p) => {
     const v = spec.volumes.find((x) => x.id === p.volumeId);
     if (!v) return p;
     const fitted = fitPartition(v, p, th);
@@ -339,8 +339,10 @@ function commit(state: EditorState, doc: EditorDoc, label: string): EditorState 
   if (
     doc.spec === state.doc.spec &&
     doc.partitions === state.doc.partitions &&
-    doc.overrides === state.doc.overrides &&
-    doc.fixtures === state.doc.fixtures
+    doc.finishes === state.doc.finishes &&
+    doc.fixtures === state.doc.fixtures &&
+    doc.comfort === state.doc.comfort &&
+    doc.quarantine === state.doc.quarantine
   ) {
     return state;
   }
@@ -374,11 +376,11 @@ function commit(state: EditorState, doc: EditorDoc, label: string): EditorState 
  * changes nothing, so this costs a spec edit no rebuilt geometry.
  */
 function withSpec(doc: EditorDoc, spec: HomeSpec): EditorDoc {
+  const reconciled = reconcileBuilderDocumentSpec(doc, spec);
   return {
-    spec,
-    partitions: reconcilePartitions(spec, doc.partitions),
-    overrides: pruneOverrides(spec, doc.overrides),
-    fixtures: reconcileFixtures(spec, doc.fixtures),
+    ...reconciled,
+    partitions: reconcilePartitions(reconciled.spec, reconciled.partitions),
+    fixtures: reconcileFixtures(reconciled.spec, reconciled.fixtures),
   };
 }
 
@@ -393,18 +395,40 @@ function reducer(state: EditorState, action: Action): EditorState {
       return commit(state, { ...state.doc, partitions: action.partitions }, action.label);
     }
     case "surfaces": {
-      if (action.overrides === state.doc.overrides) return state;
-      return commit(state, { ...state.doc, overrides: action.overrides }, action.label);
+      if (action.overrides === state.doc.finishes) return state;
+      return commit(state, { ...state.doc, finishes: action.overrides }, action.label);
     }
     case "fixtures": {
       if (action.fixtures === state.doc.fixtures) return state;
       return commit(state, { ...state.doc, fixtures: action.fixtures }, action.label);
     }
+    case "graph": {
+      if (state.doc.geometry.kind !== "building-graph") return state;
+      if (action.graph === state.doc.geometry.graph) return state;
+      return commit(
+        state,
+        {
+          ...state.doc,
+          geometry: { ...state.doc.geometry, graph: action.graph },
+        },
+        action.label,
+      );
+    }
+    case "comfort": {
+      if (action.comfort === state.doc.comfort) return state;
+      return commit(state, { ...state.doc, comfort: action.comfort }, action.label);
+    }
     case "load": {
       // A house off a link or off somebody's disk is untrusted in exactly the
       // same way, so what arrived with it is reconciled against it before it
       // is allowed to become the document.
-      return commit(state, withSpec(action.doc, action.doc.spec), action.label);
+      return commit(
+        state,
+        action.doc.geometry.kind === "building-graph"
+          ? action.doc
+          : withSpec(action.doc, action.doc.spec),
+        action.label,
+      );
     }
     case "undo": {
       const previous = state.past[state.past.length - 1];
@@ -438,7 +462,7 @@ function reducer(state: EditorState, action: Action): EditorState {
    say "this is a drawing of an earlier version of your home" rather than
    showing a stale sheet as though it were current. */
 interface Drawn {
-  spec: HomeSpec;
+  document: BuilderDocument;
   /** the plan engine's sheet, plus the account of what the translation cost */
   handoff: PlanHandoff;
   /** the eight-sheet set drawn from the model itself */
@@ -448,14 +472,9 @@ interface Drawn {
 }
 
 const initialState = (): EditorState => ({
-  doc: {
-    // Nobody meets an empty canvas: this is the Aura reference build, and it
-    // is already a real, buildable thing.
-    spec: defaultSpec(),
-    partitions: [],
-    overrides: NO_OVERRIDES,
-    fixtures: emptyFixtureSet(),
-  },
+  // Nobody meets an empty canvas: this is the Aura reference build, and it
+  // is already a real, buildable thing.
+  doc: defaultBuilderDocument(),
   past: [],
   future: [],
   label: null,
@@ -546,7 +565,15 @@ function singleFixtureEdit(a: FixtureSet, b: FixtureSet): string | null {
 
 export default function BuilderApp() {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
-  const { spec, partitions, overrides, fixtures } = state.doc;
+  const {
+    spec,
+    partitions,
+    finishes: overrides,
+    fixtures,
+    comfort: comfortSettings,
+  } = state.doc;
+  const graphGeometry = state.doc.geometry.kind === "building-graph" ? state.doc.geometry : null;
+  const graphMode = graphGeometry !== null;
 
   const [mode, setMode] = useState<ViewMode>("3d");
   const [workspace, setWorkspace] = useState<Workspace>("shape");
@@ -557,18 +584,16 @@ export default function BuilderApp() {
   const [showClearances, setShowClearances] = useState(true);
   const [sun, setSun] = useState<SunState>({ hour: 12, season: "winter" });
 
-  /* ---- comfort. UI state rather than part of the undo document, and that is
-         a deliberate match to `sun` rather than to `overrides`: both are
-         DESIGN ASSUMPTIONS the visitor sets to interrogate a home, not edits
-         to the home itself. Nothing here changes a single dimension, so
-         nothing here belongs in a history stack of dimensions.
+  /* ---- comfort view state. The assumptions and per-room targets are part of
+         the durable document; season and heatmap visibility are only ways of
+         viewing those values and remain transient.
 
          The heatmap starts OFF. A model that opens painted in comfort colours
          is a model that stops reading as a house, and the first thing anybody
          needs from this page is the house. */
-  const [comfortSettings, setComfortSettings] = useState<ComfortSettings>(DEFAULT_COMFORT);
   const [comfortSeason, setComfortSeason] = useState<Season>("winter");
   const [heatmap, setHeatmap] = useState(false);
+  const [quarantineNote, setQuarantineNote] = useState<string | null>(null);
   const [drawn, setDrawn] = useState<Drawn | null>(null);
   const [loadedFromLink, setLoadedFromLink] = useState(false);
 
@@ -584,6 +609,24 @@ export default function BuilderApp() {
   const editPartitions = useCallback((next: Partition[], label: string) => {
     dispatch({ type: "partitions", partitions: next, label });
   }, []);
+
+  const editGraph = useCallback((next: BuildingGraph, label: string) => {
+    dispatch({ type: "graph", graph: next, label });
+  }, []);
+
+  const convertToPlanarGraph = useCallback(() => {
+    const converted = convertBuilderDocumentToGraph(state.doc, 0.5);
+    if (!converted.ok) {
+      setQuarantineNote(converted.problem);
+      return;
+    }
+    dispatch({ type: "load", doc: converted.document, label: "geometry:convert-to-graph" });
+    setMode("2d");
+    setWorkspace("shape");
+    setQuarantineNote(
+      "Planar geometry is active. Legacy-only details were held for repair instead of being guessed onto new graph surfaces.",
+    );
+  }, [state.doc]);
 
   /* `SurfacePicker` hands over the whole next map with no label — it has no
      idea what a history step is, and should not. The label is derived from
@@ -619,24 +662,54 @@ export default function BuilderApp() {
     [fixtures],
   );
 
-  /* ---- a shared design arrives as a URL fragment. Read once, on mount.
-         A link carries the SPEC and nothing else — see the header — so
-         anything the visitor had beside it belongs to a different house and
-         is cleared rather than inherited. */
+  const editComfort = useCallback((next: BuilderDocument["comfort"]) => {
+    dispatch({ type: "comfort", comfort: next, label: "comfort:settings" });
+  }, []);
+
+  const restoreQuarantined = useCallback(
+    (index: number) => {
+      const restored = restoreQuarantinedEntry(state.doc, index);
+      if (!restored.ok) {
+        setQuarantineNote(restored.problem);
+        return;
+      }
+      const entry = state.doc.quarantine.entries[index];
+      dispatch({
+        type: "load",
+        doc: restored.document,
+        label: `quarantine:restore:${entry?.kind ?? "item"}:${index}`,
+      });
+      setQuarantineNote(`${entry ? quarantineEntryLabel(entry) : "Item"} restored.`);
+    },
+    [state.doc],
+  );
+
+  const discardQuarantined = useCallback(
+    (index: number) => {
+      const entry = state.doc.quarantine.entries[index];
+      dispatch({
+        type: "load",
+        doc: discardQuarantinedEntry(state.doc, index),
+        label: `quarantine:discard:${entry?.kind ?? "item"}:${index}`,
+      });
+      setQuarantineNote(
+        `${entry ? quarantineEntryLabel(entry) : "Item"} permanently discarded. Undo can still restore it.`,
+      );
+    },
+    [state.doc],
+  );
+
+  /* ---- a complete shared project arrives as a URL fragment. Read once, on
+         mount. Legacy HomeSpec-only links are migrated at the codec boundary. */
   useEffect(() => {
     let alive = true;
-    void specFromLocation().then((loaded) => {
+    void documentFromLocation().then((loaded) => {
       if (!alive || !loaded) return;
       // As an edit rather than as the initial state, so undo takes the visitor
       // back to the reference home instead of to a blank one.
       dispatch({
         type: "load",
-        doc: {
-          spec: loaded,
-          partitions: [],
-          overrides: NO_OVERRIDES,
-          fixtures: emptyFixtureSet(),
-        },
+        doc: loaded,
         label: "share-link",
       });
       setLoadedFromLink(true);
@@ -647,7 +720,10 @@ export default function BuilderApp() {
   }, []);
 
   /* ---- the model. Pure, deterministic, rebuilt on every change. */
-  const home: HomeGeometry = useMemo(() => buildHome(spec), [spec]);
+  const home: HomeGeometry = useMemo(
+    () => (graphGeometry ? buildGraphHome(graphGeometry.graph) : buildHome(spec)),
+    [graphGeometry, spec],
+  );
   const previous = useRef<HomeGeometry | null>(null);
   useEffect(() => {
     const old = previous.current;
@@ -658,7 +734,10 @@ export default function BuilderApp() {
   /* ---- every nameable surface on that model, and the geometry → surface map
          a click is resolved through. One pass over about thirty parts, so it
          is rebuilt with the geometry rather than cached against it. */
-  const surfaceIndex: SurfaceIndex = useMemo(() => buildSurfaceIndex(home, spec), [home, spec]);
+  const surfaceIndex: SurfaceIndex = useMemo(
+    () => buildSurfaceIndex(home, graphMode ? undefined : spec),
+    [home, graphMode, spec],
+  );
 
   /* ---- the fixtures, resolved against the shell and then built. The
          resolution is passed to the palette as well as used here, so the panel
@@ -682,12 +761,12 @@ export default function BuilderApp() {
   /* A clearance that is only visible on the tab that made it is a clearance
      nobody reads. These two are hoisted out of the palette and onto the page. */
   const clashes = useMemo(
-    () => fixtureResolution.issues.filter((i) => i.severity === "blocked"),
-    [fixtureResolution],
+    () => (graphMode ? [] : fixtureResolution.issues.filter((i) => i.severity === "blocked")),
+    [fixtureResolution, graphMode],
   );
   const worthChecking = useMemo(
-    () => fixtureResolution.issues.filter((i) => i.severity === "check"),
-    [fixtureResolution],
+    () => (graphMode ? [] : fixtureResolution.issues.filter((i) => i.severity === "check")),
+    [fixtureResolution, graphMode],
   );
 
   const sunPos = useMemo(() => sunPosition(sun.hour, sun.season), [sun]);
@@ -705,7 +784,7 @@ export default function BuilderApp() {
          `null` here is not "no comfort in the export": `exportPro` and
          `exportSemantic` derive the defaults when the option is OMITTED, so
          the export row hands them `undefined` rather than this null. */
-  const comfortWanted = heatmap || workspace === "comfort" || workspace === "export";
+  const comfortWanted = !graphMode && (heatmap || workspace === "comfort" || workspace === "export");
   const comfort = useMemo(
     () => (comfortWanted ? comfortReport(spec, comfortSettings) : null),
     [comfortWanted, spec, comfortSettings],
@@ -763,14 +842,15 @@ export default function BuilderApp() {
          knew to make. It restores nothing, writes nothing and decides nothing.
          A storage failure is swallowed here and reported properly by the panel
          in the store's own words. See decision 7. */
-  const specRef = useRef(spec);
-  specRef.current = spec;
+  const documentRef = useRef(state.doc);
+  documentRef.current = state.doc;
   useEffect(() => {
     let alive = true;
     void readAutosave().then(
       (auto) => {
         if (!alive || !auto.present) return;
-        const differs = !auto.readable || auto.record.signature !== specSignature(specRef.current);
+        const differs =
+          !auto.readable || auto.record.signature !== documentSignature(documentRef.current);
         if (differs) setWorkspace("library");
       },
       () => {
@@ -801,8 +881,9 @@ export default function BuilderApp() {
   }, []);
 
   /* ---- the drawing */
-  const stale = drawn !== null && drawn.spec !== spec;
+  const stale = drawn !== null && drawn.document !== state.doc;
   const generate = useCallback(() => {
+    if (state.doc.geometry.kind === "building-graph") return;
     const handoff = planFromSpec(spec);
 
     /* The plan engine's solved rooms are handed STRAIGHT to the drawing set,
@@ -828,17 +909,17 @@ export default function BuilderApp() {
     const dateISO = new Date().toISOString().slice(0, 10);
 
     setDrawn({
-      spec,
+      document: state.doc,
       handoff,
-      set: drawingSet({ spec, dateISO, projectName: spec.name, rooms }),
+      set: drawingSet({ document: state.doc, dateISO, projectName: spec.name, rooms }),
       dateISO,
     });
-  }, [spec]);
+  }, [spec, state.doc]);
 
   const partitionCount = partitions.length;
   const finishCount = countOverrides(overrides);
   const fixtureCount = fixtures.items.length;
-  const sidecarCount = partitionCount + finishCount + fixtureCount;
+  const durableDetailCount = partitionCount + finishCount + fixtureCount;
 
   return (
     <div className="space-y-6">
@@ -847,6 +928,50 @@ export default function BuilderApp() {
           This home was opened from a share link. Everything is editable, and undo puts the Aura
           reference build back.
         </p>
+      ) : null}
+
+      {state.doc.quarantine.entries.length > 0 ? (
+        <section className="rounded-xl border border-aura-violet p-5" aria-labelledby="repair-heading">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <div>
+              <p id="repair-heading" className="aura-label text-aura-violet">
+                Repair held project details
+              </p>
+              <p className="mt-2 max-w-3xl text-xs leading-relaxed text-aura-text/65">
+                A geometry edit removed the original host for these details. Aura kept them aside
+                instead of deleting or guessing where they belong. Restore an item after its
+                original room, surface or volume returns, or discard it deliberately.
+              </p>
+            </div>
+            <span className="rounded-full border border-aura-violet px-2.5 py-1 font-mono text-[0.6rem] uppercase tracking-label text-aura-violet">
+              {state.doc.quarantine.entries.length} held
+            </span>
+          </div>
+          <ul className="mt-4 space-y-3">
+            {state.doc.quarantine.entries.map((entry, index) => (
+              <li
+                key={`${entry.kind}-${quarantineEntryLabel(entry)}-${index}`}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-md border aura-hairline px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm text-aura-text/85">{quarantineEntryLabel(entry)}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-aura-text/55">{entry.reason}</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={() => restoreQuarantined(index)}>Restore</Button>
+                  <Button tone="danger" onClick={() => discardQuarantined(index)}>
+                    Discard
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+          {quarantineNote ? (
+            <p className="mt-4 text-xs leading-relaxed text-aura-text/65" role="status">
+              {quarantineNote}
+            </p>
+          ) : null}
+        </section>
       ) : null}
 
       {/* --------------------------------------------------------- the toggle */}
@@ -860,20 +985,16 @@ export default function BuilderApp() {
           </p>
         </div>
 
-        {/* THE DRIFT, NAMED. Two views over one object, and the three things
-            neither view can put on a drawing. */}
+        {/* Two views over one durable project document. */}
         <p className="mt-4 border-t aura-hairline pt-4 max-w-3xl text-xs leading-relaxed text-aura-text/60">
-          Both views edit the same <span className="font-mono">HomeSpec</span>: push a wall in the
-          plan and the model moves, drag a slider in the Shape tab and the plan moves. Three things
-          live BESIDE that spec because it has no field for them, and each is visible in one view
-          only. <span className="text-aura-text/80">Partitions</span> are drawn in the 2D plan.{" "}
-          <span className="text-aura-text/80">Finishes</span> and{" "}
-          <span className="text-aura-text/80">fixtures</span> are placed in the 3D model — fixtures
-          being the only one of the three that also travels in the .glb. All three are in undo and
-          all three are written into the .json export. None of them is in a share link, in a saved
-          library design, on the generated sheet set, in the DXF or in the IFC — every one of those
-          is built from the spec, and the spec does not carry them yet.
-          {sidecarCount > 0 ? (
+          Both views edit one versioned <span className="font-mono">BuilderDocument</span>: push a
+          wall in the plan and the model moves; drag a slider in Shape and the plan moves. The same
+          document owns <span className="text-aura-text/80">partitions, finishes, fixtures, comfort
+          targets and repair-held details</span>. They now survive undo, autosave, library storage,
+          share links and <span className="font-mono">.aura.json</span> round trips together. The
+          legacy drawing, DXF and IFC writers still derive their shell from HomeSpec, so their
+          limitations are named again beside those export actions.
+          {durableDetailCount > 0 ? (
             <>
               {" "}
               Right now: {partitionCount} partition{partitionCount === 1 ? "" : "s"},{" "}
@@ -891,38 +1012,48 @@ export default function BuilderApp() {
           home={home}
           sun={sunPos}
           hour={sun.hour}
-          selectedId={activeVolumeId}
+          selectedId={graphGeometry?.graph.storeys[0]?.id ?? activeVolumeId}
           onSelect={selectVolume}
           houseRef={houseRef}
-          surfaces={{
-            index: surfaceIndex,
-            overrides,
-            picked: pickedSurface,
-            onPick: setPickedSurface,
-            enabled: mode === "3d",
-          }}
+          surfaces={
+            graphMode
+              ? null
+              : {
+                  index: surfaceIndex,
+                  overrides,
+                  picked: pickedSurface,
+                  onPick: setPickedSurface,
+                  enabled: mode === "3d",
+                }
+          }
           comfort={comfortOverlay}
           houseChildren={
-            <FixtureLayer
-              geometry={fixtureGeometry}
-              selectedId={activeFixtureId}
-              onSelect={pickFixture}
-            />
+            graphMode ? null : (
+              <FixtureLayer
+                geometry={fixtureGeometry}
+                selectedId={activeFixtureId}
+                onSelect={pickFixture}
+              />
+            )
           }
         />
       </div>
 
       <div className={mode === "2d" ? "block" : "hidden"}>
-        <Plan2D
-          spec={spec}
-          onEdit={edit}
-          partitions={partitions}
-          onPartitions={editPartitions}
-          selectedVolumeId={activeVolumeId}
-          onSelectVolume={selectVolume}
-          selectedOpeningId={selectedOpeningId}
-          onSelectOpening={setSelectedOpeningId}
-        />
+        {graphGeometry ? (
+          <GraphPlanEditor graph={graphGeometry.graph} onEdit={editGraph} />
+        ) : (
+          <Plan2D
+            spec={spec}
+            onEdit={edit}
+            partitions={partitions}
+            onPartitions={editPartitions}
+            selectedVolumeId={activeVolumeId}
+            onSelectVolume={selectVolume}
+            selectedOpeningId={selectedOpeningId}
+            onSelectOpening={setSelectedOpeningId}
+          />
+        )}
       </div>
 
       {/* ------------------------------------------------ clearances, unburied
@@ -976,13 +1107,40 @@ export default function BuilderApp() {
         </p>
       ) : null}
 
-      <Readout spec={spec} summary={home.summary} warnings={home.warnings} />
+      {graphMode ? (
+        <section className="rounded-xl border aura-hairline p-5">
+          <p className="aura-label text-aura-emerald">Graph geometry · exact faces</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-md border aura-hairline px-4 py-3">
+              <p className="aura-label">Floor area</p>
+              <p className="mt-1 text-lg tabular-nums">{Math.round(home.summary.totalFloorAreaSqFt)} sq ft</p>
+            </div>
+            <div className="rounded-md border aura-hairline px-4 py-3">
+              <p className="aura-label">Room faces</p>
+              <p className="mt-1 text-lg tabular-nums">
+                {graphGeometry?.graph.storeys.reduce((sum, storey) => sum + storey.rooms.length, 0)}
+              </p>
+            </div>
+            <div className="rounded-md border aura-hairline px-4 py-3">
+              <p className="aura-label">Storeys</p>
+              <p className="mt-1 text-lg tabular-nums">{graphGeometry?.graph.storeys.length}</p>
+            </div>
+          </div>
+          {home.warnings.length > 0 ? (
+            <ul className="mt-4 space-y-1 text-xs leading-relaxed text-aura-violet">
+              {home.warnings.map((warning) => <li key={warning}>· {warning}</li>)}
+            </ul>
+          ) : null}
+        </section>
+      ) : (
+        <Readout spec={spec} summary={home.summary} warnings={home.warnings} />
+      )}
 
       {/* Only in 3D: the panel's own copy says "click any surface in the view
           above", and in plan mode there is no such view to click. Every
           assignment already made survives the switch — it is in the document,
           not in this panel. */}
-      {mode === "3d" ? (
+      {mode === "3d" && !graphMode ? (
         <SurfacePicker
           index={surfaceIndex}
           overrides={overrides}
@@ -1010,12 +1168,7 @@ export default function BuilderApp() {
             onClick={() =>
               dispatch({
                 type: "load",
-                doc: {
-                  spec: defaultSpec(),
-                  partitions: [],
-                  overrides: NO_OVERRIDES,
-                  fixtures: emptyFixtureSet(),
-                },
+                doc: defaultBuilderDocument(),
                 label: "reset",
               })
             }
@@ -1069,16 +1222,45 @@ export default function BuilderApp() {
 
       {/* ============================================================== SHAPE */}
       <Pane on={workspace === "shape"}>
-        <SpecPanel
-          spec={spec}
-          selectedVolumeId={activeVolumeId}
-          selectedOpeningId={selectedOpeningId}
-          onSelectVolume={selectVolume}
-          onSelectOpening={setSelectedOpeningId}
-          onEdit={edit}
-          sun={sun}
-          onSun={setSun}
-        />
+        {graphGeometry ? (
+          <section className="rounded-xl border aura-hairline p-5">
+            <p className="aura-label text-aura-emerald">Planar source of truth active</p>
+            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-aura-text/70">
+              Switch to Plan above to drag corners, add vertices and divide exact room faces. The 3D
+              model is rebuilt from those same graph edges. Undo returns through every conversion
+              and graph edit, including all the way to the untouched recovery HomeSpec.
+            </p>
+            {graphGeometry.migrationWarnings.length > 0 ? (
+              <ul className="mt-4 space-y-2 text-xs leading-relaxed text-aura-violet">
+                {graphGeometry.migrationWarnings.map((warning) => <li key={warning}>· {warning}</li>)}
+              </ul>
+            ) : null}
+          </section>
+        ) : (
+          <>
+            <section className="mb-5 rounded-xl border border-aura-emerald p-5">
+              <p className="aura-label text-aura-emerald">Ready for angled walls</p>
+              <p className="mt-3 max-w-3xl text-sm leading-relaxed text-aura-text/70">
+                Convert this single-storey massing into the planar graph to add non-rectangular
+                corners and exact room faces. The original design stays attached as recovery data;
+                details that cannot be placed with certainty are held for repair, never deleted.
+              </p>
+              <div className="mt-4">
+                <Button tone="loud" onClick={convertToPlanarGraph}>Convert to planar editing</Button>
+              </div>
+            </section>
+            <SpecPanel
+              spec={spec}
+              selectedVolumeId={activeVolumeId}
+              selectedOpeningId={selectedOpeningId}
+              onSelectVolume={selectVolume}
+              onSelectOpening={setSelectedOpeningId}
+              onEdit={edit}
+              sun={sun}
+              onSun={setSun}
+            />
+          </>
+        )}
       </Pane>
 
       {/* =========================================================== FIXTURES
@@ -1088,26 +1270,32 @@ export default function BuilderApp() {
           is why `FixtureLayer` is mounted with the model and a click there
           opens this tab. */}
       <Pane on={workspace === "fixtures"}>
-        <FixturePalette
-          spec={spec}
-          value={fixtures}
-          onChange={editFixtures}
-          selectedId={activeFixtureId}
-          onSelect={setSelectedFixtureId}
-          showClearances={showClearances}
-          onShowClearances={setShowClearances}
-          resolution={fixtureResolution}
-        />
-        <p className="mt-5 rounded-md border aura-hairline px-4 py-3 text-xs leading-relaxed text-aura-text/60">
+        {graphMode ? (
+          <GraphPending feature="Fixture placement" />
+        ) : (
+          <>
+            <FixturePalette
+              spec={spec}
+              value={fixtures}
+              onChange={editFixtures}
+              selectedId={activeFixtureId}
+              onSelect={setSelectedFixtureId}
+              showClearances={showClearances}
+              onShowClearances={setShowClearances}
+              resolution={fixtureResolution}
+            />
+            <p className="mt-5 rounded-md border aura-hairline px-4 py-3 text-xs leading-relaxed text-aura-text/60">
           Click a fixture in the 3D model to select it, and move it with the sliders here rather
           than by dragging it around the view. That is deliberate: a stove that comes within about
           fifteen inches of a wall turns square and seats flat against it, and a solar array is held
           inside a roof-edge setback — snapping is doing something a free drag cannot express, and
           the numbers you set here are the numbers that reach the schedule. Fixtures travel in the
-          .glb and in the .json. They are NOT on the drawing set, in the DXF, in the IFC or in a
-          share link, because every one of those is generated from the HomeSpec and the spec has no
-          field for them.
-        </p>
+          .glb, project file, share links, library saves and autosave. They are not yet represented
+          on the legacy drawing set, in DXF or in IFC; those writers still derive their shell from
+          HomeSpec, and each export names that limitation.
+            </p>
+          </>
+        )}
       </Pane>
 
       {/* ============================================================ COMFORT
@@ -1121,11 +1309,13 @@ export default function BuilderApp() {
           season and the heatmap all live in `BuilderApp`, so leaving and
           coming back finds everything exactly as it was. */}
       <Pane on={workspace === "comfort"}>
-        {workspace === "comfort" && comfort ? (
+        {graphMode ? (
+          <GraphPending feature="Comfort spaces" />
+        ) : workspace === "comfort" && comfort ? (
           <ComfortPanel
             report={comfort}
             settings={comfortSettings}
-            onSettings={setComfortSettings}
+            onSettings={editComfort}
             season={comfortSeason}
             onSeason={setComfortSeason}
             heatmap={heatmap}
@@ -1136,6 +1326,10 @@ export default function BuilderApp() {
 
       {/* =========================================================== DRAWINGS */}
       <Pane on={workspace === "drawings"}>
+      {graphMode ? (
+        <GraphPending feature="Professional drawings" />
+      ) : (
+      <>
       <section className="rounded-xl border border-aura-emerald p-6">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <p className="aura-label">Generate the drawing</p>
@@ -1192,7 +1386,11 @@ export default function BuilderApp() {
           {/* The account of the translation leads, then the plan engine's own
               sheet, then the eight sheets drawn from the model itself. */}
           <PlanSheet handoff={drawn.handoff} />
-          <DrawingSheets set={drawn.set} name={drawn.spec.name} dateISO={drawn.dateISO} />
+          <DrawingSheets
+            set={drawn.set}
+            name={drawn.document.spec.name}
+            dateISO={drawn.dateISO}
+          />
         </>
       ) : null}
 
@@ -1220,26 +1418,23 @@ export default function BuilderApp() {
           <AxonSheet home={home} name={spec.name} />
         </div>
       ) : null}
+      </>
+      )}
       </Pane>
 
       {/* ============================================================= EXPORT */}
       <Pane on={workspace === "export"}>
+        <div className="mb-6">
+          <BuilderOrderHandoff document={state.doc} />
+        </div>
         <ExportRow
-          spec={spec}
-          partitions={partitions}
-          overrides={overrides}
-          fixtures={fixtures}
+          value={state.doc}
           comfort={comfort}
           houseRef={houseRef}
-          onLoad={(loadedSpec, loadedPartitions, loadedOverrides, loadedFixtures, label) =>
+          onLoad={(loaded, label) =>
             dispatch({
               type: "load",
-              doc: {
-                spec: loadedSpec,
-                partitions: loadedPartitions,
-                overrides: loadedOverrides,
-                fixtures: loadedFixtures,
-              },
+              doc: loaded,
               label,
             })
           }
@@ -1248,9 +1443,9 @@ export default function BuilderApp() {
             serialise the whole building and parse it back — 4.5 ms for the
             reference home, 28.8 ms for a deliberately absurd one, both measured
             by the module itself — and it re-runs on every spec change. */}
-        {workspace === "export" ? (
+        {workspace === "export" && !graphMode ? (
           <div className="mt-6">
-            <SemanticExport spec={spec} comfort={comfort} />
+            <SemanticExport document={state.doc} comfort={comfort} />
           </div>
         ) : null}
       </Pane>
@@ -1262,27 +1457,20 @@ export default function BuilderApp() {
           this is the tab on screen. */}
       <Pane on={workspace === "library"}>
         <ProjectLibrary
-          spec={spec}
+          value={state.doc}
           onOpen={(loaded, label) =>
             dispatch({
               type: "load",
-              doc: {
-                spec: loaded,
-                partitions: [],
-                overrides: NO_OVERRIDES,
-                fixtures: emptyFixtureSet(),
-              },
+              doc: loaded,
               label,
             })
           }
         />
         <p className="mt-5 rounded-md border aura-hairline px-4 py-3 text-xs leading-relaxed text-aura-text/60">
-          A saved design is a <span className="font-mono">HomeSpec</span> and nothing else. So
-          opening one — or restoring the autosave — replaces the house and CLEARS the partitions,
-          finishes and fixtures you had, because those belonged to the home that was on screen a
-          moment ago and nothing in the record says they belong to this one. It arrives as an
-          ordinary edit: Ctrl+Z puts all four values back exactly as they were. When those three
-          matter, the .json in the export tab is the file that carries them.
+          Every saved design and autosave is a complete versioned project: shell geometry,
+          partitions, finishes, fixtures, comfort targets and anything held for repair. Opening or
+          restoring one is still an ordinary edit, so Ctrl+Z puts the previous project back. Legacy
+          HomeSpec-only records remain readable and are migrated without overwriting their source.
         </p>
       </Pane>
     </div>
@@ -1298,6 +1486,19 @@ export default function BuilderApp() {
    read-before-write handshake on mount that must not be re-run every time
    somebody looks at the exports. The two genuinely expensive children are
    conditionally mounted INSIDE their pane instead. See decision 6. */
+function GraphPending({ feature }: { feature: string }) {
+  return (
+    <section className="rounded-xl border border-aura-violet p-5">
+      <p className="aura-label text-aura-violet">{feature} is held at this boundary</p>
+      <p className="mt-3 max-w-3xl text-sm leading-relaxed text-aura-text/70">
+        This project now uses exact planar graph geometry. Aura will not run a legacy rectangular
+        calculation against its recovery copy and present that as the current design. The graph and
+        recovery source remain safely stored while this consumer is upgraded.
+      </p>
+    </section>
+  );
+}
+
 function Pane({ on, children }: { on: boolean; children: ReactNode }) {
   return (
     <div className={on ? "block" : "hidden"} aria-hidden={!on}>

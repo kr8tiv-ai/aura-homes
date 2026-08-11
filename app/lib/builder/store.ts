@@ -63,6 +63,13 @@ import {
   type HomeSpec,
 } from "./spec";
 import { encodeSpecSync, validateHomeSpec } from "./share";
+import {
+  BUILDER_DOCUMENT_VERSION,
+  builderDocumentFromLegacySpec,
+  hashBuilderDocument,
+  validateBuilderDocument,
+  type BuilderDocument,
+} from "./document";
 import { EXPORT_DISCLAIMER, downloadArtifact, type ExportArtifact } from "./exportSpec";
 
 /* ---------------------------------------------------------------------------
@@ -90,6 +97,8 @@ export interface DesignMeta {
   /** stamped separately from the spec so a record written by a future build
    *  can be REFUSED without being parsed */
   specVersion: number;
+  /** zero/missing identifies a legacy HomeSpec-only record */
+  documentVersion: number;
   /** a data URL, or null when the 3D view could not be read at save time */
   thumbnail: string | null;
   createdAt: number;
@@ -112,7 +121,7 @@ export interface DesignSummary extends DesignMeta {
 
 /** A whole design: the card plus the building. */
 export interface SavedDesign extends DesignMeta {
-  spec: HomeSpec;
+  document: BuilderDocument;
 }
 
 /** What `readAutosave` found. Deliberately not `SavedDesign | null` — "there
@@ -205,10 +214,11 @@ export const DB_NAME = "aura-builder";
 /** Bump ONLY alongside a migration in `onupgradeneeded`. A tab running an
  *  older build will then get a `blocked` failure it can explain, rather than a
  *  store it half-understands. */
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 const STORE_DESIGNS = "designs";
 const STORE_SPECS = "specs";
+const STORE_DOCUMENTS = "documents";
 const STORE_AUTOSAVE = "autosave";
 
 /** The one key in the autosave store. */
@@ -274,6 +284,13 @@ function openDb(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains(STORE_AUTOSAVE)) {
         db.createObjectStore(STORE_AUTOSAVE, { keyPath: "id" });
+      }
+      /* v2. New writes use complete BuilderDocuments. The v1 `specs` store is
+         retained untouched and read as a fallback, so an old project is
+         migrated only when it is opened or overwritten and its recovery copy
+         remains available. */
+      if (!db.objectStoreNames.contains(STORE_DOCUMENTS)) {
+        db.createObjectStore(STORE_DOCUMENTS, { keyPath: "id" });
       }
     };
 
@@ -421,6 +438,15 @@ export function specSignature(spec: HomeSpec): string {
   }
 }
 
+/** Full-document identity used by autosave, library cards, quotes and orders. */
+export function documentSignature(document: BuilderDocument): string {
+  try {
+    return hashBuilderDocument(document);
+  } catch {
+    return `invalid:${JSON.stringify(document)}`;
+  }
+}
+
 /** The card's figures. Every one from `spec.ts`; nothing multiplied out here. */
 export function headlineOf(spec: HomeSpec): DesignHeadline {
   return {
@@ -445,7 +471,16 @@ const cleanName = (name: string, fallback: string): string => {
 
 /** Why a stored record cannot be trusted, or null when it can. Version first,
  *  because a future record must be refused BEFORE its contents are read. */
-function versionProblem(specVersion: unknown): string | null {
+function versionProblem(specVersion: unknown, documentVersion: unknown = 0): string | null {
+  if (typeof documentVersion === "number" && Number.isFinite(documentVersion) && documentVersion > 0) {
+    if (documentVersion > BUILDER_DOCUMENT_VERSION)
+      return `Saved by a newer version of the builder (document v${documentVersion}; this build reads v${BUILDER_DOCUMENT_VERSION}). Refusing to guess at it — update the page, or open it in the browser that wrote it.`;
+    /* Older BuilderDocuments are readable only through document.ts's explicit
+       migrations. The metadata gate lets them reach that validator; it never
+       rewrites their source record merely because they were listed. */
+    if (documentVersion < BUILDER_DOCUMENT_VERSION) return null;
+    return null;
+  }
   if (typeof specVersion !== "number" || !Number.isFinite(specVersion))
     return "This record does not say which spec version wrote it, so it cannot be read safely.";
   if (specVersion > SPEC_VERSION)
@@ -461,12 +496,13 @@ function toSummary(raw: unknown): DesignSummary | null {
   if (typeof raw !== "object" || raw === null) return null;
   const r = raw as Partial<DesignMeta>;
   if (typeof r.id !== "string" || r.id.length === 0) return null;
-  const problem = versionProblem(r.specVersion);
+  const problem = versionProblem(r.specVersion, r.documentVersion);
   const h = r.headline;
   return {
     id: r.id,
     name: typeof r.name === "string" && r.name.length > 0 ? r.name : "Untitled",
     specVersion: typeof r.specVersion === "number" ? r.specVersion : -1,
+    documentVersion: typeof r.documentVersion === "number" ? r.documentVersion : 0,
     thumbnail: typeof r.thumbnail === "string" ? r.thumbnail : null,
     createdAt: typeof r.createdAt === "number" ? r.createdAt : 0,
     updatedAt: typeof r.updatedAt === "number" ? r.updatedAt : 0,
@@ -497,6 +533,31 @@ function readSpec(raw: unknown, specVersion: unknown, where: string): HomeSpec {
       `${where} is not a house this build understands — ${check.problem}. Nothing was loaded, because a half-read house is worse than no house.`,
     );
   return check.spec;
+}
+
+function readDocument(
+  rawDocument: unknown,
+  rawSpec: unknown,
+  summary: Pick<DesignSummary, "name" | "specVersion" | "documentVersion">,
+  where: string,
+): BuilderDocument {
+  const problem = versionProblem(summary.specVersion, summary.documentVersion);
+  if (problem) throw storeError("version", problem);
+
+  if (summary.documentVersion > 0) {
+    if (typeof rawDocument !== "object" || rawDocument === null)
+      throw storeError("corrupt", `${where} has no builder document stored with it.`);
+    const value = (rawDocument as { document?: unknown }).document;
+    const check = validateBuilderDocument(value);
+    if (!check.ok)
+      throw storeError(
+        check.futureVersion ? "version" : "corrupt",
+        `${where} is not a project this build understands — ${check.problem}`,
+      );
+    return check.document;
+  }
+
+  return builderDocumentFromLegacySpec(readSpec(rawSpec, summary.specVersion, where));
 }
 
 /* ---------------------------------------------------------------------------
@@ -575,32 +636,38 @@ export async function listDesigns(): Promise<DesignSummary[]> {
 /** One whole design. Throws `notfound`, `version` or `corrupt` — never returns
  *  a partial house. */
 export async function readDesign(id: string): Promise<SavedDesign> {
-  const { meta, spec } = await run([STORE_DESIGNS, STORE_SPECS], "readonly", async (t) => ({
+  const { meta, spec, document } = await run(
+    [STORE_DESIGNS, STORE_SPECS, STORE_DOCUMENTS],
+    "readonly",
+    async (t) => ({
     meta: await req<unknown>(t.objectStore(STORE_DESIGNS).get(id) as IDBRequest<unknown>),
     spec: await req<unknown>(t.objectStore(STORE_SPECS).get(id) as IDBRequest<unknown>),
-  }));
+      document: await req<unknown>(t.objectStore(STORE_DOCUMENTS).get(id) as IDBRequest<unknown>),
+    }),
+  );
   const summary = toSummary(meta);
   if (!summary) throw storeError("notfound", "That design is no longer in this browser's library.");
-  const home = readSpec(spec, summary.specVersion, `“${summary.name}”`);
+  const project = readDocument(document, spec, summary, `“${summary.name}”`);
   return {
     id: summary.id,
     name: summary.name,
     specVersion: summary.specVersion,
+    documentVersion: summary.documentVersion,
     thumbnail: summary.thumbnail,
     createdAt: summary.createdAt,
     updatedAt: summary.updatedAt,
     headline: summary.headline,
     signature: summary.signature,
-    spec: home,
+    document: project,
   };
 }
 
 export interface SaveInput {
   /** omit to create a new record; pass one to overwrite that record */
   id?: string;
-  /** the library's label. Defaults to the spec's own name. */
+  /** the library's label. Defaults to the document spec's own name. */
   name?: string;
-  spec: HomeSpec;
+  document: BuilderDocument;
   /**
    * `undefined` asks the registered viewport for a fresh capture (see
    * `captureThumbnail`); `null` deliberately stores none; a string is used
@@ -621,17 +688,20 @@ export interface SaveInput {
  * saves, it does not edit.
  */
 export async function saveDesign(input: SaveInput): Promise<DesignSummary> {
-  const check = validateHomeSpec(input.spec);
+  const check = validateBuilderDocument(input.document);
   if (!check.ok)
-    throw storeError("corrupt", `Refusing to save a spec this build cannot read back — ${check.problem}`);
+    throw storeError("corrupt", `Refusing to save a project this build cannot read back — ${check.problem}`);
 
-  const name = cleanName(input.name ?? check.spec.name, "Untitled home");
-  const spec: HomeSpec = { ...check.spec, name };
+  const name = cleanName(input.name ?? check.document.spec.name, "Untitled home");
+  const document: BuilderDocument = {
+    ...check.document,
+    spec: { ...check.document.spec, name },
+  };
   const thumbnail = input.thumbnail === undefined ? captureThumbnail() : input.thumbnail;
   const now = Date.now();
   const id = input.id ?? newId();
 
-  const meta: DesignMeta = await run([STORE_DESIGNS, STORE_SPECS], "readwrite", async (t) => {
+  const meta: DesignMeta = await run([STORE_DESIGNS, STORE_DOCUMENTS], "readwrite", async (t) => {
     const designs = t.objectStore(STORE_DESIGNS);
     const existing = input.id ? toSummary(await req<unknown>(designs.get(input.id) as IDBRequest<unknown>)) : null;
     if (input.id && !existing)
@@ -640,14 +710,15 @@ export async function saveDesign(input: SaveInput): Promise<DesignSummary> {
       id,
       name,
       specVersion: SPEC_VERSION,
+      documentVersion: BUILDER_DOCUMENT_VERSION,
       thumbnail: thumbnail ?? existing?.thumbnail ?? null,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
-      headline: headlineOf(spec),
-      signature: specSignature(spec),
+      headline: headlineOf(document.spec),
+      signature: documentSignature(document),
     };
     await req(designs.put(record));
-    await req(t.objectStore(STORE_SPECS).put({ id, spec }));
+    await req(t.objectStore(STORE_DOCUMENTS).put({ id, document }));
     return record;
   });
 
@@ -658,28 +729,37 @@ export async function saveDesign(input: SaveInput): Promise<DesignSummary> {
 /** Rename a record, and the home inside it, in one transaction. */
 export async function renameDesign(id: string, name: string): Promise<DesignSummary> {
   const clean = cleanName(name, "Untitled home");
-  const meta = await run([STORE_DESIGNS, STORE_SPECS], "readwrite", async (t) => {
+  const meta = await run(
+    [STORE_DESIGNS, STORE_SPECS, STORE_DOCUMENTS],
+    "readwrite",
+    async (t) => {
     const designs = t.objectStore(STORE_DESIGNS);
     const specs = t.objectStore(STORE_SPECS);
+      const documents = t.objectStore(STORE_DOCUMENTS);
     const current = toSummary(await req<unknown>(designs.get(id) as IDBRequest<unknown>));
     if (!current) throw storeError("notfound", "That design is no longer in this browser's library.");
-    const stored = await req<unknown>(specs.get(id) as IDBRequest<unknown>);
-    const spec = readSpec(stored, current.specVersion, `“${current.name}”`);
-    const renamed: HomeSpec = { ...spec, name: clean };
+      const [storedSpec, storedDocument] = await Promise.all([
+        req<unknown>(specs.get(id) as IDBRequest<unknown>),
+        req<unknown>(documents.get(id) as IDBRequest<unknown>),
+      ]);
+      const document = readDocument(storedDocument, storedSpec, current, `“${current.name}”`);
+      const renamed: BuilderDocument = { ...document, spec: { ...document.spec, name: clean } };
     const record: DesignMeta = {
       id,
       name: clean,
       specVersion: SPEC_VERSION,
+        documentVersion: BUILDER_DOCUMENT_VERSION,
       thumbnail: current.thumbnail,
       createdAt: current.createdAt,
       updatedAt: Date.now(),
       headline: current.headline,
-      signature: specSignature(renamed),
+        signature: documentSignature(renamed),
     };
     await req(designs.put(record));
-    await req(specs.put({ id, spec: renamed }));
+      await req(documents.put({ id, document: renamed }));
     return record;
-  });
+    },
+  );
   announce();
   return { ...meta, readable: true, problem: null };
 }
@@ -690,7 +770,7 @@ export async function duplicateDesign(id: string, name?: string): Promise<Design
   const source = await readDesign(id);
   return saveDesign({
     name: cleanName(name ?? `${source.name} copy`, "Untitled home"),
-    spec: source.spec,
+    document: source.document,
     thumbnail: source.thumbnail,
   });
 }
@@ -698,9 +778,10 @@ export async function duplicateDesign(id: string, name?: string): Promise<Design
 /** Remove a design and its spec together. Deleting an id that is not there is
  *  not an error — the end state is the one that was asked for. */
 export async function deleteDesign(id: string): Promise<void> {
-  await run([STORE_DESIGNS, STORE_SPECS], "readwrite", async (t) => {
+  await run([STORE_DESIGNS, STORE_SPECS, STORE_DOCUMENTS], "readwrite", async (t) => {
     await req(t.objectStore(STORE_DESIGNS).delete(id));
     await req(t.objectStore(STORE_SPECS).delete(id));
+    await req(t.objectStore(STORE_DOCUMENTS).delete(id));
   });
   announce();
 }
@@ -710,9 +791,10 @@ export async function deleteDesign(id: string): Promise<void> {
  *  asked to clear their saved list would be a second thing they did not ask
  *  for. */
 export async function clearLibrary(): Promise<void> {
-  await run([STORE_DESIGNS, STORE_SPECS], "readwrite", async (t) => {
+  await run([STORE_DESIGNS, STORE_SPECS, STORE_DOCUMENTS], "readwrite", async (t) => {
     await req(t.objectStore(STORE_DESIGNS).clear());
     await req(t.objectStore(STORE_SPECS).clear());
+    await req(t.objectStore(STORE_DOCUMENTS).clear());
   });
   announce();
 }
@@ -729,20 +811,25 @@ export async function clearLibrary(): Promise<void> {
  * decorate a prompt that may never be shown, is a bad trade. Pass one if the
  * caller wants it.
  */
-export async function writeAutosave(spec: HomeSpec, thumbnail: string | null = null): Promise<void> {
-  const check = validateHomeSpec(spec);
-  if (!check.ok) throw storeError("corrupt", `Refusing to autosave an invalid spec — ${check.problem}`);
+export async function writeAutosave(
+  document: BuilderDocument,
+  thumbnail: string | null = null,
+): Promise<void> {
+  const check = validateBuilderDocument(document);
+  if (!check.ok)
+    throw storeError("corrupt", `Refusing to autosave an invalid project — ${check.problem}`);
   const now = Date.now();
   const record: SavedDesign = {
     id: AUTOSAVE_ID,
-    name: check.spec.name,
+    name: check.document.spec.name,
     specVersion: SPEC_VERSION,
+    documentVersion: BUILDER_DOCUMENT_VERSION,
     thumbnail,
     createdAt: now,
     updatedAt: now,
-    headline: headlineOf(check.spec),
-    signature: specSignature(check.spec),
-    spec: check.spec,
+    headline: headlineOf(check.document.spec),
+    signature: documentSignature(check.document),
+    document: check.document,
   };
   await run([STORE_AUTOSAVE], "readwrite", async (t) => {
     await req(t.objectStore(STORE_AUTOSAVE).put(record));
@@ -775,7 +862,7 @@ export async function readAutosave(): Promise<AutosaveState> {
   if (!summary.readable)
     return { present: true, readable: false, problem: summary.problem ?? "Unreadable record.", updatedAt };
   try {
-    const spec = readSpec(raw, summary.specVersion, "The autosaved design");
+    const document = readDocument(raw, raw, summary, "The autosaved design");
     return {
       present: true,
       readable: true,
@@ -783,12 +870,13 @@ export async function readAutosave(): Promise<AutosaveState> {
         id: AUTOSAVE_ID,
         name: summary.name,
         specVersion: summary.specVersion,
+        documentVersion: summary.documentVersion,
         thumbnail: summary.thumbnail,
         createdAt: summary.createdAt,
         updatedAt: summary.updatedAt,
         headline: summary.headline,
         signature: summary.signature,
-        spec,
+        document,
       },
     };
   } catch (err) {
@@ -955,6 +1043,7 @@ export interface LibraryFile {
   fileVersion: number;
   /** the spec version the WRITER was built against */
   specVersion: number;
+  documentVersion: number;
   generator: string;
   exportedAt: string;
   disclaimer: string;
@@ -975,6 +1064,7 @@ export function libraryToJson(designs: SavedDesign[], exportedAtISO: string): st
     format: LIBRARY_FORMAT,
     fileVersion: LIBRARY_FILE_VERSION,
     specVersion: SPEC_VERSION,
+    documentVersion: BUILDER_DOCUMENT_VERSION,
     generator: "Aura Homes builder",
     exportedAt: exportedAtISO,
     disclaimer: EXPORT_DISCLAIMER,
@@ -1012,7 +1102,7 @@ export function libraryArtifact(designs: SavedDesign[], exportedAtISO: string): 
     filename: LIBRARY_FILENAME,
     mimeType: "application/json",
     byteLength: blob.size,
-    note: `${designs.length} design${designs.length === 1 ? "" : "s"} · spec v${SPEC_VERSION} · thumbnails included · re-imports into any browser running this builder`,
+    note: `${designs.length} design${designs.length === 1 ? "" : "s"} · document v${BUILDER_DOCUMENT_VERSION} · thumbnails included · re-imports into any browser running this builder`,
   };
 }
 
@@ -1067,6 +1157,13 @@ export function parseLibraryFile(text: string): LibraryParse {
     return empty(
       `That library was written by a newer version of the builder (spec v${file.specVersion}; this build reads v${SPEC_VERSION}). Nothing was imported — update the page and try again.`,
     );
+  if (
+    typeof file.documentVersion === "number" &&
+    file.documentVersion > BUILDER_DOCUMENT_VERSION
+  )
+    return empty(
+      `That library was written by a newer version of the builder (document v${file.documentVersion}; this build reads v${BUILDER_DOCUMENT_VERSION}). Nothing was imported — update the page and try again.`,
+    );
   if (!Array.isArray(file.designs)) return empty("That library file has no designs array in it.");
 
   const designs: SavedDesign[] = [];
@@ -1078,20 +1175,29 @@ export function parseLibraryFile(text: string): LibraryParse {
       skipped.push(`${label} is not an object`);
       return;
     }
-    const d = entry as Partial<SavedDesign>;
+    const d = entry as Partial<SavedDesign> & { spec?: unknown };
     const named = typeof d.name === "string" && d.name.length > 0 ? `“${d.name}”` : label;
-    const problem = versionProblem(typeof d.specVersion === "number" ? d.specVersion : file.specVersion);
+    const problem = versionProblem(
+      typeof d.specVersion === "number" ? d.specVersion : file.specVersion,
+      typeof d.documentVersion === "number" ? d.documentVersion : file.documentVersion ?? 0,
+    );
     if (problem) {
       skipped.push(`${named} — ${problem}`);
       return;
     }
-    const check = validateHomeSpec(d.spec);
+    const check = validateBuilderDocument(d.document ?? d.spec);
     if (!check.ok) {
       skipped.push(`${named} — ${check.problem}`);
       return;
     }
-    const name = cleanName(typeof d.name === "string" ? d.name : check.spec.name, "Untitled home");
-    const spec: HomeSpec = { ...check.spec, name };
+    const name = cleanName(
+      typeof d.name === "string" ? d.name : check.document.spec.name,
+      "Untitled home",
+    );
+    const document: BuilderDocument = {
+      ...check.document,
+      spec: { ...check.document.spec, name },
+    };
     let thumbnail: string | null = null;
     if (typeof d.thumbnail === "string" && d.thumbnail.startsWith("data:image/")) {
       if (d.thumbnail.length <= MAX_THUMBNAIL_CHARS) thumbnail = d.thumbnail;
@@ -1102,12 +1208,13 @@ export function parseLibraryFile(text: string): LibraryParse {
       id: typeof d.id === "string" && d.id.length > 0 ? d.id : newId(),
       name,
       specVersion: SPEC_VERSION,
+      documentVersion: BUILDER_DOCUMENT_VERSION,
       thumbnail,
       createdAt: typeof d.createdAt === "number" && Number.isFinite(d.createdAt) ? d.createdAt : now,
       updatedAt: typeof d.updatedAt === "number" && Number.isFinite(d.updatedAt) ? d.updatedAt : now,
-      headline: headlineOf(spec),
-      signature: specSignature(spec),
-      spec,
+      headline: headlineOf(document.spec),
+      signature: documentSignature(document),
+      document,
     });
   });
 
@@ -1149,22 +1256,26 @@ export async function importDesigns(designs: SavedDesign[], mode: ImportMode): P
     const id = collides ? newId() : d.id;
     const name = collides ? cleanName(`${d.name} (imported)`, "Imported home") : d.name;
     if (collides) renamed += 1;
-    const spec: HomeSpec = { ...d.spec, name };
+    const document: BuilderDocument = {
+      ...d.document,
+      spec: { ...d.document.spec, name },
+    };
     const meta: DesignMeta = {
       id,
       name,
       specVersion: SPEC_VERSION,
+      documentVersion: BUILDER_DOCUMENT_VERSION,
       thumbnail: d.thumbnail,
       createdAt: d.createdAt,
       updatedAt: d.updatedAt,
-      headline: headlineOf(spec),
-      signature: specSignature(spec),
+      headline: headlineOf(document.spec),
+      signature: documentSignature(document),
     };
     // one transaction per design: a quota failure halfway through then leaves
     // the designs that fit, rather than rolling back the whole import
-    await run([STORE_DESIGNS, STORE_SPECS], "readwrite", async (t) => {
+    await run([STORE_DESIGNS, STORE_DOCUMENTS], "readwrite", async (t) => {
       await req(t.objectStore(STORE_DESIGNS).put(meta));
-      await req(t.objectStore(STORE_SPECS).put({ id, spec }));
+      await req(t.objectStore(STORE_DOCUMENTS).put({ id, document }));
     });
     existing.add(id);
     added += 1;

@@ -19,7 +19,7 @@
                                     3D viewer. NOT a BIM handoff, and the
                                     ifcJSON door says so in the module's own
                                     words rather than in ours.
-     · FOR A 3D TOOL, OR FOR YOU    OBJ, the HomeSpec .json and a share link.
+     · FOR A 3D TOOL, OR FOR YOU    OBJ, the Aura project file and a share link.
 
    "OPENS IN" IS NOT "WE OPENED IT IN". `exportPro.ts` keeps those two lists
    apart on purpose — `opens` is a fact about the format, `verifiedWith` is the
@@ -46,7 +46,7 @@
    visitor who never asks for a professional file never downloads one byte of
    any of them.
 
-   THE DISCLAIMER TRAVELS. It is written into the JSON, into the glTF `extras`
+   THE DISCLAIMER TRAVELS. It is written into the project file, into the glTF `extras`
    beside the whole HomeSpec, into the OBJ header, into the DXF as a note block
    on the TEXT layer and into the IFC as a property on the building — because a
    recipient who is emailed a file never saw this page.
@@ -62,15 +62,18 @@ import {
   exportObj,
   exportSpecJson,
   parseSpecJson,
-  specToJson,
   type ExportArtifact,
 } from "@/lib/builder/exportSpec";
 import { drawingModel } from "@/lib/builder/drawings";
 import type { ProExportFormat } from "@/lib/builder/exportPro";
 import type { DxfReport, SourceDrawing } from "@/lib/builder/dxfCheck";
 import type { ComfortReport } from "@/lib/builder/comfort";
+import {
+  validateBuilderDocument,
+  type BuilderDocument,
+} from "@/lib/builder/document";
 import { emptyFixtureSet, validateFixtureSet, type FixtureSet } from "@/lib/builder/fixtures";
-import { specToShareUrl } from "@/lib/builder/share";
+import { documentToShareUrl } from "@/lib/builder/share";
 import type { HomeSpec } from "@/lib/builder/spec";
 import {
   NO_OVERRIDES,
@@ -78,7 +81,7 @@ import {
   validateOverrides,
   type SurfaceOverrides,
 } from "@/lib/builder/surfaces";
-import { partitionsFromWire, partitionsToWire, type Partition } from "@/lib/builder/walls";
+import { partitionsFromWire, type Partition } from "@/lib/builder/walls";
 import { Button, Panel } from "./ui";
 
 /* The proof panel is ~600 lines of SVG rendering over a parsed DXF. Nobody who
@@ -110,22 +113,12 @@ interface DxfRun {
 }
 
 /* ===========================================================================
-   THE .json SIDECAR — how partitions, finishes and fixtures survive a round trip
+   LEGACY .json SIDECAR READER
 
-   None of the three is in `HomeSpec`, and `validateHomeSpec` rebuilds a spec
-   from known primitives, so none of them can be smuggled INTO the spec. They
-   are written alongside it instead, under one key on the envelope `specToJson`
-   already emits.
-
-   THIS IS ADDITIVE AND IT BREAKS NOTHING. `parseSpecJson` reads `.spec` and
-   ignores every other key on the envelope, so a file written here still opens
-   in a build that has never heard of partitions, and a file written by such a
-   build still opens here — it just arrives with no interior walls, which is
-   the truth about it. The key is omitted entirely when there is nothing to
-   put in it, so a plain house still writes byte-for-byte the file it always
-   did.
-
-   All three values go through their OWN gates on the way back in —
+   New files use BuilderDocument directly. Claude-era files placed partitions,
+   finishes and fixtures under one `auraEditor` key beside HomeSpec. Keeping
+   this read-only path preserves those files without continuing the old split
+   contract. All three values go through their OWN gates on the way back in —
    `partitionsFromWire`, `validateOverrides` and `validateFixtureSet` — which
    rebuild every field from checked primitives. A hand-edited file cannot
    smuggle anything into application state through this door either.
@@ -137,26 +130,6 @@ interface EditorSidecar {
   partitions: Partition[];
   overrides: SurfaceOverrides;
   fixtures: FixtureSet;
-}
-
-function editorStateJson(
-  spec: HomeSpec,
-  partitions: readonly Partition[],
-  overrides: SurfaceOverrides,
-  fixtures: FixtureSet,
-): string {
-  // Parsed and re-stringified rather than string-spliced: the envelope is
-  // `specToJson`'s to define, and this only hangs one more key off it.
-  const doc = JSON.parse(specToJson(spec)) as Record<string, unknown>;
-  doc[EDITOR_KEY] = {
-    note:
-      "Held BESIDE the HomeSpec because lib/builder/spec.ts has no field for any of them. " +
-      "A reader that only knows about `spec` can ignore this key safely.",
-    partitions: partitionsToWire(partitions),
-    finishes: overrides,
-    fixtures,
-  };
-  return JSON.stringify(doc, null, 2);
 }
 
 /** Whatever an opened file had beside its spec, made safe. */
@@ -183,28 +156,15 @@ function readEditorState(text: string): EditorSidecar {
   };
 }
 
-/** How many things beside the spec are riding in this document. */
-const sidecarCount = (
-  partitions: readonly Partition[],
-  overrides: SurfaceOverrides,
-  fixtures: FixtureSet,
-): number => partitions.length + countOverrides(overrides) + fixtures.items.length;
-
 /* =========================================================================== */
 
 export default function ExportRow({
-  spec,
-  partitions,
-  overrides,
-  fixtures,
+  value,
   comfort = null,
   houseRef,
   onLoad,
 }: {
-  spec: HomeSpec;
-  partitions: Partition[];
-  overrides: SurfaceOverrides;
-  fixtures: FixtureSet;
+  value: BuilderDocument;
   /**
    * The owner's comfort targets, for the two writers that carry them.
    *
@@ -218,14 +178,13 @@ export default function ExportRow({
   /** the group holding the volumes, the deck and the fixture layer — and
    *  nothing else */
   houseRef: MutableRefObject<THREE.Group | null>;
-  onLoad: (
-    spec: HomeSpec,
-    partitions: Partition[],
-    overrides: SurfaceOverrides,
-    fixtures: FixtureSet,
-    label: string,
-  ) => void;
+  onLoad: (document: BuilderDocument, label: string) => void;
 }) {
+  const spec = value.spec;
+  const graphMode = value.geometry.kind === "building-graph";
+  const partitions = value.partitions;
+  const overrides = value.finishes;
+  const fixtures = value.fixtures;
   const [busy, setBusy] = useState<Job>(null);
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -283,7 +242,7 @@ export default function ExportRow({
     try {
       // sceneUnits stays the default "feet": the builder's scene is built
       // straight from the spec, and the exporter converts to metres itself.
-      finish(job === "glb" ? await exportGlb(root, spec) : await exportObj(root, spec));
+      finish(job === "glb" ? await exportGlb(root, value) : await exportObj(root, value));
     } catch (err) {
       fail(err);
     } finally {
@@ -303,7 +262,7 @@ export default function ExportRow({
     setError(null);
     try {
       const pro = await loadPro();
-      finish(pro.exportIfc(spec, { dateISO: issueDate(), comfort: comfort ?? undefined }));
+      finish(pro.exportIfc(value, { dateISO: issueDate(), comfort: comfort ?? undefined }));
     } catch (err) {
       fail(err);
     } finally {
@@ -316,7 +275,7 @@ export default function ExportRow({
     setError(null);
     try {
       const semantic = await loadSemantic();
-      finish(semantic.exportIfcJson(spec, { comfort: comfort ?? undefined }));
+      finish(semantic.exportIfcJson(value, { comfort: comfort ?? undefined }));
     } catch (err) {
       fail(err);
     } finally {
@@ -339,9 +298,9 @@ export default function ExportRow({
     setError(null);
     try {
       const [pro, check] = await Promise.all([loadPro(), loadCheck()]);
-      const artifact = pro.exportDxf(spec, { dateISO: issueDate() });
+      const artifact = pro.exportDxf(value, { dateISO: issueDate() });
       const text = await artifact.blob.text();
-      const source = check.sourceFromModel(drawingModel(spec));
+      const source = check.sourceFromModel(drawingModel(value));
       const report = check.checkDxf(text, source);
       const ok = report.ok;
       setDxfRun({ spec, text, artifact, source, report, saved: ok });
@@ -375,10 +334,10 @@ export default function ExportRow({
     setError(null);
     setCopied(false);
     try {
-      const url = await specToShareUrl(spec);
+      const url = await documentToShareUrl(value);
       setLink(url);
       setNote(
-        `Share link — ${url.length} characters, the whole house in the URL fragment. A fragment is never sent to the server, so a shared design does not land in an access log.`,
+        `Share link — ${url.length} characters, the complete project in the URL fragment. A fragment is never sent to the server, so a shared design does not land in an access log.`,
       );
       try {
         await navigator.clipboard.writeText(url);
@@ -398,49 +357,46 @@ export default function ExportRow({
 
   const saveJson = () => {
     setBusy("json");
-    const base = exportSpecJson(spec);
-    const extras = sidecarCount(partitions, overrides, fixtures);
-    if (extras === 0) {
-      finish(base);
-    } else {
-      const blob = new Blob([editorStateJson(spec, partitions, overrides, fixtures)], {
-        type: "application/json",
-      });
-      finish({
-        blob,
-        filename: base.filename,
-        mimeType: "application/json",
-        byteLength: blob.size,
-        note: `${base.note} · plus ${partitions.length} partition${
-          partitions.length === 1 ? "" : "s"
-        }, ${countOverrides(overrides)} finish${
-          countOverrides(overrides) === 1 ? "" : "es"
-        } and ${fixtures.items.length} fixture${
-          fixtures.items.length === 1 ? "" : "s"
-        } held beside the spec`,
-      });
-    }
+    finish(exportSpecJson(value));
     setBusy(null);
   };
 
   const open = async (file: File) => {
     setError(null);
     const text = await file.text();
-    const loaded = parseSpecJson(text);
-    if (!loaded) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      parsed = null;
+    }
+    let checked = validateBuilderDocument(parsed);
+
+    /* Claude-era project JSON used a HomeSpec envelope plus `auraEditor`.
+       Read it without rewriting the source file, then immediately rebuild it
+       as the current document contract. */
+    if ((!checked.ok || checked.migratedFrom === "editor-doc") && parsed) {
+      const loadedSpec = parseSpecJson(text);
+      if (loadedSpec) {
+        const extra = readEditorState(text);
+        checked = validateBuilderDocument({
+          spec: loadedSpec,
+          partitions: extra.partitions,
+          overrides: extra.overrides,
+          fixtures: extra.fixtures,
+        });
+      }
+    }
+    if (!checked.ok) {
       setError(
-        `${file.name} is not a house this build understands. The console names the exact field — nothing was loaded, because a half-read house is worse than no house.`,
+        `${file.name} is not a project this build understands — ${checked.problem}. Nothing was loaded, because a half-read project is worse than no project.`,
       );
       return;
     }
-    const extra = readEditorState(text);
-    onLoad(loaded, extra.partitions, extra.overrides, extra.fixtures, `load:${file.name}`);
-    const carried =
-      sidecarCount(extra.partitions, extra.overrides, extra.fixtures) === 0
-        ? "No partitions, finishes or fixtures were in the file, so anything you had is cleared — it belonged to the other house."
-        : `${extra.partitions.length} partition(s), ${countOverrides(extra.overrides)} finish(es) and ${extra.fixtures.items.length} fixture(s) came with it.`;
+    onLoad(checked.document, `load:${file.name}`);
+    const carried = `${checked.document.partitions.length} partition(s), ${countOverrides(checked.document.finishes)} finish(es), ${checked.document.fixtures.items.length} fixture(s), comfort settings and ${checked.document.quarantine.entries.length} quarantined item(s) came with it.`;
     setNote(
-      `Opened ${file.name} — ${loaded.volumes.length} volume(s). ${carried} Undo puts your previous home back.`,
+      `Opened ${file.name} — ${checked.document.spec.volumes.length} volume(s). ${carried} Undo puts your previous project back.`,
     );
   };
 
@@ -453,6 +409,14 @@ export default function ExportRow({
         hint="Seven doors, grouped by who is at the other end of the email. Every one names the programs that read that FORMAT — which is a different claim from the programs this build was tested against, and that shorter list has its own disclosure at the bottom."
       >
       <div className="space-y-6">
+        {graphMode ? (
+          <p className="rounded-md border border-aura-violet px-4 py-3 text-xs leading-relaxed text-aura-text/70">
+            This project uses planar graph geometry. The project file, share link, glTF and OBJ below
+            use the current graph-backed design. DXF, IFC and ifcJSON remain visibly disabled until
+            their writers consume the graph; Aura will not export the rectangular recovery copy as
+            though it were the design on screen.
+          </p>
+        ) : null}
         {/* ================================================== the handoff */}
         <div>
           <p className="aura-label mb-1 text-aura-emerald">Send this to your designer</p>
@@ -468,7 +432,7 @@ export default function ExportRow({
               body="The 2D drawings — floor plan, roof plan, foundation, all four elevations, the section and the schedule — laid out in model space at full size, on named layers a drafter can turn off one at a time. This is the file somebody opens to correct the wall we got wrong, add the dimension we could not know, and seal it. R12 ASCII, which is the DXF version with the widest reader support."
               action={
                 <div className="space-y-2">
-                  <Button tone="loud" onClick={() => void dxf()} disabled={busy !== null}>
+                  <Button tone="loud" onClick={() => void dxf()} disabled={busy !== null || graphMode}>
                     {busy === "dxf" ? "Drafting and checking…" : "Download .dxf"}
                   </Button>
                   <p className="text-[0.7rem] leading-snug text-aura-text/55">
@@ -483,7 +447,7 @@ export default function ExportRow({
               opens="Revit, ArchiCAD, Vectorworks, Allplan, Tekla, Solibri, BIMcollab ZOOM, Navisworks, FreeCAD's BIM workbench, and Blender with the Bonsai add-on."
               body="The building as a building, not as a shape: walls carrying a real material layer at the real thickness, windows and doors sitting in openings that genuinely void the wall they are in, slabs, roofs and the pile layout. This is the one a BIM-using designer imports and starts editing, and the one a quantity surveyor or an energy modeller can read. ISO 10303-21 text — the serialisation the tools above actually import."
               action={
-                <Button tone="loud" onClick={() => void ifc()} disabled={busy !== null}>
+                <Button tone="loud" onClick={() => void ifc()} disabled={busy !== null || graphMode}>
                   {busy === "ifc" ? "Authoring…" : "Download .ifc"}
                 </Button>
               }
@@ -492,7 +456,7 @@ export default function ExportRow({
         </div>
 
         {/* ============================================ the round-trip proof */}
-        <DxfVerdict run={dxfRun} stale={dxfStale} />
+        {graphMode ? null : <DxfVerdict run={dxfRun} stale={dxfStale} />}
 
         {/* ================================================== web and data */}
         <div>
@@ -508,7 +472,7 @@ export default function ExportRow({
               opens="Any JSON reader — a browser, jq, Python, a spreadsheet import — and buildingSMART's json2ifc.py, which converts it to a real .ifc. NOT Revit, ArchiCAD, Vectorworks, Tekla, Solibri or Navisworks: none of them reads it."
               body="IFC4 as JSON. Every wall with its real material layer thickness and R-value, every window and door as an opening cut into a named wall, slabs, spaces, storeys and the site, plus the eco spec as property sets. A CANDIDATE encoding rather than a published standard — which is why it is on this side of the panel and not the other. The panel below writes the same file, checks it round-trips, and offers the linked-data bundle."
               action={
-                <Button onClick={() => void ifcJson()} disabled={busy !== null}>
+                <Button onClick={() => void ifcJson()} disabled={busy !== null || graphMode}>
                   {busy === "ifcjson" ? "Writing…" : "Download .ifcjson"}
                 </Button>
               }
@@ -544,16 +508,16 @@ export default function ExportRow({
               }
             />
             <Door
-              title="HomeSpec (.json)"
+              title="Aura project (.aura.json)"
               opens="This builder, and any text editor."
-              body="The source of truth: every dimension and every opening in feet, with the schema version stamped on it. The only export that re-opens here, the only one a human can read and correct by hand, and the ONLY one that carries your partitions, your finishes and your fixtures as well as the house. Save this one if you want everything back."
+              body="The complete, versioned source of truth: geometry, partitions, finishes, fixtures, comfort targets and repair-held details. It is deterministic, human-readable JSON and the safest way to move a larger project between devices. A future document version is refused visibly rather than partially loaded."
               action={
                 <div className="flex flex-wrap gap-2">
                   <Button onClick={saveJson} disabled={busy !== null}>
-                    Download .json
+                    Download .aura.json
                   </Button>
                   <Button onClick={() => fileInput.current?.click()} disabled={busy !== null}>
-                    Open a .json
+                    Open a project
                   </Button>
                 </div>
               }
@@ -561,7 +525,7 @@ export default function ExportRow({
             <Door
               title="Share link"
               opens="Any browser — no account and nothing stored."
-              body="The whole house compressed into a URL fragment. Send it to a partner, a lender or a designer and they open the same home in their own browser. A link made by a newer version of the builder is refused out loud rather than half-read. It carries the SPEC only: partitions, finishes and fixtures are not in it, so use the .json when those matter."
+              body="The complete project compressed into a URL fragment: geometry, partitions, finishes, fixtures and comfort targets arrive together. Newer versions are refused out loud rather than half-read. Very large projects use the .aura.json file because long URLs are unreliable."
               action={
                 <Button onClick={() => void share()} disabled={busy !== null}>
                   {busy === "link" ? "Encoding…" : copied ? "Copied — copy again" : "Copy share link"}
@@ -574,7 +538,7 @@ export default function ExportRow({
         <input
           ref={fileInput}
           type="file"
-          accept="application/json,.json"
+          accept="application/json,.json,.aura.json"
           className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0];
@@ -659,11 +623,11 @@ export default function ExportRow({
                   ))}
                 </ul>
                 <p className="mt-3 text-xs leading-relaxed text-aura-text/55">
-                  Interior partitions are on that list for a concrete reason: the DXF and the IFC
-                  are generated from the HomeSpec, and the partitions you draw in the 2D plan are
-                  held beside it rather than in it. The same is true of the fixtures you place and
-                  the finishes you pick. All three are in the .json and in undo, and nowhere else,
-                  until the spec gains the fields.
+                  Interior partitions are on that list for a concrete reason: the current DXF and
+                  IFC writers still derive their shell from the legacy HomeSpec geometry. The
+                  complete BuilderDocument keeps partitions, fixtures and finishes through undo,
+                  autosave, library saves, project files and share links, but those details do not
+                  enter these professional exports until the shared BuildingGraph release.
                 </p>
               </div>
             ) : null}

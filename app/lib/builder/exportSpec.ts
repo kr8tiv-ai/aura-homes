@@ -55,6 +55,11 @@ import {
   type HomeSpec,
 } from "./spec";
 import { validateHomeSpec } from "./share";
+import {
+  exportSourceLimitation,
+  resolveBuilderExportSource,
+  type BuilderExportSource,
+} from "./exportSource";
 /* TYPE-ONLY. Nothing from three is imported at runtime by this module — the
    exporters are pulled in with dynamic `import()` inside the functions that
    need them, so a page that merely offers a Download button does not pay for
@@ -219,7 +224,19 @@ export function specToJson(spec: HomeSpec): string {
   return `${JSON.stringify(file, null, 2)}\n`;
 }
 
-export function exportSpecJson(spec: HomeSpec): ExportArtifact {
+export function exportSpecJson(source: BuilderExportSource): ExportArtifact {
+  const resolved = resolveBuilderExportSource(source);
+  const { document, spec } = resolved;
+  if (!resolved.migratedFromLegacySpec) {
+    const text = `${resolved.canonicalJson}\n`;
+    return artifact(
+      new Blob([text], { type: "application/json" }),
+      exportFilename(spec, "aura.json"),
+      "application/json",
+      `Complete Aura project · document v${document.version} · design hash ${resolved.hash} · re-openable in the builder`,
+    );
+  }
+
   const text = specToJson(spec);
   const s = specSummary(spec);
   return artifact(
@@ -290,9 +307,11 @@ export const EXPORT_IGNORE = "auraExportIgnore";
  */
 function prepareForExport(
   root: THREE.Object3D,
-  spec: HomeSpec,
+  source: BuilderExportSource,
   opts: ModelExportOptions,
 ): THREE.Object3D {
+  const resolved = resolveBuilderExportSource(source);
+  const { document, spec } = resolved;
   let clone: THREE.Object3D;
   try {
     clone = root.clone(true);
@@ -345,7 +364,9 @@ function prepareForExport(
     clone.userData = {
       ...clone.userData,
       aura: {
-        format: "aura-home-spec",
+        format: document.format,
+        documentVersion: document.version,
+        documentHash: resolved.hash,
         specVersion: SPEC_VERSION,
         generator: "Aura Homes builder",
         disclaimer: EXPORT_DISCLAIMER,
@@ -356,8 +377,11 @@ function prepareForExport(
             ? "metres (the scene was already in metres)"
             : `metres (converted from the HomeSpec's feet at exactly ${FEET_TO_METRES} m/ft)`,
         specUnits: "feet (wall thickness in mm, per lib/design/materials.ts)",
+        document: JSON.parse(resolved.canonicalJson) as unknown,
         spec,
         derived: specSummary(spec),
+        durableDocumentDetailCounts: resolved.durableDetailCounts,
+        geometryLimitation: exportSourceLimitation(source, "rendered-scene"),
       },
     };
   }
@@ -394,14 +418,14 @@ function releaseClone(clone: THREE.Object3D): void {
 
 async function parseGltf(
   root: THREE.Object3D,
-  spec: HomeSpec,
+  source: BuilderExportSource,
   opts: ModelExportOptions,
   binary: boolean,
 ): Promise<ArrayBuffer | Record<string, unknown>> {
   /* three's own exporter, from the `three` package already in this repo's
      dependencies. MIT, © three.js authors. No new package, no new licence. */
   const { GLTFExporter } = await import("three/examples/jsm/exporters/GLTFExporter.js");
-  const scene = prepareForExport(root, spec, opts);
+  const scene = prepareForExport(root, source, opts);
   try {
     const result = await new GLTFExporter().parseAsync(scene, {
       binary,
@@ -430,10 +454,11 @@ async function parseGltf(
  */
 export async function exportGlb(
   root: THREE.Object3D,
-  spec: HomeSpec,
+  source: BuilderExportSource,
   opts: ModelExportOptions = {},
 ): Promise<ExportArtifact> {
-  const result = await parseGltf(root, spec, opts, true);
+  const { spec } = resolveBuilderExportSource(source);
+  const result = await parseGltf(root, source, opts, true);
   if (!(result instanceof ArrayBuffer)) {
     // GLTFExporter contract: binary:true resolves with an ArrayBuffer. If that
     // ever stops being true, say so instead of writing a broken .glb.
@@ -455,10 +480,11 @@ export async function exportGlb(
  */
 export async function exportGltf(
   root: THREE.Object3D,
-  spec: HomeSpec,
+  source: BuilderExportSource,
   opts: ModelExportOptions = {},
 ): Promise<ExportArtifact> {
-  const result = await parseGltf(root, spec, opts, false);
+  const { spec } = resolveBuilderExportSource(source);
+  const result = await parseGltf(root, source, opts, false);
   if (result instanceof ArrayBuffer) {
     throw new Error("[aura/export] GLTFExporter returned binary when JSON output was requested");
   }
@@ -491,11 +517,13 @@ export async function exportGltf(
  */
 export async function exportObj(
   root: THREE.Object3D,
-  spec: HomeSpec,
+  source: BuilderExportSource,
   opts: ModelExportOptions = {},
 ): Promise<ExportArtifact> {
+  const resolved = resolveBuilderExportSource(source);
+  const { document, spec } = resolved;
   const { OBJExporter } = await import("three/examples/jsm/exporters/OBJExporter.js");
-  const scene = prepareForExport(root, spec, { ...opts, embedSpec: false });
+  const scene = prepareForExport(root, source, { ...opts, embedSpec: false });
   let body: string;
   try {
     body = new OBJExporter().parse(scene);
@@ -506,7 +534,8 @@ export async function exportObj(
   const s = specSummary(spec);
   const header = [
     `# ${spec.name}`,
-    `# Aura Homes builder — HomeSpec v${SPEC_VERSION}`,
+    `# Aura Homes builder — document v${document.version} / HomeSpec v${SPEC_VERSION}`,
+    `# design hash: ${resolved.hash}`,
     `# units: metres (converted from feet at exactly ${FEET_TO_METRES} m/ft)`,
     `# total floor area: ${round2(s.totalFloorAreaSqFt)} sq ft over ${s.volumeCount} volume${
       s.volumeCount === 1 ? "" : "s"
@@ -515,6 +544,9 @@ export async function exportObj(
     `# tallest ridge: ${round2(s.tallestRidgeHeightFt)} ft above finished floor`,
     "#",
     `# ${EXPORT_DISCLAIMER}`,
+    ...(exportSourceLimitation(source, "rendered-scene")
+      ? [`# ${exportSourceLimitation(source, "rendered-scene")}`]
+      : []),
     "#",
     "# OBJ carries geometry only. For materials, and for the full editable",
     "# specification, use the glTF (.glb) or the JSON export.",

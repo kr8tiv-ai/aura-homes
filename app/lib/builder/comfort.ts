@@ -350,8 +350,8 @@ export const NEUTRAL_BAND = 0.5;
 export function sensationWord(value: number): string {
   if (value <= -2.5) return "cold";
   if (value <= -1.5) return "cool";
-  if (value <= -0.5) return "slightly cool";
-  if (value < 0.5) return "neutral";
+  if (value < -NEUTRAL_BAND) return "slightly cool";
+  if (value <= NEUTRAL_BAND) return "neutral";
   if (value < 1.5) return "slightly warm";
   if (value < 2.5) return "warm";
   return "hot";
@@ -497,10 +497,10 @@ export interface SeasonResult {
   tempInTarget: boolean;
   /** is the ASSUMED humidity inside the target band? */
   humidityInTarget: boolean;
-  /** is |sPMV| within `NEUTRAL_BAND`? */
-  indexInBand: boolean;
-  /** all three */
-  meets: boolean;
+  /** is |sPMV| within `NEUTRAL_BAND`? `null` when this use is unmodelled. */
+  indexInBand: boolean | null;
+  /** all three, or `null` when the clothing case is unmodelled */
+  meets: boolean | null;
   /** |sPMV| — the deviation the heatmap colours by */
   deviation: number;
   /** why it missed, in plain sentences; empty when it meets */
@@ -529,6 +529,8 @@ export interface RoomComfort {
 export interface ComfortKpi {
   season: Season;
   roomCount: number;
+  roomsModelled: number;
+  roomsUnmodelled: number;
   roomsMeeting: number;
   /** mean |sPMV| across the rooms — the simple deviation figure */
   meanAbsDeviation: number;
@@ -559,6 +561,7 @@ function evaluate(
   tempC: number,
   rhPct: number,
   target: ComfortTarget,
+  modelled: boolean,
 ): SeasonResult {
   const terms = sPmv(tempC, rhPct);
   const minC = season === "winter" ? target.winterMinC : target.summerMinC;
@@ -567,7 +570,7 @@ function evaluate(
   const tempInTarget = tempC >= minC && tempC <= maxC;
   const humidityInTarget = rhPct >= target.humidityMinPct && rhPct <= target.humidityMaxPct;
   const deviation = Math.abs(terms.value);
-  const indexInBand = deviation <= NEUTRAL_BAND;
+  const indexInBand = modelled ? deviation <= NEUTRAL_BAND : null;
 
   const misses: string[] = [];
   if (!tempInTarget) {
@@ -582,7 +585,7 @@ function evaluate(
         `${fmt0(target.humidityMinPct)}–${fmt0(target.humidityMaxPct)} % band.`,
     );
   }
-  if (!indexInBand) {
+  if (indexInBand === false) {
     misses.push(
       `sPMV is ${fmtSigned(terms.value)} (${sensationWord(terms.value)}) under those ` +
         `conditions, outside the ±${NEUTRAL_BAND} band.`,
@@ -597,18 +600,21 @@ function evaluate(
     tempInTarget,
     humidityInTarget,
     indexInBand,
-    meets: tempInTarget && humidityInTarget && indexInBand,
+    meets: modelled ? tempInTarget && humidityInTarget && indexInBand === true : null,
     deviation,
     misses,
   };
 }
 
 function kpi(season: Season, rooms: readonly RoomComfort[]): ComfortKpi {
-  const results = rooms.map((r) => (season === "winter" ? r.winter : r.summer));
+  const modelledRooms = rooms.filter((room) => room.modelled);
+  const results = modelledRooms.map((r) => (season === "winter" ? r.winter : r.summer));
   if (results.length === 0) {
     return {
       season,
-      roomCount: 0,
+      roomCount: rooms.length,
+      roomsModelled: 0,
+      roomsUnmodelled: rooms.length,
       roomsMeeting: 0,
       meanAbsDeviation: 0,
       worstRoomId: null,
@@ -622,13 +628,15 @@ function kpi(season: Season, rooms: readonly RoomComfort[]): ComfortKpi {
     sum += r.deviation;
     if (r.deviation > worstDeviation) {
       worstDeviation = r.deviation;
-      worstRoomId = rooms[i].room.id;
+      worstRoomId = modelledRooms[i].room.id;
     }
   });
   return {
     season,
-    roomCount: results.length,
-    roomsMeeting: results.filter((r) => r.meets).length,
+    roomCount: rooms.length,
+    roomsModelled: results.length,
+    roomsUnmodelled: rooms.length - results.length,
+    roomsMeeting: results.filter((r) => r.meets === true).length,
     meanAbsDeviation: sum / results.length,
     worstRoomId,
     worstDeviation: Math.max(0, worstDeviation),
@@ -658,8 +666,8 @@ export function comfortReport(
       targetIsDefault: targetIsDefault(settings, room),
       modelled,
       modelNote: modelled ? null : SLEEPING_NOTE,
-      winter: evaluate("winter", c.winterIndoorC, c.winterRhPct, target),
-      summer: evaluate("summer", c.summerIndoorC, c.summerRhPct, target),
+      winter: evaluate("winter", c.winterIndoorC, c.winterRhPct, target, modelled),
+      summer: evaluate("summer", c.summerIndoorC, c.summerRhPct, target, modelled),
     };
   });
 
@@ -709,7 +717,7 @@ export interface ComfortPlate {
   depthFt: number;
   sPmv: number;
   deviation: number;
-  meets: boolean;
+  meets: boolean | null;
   modelled: boolean;
 }
 
@@ -762,10 +770,14 @@ export function comfortSentence(report: ComfortReport, season: Season): string {
   }
   const t = season === "winter" ? report.conditions.winterIndoorC : report.conditions.summerIndoorC;
   const rh = season === "winter" ? report.conditions.winterRhPct : report.conditions.summerRhPct;
+  const unmodelled = k.roomsUnmodelled
+    ? ` ${k.roomsUnmodelled} sleeping room${k.roomsUnmodelled === 1 ? " is" : "s are"} unmodelled.`
+    : "";
   return (
-    `Under an assumed ${fmt1(t)} °C and ${fmt0(rh)} %RH, ${k.roomsMeeting} of ${k.roomCount} ` +
-    `solved room${k.roomCount === 1 ? "" : "s"} meet${k.roomsMeeting === 1 ? "s" : ""} their ` +
-    `stated ${SEASON_LABEL[season].toLowerCase()} target. Mean |sPMV| ${fmt2(k.meanAbsDeviation)}.`
+    `Under an assumed ${fmt1(t)} °C and ${fmt0(rh)} %RH, ${k.roomsMeeting} of ${k.roomsModelled} ` +
+    `modelled room${k.roomsModelled === 1 ? "" : "s"} meet${k.roomsMeeting === 1 ? "s" : ""} their ` +
+    `stated ${SEASON_LABEL[season].toLowerCase()} target. Mean |sPMV| ${fmt2(k.meanAbsDeviation)}.` +
+    unmodelled
   );
 }
 

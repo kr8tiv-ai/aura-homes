@@ -210,6 +210,11 @@ import {
   exportFilename,
   type ExportArtifact,
 } from "./exportSpec";
+import {
+  exportSourceLimitation,
+  resolveLegacyGeometryExportSource,
+  type BuilderExportSource,
+} from "./exportSource";
 import { modelledGlazingRatio, modelledWallAreaSqFt } from "./toPlan";
 import {
   COMFORT_DISCLAIMER,
@@ -580,6 +585,9 @@ export interface SemanticExportOptions {
 
 interface Ctx {
   spec: HomeSpec;
+  documentVersion: number;
+  documentHash: string;
+  sourceLimitation: string | null;
   slug: string;
   systems: EcoSystems;
   withGeometry: boolean;
@@ -913,12 +921,18 @@ function emitSpine(ctx: Ctx): void {
       "not a buildingSMART Pset.",
     props: [
       ["SpecVersion", int(SPEC_VERSION)],
+      ["BuilderDocumentVersion", int(ctx.documentVersion)],
+      ["BuilderDocumentHash", txt(ctx.documentHash)],
       ["HomeName", txt(spec.name)],
       ["Material", txt(spec.material)],
       ["ClimateZone", txt(spec.climateZone)],
       ["Notes", txt(spec.notes)],
       ["Generator", txt(ORIGINATING_SYSTEM)],
       ["Disclaimer", txt(EXPORT_DISCLAIMER)],
+      [
+        "DocumentDetailsNotRepresented",
+        txt(ctx.sourceLimitation ?? "No active document details are omitted by this source."),
+      ],
     ],
   });
 
@@ -1801,6 +1815,23 @@ function emitComfort(ctx: Ctx): void {
       ],
     });
 
+    const comfortVerdicts: Array<[string, PropValue]> = [
+      [
+        "WinterVerdict",
+        txt(rc.winter.meets === null ? "UNMODELLED" : rc.winter.meets ? "MEETS" : "MISSES"),
+      ],
+      [
+        "SummerVerdict",
+        txt(rc.summer.meets === null ? "UNMODELLED" : rc.summer.meets ? "MEETS" : "MISSES"),
+      ],
+    ];
+    if (rc.winter.meets !== null) {
+      comfortVerdicts.push(["WinterMeetsTarget", bool(rc.winter.meets)]);
+    }
+    if (rc.summer.meets !== null) {
+      comfortVerdicts.push(["SummerMeetsTarget", bool(rc.summer.meets)]);
+    }
+
     attachPset(ctx, `comforteval:${rc.room.id}`, [{ type: "IfcSpace", globalId: spaceId }], {
       name: "Aura_ComfortEvaluation",
       description:
@@ -1814,8 +1845,7 @@ function emitComfort(ctx: Ctx): void {
         ["SummerVapourPressureKPa", real(rc.summer.terms.vapourKPa)],
         ["WinterSPmv", real(rc.winter.terms.value)],
         ["SummerSPmv", real(rc.summer.terms.value)],
-        ["WinterMeetsTarget", bool(rc.winter.meets)],
-        ["SummerMeetsTarget", bool(rc.summer.meets)],
+        ...comfortVerdicts,
         ["NeutralBand", real(NEUTRAL_BAND)],
         ["ClothingCaseModelled", bool(rc.modelled)],
         [
@@ -1856,6 +1886,10 @@ function emitComfort(ctx: Ctx): void {
       "aura:assumedSummerRhPct": c.summerRhPct,
       "aura:winterSPmv": round9(rc.winter.terms.value),
       "aura:summerSPmv": round9(rc.summer.terms.value),
+      "aura:winterComfortVerdict":
+        rc.winter.meets === null ? "UNMODELLED" : rc.winter.meets ? "MEETS" : "MISSES",
+      "aura:summerComfortVerdict":
+        rc.summer.meets === null ? "UNMODELLED" : rc.summer.meets ? "MEETS" : "MISSES",
       "aura:comfortDisclaimer": COMFORT_DISCLAIMER,
     });
     asNodeList(storey, "hasSpace").push({ "@id": spaceIri });
@@ -1873,6 +1907,8 @@ function emitComfort(ctx: Ctx): void {
       ["AssumedSummerTemperatureC", real(c.summerIndoorC)],
       ["AssumedSummerHumidityPct", real(c.summerRhPct)],
       ["SolvedRoomCount", int(report.rooms.length)],
+      ["RoomsModelled", int(report.winter.roomsModelled)],
+      ["RoomsUnmodelled", int(report.winter.roomsUnmodelled)],
       ["RoomsMeetingWinterTarget", int(report.winter.roomsMeeting)],
       ["RoomsMeetingSummerTarget", int(report.summer.roomsMeeting)],
       ["MeanWinterDeviation", real(report.winter.meanAbsDeviation)],
@@ -1972,6 +2008,9 @@ export interface SemanticBundle {
   "@type": string;
   "aura:generator": string;
   "aura:specVersion": number;
+  "aura:documentVersion": number;
+  "aura:documentHash": string;
+  "aura:geometryLimitation": string | null;
   "aura:disclaimer": string;
   "aura:formatStatus": string;
   "aura:brickExtensionPoint": Readonly<Record<string, string>>;
@@ -1992,9 +2031,22 @@ export const FORMAT_STATUS =
    THE PUBLIC WRITERS
    =========================================================================== */
 
-function build(spec: HomeSpec, opts: SemanticExportOptions = {}): Ctx {
+function build(
+  spec: HomeSpec,
+  opts: SemanticExportOptions = {},
+  identity: {
+    documentVersion: number;
+    documentHash: string;
+    sourceLimitation: string | null;
+  } = {
+    documentVersion: 1,
+    documentHash: "legacy-home-spec",
+    sourceLimitation: null,
+  },
+): Ctx {
   const ctx: Ctx = {
     spec,
+    ...identity,
     slug: urnSlug(spec.name),
     systems: ecoSystems(opts.systems ?? {}),
     withGeometry: opts.geometry !== false,
@@ -2011,12 +2063,34 @@ function build(spec: HomeSpec, opts: SemanticExportOptions = {}): Ctx {
   return ctx;
 }
 
+function buildFromSource(
+  source: BuilderExportSource,
+  opts: SemanticExportOptions = {},
+): Ctx {
+  const resolved = resolveLegacyGeometryExportSource(source);
+  return build(
+    resolved.spec,
+    {
+      ...opts,
+      comfort:
+        opts.comfort === undefined
+          ? comfortReport(resolved.spec, resolved.document.comfort)
+          : opts.comfort,
+    },
+    {
+      documentVersion: resolved.document.version,
+      documentHash: resolved.hash,
+      sourceLimitation: exportSourceLimitation(source),
+    },
+  );
+}
+
 /** The ifcJSON document for a spec. Pure and deterministic. */
 export function specToIfcJson(
-  spec: HomeSpec,
+  source: BuilderExportSource,
   opts: SemanticExportOptions = {},
 ): IfcJsonDocument {
-  const ctx = build(spec, opts);
+  const ctx = buildFromSource(source, opts);
   return {
     type: "ifcJSON",
     version: IFCJSON_VERSION,
@@ -2028,16 +2102,19 @@ export function specToIfcJson(
 
 /** The JSON-LD bundle: BOT topology plus the whole ifcJSON document. */
 export function specToSemanticBundle(
-  spec: HomeSpec,
+  source: BuilderExportSource,
   opts: SemanticExportOptions = {},
 ): SemanticBundle {
-  const ctx = build(spec, opts);
+  const ctx = buildFromSource(source, opts);
   return {
     "@context": AURA_JSONLD_CONTEXT,
     "@id": `${AURA_URN_PREFIX}${ctx.slug}`,
     "@type": "aura:Home",
     "aura:generator": ORIGINATING_SYSTEM,
     "aura:specVersion": SPEC_VERSION,
+    "aura:documentVersion": ctx.documentVersion,
+    "aura:documentHash": ctx.documentHash,
+    "aura:geometryLimitation": ctx.sourceLimitation,
     "aura:disclaimer": EXPORT_DISCLAIMER,
     "aura:formatStatus": FORMAT_STATUS,
     "aura:brickExtensionPoint": BRICK_EXTENSION_POINT,
@@ -2075,10 +2152,11 @@ const artifact = (
  * is the extension the buildingSMART converters take.
  */
 export function exportIfcJson(
-  spec: HomeSpec,
+  source: BuilderExportSource,
   opts: SemanticExportOptions = {},
 ): ExportArtifact {
-  const doc = specToIfcJson(spec, opts);
+  const { spec } = resolveLegacyGeometryExportSource(source);
+  const doc = specToIfcJson(source, opts);
   return artifact(
     ifcJsonToText(doc),
     exportFilename(spec, "ifcjson"),
@@ -2091,10 +2169,11 @@ export function exportIfcJson(
 
 /** The JSON-LD bundle, as `aura-<name>.jsonld`. */
 export function exportSemanticJsonLd(
-  spec: HomeSpec,
+  source: BuilderExportSource,
   opts: SemanticExportOptions = {},
 ): ExportArtifact {
-  const bundle = specToSemanticBundle(spec, opts);
+  const { spec } = resolveLegacyGeometryExportSource(source);
+  const bundle = specToSemanticBundle(source, opts);
   return artifact(
     semanticBundleToText(bundle),
     exportFilename(spec, "jsonld"),
@@ -2728,10 +2807,11 @@ function diffSpecs(a: HomeSpec, b: HomeSpec): string[] {
  * asserted once in a comment.
  */
 export function roundTripReport(
-  spec: HomeSpec,
+  source: BuilderExportSource,
   opts: SemanticExportOptions = {},
 ): RoundTripReport {
-  const bundle = specToSemanticBundle(spec, opts);
+  const { spec } = resolveLegacyGeometryExportSource(source);
+  const bundle = specToSemanticBundle(source, opts);
   const ifcText = ifcJsonToText(bundle.ifcJSON);
   const bundleText = semanticBundleToText(bundle);
   const bytes = (s: string): number =>

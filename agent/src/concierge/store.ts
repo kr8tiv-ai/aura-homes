@@ -21,7 +21,19 @@ export function saveOrder(order: Order): void {
 export function loadOrder(orderId: string): Order | undefined {
   const file = orderPath(orderId);
   if (!fs.existsSync(file)) return undefined;
-  return JSON.parse(fs.readFileSync(file, "utf8")) as Order;
+  const order = JSON.parse(fs.readFileSync(file, "utf8")) as Order;
+  /* Pre-BuilderDocument orders had a catalog-only home with no discriminator.
+     Migrate on read without rewriting the recovery file. Old quotes remain
+     visible, but the reducer requires a fresh quote validity time before any
+     new payment action. */
+  const rawHome = (order as unknown as { home?: Record<string, unknown> }).home;
+  if (rawHome && !("kind" in rawHome)) {
+    return {
+      ...order,
+      home: { ...rawHome, kind: "catalog" },
+    } as Order;
+  }
+  return order;
 }
 
 export function listOrders(): Array<{ id: string; status: string; createdAtISO: string }> {

@@ -34,8 +34,11 @@ import {
 import {
   FACTORY_DEPOSIT_MIN_USD,
   FACTORY_DEPOSIT_RATE,
+  QUOTE_VALIDITY_DAYS,
   NATIVE_USDC_TESTNET,
   Order,
+  BuilderOrderHomeChoice,
+  OrderHomeChoice,
   OrderQuote,
   ParcelChoice,
   REFUND_WINDOW_HOURS_DEFAULT,
@@ -60,6 +63,7 @@ export type ConciergeIntent =
   | { type: "listHomes" }
   | { type: "listParcels" }
   | { type: "selectHome"; homeId: string }
+  | { type: "selectBuilderHome"; home: BuilderOrderHomeChoice }
   | { type: "selectParcel"; parcelId: string }
   | { type: "requestQuote" }
   | { type: "placeDeposit" }
@@ -125,6 +129,8 @@ export function reduce(order: Order, intent: ConciergeIntent, ctx: ConciergeCont
       return handleListParcels(order, ctx);
     case "selectHome":
       return handleSelectHome(order, intent.homeId, ctx);
+    case "selectBuilderHome":
+      return handleSelectBuilderHome(order, intent.home, ctx);
     case "selectParcel":
       return handleSelectParcel(order, intent.parcelId, ctx);
     case "requestQuote":
@@ -296,6 +302,7 @@ function handleSelectHome(order: Order, homeId: string, ctx: ConciergeContext): 
   let next: Order = {
     ...order,
     home: {
+      kind: "catalog",
       catalogId: home.id,
       name: home.name,
       sizeSqft: home.sizeSqft,
@@ -322,6 +329,72 @@ function handleSelectHome(order: Order, homeId: string, ctx: ConciergeContext): 
       `Now, where will it sit? The district bylaw decides whether this ` +
       `${home.sizeSqft.toLocaleString("en-CA")} sqft design is legal BEFORE you fall for a parcel — ` +
       `ask me to list parcels.`,
+    actions: [{ type: "disableBuy", reason: "No parcel selected — the land gate runs first." }],
+  };
+}
+
+function handleSelectBuilderHome(
+  order: Order,
+  home: BuilderOrderHomeChoice,
+  ctx: ConciergeContext,
+): ReduceResult {
+  if (committed(order)) return alreadyCommitted(order);
+  if (
+    home.kind !== "builder" ||
+    !home.projectId ||
+    !/^0x[0-9a-f]{64}$/.test(home.documentHash) ||
+    !home.artifactHashes ||
+    home.documentHash !== home.artifactHashes.designDocument ||
+    !home.designSummary ||
+    !home.quoteBasis ||
+    !Array.isArray(home.quoteBasis.assumptions) ||
+    !Array.isArray(home.quoteBasis.exclusions) ||
+    !Number.isFinite(home.sizeSqft) ||
+    home.sizeSqft <= 0
+  ) {
+    return unchanged(
+      order,
+      "That builder handoff is incomplete or its design hash does not match. Re-open the design in the builder and continue again; no order was changed.",
+    );
+  }
+
+  const choice: BuilderOrderHomeChoice = {
+    ...home,
+    designSummary: { ...home.designSummary },
+    artifactHashes: {
+      ...home.artifactHashes,
+      exports: home.artifactHashes.exports ? { ...home.artifactHashes.exports } : undefined,
+    },
+    quoteBasis: {
+      ...home.quoteBasis,
+      assumptions: [...home.quoteBasis.assumptions],
+      exclusions: [...home.quoteBasis.exclusions],
+    },
+  };
+  let next: Order = {
+    ...order,
+    home: choice,
+    desiredSizeSqft: choice.sizeSqft,
+    quote: undefined,
+  };
+  next = withEvent(
+    next,
+    ctx.now,
+    "homeSelected",
+    `Builder design selected: ${choice.name} (${choice.sizeSqft} sqft; ${choice.documentHash}).`,
+  );
+
+  if (next.parcel) {
+    return evaluateParcel(next, next.parcel.listing, ctx, "re-checked for the builder design");
+  }
+
+  next = { ...next, status: deriveCheckpointStatus(next) };
+  return {
+    order: next,
+    reply:
+      `${choice.name} is bound to this order at design hash ${choice.documentHash}. ` +
+      `Aura will estimate it from the open Alberta cost model; the result is not a supplier or manufacturing promise. ` +
+      `First choose land so the district gate can check the ${choice.sizeSqft.toLocaleString("en-CA")} sqft design.`,
     actions: [{ type: "disableBuy", reason: "No parcel selected — the land gate runs first." }],
   };
 }
@@ -434,7 +507,8 @@ export function buildRefusal(order: Order, choice: ParcelChoice, ctx: ConciergeC
     .join("\n");
 
   // Constructive arm 2: catalog homes big enough for THIS district.
-  const biggerHomes = CATALOG.filter((h) => h.sizeSqft >= min && h.id !== order.home?.catalogId);
+  const selectedCatalogId = order.home?.kind === "catalog" ? order.home.catalogId : undefined;
+  const biggerHomes = CATALOG.filter((h) => h.sizeSqft >= min && h.id !== selectedCatalogId);
   const homeLines = biggerHomes
     .map((h) => `     - ${h.name} — ${h.sizeSqft.toLocaleString("en-CA")} sqft, clears the ${min.toLocaleString("en-CA")} sqft minimum`)
     .join("\n");
@@ -460,6 +534,36 @@ export function buildRefusal(order: Order, choice: ParcelChoice, ctx: ConciergeC
 
 // ---------------------------------------------------------------- quote
 
+function homeForQuote(
+  choice: OrderHomeChoice,
+  ctx: ConciergeContext,
+): CatalogHome | undefined {
+  if (choice.kind === "catalog") return findHome(choice.catalogId);
+  return {
+    id: `builder:${choice.projectId}`,
+    name: choice.name,
+    tagline: "A builder design handed to the Aura concierge at an immutable document hash.",
+    sizeSqft: choice.sizeSqft,
+    storeys: choice.designSummary.storeys,
+    bedrooms: ctx.questionnaire.home.bedrooms,
+    bathrooms: ctx.questionnaire.home.bathrooms,
+    fulfillment: "sip-site-built",
+    pricing: {
+      kind: "costModel",
+      basis:
+        `${choice.quoteBasis.source}. Room programme and systems remain the base Alberta ` +
+        "estimate assumptions until confirmed in concierge; the design hash fixes geometry, not supplier prices.",
+    },
+    included: [
+      "LOW/MID/HIGH estimate from the open Alberta cost model",
+      "Immutable builder document identity carried into the quote",
+    ],
+    notIncluded: [...choice.quoteBasis.exclusions],
+    leadTime:
+      "No lead time is promised by this estimate. Supplier lead times begin only after reviewed drawings and accepted supplier quotes.",
+  };
+}
+
 function handleRequestQuote(order: Order, ctx: ConciergeContext): ReduceResult {
   if (committed(order)) return alreadyCommitted(order); // re-quoting while "quoted" is allowed
   if (!order.home) {
@@ -477,8 +581,11 @@ function handleRequestQuote(order: Order, ctx: ConciergeContext): ReduceResult {
     );
   }
 
-  const home = findHome(order.home.catalogId);
-  if (!home) return unchanged(order, `Catalog home ${order.home.catalogId} not found.`);
+  const home = homeForQuote(order.home, ctx);
+  if (!home) {
+    const id = order.home.kind === "catalog" ? order.home.catalogId : order.home.projectId;
+    return unchanged(order, `Selected home ${id} was not found.`);
+  }
 
   const quote = buildQuote(order, home, ctx);
   let next: Order = { ...order, quote };
@@ -501,12 +608,31 @@ function handleRequestQuote(order: Order, ctx: ConciergeContext): ReduceResult {
 
 function buildQuote(order: Order, home: CatalogHome, ctx: ConciergeContext): OrderQuote {
   const refundWindowHours = ctx.refundWindowHours ?? REFUND_WINDOW_HOURS_DEFAULT;
+  const validUntil = new Date(ctx.now.getTime() + QUOTE_VALIDITY_DAYS * 86_400_000).toISOString();
+  const selected = order.home;
+  const basis =
+    selected?.kind === "builder"
+      ? selected.quoteBasis
+      : {
+          kind: home.pricing.kind === "published" ? "published-price" as const : "estimate" as const,
+          jurisdiction: "Alberta, Canada",
+          source:
+            home.pricing.kind === "published"
+              ? home.pricing.basis
+              : "data/alberta/cost-model.json",
+          currency: home.pricing.kind === "published" ? "USD" as const : "CAD" as const,
+          exclusions: [...home.notIncluded],
+          assumptions: [home.pricing.basis],
+        };
   const common = {
     refundWindowHours,
     fxUsdPerCad: DEMO_USD_PER_CAD,
     network: X_LAYER_TESTNET,
     usdcAsset: NATIVE_USDC_TESTNET,
     generatedAtISO: ctx.now.toISOString(),
+    validUntilISO: validUntil,
+    designHash: selected?.kind === "builder" ? selected.documentHash : undefined,
+    basis,
   };
 
   if (home.pricing.kind === "published") {
@@ -598,6 +724,8 @@ function renderQuoteReply(order: Order, home: CatalogHome, quote: OrderQuote): s
     `  Reservation deposit (escrow milestone 0): ${fmtCad(quote.depositCad)} ≈ ${fmtUsd(quote.depositUsd)} = ` +
       `${fmtUsdc6(quote.depositUsdc6)} (native USDC, ${quote.network}; demo rate US$${quote.fxUsdPerCad}/CA$1, not an oracle).`,
     `  Cooling-off: a ${quote.refundWindowHours}-hour refund window you alone control, enforced by the contract.`,
+    `  Quote basis: ${quote.basis.kind} from ${quote.basis.source}; valid until ${quote.validUntilISO}.`,
+    `  Exclusions: ${quote.basis.exclusions.join("; ") || "none stated"}.`,
     `Say "place the deposit" when ready.`
   );
   return lines.join("\n");
@@ -612,6 +740,26 @@ function handlePlaceDeposit(order: Order, ctx: ConciergeContext): ReduceResult {
       order,
       "No live quote to fund. The path is: home + passing parcel -> quote -> deposit.",
       [{ type: "disableBuy", reason: "Deposit requires an issued quote." }]
+    );
+  }
+  if (
+    order.home?.kind === "builder" &&
+    order.quote.designHash !== order.home.documentHash
+  ) {
+    return unchanged(
+      order,
+      "This quote belongs to a different version of the builder design. Re-quote the current design before approving USDC; no payment action was created.",
+      [{ type: "disableBuy", reason: "The builder design changed after this quote." }],
+    );
+  }
+  const validUntilMs = Date.parse(order.quote.validUntilISO);
+  if (!Number.isFinite(validUntilMs) || ctx.now.getTime() > validUntilMs) {
+    return unchanged(
+      order,
+      Number.isFinite(validUntilMs)
+        ? `This estimate expired at ${order.quote.validUntilISO}. Request a fresh quote before approving USDC; no payment action was created.`
+        : "This legacy quote has no valid expiry. Request a fresh quote before approving USDC; no payment action was created.",
+      [{ type: "disableBuy", reason: "The quote has expired." }],
     );
   }
   const q = order.quote;
