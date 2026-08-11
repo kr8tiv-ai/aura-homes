@@ -164,9 +164,11 @@ export default function RoutePlan({
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-aura-text/75">
           {settles ? (
             <>
-              {provider.name} names {settles} among the assets it takes, and {settles} is the only
-              asset a verified route reaches from X Layer in one hop. So the plan is three legs:
-              get onto X Layer, convert, then send it yourself. Aura runs none of them.
+              {provider.name} names {settles} among the assets it takes, and {settles} is what the
+              one live-verified X Layer hop actually settles into. Meson lists 44 other chains, but
+              the Bitcoin leg is the one that was checked against its relayer API in this sweep, so
+              it is the one drawn here. Three legs: get onto X Layer, convert, then send it
+              yourself. Aura runs none of them.
             </>
           ) : (
             <>

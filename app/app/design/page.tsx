@@ -534,6 +534,9 @@ export default function DesignPage() {
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-aura-text/70">
               Packing the room program into an envelope, clustering the wet rooms onto a shared
               plumbing wall, checking glazing against the 22% FDWR ceiling, then drawing the plan.
+              {land === "have"
+                ? " Then measuring the solved footprint against the buildable envelope your setbacks leave, and checking which way the glazing wall ends up pointing."
+                : ""}{" "}
               The geometry is deterministic, so this is the same answer every time for the same
               brief.
             </p>

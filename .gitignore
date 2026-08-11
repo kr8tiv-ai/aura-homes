@@ -23,7 +23,13 @@ Thumbs.db
 .idea/
 .vscode/
 *.code-workspace
-build/
+# Root-anchored ON PURPOSE. This was an unanchored `build/` from the GSD
+# baseline, which matches a directory named "build" at ANY depth — and that
+# silently excluded app/app/build/, the entire parametric home-builder route.
+# The page worked locally and would simply never have reached the repo.
+# If a compiled-output directory ever appears deeper in the tree, ignore it by
+# its own path rather than by re-broadening this one.
+/build/
 __pycache__/
 *.pyc
 .venv/

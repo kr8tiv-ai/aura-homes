@@ -94,8 +94,20 @@ design page posts the questionnaire and renders `artifacts.svg_url` inline with
 
 ## Not yet done
 
-- The page-level wiring in `app/app/design/page.tsx` — that file is being
-  edited by the concurrent build session; the client module is ready for it.
+- ~~The page-level wiring in `app/app/design/page.tsx`~~ — **done.** And more
+  than done: the deterministic half of this service is now ported to
+  TypeScript in `app/lib/design/` and runs **in the browser**, so the design
+  step works with no service at all. This service became the optional upgrade
+  that adds an LLM-authored room program, AI renders, and PDF/DXF export.
 - ResPlan-derived proportion priors (currently arithmetic shares).
-- `@thatopen/components` for the plan ↔ 3D toggle and in-browser DXF, which
-  the research recommends adopting (MIT, Three.js-native).
+- `@thatopen/components` for the plan ↔ 3D toggle and in-browser DXF.
+
+  **Licence correction (Aug 2026).** This line previously read "(MIT,
+  Three.js-native)". `@thatopen/components` is indeed MIT — but the thing that
+  actually authors and reads IFC underneath it, **`web-ifc`, is MPL-2.0**, and
+  quoting only the wrapper's licence is exactly the kind of convenient
+  half-truth the licence tripwire above exists to catch. MPL-2.0 is file-level
+  copyleft: usable in an MIT project, but it needs a NOTICE entry and it is not
+  the "no strings" adoption the old sentence implied. Verified in a browser
+  during the Aug 2026 engine sweep — see
+  [`docs/research/BUILDER-ENGINE.md`](../docs/research/BUILDER-ENGINE.md).

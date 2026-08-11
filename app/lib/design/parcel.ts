@@ -352,10 +352,13 @@ function placementFor(
 
   return {
     id,
+    /* Written as a noun phrase so it reads correctly in all three places it
+       is used: "with the {label}", "the other placement — {label} —", and
+       "{label} — needs ...". */
     label:
       id === "along_frontage"
         ? "long wall parallel to the front lot line"
-        : "turned ninety degrees, long wall running front to back",
+        : "long wall running front to back, ninety degrees to the street",
     acrossFt,
     alongFt,
     fits,
@@ -491,10 +494,12 @@ function envelopeFinding(
   const bust = (p: Placement): string => {
     const parts: string[] = [];
     if (p.acrossFt > env.widthFt + EPS)
-      parts.push(`needs ${ft(p.acrossFt)} across the frontage and has ${ft(env.widthFt)}`);
+      parts.push(
+        `needs ${ft(p.acrossFt)} across the frontage where there is ${ft(env.widthFt)}`
+      );
     if (p.alongFt > env.depthFt + EPS)
-      parts.push(`needs ${ft(p.alongFt)} front to back and has ${ft(env.depthFt)}`);
-    return `${p.label} — ${parts.join("; ")}`;
+      parts.push(`needs ${ft(p.alongFt)} front to back where there is ${ft(env.depthFt)}`);
+    return `with the ${p.label} it ${parts.join(", and ")}`;
   };
 
   const remedy =
@@ -542,7 +547,7 @@ function envelopeFinding(
     detail:
       `The buildable envelope derived from your numbers is ${envLine}. The solved ` +
       `footprint is ${homeLine}, and it does not go in either way round: ` +
-      `${placements.map(bust).join(". ")}.${remedy} Nothing above has been ` +
+      `${placements.map(bust).join("; ")}.${remedy} Nothing above has been ` +
       `resized for you — the drawing is still the home you asked for.`,
     figures,
   };
@@ -603,9 +608,14 @@ function solarFinding(
   placements: Placement[],
   anyFits: boolean
 ): ParcelFinding {
-  const preamble = anyFits
+  /* When nothing fits yet, the orientation is still a true fact about the
+     lot — it is just not the headline. The lead-in carries that, and the
+     sentence after it stays lower-case so the join reads as one sentence. */
+  const sited = anyFits
     ? ""
-    : "Once the footprint fits, the orientation is already decided by the lot: ";
+    : "Once the footprint fits, the lot has already decided the orientation: ";
+  const Cap = (s: string): string =>
+    sited === "" ? s.charAt(0).toUpperCase() + s.slice(1) : sited + s;
 
   if (parcel.frontFaces === "unknown" || !chosen || chosen.offSouthDeg === null) {
     return {
@@ -658,7 +668,7 @@ function solarFinding(
           ? "Solar orientation — the glazing wall can face due south"
           : `Solar orientation — the glazing wall lands ${one(off)}° off south`,
       detail:
-        `${preamble}With the ${chosen.label}, the long glazing wall faces ${facing}` +
+        Cap(`with the ${chosen.label}, the long glazing wall faces ${facing}`) +
         (off < EPS ? "" : `, ${one(off)}° off due south`) +
         `. That is inside the roughly ${SOLAR_WINDOW_DEG}-degree window passive-solar ` +
         `design works in, so the spec's south glazing lands where it is supposed to on ` +
@@ -685,7 +695,7 @@ function solarFinding(
     severity: "caution",
     title: `Solar orientation — the glazing wall lands ${one(off)}° off south`,
     detail:
-      `${preamble}Square to your lot lines, the best either placement can do is a long ` +
+      Cap(`square to your lot lines, the best either placement can do is a long `) +
       `glazing wall facing ${facing} — ${one(off)}° off due south, outside the roughly ` +
       `${SOLAR_WINDOW_DEG}-degree window passive-solar design works in. What it costs: ` +
       `the winter gain the glass wall is there to collect drops and shifts to one end of ` +

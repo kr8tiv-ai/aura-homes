@@ -141,9 +141,10 @@ export const reachLabel: Record<Reach, string> = {
 /* THE ROUTE MODEL, and the one honest fact it is built on:
    NOT ONE of the seven verified providers names USDC. Six of seven name
    BTC. So a buyer holding USDC on X Layer always has a conversion leg,
-   and BTC is the only asset a verified route can actually deliver into
-   from X Layer in one hop (Meson, live-verified against its relayer API).
-   That is why the plan below is three legs and not one. */
+   and the X Layer -> native BTC hop is the one that was live-verified
+   against Meson's own relayer API. Meson lists 44 other chains; they were
+   not checked, so they are not offered here as routes. That is why the
+   plan below is three legs and not one. */
 
 export const ENTRY_ROUTE_IDS = [
   "okx-dex-bridge",

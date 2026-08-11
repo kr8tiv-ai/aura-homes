@@ -147,7 +147,7 @@ export default function ParcelFindings({
               {rest.map((f) => (
                 <div key={f.id} className={`rounded-md border p-5 ${SEVERITY_BORDER[f.severity]}`}>
                   <div className="flex flex-wrap items-baseline justify-between gap-3">
-                    <p className={`text-sm leading-snug text-aura-text`}>{f.title}</p>
+                    <p className="text-sm leading-snug text-aura-text">{f.title}</p>
                     <span
                       className={`font-mono text-[0.6rem] uppercase tracking-label ${
                         SEVERITY_INK[f.severity]

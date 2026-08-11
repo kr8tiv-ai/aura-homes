@@ -22,6 +22,7 @@ const NAV = [
   { href: "/concierge", label: "Concierge" },
   { href: "/land", label: "Land" },
   { href: "/design", label: "Design" },
+  { href: "/build", label: "Build" },
   { href: "/budget", label: "Budget" },
   { href: "/buy", label: "Buy" },
   { href: "/escrow", label: "Escrow" },

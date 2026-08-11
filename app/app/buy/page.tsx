@@ -7,10 +7,11 @@
    on X Layer to their hands.
 
    Every provider on this page was fetched, not searched. Every one of
-   them carries the caveat that came back with it, including the two that
-   are barely usable and the one whose acceptance page is twelve years
-   old. Aura facilitates; it is not the seller, and it has no relationship
-   with any company named here.
+   them carries the caveat that came back with it — including the one
+   whose acceptance page is twelve years old, the one whose only working
+   payment path is a $45 hoodie, and the one that has never named a coin.
+   Aura facilitates; it is not the seller, and it has no relationship with
+   any company named here.
 --------------------------------------------------------------------- */
 
 import Link from "next/link";
@@ -21,7 +22,7 @@ import BuyDirectory from "@/components/buy/BuyDirectory";
 export const metadata = {
   title: "Buy an eco home with crypto — Aura Homes",
   description:
-    "Seven verified providers that accept crypto for homes, thirteen refuted leads, and the hop-by-hop route from USDC on X Layer to what they actually take. Aura facilitates; it does not sell.",
+    "Seven providers verified to take crypto for homes or buildings, thirteen leads refuted, and the hop-by-hop route from USDC on X Layer to what each provider actually accepts. Aura facilitates; it does not sell.",
 };
 
 export default function BuyPage() {
