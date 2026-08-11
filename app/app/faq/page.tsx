@@ -38,7 +38,7 @@ const faqs = [
   },
   {
     q: "Is there a token?",
-    a: "It has a name: HOMES, and it will launch on X Layer as part of the phased rollout. Its utility is deliberately undecided and will be announced as a phase of its own — and nothing launches before Canadian securities counsel. There is no token in the hackathon build.",
+    a: "It has a name: HOMES, and it launches on X Layer as part of the phased rollout. Its utility is deliberately undecided and will be announced as a phase of its own — the token follows the product rather than leading it, and the conditions are public in the repo.",
   },
   {
     q: "Where does it start?",

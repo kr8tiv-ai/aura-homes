@@ -1707,3 +1707,180 @@ html.story-gated body { overflow: hidden; }
     transition: none;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   THE SCENE LOADER — components/story/Loader.tsx
+
+   A visitor who clicks Enter early gets the gate out of the way and then a
+   couple of seconds of empty world while three.js fetches six models and
+   builds the terrain. This is the thing that tells them the site is
+   working. It is deliberately an instrument readout, not a splash: an
+   A-frame drawn in the site's own emerald mark colour, mono tracked caps,
+   the same hairline / translucent-paper / 2px-square treatment as the HUD
+   pills so it reads as part of the chrome rather than an interruption.
+
+   PLACEMENT. Bottom-right, stacked directly above the HUD. The hero is a
+   full-height paper column pinned to the LEFT (min 26rem wide), so a
+   centred badge would land on the h1; the rail owns both mid-height
+   gutters; bottom-right is the one corner that is world at every viewport
+   and is empty until the HUD pills at 1.1rem. z-index 12 puts it over the
+   copy plates (3) and the card tracer (10) and under the header (20), the
+   HUD (40) and the gate (60) — so while the gate is still up it is covered
+   by it, and the two never talk over each other.
+
+   COLOUR. Tokens only, no literal hex or rgba anywhere in this block: the
+   site has a real night mode driven from :root[data-theme], and a
+   hard-coded colour here would not flip with it.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.aura-loader {
+  position: fixed;
+  right: 1.1rem;
+  bottom: 3.4rem;
+  z-index: 12;
+  /* never eats a click meant for the world behind it */
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.5rem 0.85rem 0.5rem 0.6rem;
+  border: 1px solid var(--st-hair);
+  border-radius: 2px; /* square — the gate/HUD button call */
+  background: rgb(var(--tone-base) / 0.86);
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
+  box-shadow: var(--shadow-1);
+  /* Hidden by default and revealed by .is-on, rather than mounted already
+     visible: keeping the node in the tree is what lets the fade run in BOTH
+     directions off one transition. visibility is delayed out and instant in
+     so a hidden loader is neither painted nor announced. */
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.42s var(--ease-fluid-decel),
+    visibility 0s linear 0.42s;
+}
+.aura-loader.is-on {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 0.42s var(--ease-fluid-decel),
+    visibility 0s linear 0s;
+}
+
+/* ---- the mark: an A-frame that gets built ---- */
+.aura-loader-mark {
+  display: block;
+  overflow: visible;
+  fill: none;
+}
+/* the plot and the frame we are aiming at — present from the first frame so
+   the shape is legible even at 0% */
+.aura-loader-plot,
+.aura-loader-ghost {
+  fill: none;
+  stroke: var(--st-hair);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* the window: outlined from the start, lit only when the scene really is up */
+.aura-loader-win {
+  stroke: var(--st-hair);
+  stroke-width: 1.2;
+  fill: var(--st-emerald);
+  fill-opacity: 0;
+  transition:
+    fill-opacity 0.34s var(--ease-fluid-decel),
+    stroke 0.34s var(--ease-fluid-decel);
+}
+.aura-loader.is-lit .aura-loader-win {
+  fill-opacity: 1;
+  stroke: var(--st-emerald);
+}
+/* the frame as actually built. pathLength="1" is set on the element, so the
+   dash array is a plain fraction and the offset IS the load fraction — the
+   transition only smooths BETWEEN two real measurements, it never advances
+   the line on its own. */
+.aura-loader-frame {
+  fill: none;
+  stroke: var(--st-emerald);
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: stroke-dashoffset 0.35s var(--ease-fluid-decel);
+}
+
+/* Indeterminate = we genuinely do not know the fraction (nothing registered
+   yet, or the fetch is done and the untracked build is still running). It
+   breathes rather than spins, and the numeric readout goes to an em dash. */
+@keyframes aura-loader-breathe {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.aura-loader.is-indeterminate .aura-loader-mark {
+  animation: aura-loader-breathe 1.7s var(--ease-fluid-decel) infinite alternate;
+}
+
+/* ---- the readout ---- */
+.aura-loader-txt {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.aura-loader-label {
+  font-family: var(--st-mono-font);
+  font-size: 0.56rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--st-ink-dim);
+}
+.aura-loader-pct {
+  font-family: var(--st-mono-font);
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  color: var(--st-emerald-deep);
+  /* tabular so the number does not jitter the badge as it counts */
+  font-variant-numeric: tabular-nums slashed-zero;
+}
+/* the visible readout is aria-hidden; THIS is what the live region says, and
+   it only changes in quarters so a polite announcer is not flooded */
+.aura-loader-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .aura-loader {
+    right: 0.6rem;
+    bottom: 2.7rem; /* clears the shorter mobile HUD */
+    gap: 0.55rem;
+    padding: 0.42rem 0.65rem 0.42rem 0.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* no breathing, no drawing — the frame snaps between real values and the
+     label carries the state. The opacity fade stays: it moves nothing. */
+  .aura-loader.is-indeterminate .aura-loader-mark {
+    animation: none;
+    opacity: 0.7;
+  }
+  .aura-loader-frame,
+  .aura-loader-win {
+    transition: none;
+  }
+}

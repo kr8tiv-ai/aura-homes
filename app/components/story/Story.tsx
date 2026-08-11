@@ -191,6 +191,39 @@ export default function Story() {
     return () => window.clearTimeout(t);
   }, [bootCanvas]);
 
+  /* DOWNLOAD EARLY, MOUNT LATE — the two used to be the same timer, and that
+     is most of the "couple of seconds" before the 3D appears.
+
+     StoryCanvas is next/dynamic, and next/dynamic does not REQUEST its chunk
+     until the component first renders. Because it only renders once
+     canvasBoot flips, the three.js + drei + postprocessing bundle and all six
+     GLBs (~590 KB) sat unrequested for the full 1600 ms hold — and a visitor
+     who clicked Enter immediately started that download from zero while
+     staring at an empty world.
+
+     The hold exists so the gate film's opening streams clean, and it still
+     does: the MOUNT is untouched. Only the FETCH moves earlier, to 700 ms,
+     by which point the film has its opening buffered. Warming on pointer or
+     focus too, because reaching for the gate is the strongest possible
+     signal that the scene is about to be needed. Repeat calls are free —
+     webpack resolves an already-loaded chunk from cache. */
+  useEffect(() => {
+    let warmed = false;
+    const warm = () => {
+      if (warmed) return;
+      warmed = true;
+      void import("./StoryCanvas");
+    };
+    const t = window.setTimeout(warm, 700);
+    window.addEventListener("pointerdown", warm, { once: true, passive: true });
+    window.addEventListener("keydown", warm, { once: true });
+    return () => {
+      window.clearTimeout(t);
+      window.removeEventListener("pointerdown", warm);
+      window.removeEventListener("keydown", warm);
+    };
+  }, []);
+
   /* The gate's click is the audio gesture. Entering silently still enters —
      the sound button in the HUD stays available either way. */
   const handleEnter = useCallback(

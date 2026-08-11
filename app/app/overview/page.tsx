@@ -27,7 +27,7 @@ const arcs = [
     name: "The HOMES token",
     line: "A token named HOMES will launch on X Layer as part of the phased rollout.",
     detail:
-      "Its utility is deliberately undecided and will be announced as a phase of its own. There is no token in the hackathon build, and nothing launches before Canadian securities counsel — the research and the exact conditions are public in the repo.",
+      "Its utility is deliberately undecided and will be announced as a phase of its own — the token follows the product rather than leading it. The research and the exact conditions are public in the repo.",
   },
 ] as const;
 
