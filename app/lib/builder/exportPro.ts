@@ -86,6 +86,17 @@ import {
   type WorldOpening,
   type WorldWall,
 } from "./drawings/model";
+import {
+  COMFORT_DISCLAIMER,
+  DEFAULT_SETTINGS,
+  NEUTRAL_BAND,
+  SPACE_USE_LABEL,
+  SPMV_METHOD_NOTE,
+  TARGET_PROVENANCE,
+  VAPOUR_UNIT_NOTE,
+  comfortReport,
+  type ComfortReport,
+} from "./comfort";
 import { fmtFt, fmtFtFrac, fmtG, pyRound, riseOver12, sqFt, wrap } from "./drawings/kit";
 import { EXPORT_DISCLAIMER, FEET_TO_METRES, exportFilename, type ExportArtifact } from "./exportSpec";
 import type { HomeSpec, RoofForm } from "./spec";
@@ -1659,6 +1670,16 @@ export interface IfcOptions {
   includePiles?: boolean;
   /** Write the deck and hot tub. Default true. */
   includeDeck?: boolean;
+  /**
+   * The owner's comfort targets and the design conditions behind them —
+   * `lib/builder/comfort.ts`'s report.
+   *
+   * OMITTED derives the defaults from the spec, so a caller that has never
+   * heard of comfort still writes the intent baseline into the file. `null`
+   * writes no comfort at all, which is the only way back to the pre-comfort
+   * file byte for byte.
+   */
+  comfort?: ComfortReport | null;
 }
 
 /* --------------------------------------------------- geometry scratchpad */
@@ -1693,6 +1714,8 @@ export function homeToIfc(spec: HomeSpec, options: IfcOptions): string {
   const guids = new GuidPool();
   const includePiles = options.includePiles ?? true;
   const includeDeck = options.includeDeck ?? true;
+  const comfort =
+    options.comfort === undefined ? comfortReport(spec, DEFAULT_SETTINGS) : options.comfort;
 
   /* ---- the timestamp, derived from the parameter and never from a clock */
   const parsed = Date.parse(options.dateISO);
@@ -1729,7 +1752,16 @@ export function homeToIfc(spec: HomeSpec, options: IfcOptions): string {
   const unitM2 = s.add("IFCSIUNIT", [DERIVED, E("AREAUNIT"), NUL, E("SQUARE_METRE")]);
   const unitM3 = s.add("IFCSIUNIT", [DERIVED, E("VOLUMEUNIT"), NUL, E("CUBIC_METRE")]);
   const unitRad = s.add("IFCSIUNIT", [DERIVED, E("PLANEANGLEUNIT"), NUL, E("RADIAN")]);
-  const units = s.add("IFCUNITASSIGNMENT", [L([unitM, unitM2, unitM3, unitRad])]);
+  /* Declared rather than left to the default, and the reason is not tidiness:
+     IFC's default thermodynamic temperature unit is the KELVIN, so a
+     Pset_SpaceThermalRequirements value of 21 in a file that never says
+     otherwise means 21 K. DEGREE_CELSIUS is an IfcSIUnitName, so the owner's
+     own numbers travel unconverted. Same story for LUX. */
+  const unitC = s.add("IFCSIUNIT", [DERIVED, E("THERMODYNAMICTEMPERATUREUNIT"), NUL, E("DEGREE_CELSIUS")]);
+  const unitLux = s.add("IFCSIUNIT", [DERIVED, E("ILLUMINANCEUNIT"), NUL, E("LUX")]);
+  const units = s.add("IFCUNITASSIGNMENT", [
+    L([unitM, unitM2, unitM3, unitRad, unitC, unitLux]),
+  ]);
 
   /* ---- representation contexts --------------------------------------- */
   const originPt = s.add("IFCCARTESIANPOINT", [L([R(0), R(0), R(0)])]);
@@ -2575,6 +2607,202 @@ export function homeToIfc(spec: HomeSpec, options: IfcOptions): string {
     ]);
   attach("rel:pset:aura", [building], auraPset);
 
+  /* ---- comfort: the owner's stated intent, on IfcSpaces -----------------
+
+     THE ONLY SPACES IN THIS FILE, AND THEY CARRY NO GEOMETRY. That is the
+     honest shape of the thing rather than a shortcut. A comfort target
+     belongs to a ROOM; the rooms come from the deterministic plan engine,
+     which solves ONE rectangle sized from total floor area and knows nothing
+     about where the modelled volumes are. Giving a solved room a placement
+     inside a modelled mass would be a coordinate this tool has not earned,
+     and a recipient could quite reasonably build to it.
+
+     `ObjectPlacement` and `Representation` are both OPTIONAL on IfcProduct,
+     so leaving them null is the schema's own way of saying "semantic, not
+     located" — and the Description on every space says it in words as well,
+     because nobody reads a null.
+
+     PROPERTY NAMES follow IFC4's `Pset_SpaceThermalRequirements` and
+     `Pset_SpaceLightingRequirements` templates. This build has NOT validated
+     those names against a published buildingSMART template or IDS file: a
+     name a template does not define is still a legal IfcPropertySingleValue,
+     it simply will not land in a receiving tool's built-in field. Everything
+     Aura-specific stays in the `Aura_*` sets where it cannot be mistaken for
+     a standard property. */
+  const tempProp = (name: string, degC: number): string =>
+    s.add("IFCPROPERTYSINGLEVALUE", [
+      S(name),
+      NUL,
+      `IFCTHERMODYNAMICTEMPERATUREMEASURE(${R(degC)})`,
+      NUL,
+    ]);
+  const ratioProp = (name: string, ratio: number): string =>
+    s.add("IFCPROPERTYSINGLEVALUE", [S(name), NUL, `IFCRATIOMEASURE(${R(ratio)})`, NUL]);
+  const illuminanceProp = (name: string, lux: number): string =>
+    s.add("IFCPROPERTYSINGLEVALUE", [S(name), NUL, `IFCILLUMINANCEMEASURE(${R(lux)})`, NUL]);
+  const realProp = (name: string, value: number): string =>
+    s.add("IFCPROPERTYSINGLEVALUE", [S(name), NUL, `IFCREAL(${R(value)})`, NUL]);
+
+  if (comfort && comfort.rooms.length > 0) {
+    const comfortSpaces: string[] = [];
+    const c = comfort.conditions;
+
+    for (const rc of comfort.rooms) {
+      const t = rc.target;
+      const space = s.add("IFCSPACE", [
+        guids.take(`space:comfort:${rc.room.id}`),
+        owner,
+        /* Name is the room CODE, LongName the human name — IFC's own intent
+           for the two attributes. */
+        S(rc.room.id),
+        S(
+          "A room solved by the Aura plan engine, carried so the owner's comfort targets have a space to hang on. It has NO placement and NO geometry on purpose: the plan engine solves one rectangle sized from total floor area rather than the modelled volumes, so this room's position in the building is unknown and has not been invented.",
+        ),
+        NUL,
+        NUL,
+        NUL,
+        S(rc.room.name),
+        E("ELEMENT"),
+        E("SPACE"),
+        NUL,
+      ]);
+      comfortSpaces.push(space);
+
+      attach(`rel:pset:thermal:${rc.room.id}`, [space], () =>
+        s.add("IFCPROPERTYSET", [
+          guids.take(`pset:thermal:${rc.room.id}`),
+          owner,
+          S("Pset_SpaceThermalRequirements"),
+          S(
+            `The owner's stated comfort target for this room. Temperatures are degrees Celsius, declared on the project's unit assignment. Humidity is an IfcRatioMeasure written as a FRACTION — 0.35 is 35 %RH — and repeated as a percentage in Aura_ComfortTarget. ${TARGET_PROVENANCE}`,
+          ),
+          L([
+            tempProp("SpaceTemperatureMin", Math.min(t.winterMinC, t.summerMinC)),
+            tempProp("SpaceTemperatureMax", Math.max(t.winterMaxC, t.summerMaxC)),
+            tempProp("SpaceTemperatureWinterMin", t.winterMinC),
+            tempProp("SpaceTemperatureWinterMax", t.winterMaxC),
+            tempProp("SpaceTemperatureSummerMin", t.summerMinC),
+            tempProp("SpaceTemperatureSummerMax", t.summerMaxC),
+            ratioProp("SpaceHumidityMin", t.humidityMinPct / 100),
+            ratioProp("SpaceHumidityMax", t.humidityMaxPct / 100),
+          ]),
+        ]),
+      );
+
+      attach(`rel:pset:lighting:${rc.room.id}`, [space], () =>
+        s.add("IFCPROPERTYSET", [
+          guids.take(`pset:lighting:${rc.room.id}`),
+          owner,
+          S("Pset_SpaceLightingRequirements"),
+          S(
+            "Minimum maintained illuminance the owner is asking of this room, in lux. It is a TARGET only: nothing in this file models daylight, glazing transmittance or a luminaire, so no illuminance has been calculated and none is claimed.",
+          ),
+          L([illuminanceProp("Illuminance", t.illuminanceMinLux)]),
+        ]),
+      );
+
+      attach(`rel:pset:comforttarget:${rc.room.id}`, [space], () =>
+        s.add("IFCPROPERTYSET", [
+          guids.take(`pset:comforttarget:${rc.room.id}`),
+          owner,
+          S("Aura_ComfortTarget"),
+          S("The same target in the units the owner typed, plus where it came from."),
+          L([
+            labelProp("RoomId", rc.room.id),
+            labelProp("RoomName", rc.room.name),
+            labelProp("SpaceUse", SPACE_USE_LABEL[rc.room.use]),
+            areaProp("SolvedArea", rc.room.areaSqFt),
+            realProp("WinterMinC", t.winterMinC),
+            realProp("WinterMaxC", t.winterMaxC),
+            realProp("SummerMinC", t.summerMinC),
+            realProp("SummerMaxC", t.summerMaxC),
+            realProp("RelativeHumidityMinPct", t.humidityMinPct),
+            realProp("RelativeHumidityMaxPct", t.humidityMaxPct),
+            realProp("IlluminanceMinLux", t.illuminanceMinLux),
+            boolProp("SetByOwner", !rc.targetIsDefault),
+            textProp(
+              "Provenance",
+              rc.targetIsDefault
+                ? TARGET_PROVENANCE
+                : "Set by the owner in the Aura builder's Comfort tab.",
+            ),
+          ]),
+        ]),
+      );
+
+      attach(`rel:pset:comforteval:${rc.room.id}`, [space], () =>
+        s.add("IFCPROPERTYSET", [
+          guids.take(`pset:comforteval:${rc.room.id}`),
+          owner,
+          S("Aura_ComfortEvaluation"),
+          S(`${COMFORT_DISCLAIMER} ${SPMV_METHOD_NOTE} ${VAPOUR_UNIT_NOTE}`),
+          L([
+            realProp("AssumedWinterTemperatureC", c.winterIndoorC),
+            realProp("AssumedWinterHumidityPct", c.winterRhPct),
+            realProp("AssumedSummerTemperatureC", c.summerIndoorC),
+            realProp("AssumedSummerHumidityPct", c.summerRhPct),
+            realProp("WinterVapourPressureKPa", rc.winter.terms.vapourKPa),
+            realProp("SummerVapourPressureKPa", rc.summer.terms.vapourKPa),
+            realProp("WinterSPmv", rc.winter.terms.value),
+            realProp("SummerSPmv", rc.summer.terms.value),
+            boolProp("WinterMeetsTarget", rc.winter.meets),
+            boolProp("SummerMeetsTarget", rc.summer.meets),
+            realProp("NeutralBand", NEUTRAL_BAND),
+            boolProp("ClothingCaseModelled", rc.modelled),
+            textProp(
+              "ModelNote",
+              rc.modelNote ??
+                "Evaluated with the living/active coefficient set, which is the set these coefficients were supplied as.",
+            ),
+          ]),
+        ]),
+      );
+    }
+
+    /* The spaces decompose the storey, which is IFC's own way of saying a
+       space is part of a level. They are deliberately NOT in the
+       IfcRelContainedInSpatialStructure below: that relationship is for
+       ELEMENTS, and a space is not one. */
+    s.add("IFCRELAGGREGATES", [
+      guids.take("agg:comfortspaces"),
+      owner,
+      S("StoreyContainer"),
+      NUL,
+      storey,
+      L(comfortSpaces),
+    ]);
+
+    /* One project-level statement, so a reviewer who opens the properties
+       palette on the PROJECT rather than on a room still meets the
+       disclaimer before the numbers. */
+    attach("rel:pset:comfortassumptions", [project], () =>
+      s.add("IFCPROPERTYSET", [
+        guids.take("pset:comfortassumptions"),
+        owner,
+        S("Aura_ComfortAssumptions"),
+        S(COMFORT_DISCLAIMER),
+        L([
+          realProp("AssumedWinterTemperatureC", c.winterIndoorC),
+          realProp("AssumedWinterHumidityPct", c.winterRhPct),
+          realProp("AssumedSummerTemperatureC", c.summerIndoorC),
+          realProp("AssumedSummerHumidityPct", c.summerRhPct),
+          realProp("SolvedRoomCount", comfort.rooms.length),
+          realProp("RoomsMeetingWinterTarget", comfort.winter.roomsMeeting),
+          realProp("RoomsMeetingSummerTarget", comfort.summer.roomsMeeting),
+          realProp("MeanWinterDeviation", comfort.winter.meanAbsDeviation),
+          realProp("MeanSummerDeviation", comfort.summer.meanAbsDeviation),
+          textProp("Method", SPMV_METHOD_NOTE),
+          textProp("VapourPressureUnit", VAPOUR_UNIT_NOTE),
+          textProp("TargetProvenance", TARGET_PROVENANCE),
+          textProp(
+            "SpacesAreUnlocated",
+            "The IfcSpaces carrying these targets have no placement and no geometry. They are the plan engine's solved rooms, and that engine solves one rectangle from total floor area rather than the modelled volumes — so their position in the building is unknown and has deliberately not been invented.",
+          ),
+        ]),
+      ]),
+    );
+  }
+
   /* ---- containment ----------------------------------------------------- */
   const contained = [
     ...standardWalls,
@@ -2767,6 +2995,7 @@ export const PRO_EXPORT_FORMATS: ReadonlyArray<ProExportFormat> = [
       "The openings genuinely void: the same wall meshed with and without opening subtraction differs by exactly the opening volume clipped to the wall thickness, to four decimal places.",
       "The ridge invariant survives the export: the tallest point of the built IFC equals `ridgeHeightFt(v)` to within 2 mm on all five roof forms, one and two storeys, rotated and not.",
       "The material layer thickness in the file equals `WALL_THICKNESS_MM[material]` exactly.",
+      "NOT RE-VALIDATED: the comfort IfcSpaces and their property sets were added AFTER that IfcOpenShell run and have not been through it. They are geometry-free IfcSpace entities decomposing the storey, carrying Pset_SpaceThermalRequirements, Pset_SpaceLightingRequirements and two Aura_* sets. Nothing above this line depends on them — every claim about walls, openings, ridges and layer thickness was made against a file whose geometry is unchanged by them.",
     ],
   },
 ];

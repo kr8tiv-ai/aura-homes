@@ -64,6 +64,7 @@ import {
   type VolumeSummary,
 } from "@/lib/builder/geometry";
 import { EXPORT_IGNORE } from "@/lib/builder/exportSpec";
+import type { ComfortPlate } from "@/lib/builder/comfort";
 import {
   materialForPart,
   type SurfaceId,
@@ -88,6 +89,26 @@ export interface ViewportSurfaces {
   /** false while the 2D plan is the visible view — the canvas is still
    *  mounted (it is the export root) but a click on it is not a pick. */
   enabled: boolean;
+}
+
+/* ------------------------------------------------------------ comfort layer
+
+   Everything the viewport needs to tint the solved rooms by comfort deviation.
+   Optional as a whole, and `null` is the OFF state: `BuilderApp` owns the
+   toggle and the toggle starts off, so the model reads as a house until
+   somebody asks it not to.
+
+   `conditions` is not decoration. A colour on screen with no assumption beside
+   it is exactly the thing `lib/builder/comfort.ts` exists to prevent, so the
+   legend cannot render without one and the prop is required. */
+
+export interface ViewportComfort {
+  /** room floor rectangles, already in the site frame — see `comfortPlates` */
+  plates: readonly ComfortPlate[];
+  /** the assumed temperature and humidity these colours were computed from */
+  conditions: string;
+  /** "Winter" / "Summer" — which set of assumptions is being shown */
+  seasonLabel: string;
 }
 
 /* ---------------------------------------------------------------- palette
@@ -149,6 +170,55 @@ const WORLD = {
     glow: 0.9,
   },
 } as const;
+
+/* --------------------------------------------------------- the heat ramp
+
+   Three-stop diverging ramp for the comfort overlay, and it is the ONLY new
+   palette in this file. It follows the same rule everything above it does:
+   three.js material colours live here as constants and never as a literal
+   inside a className or a style attribute.
+
+   THE VALUES ARE THE SITE'S OWN. Each stop is the hex the tonal ladder in
+   `app/globals.css` already resolves for that accent in that theme —
+   `--tone-teal-mark`, `--tone-emerald-bright` and `--tone-violet`. Mirroring
+   them rather than inventing three new colours is what lets the legend below
+   use the ordinary `bg-aura-*` utilities and still match the plates in the
+   scene: one palette, painted twice, by the two mechanisms each side of the
+   canvas boundary understands.
+
+   COLD to WARM, not GOOD to BAD. The ramp is signed — teal is a room the
+   index calls cool, violet is one it calls warm, emerald is neutral — because
+   "0.9 off" tells you nothing about which way to move the thermostat. */
+
+interface HeatStops {
+  cold: string;
+  neutral: string;
+  warm: string;
+}
+
+const HEAT: Record<Theme, HeatStops> = {
+  light: { cold: "#0d9488", neutral: "#10b981", warm: "#7c3aed" },
+  dark: { cold: "#2dd4bf", neutral: "#6ee7b7", warm: "#a78bfa" },
+};
+
+/** Where the ramp saturates. Beyond ±3 the seven-point scale has no more
+ *  words, so neither does the colour. */
+const HEAT_FULL_SCALE = 3;
+
+/** Finished floor in the site frame. `geometry.ts` places every volume's local
+ *  origin at "footprint centre, finished floor", and grade is BELOW it at
+ *  `GRADE_Y_FT` — so zero is the floor and the plates sit a hair above it. */
+const FINISHED_FLOOR_Y_FT = 0;
+const PLATE_LIFT_FT = 0.05;
+
+/** Signed sPMV to a colour on the ramp. Pure, and clamped at both ends. */
+function heatColor(sPmv: number, theme: Theme): THREE.Color {
+  const stops = HEAT[theme];
+  const v = Number.isFinite(sPmv) ? sPmv : 0;
+  const t = Math.min(1, Math.abs(v) / HEAT_FULL_SCALE);
+  const end = v < 0 ? stops.cold : stops.warm;
+  return new THREE.Color(stops.neutral).lerp(new THREE.Color(end), t);
+}
 
 /* ------------------------------------------------------------------ theme */
 
@@ -303,6 +373,67 @@ function SelectionPlate({
   );
 }
 
+/**
+ * The comfort heatmap: one plate per solved room, on the finished floor.
+ *
+ * THREE THINGS IT IS CAREFUL ABOUT, and they are the same three the rest of
+ * this file keeps:
+ *
+ * 1. IT IS A SIBLING OF THE EXPORT ROOT, never a child, and every mesh carries
+ *    `EXPORT_IGNORE`. A .glb of an Aura home does not contain a comfort study
+ *    any more than it contains the lawn or the selection glow.
+ * 2. IT OWNS ITS GEOMETRY THE WAY `Site` AND `SelectionPlate` DO — an inline
+ *    `planeGeometry`, built and freed by R3F. Rule 1 in the header is about
+ *    the BufferGeometries `BuilderApp` hands over; nothing here is one.
+ * 3. IT DOES NOT LIGHT. `meshBasicMaterial`, so a plate reads as the same
+ *    colour at midnight as at noon — a heatmap that changed hue with the sun
+ *    slider would be a heatmap you could not read.
+ *
+ * IT IS AN X-RAY, AND THAT IS THE ONLY WAY IT WORKS. The plates lie on the
+ * FINISHED FLOOR, which is inside the shell, under the roof — depth-tested
+ * they would be invisible from every camera position this viewport allows.
+ * So `depthTest` is off and `renderOrder` puts them last: the overlay draws
+ * over the building, the way an analysis layer in any BIM viewer does. It is
+ * unmistakably a diagram rather than a surface of the house, which is exactly
+ * what it is, and it is off by default so the model still reads as a house.
+ *
+ * The plates are inset a few inches so two rooms sharing a wall read as two
+ * rooms rather than one wash of colour.
+ */
+function ComfortLayer({ comfort, theme }: { comfort: ViewportComfort; theme: Theme }) {
+  return (
+    <group
+      position={[0, FINISHED_FLOOR_Y_FT + PLATE_LIFT_FT, 0]}
+      userData={{ [EXPORT_IGNORE]: true }}
+    >
+      {comfort.plates.map((p) => {
+        const w = Math.max(0.25, p.widthFt - 0.35);
+        const d = Math.max(0.25, p.depthFt - 0.35);
+        return (
+          <mesh
+            key={p.id}
+            position={[p.xFt, 0, p.zFt]}
+            rotation={[-Math.PI / 2, 0, 0]}
+            renderOrder={10}
+            userData={{ [EXPORT_IGNORE]: true }}
+          >
+            <planeGeometry args={[w, d]} />
+            <meshBasicMaterial
+              color={heatColor(p.sPmv, theme)}
+              transparent
+              /* louder when the room misses its target, quieter when it meets
+                 — the colour says which way, the weight says whether */
+              opacity={p.meets ? 0.4 : 0.62}
+              depthTest={false}
+              depthWrite={false}
+            />
+          </mesh>
+        );
+      })}
+    </group>
+  );
+}
+
 /** The sun itself, so the slider moves something visible rather than a number. */
 function SunMarker({ sun, distance, theme }: { sun: SunPosition; distance: number; theme: Theme }) {
   if (!sun.aboveHorizon) return null;
@@ -339,6 +470,7 @@ function Scene({
   onSelect,
   houseRef,
   surfaces,
+  comfort,
   houseChildren,
 }: {
   home: HomeGeometry;
@@ -348,6 +480,7 @@ function Scene({
   onSelect: (id: string) => void;
   houseRef: MutableRefObject<THREE.Group | null>;
   surfaces: ViewportSurfaces | null;
+  comfort: ViewportComfort | null;
   houseChildren: ReactNode;
 }) {
   const w = WORLD[theme];
@@ -406,6 +539,7 @@ function Scene({
       {selected && selectedSummary ? (
         <SelectionPlate volume={selected} summary={selectedSummary} />
       ) : null}
+      {comfort ? <ComfortLayer comfort={comfort} theme={theme} /> : null}
 
       {/* THE EXPORT ROOT — volumes and deck, nothing else. */}
       <group ref={houseRef}>
@@ -464,6 +598,7 @@ export default function Viewport({
   onSelect,
   houseRef,
   surfaces = null,
+  comfort = null,
   houseChildren = null,
 }: {
   home: HomeGeometry;
@@ -474,6 +609,8 @@ export default function Viewport({
   houseRef: MutableRefObject<THREE.Group | null>;
   /** omit for the plain viewport; pass it to make surfaces pickable */
   surfaces?: ViewportSurfaces | null;
+  /** omit — or pass `null` — for no heatmap, which is the default state */
+  comfort?: ViewportComfort | null;
   /** R3F nodes to mount INSIDE the export root, beside the volumes and the
    *  deck. `BuilderApp` passes the fixture layer here. */
   houseChildren?: ReactNode;
@@ -527,6 +664,7 @@ export default function Viewport({
             onSelect={onSelect}
             houseRef={houseRef}
             surfaces={surfaces}
+            comfort={comfort}
             houseChildren={houseChildren}
           />
           {/* Renders nothing. It registers the capture the project library
@@ -574,11 +712,61 @@ export default function Viewport({
         </div>
       </div>
 
+      {comfort ? <ComfortLegend comfort={comfort} /> : null}
+
       <p className="pointer-events-none absolute inset-x-0 bottom-0 p-3 text-center font-mono text-[0.6rem] uppercase tracking-label text-aura-text/45">
         Drag to orbit · scroll to zoom · click a volume to select it
         {surfaces?.enabled ? " · a click also picks that surface for the materials panel" : ""} ·
         north is away from you at the start
       </p>
     </div>
+  );
+}
+
+/* ------------------------------------------------------------- the legend
+
+   HTML, not R3F: it is chrome over the canvas, so it is styled with the same
+   theme-aware `aura-*` utilities every other overlay on this page uses and
+   there is not a literal colour in it. The three swatches resolve through the
+   tonal ladder to the SAME hexes `HEAT` mirrors for the scene, which is what
+   keeps a legend swatch and the plate it describes the same colour in both
+   themes.
+
+   THE ASSUMPTIONS ARE IN THE LEGEND, not in a panel three tabs away. A colour
+   scale for a comfort figure is meaningless without the temperature and the
+   humidity that produced it, so they are printed here, on the view, every
+   time the overlay is on. */
+function ComfortLegend({ comfort }: { comfort: ViewportComfort }) {
+  return (
+    <div className="pointer-events-none absolute inset-x-0 bottom-9 flex justify-center p-3">
+      <div className="max-w-lg rounded-md border aura-hairline bg-aura-panel/85 px-3 py-2 backdrop-blur">
+        <p className="font-mono text-[0.6rem] uppercase tracking-label text-aura-emerald">
+          {comfort.seasonLabel} comfort · sPMV
+        </p>
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <Swatch tone="bg-aura-teal-mark" label="cool −3" />
+          <Swatch tone="bg-aura-emerald-bright" label="neutral 0" />
+          <Swatch tone="bg-aura-violet" label="warm +3" />
+        </div>
+        <p className="mt-1.5 font-mono text-[0.6rem] leading-relaxed text-aura-text/70">
+          {comfort.conditions}
+        </p>
+        <p className="mt-1 font-mono text-[0.55rem] leading-relaxed text-aura-text/45">
+          Assumed conditions you set — not a prediction. The plan engine&rsquo;s solved rooms, on
+          the finished floor at the site origin, drawn over the massing rather than inside it.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function Swatch({ tone, label }: { tone: string; label: string }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span aria-hidden className={`h-2 w-4 rounded-sm ${tone}`} />
+      <span className="font-mono text-[0.55rem] uppercase tracking-label text-aura-text/70">
+        {label}
+      </span>
+    </span>
   );
 }

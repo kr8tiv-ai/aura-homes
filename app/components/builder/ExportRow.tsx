@@ -68,6 +68,7 @@ import {
 import { drawingModel } from "@/lib/builder/drawings";
 import type { ProExportFormat } from "@/lib/builder/exportPro";
 import type { DxfReport, SourceDrawing } from "@/lib/builder/dxfCheck";
+import type { ComfortReport } from "@/lib/builder/comfort";
 import { emptyFixtureSet, validateFixtureSet, type FixtureSet } from "@/lib/builder/fixtures";
 import { specToShareUrl } from "@/lib/builder/share";
 import type { HomeSpec } from "@/lib/builder/spec";
@@ -196,6 +197,7 @@ export default function ExportRow({
   partitions,
   overrides,
   fixtures,
+  comfort = null,
   houseRef,
   onLoad,
 }: {
@@ -203,6 +205,16 @@ export default function ExportRow({
   partitions: Partition[];
   overrides: SurfaceOverrides;
   fixtures: FixtureSet;
+  /**
+   * The owner's comfort targets, for the two writers that carry them.
+   *
+   * `null` is NOT "write no comfort" here — it is "the builder has not
+   * computed a report right now", so the option is OMITTED and both writers
+   * derive their own defaults. That distinction lives in one place, in the
+   * `comfort ?? undefined` below, and it is why a download from a tab that
+   * was open a moment ago is never a file with the targets silently missing.
+   */
+  comfort?: ComfortReport | null;
   /** the group holding the volumes, the deck and the fixture layer — and
    *  nothing else */
   houseRef: MutableRefObject<THREE.Group | null>;
@@ -291,7 +303,7 @@ export default function ExportRow({
     setError(null);
     try {
       const pro = await loadPro();
-      finish(pro.exportIfc(spec, { dateISO: issueDate() }));
+      finish(pro.exportIfc(spec, { dateISO: issueDate(), comfort: comfort ?? undefined }));
     } catch (err) {
       fail(err);
     } finally {
@@ -304,7 +316,7 @@ export default function ExportRow({
     setError(null);
     try {
       const semantic = await loadSemantic();
-      finish(semantic.exportIfcJson(spec));
+      finish(semantic.exportIfcJson(spec, { comfort: comfort ?? undefined }));
     } catch (err) {
       fail(err);
     } finally {

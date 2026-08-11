@@ -84,17 +84,30 @@
       things at the bottom would be the export row and the library — the two
       that finish the job. So the model, the read-out, the undo bar and,
       deliberately, the CLEARANCE CLASHES are always on screen, and everything
-      else is behind one of five tabs.
+      else is behind one of six tabs.
 
       Which tabs are HIDDEN and which are UNMOUNTED is a real decision rather
       than a style. A tab whose panel holds state a switch must not destroy is
       hidden with CSS: the export row's round-trip verdict cost a press to
       produce, `DrawingSheets` remembers which sheet you were reading, and the
-      project library owns the autosave loop. The two children that recompute
+      project library owns the autosave loop. The three children that recompute
       on every spec change whether or not anybody is looking — `AxonSheet`'s
-      hidden-line pass (~27 ms) and `SemanticExport`'s live round trip (5–29 ms,
-      both figures measured by their own modules) — are conditionally MOUNTED
-      inside their pane, so a slider drag two tabs away costs nothing.
+      hidden-line pass (~27 ms), `SemanticExport`'s live round trip (5–29 ms,
+      both figures measured by their own modules) and `ComfortPanel`, whose
+      every figure comes from a report that runs the deterministic plan solve —
+      are conditionally MOUNTED inside their pane, so a slider drag two tabs
+      away costs nothing. `ComfortPanel` can afford to be unmounted precisely
+      because it holds no state of its own: the targets, the season and the
+      heatmap toggle all live here.
+
+   8. COMFORT IS AN ASSUMPTION, NOT AN EDIT, so it sits beside `sun` in plain
+      `useState` rather than in the undo document. Nothing on that tab changes
+      a dimension; it changes what you are ASKING of the dimensions. The four
+      sidecar values in `EditorDoc` are things the house has and the spec
+      cannot hold. A comfort target is a thing the OWNER holds about the house,
+      and Ctrl+Z on a design should not undo what you want the bedroom to feel
+      like. It does travel into the IFC and the ifcJSON — the two exports take
+      the report as an option — which is the one place it genuinely matters.
    7. THE LIBRARY IS LIVE BEFORE ANYBODY OPENS IT, and a recovery prompt
       nobody sees is not a prompt. `ProjectLibrary` performs a read-before-write
       handshake on mount and holds autosaving until the visitor decides, which
@@ -118,6 +131,16 @@ import {
   type ReactNode,
 } from "react";
 import type * as THREE from "three";
+import {
+  DEFAULT_SETTINGS as DEFAULT_COMFORT,
+  SEASON_LABEL,
+  comfortPlates,
+  comfortReport,
+  fmt0,
+  fmt1,
+  type ComfortSettings,
+  type Season,
+} from "@/lib/builder/comfort";
 import { drawingSet, type DrawingRooms, type DrawingSetResult } from "@/lib/builder/drawings";
 import { buildHome, disposeHome, type HomeGeometry } from "@/lib/builder/geometry";
 import { defaultSpec, type HomeSpec } from "@/lib/builder/spec";
@@ -152,6 +175,7 @@ import {
 import { readAutosave, specSignature } from "@/lib/builder/store";
 import { planFromSpec, type PlanHandoff } from "@/lib/builder/toPlan";
 import AxonSheet from "./AxonSheet";
+import ComfortPanel from "./ComfortPanel";
 import DrawingSheets from "./DrawingSheets";
 import ExportRow from "./ExportRow";
 import FixturePalette, { FixtureLayer, useFixtureGeometry } from "./FixturePalette";
@@ -450,10 +474,10 @@ const VIEW_MODES: ReadonlyArray<{ id: ViewMode; label: string; title: string }> 
 
 /* ------------------------------------------------------------ the workspaces
 
-   Five tabs under one always-visible model. See decision 6 in the header for
+   Six tabs under one always-visible model. See decision 6 in the header for
    why this is tabs rather than six more panels, and for which of them are
    hidden rather than unmounted. */
-type Workspace = "shape" | "fixtures" | "drawings" | "export" | "library";
+type Workspace = "shape" | "fixtures" | "comfort" | "drawings" | "export" | "library";
 
 const WORKSPACES: ReadonlyArray<{ id: Workspace; label: string; hint: string }> = [
   { id: "shape", label: "Shape", hint: "Volumes, roofs, openings, the deck and the sun" },
@@ -461,6 +485,11 @@ const WORKSPACES: ReadonlyArray<{ id: Workspace; label: string; hint: string }> 
     id: "fixtures",
     label: "Fixtures",
     hint: "Stove, tub, cistern, battery, array — and what has to stay clear",
+  },
+  {
+    id: "comfort",
+    label: "Comfort",
+    hint: "Per-room targets, checked against conditions you state — not predicted",
   },
   {
     id: "drawings",
@@ -527,6 +556,19 @@ export default function BuilderApp() {
   const [selectedFixtureId, setSelectedFixtureId] = useState<string | null>(null);
   const [showClearances, setShowClearances] = useState(true);
   const [sun, setSun] = useState<SunState>({ hour: 12, season: "winter" });
+
+  /* ---- comfort. UI state rather than part of the undo document, and that is
+         a deliberate match to `sun` rather than to `overrides`: both are
+         DESIGN ASSUMPTIONS the visitor sets to interrogate a home, not edits
+         to the home itself. Nothing here changes a single dimension, so
+         nothing here belongs in a history stack of dimensions.
+
+         The heatmap starts OFF. A model that opens painted in comfort colours
+         is a model that stops reading as a house, and the first thing anybody
+         needs from this page is the house. */
+  const [comfortSettings, setComfortSettings] = useState<ComfortSettings>(DEFAULT_COMFORT);
+  const [comfortSeason, setComfortSeason] = useState<Season>("winter");
+  const [heatmap, setHeatmap] = useState(false);
   const [drawn, setDrawn] = useState<Drawn | null>(null);
   const [loadedFromLink, setLoadedFromLink] = useState(false);
 
@@ -649,6 +691,42 @@ export default function BuilderApp() {
   );
 
   const sunPos = useMemo(() => sunPosition(sun.hour, sun.season), [sun]);
+
+  /* ---- the comfort report, behind a gate.
+
+         Same discipline decision 6 applies to `AxonSheet` and
+         `SemanticExport`, and for the same reason: `comfortReport` runs the
+         deterministic plan solve, so it re-runs on every spec change. That is
+         worth paying while somebody is reading comfort figures, while the
+         heatmap is painting them, or while the export tab is open and about
+         to write them into a file — and worth nothing at all while they are
+         dragging a width slider two tabs away.
+
+         `null` here is not "no comfort in the export": `exportPro` and
+         `exportSemantic` derive the defaults when the option is OMITTED, so
+         the export row hands them `undefined` rather than this null. */
+  const comfortWanted = heatmap || workspace === "comfort" || workspace === "export";
+  const comfort = useMemo(
+    () => (comfortWanted ? comfortReport(spec, comfortSettings) : null),
+    [comfortWanted, spec, comfortSettings],
+  );
+
+  /* The overlay the viewport draws, built here so the frame change and the
+     season choice live beside each other and the viewport stays a renderer.
+     The conditions travel WITH the plates — a colour scale on screen without
+     the assumption that produced it is the one thing `comfort.ts` exists to
+     prevent, so the legend cannot be rendered without them. */
+  const comfortOverlay = useMemo(() => {
+    if (!heatmap || !comfort || !comfort.available) return null;
+    const winter = comfortSeason === "winter";
+    const t = winter ? comfort.conditions.winterIndoorC : comfort.conditions.summerIndoorC;
+    const rh = winter ? comfort.conditions.winterRhPct : comfort.conditions.summerRhPct;
+    return {
+      plates: comfortPlates(comfort, comfortSeason),
+      conditions: `assumed ${fmt1(t)} °C · ${fmt0(rh)} %RH · ${comfort.rooms.length} solved rooms`,
+      seasonLabel: SEASON_LABEL[comfortSeason],
+    };
+  }, [heatmap, comfort, comfortSeason]);
 
   /* ---- selection. Derived rather than stored, so a volume that has just
          been removed can never leave the panel pointing at nothing. */
@@ -823,6 +901,7 @@ export default function BuilderApp() {
             onPick: setPickedSurface,
             enabled: mode === "3d",
           }}
+          comfort={comfortOverlay}
           houseChildren={
             <FixtureLayer
               geometry={fixtureGeometry}
@@ -949,7 +1028,7 @@ export default function BuilderApp() {
 
       {/* ------------------------------------------------------ the workspaces */}
       <nav aria-label="Builder workspaces" className="rounded-xl border aura-hairline p-2">
-        <div className="grid gap-1.5 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="grid gap-1.5 sm:grid-cols-3 lg:grid-cols-6">
           {WORKSPACES.map((w) => {
             const on = w.id === workspace;
             const badge =
@@ -1029,6 +1108,30 @@ export default function BuilderApp() {
           share link, because every one of those is generated from the HomeSpec and the spec has no
           field for them.
         </p>
+      </Pane>
+
+      {/* ============================================================ COMFORT
+
+          MOUNTED rather than hidden, like `AxonSheet` and `SemanticExport`
+          and for the same reason: the panel's whole content is derived from
+          `comfortReport`, which runs the plan solve on every spec change.
+          Gating the memo already stops that cost when the tab is shut; not
+          mounting the tree is the second half of the same bargain, and this
+          panel holds no state a switch must preserve — the settings, the
+          season and the heatmap all live in `BuilderApp`, so leaving and
+          coming back finds everything exactly as it was. */}
+      <Pane on={workspace === "comfort"}>
+        {workspace === "comfort" && comfort ? (
+          <ComfortPanel
+            report={comfort}
+            settings={comfortSettings}
+            onSettings={setComfortSettings}
+            season={comfortSeason}
+            onSeason={setComfortSeason}
+            heatmap={heatmap}
+            onHeatmap={setHeatmap}
+          />
+        ) : null}
       </Pane>
 
       {/* =========================================================== DRAWINGS */}
@@ -1126,6 +1229,7 @@ export default function BuilderApp() {
           partitions={partitions}
           overrides={overrides}
           fixtures={fixtures}
+          comfort={comfort}
           houseRef={houseRef}
           onLoad={(loadedSpec, loadedPartitions, loadedOverrides, loadedFixtures, label) =>
             dispatch({
@@ -1146,7 +1250,7 @@ export default function BuilderApp() {
             by the module itself — and it re-runs on every spec change. */}
         {workspace === "export" ? (
           <div className="mt-6">
-            <SemanticExport spec={spec} />
+            <SemanticExport spec={spec} comfort={comfort} />
           </div>
         ) : null}
       </Pane>

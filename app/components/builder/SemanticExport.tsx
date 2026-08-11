@@ -35,6 +35,7 @@ import {
   roundTripReport,
   type ToolSupportFact,
 } from "@/lib/builder/exportSemantic";
+import type { ComfortReport } from "@/lib/builder/comfort";
 import type { HomeSpec } from "@/lib/builder/spec";
 import { Button, Panel } from "./ui";
 
@@ -42,7 +43,20 @@ type Job = "ifcjson" | "jsonld" | null;
 
 const kb = (bytes: number): string => `${(bytes / 1024).toFixed(1)} kB`;
 
-export default function SemanticExport({ spec }: { spec: HomeSpec }) {
+/**
+ * @param comfort the owner's comfort targets. `null` means "no report was
+ * computed", NOT "write no comfort" — it is turned into an OMITTED option so
+ * the writer derives its own defaults, and the round-trip verdict below is
+ * computed against exactly the file the buttons write.
+ */
+export default function SemanticExport({
+  spec,
+  comfort = null,
+}: {
+  spec: HomeSpec;
+  comfort?: ComfortReport | null;
+}) {
+  const opts = useMemo(() => ({ comfort: comfort ?? undefined }), [comfort]);
   const [busy, setBusy] = useState<Job>(null);
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +73,7 @@ export default function SemanticExport({ spec }: { spec: HomeSpec }) {
      screen is still the real answer for the real house — just, briefly, for the
      house as it was half a frame ago. */
   const settled = useDeferredValue(spec);
-  const report = useMemo(() => roundTripReport(settled), [settled]);
+  const report = useMemo(() => roundTripReport(settled, opts), [settled, opts]);
 
   const write = (job: Job, make: () => ExportArtifact) => {
     setBusy(job);
@@ -98,7 +112,7 @@ export default function SemanticExport({ spec }: { spec: HomeSpec }) {
             action={
               <Button
                 tone="loud"
-                onClick={() => write("ifcjson", () => exportIfcJson(spec))}
+                onClick={() => write("ifcjson", () => exportIfcJson(spec, opts))}
                 disabled={busy !== null}
               >
                 {busy === "ifcjson" ? "Writing…" : "Download .ifcjson"}
@@ -110,7 +124,7 @@ export default function SemanticExport({ spec }: { spec: HomeSpec }) {
             body="The same building as JSON-LD 1.1: a Building Topology Ontology graph — Site contains Building contains Storey contains Space, spaces bounded by wall and window interfaces — with the whole ifcJSON document riding inside as a JSON literal. One file, two readers, neither one shredding the other."
             action={
               <Button
-                onClick={() => write("jsonld", () => exportSemanticJsonLd(spec))}
+                onClick={() => write("jsonld", () => exportSemanticJsonLd(spec, opts))}
                 disabled={busy !== null}
               >
                 {busy === "jsonld" ? "Writing…" : "Download .jsonld"}
