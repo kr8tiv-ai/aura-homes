@@ -840,7 +840,18 @@ export default function Plan2D({
 
      Registered by hand rather than through `onWheel`, because React attaches
      wheel listeners passively and a passive listener cannot call
-     preventDefault — the page would scroll out from under the plan. */
+     preventDefault — the page would scroll out from under the plan.
+
+     THE DEPENDENCY IS THE SIZE, AND IT HAS TO BE. The `<svg>` is not rendered
+     until the ResizeObserver has reported a box, so on the very first pass
+     `svgRef.current` is null and there is nothing to attach to. With an empty
+     dependency array the effect never ran again once the element appeared and
+     the wheel did nothing at all — silently, because a missing listener throws
+     no error. Re-running it on the measured size attaches to the element the
+     moment it exists, and again if the panel is resized or is revealed by the
+     2D/3D toggle. The listener itself is stateless: it reads a fresh
+     `getBoundingClientRect` per event and updates zoom and pan functionally,
+     so re-attaching costs nothing and drops no state. */
   useEffect(() => {
     const el = svgRef.current;
     if (!el) return;
@@ -861,7 +872,7 @@ export default function Plan2D({
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, []);
+  }, [size.w, size.h]);
 
   /* ===================================================================== */
   /* keyboard — every mouse gesture also has a key, and Delete is reversible */

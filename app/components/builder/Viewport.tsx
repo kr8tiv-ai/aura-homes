@@ -20,19 +20,38 @@
       by whoever built it (`BuilderApp`), so every mesh here carries
       `dispose={null}` — without it R3F would free buffers the builder still
       holds a reference to, and the model would vanish mid-drag.
-   2. THE HOUSE GROUP IS THE EXPORT ROOT. `houseRef` wraps the volumes and the
-      deck and NOTHING else: no ground, no grid, no sun, no selection glow.
-      That is what makes the .glb a building rather than a screenshot of an
-      editor. The editor furniture also carries `EXPORT_IGNORE` as a second
-      belt, in case somebody later hands a wider subtree to the exporter.
+   2. THE HOUSE GROUP IS THE EXPORT ROOT. `houseRef` wraps the volumes, the
+      deck and whatever `houseChildren` puts beside them — and NOTHING else:
+      no ground, no grid, no sun, no selection glow. That is what makes the
+      .glb a building rather than a screenshot of an editor. The editor
+      furniture also carries `EXPORT_IGNORE` as a second belt, in case
+      somebody later hands a wider subtree to the exporter.
    3. IT RENDERS ON DEMAND. `frameloop="demand"` means no frame is drawn
       unless something changed — a 3D view idling at 60fps on a laptop for the
       twenty minutes somebody spends reading the plan below it is a battery
       bill for nothing. `<Refresh>` invalidates whenever React re-renders the
       scene, and drei's OrbitControls invalidates while you drag.
+
+   FINISHES ARE OPTIONAL AND ADDITIVE (added when the surface picker landed).
+   The `SURFACES` table below is still the whole look of this file when no
+   `surfaces` prop is passed — the default look, the night glass glow, the
+   flat shading, the no-shadow rule for glass and water, all unchanged. When
+   the prop IS passed, `materialForPart` answers the same question with one
+   extra step: a per-surface override if the person set one, otherwise the
+   surface's default — and `DEFAULT_MATERIAL` in `lib/builder/surfaces.ts`
+   reproduces this table value for value, so passing the prop with an empty
+   override map renders exactly what it rendered before.
    =========================================================================== */
 
-import { useEffect, useMemo, useRef, useState, type ElementRef, type MutableRefObject } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ElementRef,
+  type MutableRefObject,
+  type ReactNode,
+} from "react";
 import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
@@ -45,8 +64,31 @@ import {
   type VolumeSummary,
 } from "@/lib/builder/geometry";
 import { EXPORT_IGNORE } from "@/lib/builder/exportSpec";
+import {
+  materialForPart,
+  type SurfaceId,
+  type SurfaceIndex,
+  type SurfaceOverrides,
+} from "@/lib/builder/surfaces";
 import { currentTheme, onThemeChange, type Theme } from "@/lib/theme";
+import { ThumbnailProbe } from "./ProjectLibrary";
+import { SurfacePickLayer } from "./SurfacePicker";
 import { bearingWords, hourLabel, type SunPosition } from "./sun";
+
+/* ------------------------------------------------------------- finishes */
+
+/** Everything the viewport needs to let somebody paint one surface. Optional
+ *  as a whole: omit it and this file behaves exactly as it did before the
+ *  picker existed. */
+export interface ViewportSurfaces {
+  index: SurfaceIndex;
+  overrides: SurfaceOverrides;
+  picked: SurfaceId | null;
+  onPick: (id: SurfaceId | null) => void;
+  /** false while the 2D plan is the visible view — the canvas is still
+   *  mounted (it is the export root) but a click on it is not a pick. */
+  enabled: boolean;
+}
 
 /* ---------------------------------------------------------------- palette
 
@@ -124,8 +166,21 @@ function useTheme(): Theme {
 
 /* ------------------------------------------------------------------ parts */
 
-function PartMesh({ part, night }: { part: Part; night: boolean }) {
-  const s = SURFACES[part.surface];
+function PartMesh({
+  part,
+  night,
+  surfaces,
+}: {
+  part: Part;
+  night: boolean;
+  surfaces: ViewportSurfaces | null;
+}) {
+  /* `SurfaceMaterial` and `SurfaceStyle` are the same five fields under the
+     same names, so the override path and the default path produce the same
+     shape and everything below is untouched. */
+  const s: SurfaceStyle = surfaces
+    ? materialForPart(part, surfaces.index, surfaces.overrides)
+    : SURFACES[part.surface];
   const lit = night && part.surface === "glass";
   return (
     <mesh
@@ -153,10 +208,12 @@ function VolumeGroup({
   volume,
   night,
   onSelect,
+  surfaces,
 }: {
   volume: VolumeGeometry;
   night: boolean;
   onSelect: (id: string) => void;
+  surfaces: ViewportSurfaces | null;
 }) {
   return (
     <group
@@ -170,7 +227,7 @@ function VolumeGroup({
       }}
     >
       {volume.parts.map((p) => (
-        <PartMesh key={p.id} part={p} night={night} />
+        <PartMesh key={p.id} part={p} night={night} surfaces={surfaces} />
       ))}
     </group>
   );
@@ -281,6 +338,8 @@ function Scene({
   selectedId,
   onSelect,
   houseRef,
+  surfaces,
+  houseChildren,
 }: {
   home: HomeGeometry;
   sun: SunPosition;
@@ -288,6 +347,8 @@ function Scene({
   selectedId: string | null;
   onSelect: (id: string) => void;
   houseRef: MutableRefObject<THREE.Group | null>;
+  surfaces: ViewportSurfaces | null;
+  houseChildren: ReactNode;
 }) {
   const w = WORLD[theme];
   const night = theme === "dark";
@@ -349,7 +410,13 @@ function Scene({
       {/* THE EXPORT ROOT — volumes and deck, nothing else. */}
       <group ref={houseRef}>
         {home.volumes.map((v) => (
-          <VolumeGroup key={v.id} volume={v} night={night} onSelect={onSelect} />
+          <VolumeGroup
+            key={v.id}
+            volume={v}
+            night={night}
+            onSelect={onSelect}
+            surfaces={surfaces}
+          />
         ))}
         {home.deck ? (
           <group
@@ -357,11 +424,32 @@ function Scene({
             rotation={[0, home.deck.rotationY, 0]}
           >
             {home.deck.parts.map((p) => (
-              <PartMesh key={p.id} part={p} night={night} />
+              <PartMesh key={p.id} part={p} night={night} surfaces={surfaces} />
             ))}
           </group>
         ) : null}
+        {/* Anything the builder places INSIDE the home — today the fixture
+            layer. It belongs in here so a .glb of an Aura home contains the
+            wood stove; the clearance boxes that come with it carry
+            EXPORT_IGNORE and stay behind, which is the whole reason
+            `FixtureLayer` renders them as siblings of the fixture. */}
+        {houseChildren}
       </group>
+
+      {/* The pick layer is a SIBLING of the export root, never a child: it
+          washes the picked surface in emerald, and a .glb of an Aura home
+          does not contain a selection glow. It raycasts `houseRef` only, so
+          the ground, the grid and its own highlight can never be picked. */}
+      {surfaces ? (
+        <SurfacePickLayer
+          home={home}
+          index={surfaces.index}
+          root={houseRef}
+          picked={surfaces.picked}
+          onPick={surfaces.onPick}
+          enabled={surfaces.enabled}
+        />
+      ) : null}
     </>
   );
 }
@@ -375,6 +463,8 @@ export default function Viewport({
   selectedId,
   onSelect,
   houseRef,
+  surfaces = null,
+  houseChildren = null,
 }: {
   home: HomeGeometry;
   sun: SunPosition;
@@ -382,6 +472,11 @@ export default function Viewport({
   selectedId: string | null;
   onSelect: (id: string) => void;
   houseRef: MutableRefObject<THREE.Group | null>;
+  /** omit for the plain viewport; pass it to make surfaces pickable */
+  surfaces?: ViewportSurfaces | null;
+  /** R3F nodes to mount INSIDE the export root, beside the volumes and the
+   *  deck. `BuilderApp` passes the fixture layer here. */
+  houseChildren?: ReactNode;
 }) {
   const theme = useTheme();
   const controls = useRef<ElementRef<typeof OrbitControls>>(null);
@@ -431,7 +526,15 @@ export default function Viewport({
             selectedId={selectedId}
             onSelect={onSelect}
             houseRef={houseRef}
+            surfaces={surfaces}
+            houseChildren={houseChildren}
           />
+          {/* Renders nothing. It registers the capture the project library
+              asks for when it saves a thumbnail, and it has to be INSIDE this
+              canvas: `frameloop="demand"` with the default
+              `preserveDrawingBuffer: false` means the back buffer is only
+              readable in the same synchronous turn as the draw. */}
+          <ThumbnailProbe />
           <OrbitControls
             ref={controls}
             makeDefault
@@ -472,7 +575,9 @@ export default function Viewport({
       </div>
 
       <p className="pointer-events-none absolute inset-x-0 bottom-0 p-3 text-center font-mono text-[0.6rem] uppercase tracking-label text-aura-text/45">
-        Drag to orbit · scroll to zoom · click a volume to select it · north is away from you at the start
+        Drag to orbit · scroll to zoom · click a volume to select it
+        {surfaces?.enabled ? " · a click also picks that surface for the materials panel" : ""} ·
+        north is away from you at the start
       </p>
     </div>
   );

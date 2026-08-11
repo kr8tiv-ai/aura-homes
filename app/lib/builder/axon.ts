@@ -151,6 +151,59 @@
    all and can be exercised outside a browser.
 
    ---------------------------------------------------------------------------
+   MEASURED, on this repo's own models — the same scenes `surfaces.ts`
+   benchmarks against — on node 24, MINIMUM of 25 runs after a warm-up:
+
+     reference home (defaultSpec)      27 meshes / 1,820 tris   ~22 ms
+       ... with the hidden lines drawn too                      ~25 ms
+     six volumes, 72 openings         212 meshes / 9,000 tris  ~208 ms
+
+   The MINIMUM and not the mean, and the reason is stated rather than hidden:
+   these were taken on a machine sitting at 100% CPU with other work on it, and
+   the mean swung between 27 and 70 ms run to run while the minimum held. The
+   minimum is the run that got a clean slice; treat these as the right order of
+   magnitude, not as a benchmark. What is NOT load-dependent, and is the number
+   to re-check, is `stats.oversizedTriangles` — see the bin-grid section.
+
+   Either way this is a drawing generated on demand, not a frame.
+   `AxonSheet.tsx` runs it through `useDeferredValue` so a slider drag never
+   waits on it.
+
+   ---------------------------------------------------------------------------
+   NAMED LIMITATIONS, because a silent one is a bug waiting to be discovered.
+
+   1. COINCIDENT AND TANGENT SURFACES ARE DRAWN AS THE MODEL BUILT THEM. Where
+      two surfaces touch exactly, "in front" is undefined, and no depth bias
+      can decide it. Two cases exist in this repo's own models and both are
+      faithful rather than wrong:
+        · the a-frame. `geometry.ts` puts the roof's top surface at exactly
+          y = 0 where it passes the footprint edge, which is exactly where the
+          floor slab's edge is, and the roof then continues below and outside
+          as an overhang. The slab edge is therefore genuinely on the visible
+          side, and it is drawn — as a line lying in the roof plane, which
+          reads oddly and is correct.
+        · interpenetrating volumes. Two volumes that overlap in plan produce
+          short surviving fragments where one pokes through the other.
+          `buildHome` already reports that overlap as a modelling mistake; this
+          drawing shows it rather than hiding it.
+      The reference home, an L-plan (main house plus annexe) and six spaced
+      volumes all come out clean.
+
+   2. A SEAM BETWEEN TWO ABUTTING SOLIDS IS DRAWN. This model is an assembly of
+      separate solids — a sill IS a different object from the wall it sits on —
+      and the line where two of them meet is a line a draughtsman draws. The
+      consequence to know about: a surface that has been arbitrarily subdivided
+      into coplanar pieces will show its subdivision. Unioning the solids first
+      would remove those lines, and would need the polygon/CSG dependency this
+      module exists partly to avoid. Note that `mergeParts` from `geometry.ts`
+      is NOT a workaround — concatenating buffers does not weld topology.
+
+   3. NOT A MEASURED DRAWING, and the sheet says so. A true isometric is
+      measurable along its three axes at a known ratio; a trimetric is not, and
+      neither carries an annotation. The plan and the elevations are where
+      dimensions come from.
+
+   ---------------------------------------------------------------------------
    DETERMINISM. No `Math.random`, no `Date.now`, no clock, no network, no DOM.
    Every map is keyed by a QUANTIZED value and every ordering is either the
    input order or an explicit total-order comparator with an index tie-break,
@@ -461,18 +514,37 @@ const WELD_INV = 1 / WELD_FT;
  *  actually sees rather than in model feet. */
 const PT_EPS = 1e-4;
 
-/** Barycentric slack for the inside test. Positive means SHRINK: a segment
- *  running exactly along a triangle's edge is treated as outside it, so a
- *  shared arris is kept rather than coin-flipped away. Keeping a line is the
- *  honest failure direction for line art. */
-const INSIDE_EPS = 1e-7;
+/**
+ * Barycentric slack for the inside test. NEGATIVE — the triangle is very
+ * slightly GROWN, so a point exactly on its boundary counts as inside.
+ *
+ * This sign was arrived at the hard way and the reason is worth writing down,
+ * because the other sign is the intuitive one and it is wrong.
+ *
+ * Shrinking looks safer: a segment running exactly along a triangle's edge is
+ * then treated as outside it, so a shared arris is kept rather than
+ * coin-flipped away. But a projected edge lands on a triangle BOUNDARY far
+ * more often at a boundary that is not a real edge at all — the internal
+ * diagonal where a quad was triangulated. In an isometric view of a box, the
+ * three edges at the FAR corner project exactly onto the diagonals of the near
+ * faces, so with a shrink the back of every box in the drawing was declared
+ * visible. That is not a corner case; it is the commonest case there is.
+ *
+ * Growing is safe because the DEPTH BIAS already handles what the shrink was
+ * protecting: when a triangle genuinely contains the edge (the front face an
+ * arris belongs to), the interpolated depth EQUALS the edge's depth, the
+ * difference is zero, and the bias rejects it. The shrink was doing a second
+ * time, badly, a job the bias was already doing exactly.
+ */
+const INSIDE_TOL = -1e-9;
 
 /** Hard cap on interval boundaries for one edge, so a pathological model
  *  degrades with a warning rather than locking the tab. */
 const MAX_SPLITS_PER_EDGE = 4096;
 
-/** A triangle whose 2D bounding box covers more cells than this is put in the
- *  always-checked list instead of being smeared across the grid. */
+/** Floor on how many cells one triangle may occupy before it is moved to the
+ *  always-checked list. The real threshold is half the grid (see `buildGrid`);
+ *  this stops a very coarse grid from declaring ordinary triangles oversized. */
 const MAX_CELLS_PER_TRI = 96;
 
 /* ===========================================================================
@@ -991,15 +1063,28 @@ function extractEdges(scene: Scene, creaseAngleDeg: number, warnings: string[]):
       }
     }
 
-    /* SILHOUETTE first, because it is the strongest statement about an edge:
-       the surface turns away from the eye here, so this is an OUTLINE and it
-       gets the heavy pen. It is also the only view-dependent test, which is
-       why the whole extraction is redone per view rather than cached. */
+    /* SILHOUETTE, but only on a MANIFOLD edge — exactly two faces.
+       "The surface turns away from the eye here" is a statement about a
+       surface, and an edge where four faces meet is not one surface; it is a
+       junction between solids. `geometry.ts` produces those by the hundred,
+       because a sill sitting on a wall welds four faces onto one arris, and
+       at every such edge one solid's back face meets another's front face and
+       the naive test calls it a silhouette. That put the heaviest pen in the
+       box on every internal seam: a wall built as ten panels came out with
+       sixty outline strokes across its face.
+       So: two faces that disagree is an outline and gets the heavy pen. More
+       than two that disagree is a junction — still drawn, never dropped, but
+       at the medium weight, which is what it looks like on paper. */
     if (sawFront && sawBack) {
       outA.push(ea[e]);
       outB.push(eb[e]);
-      outK.push(2);
-      nSil++;
+      if (n === 2) {
+        outK.push(2);
+        nSil++;
+      } else {
+        outK.push(1);
+        nBnd++;
+      }
       continue;
     }
 
@@ -1040,10 +1125,21 @@ function extractEdges(scene: Scene, creaseAngleDeg: number, warnings: string[]):
    plane. A uniform grid answers it with one array index and a short walk, is
    built in one counting sort, and costs nothing to ship.
 
-   Triangles are bucketed by their 2D bounding box. One that would smear across
-   more than MAX_CELLS_PER_TRI cells goes in an always-checked list instead —
-   a big roof plane is genuinely everywhere, and paying for it once per query
-   is cheaper than storing it a thousand times.
+   Triangles are bucketed by the cells they ACTUALLY overlap, tested with a
+   separating-axis check against each candidate cell, not by their bounding
+   box. That distinction is the whole performance story on this model: `earcut`
+   triangulates a wall around its openings into long thin diagonals whose
+   bounding boxes are most of the drawing and whose area is a sliver. Binning
+   those by bbox put a hundred triangles in the "too big, always check it"
+   list, and everything in that list is tested by every single query. Measured,
+   and this is the load-independent number: exact binning took the reference
+   home from 99 always-checked triangles to 0, and the six-volume stress model
+   from 500 to 0. `stats.oversizedTriangles` reports it, so the claim can be
+   re-checked rather than believed.
+
+   A triangle that genuinely covers more than half the sheet still goes in the
+   always-checked list: it really is everywhere, and testing it once per query
+   is cheaper than storing it in a thousand cells.
    =========================================================================== */
 
 interface Grid {
@@ -1063,7 +1159,7 @@ interface Grid {
 }
 
 function buildGrid(
-  tri2d: { minX: Float64Array; minY: Float64Array; maxX: Float64Array; maxY: Float64Array; live: Uint8Array },
+  tri2d: Tri2D,
   triCount: number,
   bounds: { x0: number; y0: number; x1: number; y1: number },
 ): Grid {
@@ -1079,56 +1175,97 @@ function buildGrid(
   const nx = Math.max(1, Math.min(512, Math.ceil(w * inv)));
   const ny = Math.max(1, Math.min(512, Math.ceil(h * inv)));
   const nCells = nx * ny;
+  const half = cell / 2;
 
-  const cx0 = new Int32Array(triCount);
-  const cy0 = new Int32Array(triCount);
-  const cx1 = new Int32Array(triCount);
-  const cy1 = new Int32Array(triCount);
-  const isBig = new Uint8Array(triCount);
+  /* Above this a triangle is declared "everywhere" and moved to the always-
+     checked list. Half the sheet is the threshold: a roof plane really does
+     cover that much, and one extra test per query beats storing it in
+     thousands of cells. */
+  const maxPerTri = Math.max(MAX_CELLS_PER_TRI, nCells >> 1);
 
   const clampX = (v: number): number => (v < 0 ? 0 : v > nx - 1 ? nx - 1 : v);
   const clampY = (v: number): number => (v < 0 ? 0 : v > ny - 1 ? ny - 1 : v);
 
   const counts = new Int32Array(nCells + 1);
   const bigList: number[] = [];
-  let total = 0;
+  const pairCell: number[] = [];
+  const pairTri: number[] = [];
+  const touched: number[] = [];
 
   for (let t = 0; t < triCount; t++) {
     if (!tri2d.live[t]) continue;
-    const ax = clampX(Math.floor((tri2d.minX[t] - bounds.x0) * inv));
-    const ay = clampY(Math.floor((tri2d.minY[t] - bounds.y0) * inv));
-    const bx = clampX(Math.floor((tri2d.maxX[t] - bounds.x0) * inv));
-    const by = clampY(Math.floor((tri2d.maxY[t] - bounds.y0) * inv));
-    const span = (bx - ax + 1) * (by - ay + 1);
-    if (span > MAX_CELLS_PER_TRI) {
-      isBig[t] = 1;
+    const gx0 = clampX(Math.floor((tri2d.minX[t] - bounds.x0) * inv));
+    const gy0 = clampY(Math.floor((tri2d.minY[t] - bounds.y0) * inv));
+    const gx1 = clampX(Math.floor((tri2d.maxX[t] - bounds.x0) * inv));
+    const gy1 = clampY(Math.floor((tri2d.maxY[t] - bounds.y0) * inv));
+
+    if (gx0 === gx1 && gy0 === gy1) {
+      pairCell.push(gy0 * nx + gx0);
+      pairTri.push(t);
+      counts[gy0 * nx + gx0 + 1]++;
+      continue;
+    }
+    if ((gx1 - gx0 + 1) * (gy1 - gy0 + 1) > maxPerTri * 4) {
       bigList.push(t);
       continue;
     }
-    cx0[t] = ax;
-    cy0[t] = ay;
-    cx1[t] = bx;
-    cy1[t] = by;
-    for (let y = ay; y <= by; y++) {
-      for (let x = ax; x <= bx; x++) counts[y * nx + x + 1]++;
+
+    /* Separating-axis setup. Only the three TRIANGLE EDGE normals are tested:
+       the two box axes are already separating-or-not by construction, since
+       the cell range came from the triangle's own bounding box. */
+    const ax = tri2d.ax[t], ay = tri2d.ay[t];
+    const bx = tri2d.bx[t], by = tri2d.by[t];
+    const cx = tri2d.cx[t], cy = tri2d.cy[t];
+    const n0x = -(by - ay), n0y = bx - ax;
+    const n1x = -(cy - by), n1y = cx - bx;
+    const n2x = -(ay - cy), n2y = ax - cx;
+    // an edge normal projects both of its own endpoints to the same scalar,
+    // so the triangle's interval on it is bounded by that and the third corner
+    const e0 = ax * n0x + ay * n0y, f0 = cx * n0x + cy * n0y;
+    const e1 = bx * n1x + by * n1y, f1 = ax * n1x + ay * n1y;
+    const e2 = cx * n2x + cy * n2y, f2 = bx * n2x + by * n2y;
+    const lo0 = Math.min(e0, f0), hi0 = Math.max(e0, f0);
+    const lo1 = Math.min(e1, f1), hi1 = Math.max(e1, f1);
+    const lo2 = Math.min(e2, f2), hi2 = Math.max(e2, f2);
+    const r0 = (Math.abs(n0x) + Math.abs(n0y)) * half;
+    const r1 = (Math.abs(n1x) + Math.abs(n1y)) * half;
+    const r2 = (Math.abs(n2x) + Math.abs(n2y)) * half;
+
+    touched.length = 0;
+    for (let gy = gy0; gy <= gy1; gy++) {
+      const bcy = bounds.y0 + (gy + 0.5) * cell;
+      for (let gx = gx0; gx <= gx1; gx++) {
+        const bcx = bounds.x0 + (gx + 0.5) * cell;
+        const p0 = bcx * n0x + bcy * n0y;
+        if (p0 + r0 < lo0 || p0 - r0 > hi0) continue;
+        const p1 = bcx * n1x + bcy * n1y;
+        if (p1 + r1 < lo1 || p1 - r1 > hi1) continue;
+        const p2 = bcx * n2x + bcy * n2y;
+        if (p2 + r2 < lo2 || p2 - r2 > hi2) continue;
+        touched.push(gy * nx + gx);
+      }
     }
-    total += span;
+
+    if (touched.length > maxPerTri) {
+      bigList.push(t);
+      continue;
+    }
+    for (const c of touched) {
+      pairCell.push(c);
+      pairTri.push(t);
+      counts[c + 1]++;
+    }
   }
 
   const start = new Int32Array(nCells + 1);
   for (let i = 0; i < nCells; i++) start[i + 1] = start[i] + counts[i + 1];
 
+  /* Counting sort of the (cell, triangle) pairs. Pairs were emitted in
+     triangle order, so each cell's list ends up in triangle order too, which
+     is what makes the whole pass order-independent of the grid geometry. */
   const cursor = start.slice(0, nCells);
-  const items = new Int32Array(total);
-  for (let t = 0; t < triCount; t++) {
-    if (!tri2d.live[t] || isBig[t]) continue;
-    for (let y = cy0[t]; y <= cy1[t]; y++) {
-      for (let x = cx0[t]; x <= cx1[t]; x++) {
-        const c = y * nx + x;
-        items[cursor[c]++] = t;
-      }
-    }
-  }
+  const items = new Int32Array(pairCell.length);
+  for (let k = 0; k < pairCell.length; k++) items[cursor[pairCell[k]]++] = pairTri[k];
 
   return {
     x0: bounds.x0,
@@ -1240,13 +1377,17 @@ function occludedAt(
   const test = (i: number): boolean => {
     if (!tri.live[i]) return false;
     if (x < tri.minX[i] || x > tri.maxX[i] || y < tri.minY[i] || y > tri.maxY[i]) return false;
+    /* Dividing by the SIGNED doubled area is what makes this work for either
+       winding: a clockwise triangle flips the sign of both the numerator and
+       the denominator and the barycentric comes out the same. `geometry.ts`
+       does not promise a consistent winding across parts, so this matters. */
     const inv = 1 / tri.area2[i];
     const w1 = ((x - tri.ax[i]) * (tri.cy[i] - tri.ay[i]) - (tri.cx[i] - tri.ax[i]) * (y - tri.ay[i])) * inv;
-    if (w1 < INSIDE_EPS || w1 > 1 - INSIDE_EPS) return false;
+    if (w1 < INSIDE_TOL) return false;
     const w2 = ((tri.bx[i] - tri.ax[i]) * (y - tri.ay[i]) - (x - tri.ax[i]) * (tri.by[i] - tri.ay[i])) * inv;
-    if (w2 < INSIDE_EPS) return false;
+    if (w2 < INSIDE_TOL) return false;
     const w0 = 1 - w1 - w2;
-    if (w0 < INSIDE_EPS) return false;
+    if (w0 < INSIDE_TOL) return false;
     const d = w0 * tri.ad[i] + w1 * tri.bd[i] + w2 * tri.cd[i];
     return d > depth + bias;
   };

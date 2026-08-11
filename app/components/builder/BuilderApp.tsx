@@ -9,21 +9,60 @@
    from a little thing that they're playing with all the way to production."
 
    That sentence is the whole architecture of this file. There is exactly ONE
-   `HomeSpec` in the component. The 3D view reads it, the read-out reads it,
-   the plan bridge reads it, the exporters read it. Nothing keeps a second
-   copy, nothing derives a quantity `lib/builder/spec.ts` already defines, and
-   nothing writes back a concept of its own. The toy and the drawing are the
-   same object, or the promise is a lie.
+   `HomeSpec` in the component. The 3D view reads it, the 2D plan editor reads
+   it, the read-out reads it, the plan bridge reads it, the exporters read it.
+   Nothing keeps a second copy, nothing derives a quantity
+   `lib/builder/spec.ts` already defines, and nothing writes back a concept of
+   its own. The toy and the drawing are the same object, or the promise is a
+   lie.
 
-   THREE DECISIONS WORTH THE COMMENT
-   ---------------------------------
-   1. HISTORY IS FREE BECAUSE THE SPEC IS IMMUTABLE. Every control returns a
-      NEW spec (`edits.ts`), so undo is a stack of the old ones. Consecutive
-      edits carrying the same `label` collapse into one step — otherwise
-      dragging a width slider would cost forty presses of undo to get back.
-      No timestamps are involved: the label is the only grouping signal, which
-      keeps the whole thing deterministic.
-   2. GEOMETRY DISPOSAL DISPOSES THE PREVIOUS BUILD, NEVER THE CURRENT ONE.
+   THREE THINGS LIVE BESIDE THE SPEC, AND THIS IS THE HONEST PART
+   --------------------------------------------------------------
+   The plan editor, the surface picker and the fixture palette each produced a
+   value `HomeSpec` cannot hold, and not one of those modules went and widened
+   the contract:
+
+   · PARTITIONS (`lib/builder/walls.ts`). Interior walls. `spec.ts` has no
+     field for them and `validateHomeSpec` rebuilds a spec from known
+     primitives, so a `partitions` key hung on a HomeSpec would be dropped
+     silently by every share link and every JSON import. They travel as their
+     own value with their own codec.
+   · FINISHES (`lib/builder/surfaces.ts`). A map of surface id → material.
+     Same story, same reason.
+   · FIXTURES (`lib/builder/fixtures.ts`). The stove, the tub, the battery
+     bank and what has to stay clear around them. Same story again, and it
+     carries its own `FIXTURES_VERSION`.
+
+   So this component holds a DOCUMENT of four immutable values rather than one
+   spec, and every one of them is in the same history entry. The consequences
+   are stated on the page rather than left for somebody to discover from a
+   drawing: partitions are drawn only in 2D, finishes and fixtures only in 3D,
+   all three survive undo and all three are written into the .json — and none
+   of them is in a share link, on the sheet set, in the DXF or in the IFC,
+   because every one of those is generated from the HomeSpec and the HomeSpec
+   does not have them.
+
+   FIVE DECISIONS WORTH THE COMMENT
+   --------------------------------
+   1. HISTORY IS FREE BECAUSE THE DOCUMENT IS IMMUTABLE. Every control returns
+      a NEW value (`edits.ts`, `walls.ts`, `surfaces.ts`), so undo is a stack
+      of the old ones. Consecutive edits carrying the same `label` collapse
+      into one step — otherwise dragging a width slider would cost forty
+      presses of undo to get back. No timestamps are involved: the label is the
+      only grouping signal, which keeps the whole thing deterministic. It is
+      also what makes a plan drag ONE step even though it dispatches twice, a
+      spec change and a partition change under the same label.
+   2. PRUNING HAPPENS IN THE REDUCER, AND UNDO STILL GIVES THE PAINT BACK.
+      `edits.ts` mints the LOWEST free id, so deleting `vol2` frees the name
+      and the next volume added takes it — and a finish left behind by the
+      deleted volume would land on the new one. `pruneOverrides` runs on every
+      spec change to stop that. `surfaces.ts` names the cost of doing this
+      (delete a volume, undo, and the colour is gone) and the escape from it:
+      keep the override map in the same history entry as the spec. That is
+      exactly what happens here, so the entry BEFORE the delete still holds the
+      un-pruned map and undo restores both together. Partitions get the same
+      treatment through `reconcilePartitions`.
+   3. GEOMETRY DISPOSAL DISPOSES THE PREVIOUS BUILD, NEVER THE CURRENT ONE.
       The obvious `useEffect(() => () => disposeHome(home), [home])` is a trap
       under React StrictMode, which runs setup → cleanup → setup on mount:
       that cleanup frees the buffers the scene is about to draw with, and the
@@ -31,11 +70,43 @@
       a ref and freed when it is superseded. The cost is one house's worth of
       buffers left to the garbage collector when the page unmounts, which
       happens as the WebGL context is being torn down anyway.
-   3. THE DRAWING KNOWS WHICH SPEC MADE IT. `drawn` holds the spec alongside
+   4. THE 3D CANVAS STAYS MOUNTED IN 2D MODE. The toggle hides it with CSS
+      rather than unmounting it, because `houseRef` — the group the .glb and
+      .obj exporters are handed — only exists while the canvas does. Unmounting
+      it would make "Download .glb" fail with "the 3D view has not finished
+      mounting yet" for anybody who had switched to the plan. `frameloop`
+      is `"demand"`, so a hidden canvas costs nothing per frame.
+   5. THE DRAWING KNOWS WHICH SPEC MADE IT. `drawn` holds the spec alongside
       the handoff, so the page can say "this drawing is of an earlier version
       of your home" instead of showing a stale sheet as if it were current.
+   6. THE WORKSPACES ARE TABS, AND THE REASON IS DENSITY. Six panels stacked
+      under the model is a page nobody reaches the bottom of, and the two
+      things at the bottom would be the export row and the library — the two
+      that finish the job. So the model, the read-out, the undo bar and,
+      deliberately, the CLEARANCE CLASHES are always on screen, and everything
+      else is behind one of five tabs.
+
+      Which tabs are HIDDEN and which are UNMOUNTED is a real decision rather
+      than a style. A tab whose panel holds state a switch must not destroy is
+      hidden with CSS: the export row's round-trip verdict cost a press to
+      produce, `DrawingSheets` remembers which sheet you were reading, and the
+      project library owns the autosave loop. The two children that recompute
+      on every spec change whether or not anybody is looking — `AxonSheet`'s
+      hidden-line pass (~27 ms) and `SemanticExport`'s live round trip (5–29 ms,
+      both figures measured by their own modules) — are conditionally MOUNTED
+      inside their pane, so a slider drag two tabs away costs nothing.
+   7. THE LIBRARY IS LIVE BEFORE ANYBODY OPENS IT, and a recovery prompt
+      nobody sees is not a prompt. `ProjectLibrary` performs a read-before-write
+      handshake on mount and holds autosaving until the visitor decides, which
+      only works if it is mounted from the first render — so it is, hidden.
+      This component then asks the store ONCE, for one purpose: if the autosave
+      slot holds something other than what is on screen, the library tab is the
+      one that opens. It decides nothing and restores nothing. Restoring stays
+      a press, and it arrives through the same `load` action a share link does,
+      so Ctrl+Z undoes it like anything else.
    =========================================================================== */
 
+import dynamic from "next/dynamic";
 import {
   useCallback,
   useEffect,
@@ -44,60 +115,280 @@ import {
   useRef,
   useState,
   type MutableRefObject,
+  type ReactNode,
 } from "react";
 import type * as THREE from "three";
 import { drawingSet, type DrawingRooms, type DrawingSetResult } from "@/lib/builder/drawings";
 import { buildHome, disposeHome, type HomeGeometry } from "@/lib/builder/geometry";
 import { defaultSpec, type HomeSpec } from "@/lib/builder/spec";
 import { specFromLocation } from "@/lib/builder/share";
+import {
+  NO_OVERRIDES,
+  buildSurfaceIndex,
+  countOverrides,
+  pruneOverrides,
+  type SurfaceId,
+  type SurfaceIndex,
+  type SurfaceOverrides,
+} from "@/lib/builder/surfaces";
+import {
+  fitPartition,
+  pruneOrphanPartitions,
+  structThicknessOf,
+  type Partition,
+} from "@/lib/builder/walls";
+import {
+  disposeFixtureGeometry,
+  emptyFixtureSet,
+  reSnap,
+  type FixtureGeometry,
+  type FixturePlacement,
+  type FixtureSet,
+  type FloorPlacement,
+  type PlacedFixture,
+  type RoofPlacement,
+  type WallPlacement,
+} from "@/lib/builder/fixtures";
+import { readAutosave, specSignature } from "@/lib/builder/store";
 import { planFromSpec, type PlanHandoff } from "@/lib/builder/toPlan";
+import AxonSheet from "./AxonSheet";
 import DrawingSheets from "./DrawingSheets";
 import ExportRow from "./ExportRow";
+import FixturePalette, { FixtureLayer, useFixtureGeometry } from "./FixturePalette";
+import Plan2D from "./Plan2D";
 import PlanSheet from "./PlanSheet";
+import ProjectLibrary from "./ProjectLibrary";
 import Readout from "./Readout";
 import SpecPanel, { type SunState } from "./SpecPanel";
+import SurfacePicker from "./SurfacePicker";
 import Viewport from "./Viewport";
 import { sunPosition } from "./sun";
-import { Button } from "./ui";
+import { Button, Segmented } from "./ui";
 
-/* ------------------------------------------------------------- history */
+/* `exportSemantic.ts` is the ifcJSON writer, its reader, and a live round-trip
+   checker. Nobody who never opens the export tab should download one byte of
+   it, so it is a `next/dynamic` boundary — the same bargain `ExportRow` makes
+   for the DXF and IFC writers and for the DXF preview. */
+const SemanticExport = dynamic(() => import("./SemanticExport"), {
+  ssr: false,
+  loading: () => (
+    <p className="aura-label animate-pulse text-aura-text/45">Loading the semantic writer…</p>
+  ),
+});
+
+/* ------------------------------------------------------------- the document
+
+   Three immutable values that always move together. Anything that goes in
+   here has to be safe to hold eighty copies of: plain data, no three.js
+   objects, no closures, nothing that owns a GPU buffer. */
+
+export interface EditorDoc {
+  spec: HomeSpec;
+  /** interior walls — see the header on why they are not in the spec */
+  partitions: Partition[];
+  /** surface id → material — same reason */
+  overrides: SurfaceOverrides;
+  /** placed fixtures and their clearances — same reason again */
+  fixtures: FixtureSet;
+}
 
 interface EditorState {
-  spec: HomeSpec;
-  past: HomeSpec[];
-  future: HomeSpec[];
+  doc: EditorDoc;
+  past: EditorDoc[];
+  future: EditorDoc[];
   /** the label of the last edit, for coalescing — never persisted */
   label: string | null;
 }
 
 type Action =
   | { type: "edit"; spec: HomeSpec; label: string }
+  | { type: "partitions"; partitions: Partition[]; label: string }
+  | { type: "surfaces"; overrides: SurfaceOverrides; label: string }
+  | { type: "fixtures"; fixtures: FixtureSet; label: string }
+  | { type: "load"; doc: EditorDoc; label: string }
   | { type: "undo" }
   | { type: "redo" };
 
 /** Deep enough to cover a session's worth of real decisions, shallow enough
- *  that a hundred specs never sit in memory. Each entry is plain data. */
+ *  that a hundred documents never sit in memory. Each entry is plain data. */
 const HISTORY_MAX = 80;
+
+/**
+ * Partitions pulled back inside a spec that just changed under them.
+ *
+ * A partition is stored in its VOLUME's local frame, so moving the mass takes
+ * the rooms with it for free — but shrinking the mass with a slider on the
+ * panel below would leave an interior wall hanging outside the shell. `Plan2D`
+ * already refits during its own drags; this is the same guarantee for every
+ * other way the spec can change.
+ *
+ * IDENTITY IS PRESERVED WHEN NOTHING MOVED. The same array comes back out if
+ * no partition needed correcting, so a spec edit that does not touch the plan
+ * does not invalidate every memo downstream of it.
+ */
+function reconcilePartitions(spec: HomeSpec, list: Partition[]): Partition[] {
+  const pruned = pruneOrphanPartitions(spec, list).partitions;
+  const th = structThicknessOf(spec);
+  let changed = pruned.length !== list.length;
+  const out = pruned.map((p) => {
+    const v = spec.volumes.find((x) => x.id === p.volumeId);
+    if (!v) return p;
+    const fitted = fitPartition(v, p, th);
+    // null means the volume has no room left at all. `fitPartition` documents
+    // that as a decision to hand back, never a silent delete — so the
+    // partition is kept where it was and comes right again when the volume
+    // grows back.
+    if (fitted === null) return p;
+    const moved =
+      fitted.atFt !== p.atFt ||
+      fitted.fromFt !== p.fromFt ||
+      fitted.toFt !== p.toFt ||
+      (fitted.door?.atFt ?? null) !== (p.door?.atFt ?? null) ||
+      (fitted.door?.widthFt ?? null) !== (p.door?.widthFt ?? null);
+    if (moved) changed = true;
+    return moved ? fitted : p;
+  });
+  return changed ? out : list;
+}
+
+/* ---------------------------------------------------------- fixture re-snap
+
+   `fixtures.ts` states it plainly: "Re-snap every fixture. Call it once
+   whenever the HomeSpec changes." The rule that module keeps is that nothing
+   is ever outside the envelope, and the reason the integrator has to make the
+   call is that a volume can shrink, a roof can change form, and a wall can
+   stop being built underneath a fixture that was perfectly legal a moment ago.
+
+   WHY NOT `reSnapAll`, WHICH IS RIGHT THERE. Two reasons, and both matter:
+
+   · IT DESTROYS IDENTITY. `reSnapAll` rebuilds every item unconditionally, so
+     typing one character in the project name — which is a spec edit — would
+     hand `useFixtureGeometry` a brand-new FixtureSet and rebuild every mesh in
+     the scene for nothing. Re-snapping is documented as idempotent, so an item
+     that comes back identical keeps its old object here and the memo holds.
+   · IT WOULD MAKE EVERY SPEC EDIT A FIXTURE EDIT. `commit` compares by
+     identity; a always-new set means no spec change could ever be a no-op.
+
+   WHAT THIS DELIBERATELY DOES NOT DO IS DELETE. A fixture pointing at a volume
+   that no longer exists comes back from `reSnap` untouched, and stays in the
+   document — see the note on `withSpec`. */
+
+/** Field-for-field, so an idempotent re-snap is recognised as the no-op it is.
+ *  Deliberately not a JSON compare: key order is not part of the contract. */
+function samePlacement(a: FixturePlacement, b: FixturePlacement): boolean {
+  if (a.mount !== b.mount) return false;
+  if (a.mount === "floor") {
+    const q = b as FloorPlacement;
+    if (a.host.kind !== q.host.kind) return false;
+    if (a.host.kind === "volume" && q.host.kind === "volume" && a.host.volumeId !== q.host.volumeId) {
+      return false;
+    }
+    return a.x === q.x && a.z === q.z && a.rotationDeg === q.rotationDeg;
+  }
+  if (a.mount === "wall") {
+    const q = b as WallPlacement;
+    return (
+      a.volumeId === q.volumeId &&
+      a.wall === q.wall &&
+      a.offsetFt === q.offsetFt &&
+      a.heightFt === q.heightFt &&
+      a.face === q.face
+    );
+  }
+  const q = b as RoofPlacement;
+  return a.volumeId === q.volumeId && a.planeIndex === q.planeIndex && a.a === q.a && a.s === q.s;
+}
+
+function reconcileFixtures(spec: HomeSpec, set: FixtureSet): FixtureSet {
+  let changed = false;
+  const items: PlacedFixture[] = set.items.map((item) => {
+    const placement = reSnap(spec, item);
+    if (samePlacement(item.placement, placement)) return item;
+    changed = true;
+    return { ...item, placement };
+  });
+  return changed ? { ...set, items } : set;
+}
+
+/** One history step. Coalescing is by label and by label only. */
+function commit(state: EditorState, doc: EditorDoc, label: string): EditorState {
+  if (
+    doc.spec === state.doc.spec &&
+    doc.partitions === state.doc.partitions &&
+    doc.overrides === state.doc.overrides &&
+    doc.fixtures === state.doc.fixtures
+  ) {
+    return state;
+  }
+  const coalesce = label === state.label && state.past.length > 0;
+  return {
+    doc,
+    past: coalesce ? state.past : [...state.past, state.doc].slice(-HISTORY_MAX),
+    future: [],
+    label,
+  };
+}
+
+/**
+ * The spec changed, so the things stored beside it are re-checked against it
+ * in the SAME step — see decision 2 in the header.
+ *
+ * FIXTURES ARE DELIBERATELY NOT PRUNED HERE, and that is `fixtures.ts`'s call
+ * rather than an omission: `resolveFixtures` already handles a placement that
+ * points at part of the home which no longer exists by declining to draw it
+ * and saying so in a warning, instead of deleting it. A stove that stops being
+ * drawn because a volume was shrunk comes back when the volume does, and the
+ * palette reports the issue meanwhile. Deleting it here would throw that away.
+ *
+ * THEY ARE RE-SNAPPED, THOUGH, because that is a different question and
+ * `fixtures.ts` is explicit that the integrator has to ask it. `resolveFixtures`
+ * snaps internally, so the SCENE was always right; what drifted without this
+ * was the STORED placement the palette's sliders read back — shrink a volume
+ * and the "East–west" field would still read 14 ft on a slider that now stops
+ * at 9. The number you are shown and the object you are looking at have to be
+ * the same fact. `reconcileFixtures` preserves object identity when a re-snap
+ * changes nothing, so this costs a spec edit no rebuilt geometry.
+ */
+function withSpec(doc: EditorDoc, spec: HomeSpec): EditorDoc {
+  return {
+    spec,
+    partitions: reconcilePartitions(spec, doc.partitions),
+    overrides: pruneOverrides(spec, doc.overrides),
+    fixtures: reconcileFixtures(spec, doc.fixtures),
+  };
+}
 
 function reducer(state: EditorState, action: Action): EditorState {
   switch (action.type) {
     case "edit": {
-      if (action.spec === state.spec) return state;
-      const coalesce = action.label === state.label && state.past.length > 0;
-      return {
-        spec: action.spec,
-        past: coalesce ? state.past : [...state.past, state.spec].slice(-HISTORY_MAX),
-        future: [],
-        label: action.label,
-      };
+      if (action.spec === state.doc.spec) return state;
+      return commit(state, withSpec(state.doc, action.spec), action.label);
+    }
+    case "partitions": {
+      if (action.partitions === state.doc.partitions) return state;
+      return commit(state, { ...state.doc, partitions: action.partitions }, action.label);
+    }
+    case "surfaces": {
+      if (action.overrides === state.doc.overrides) return state;
+      return commit(state, { ...state.doc, overrides: action.overrides }, action.label);
+    }
+    case "fixtures": {
+      if (action.fixtures === state.doc.fixtures) return state;
+      return commit(state, { ...state.doc, fixtures: action.fixtures }, action.label);
+    }
+    case "load": {
+      // A house off a link or off somebody's disk is untrusted in exactly the
+      // same way, so what arrived with it is reconciled against it before it
+      // is allowed to become the document.
+      return commit(state, withSpec(action.doc, action.doc.spec), action.label);
     }
     case "undo": {
       const previous = state.past[state.past.length - 1];
       if (previous === undefined) return state;
       return {
-        spec: previous,
+        doc: previous,
         past: state.past.slice(0, -1),
-        future: [state.spec, ...state.future].slice(0, HISTORY_MAX),
+        future: [state.doc, ...state.future].slice(0, HISTORY_MAX),
         // cleared, so the next edit always opens a fresh step
         label: null,
       };
@@ -106,8 +397,8 @@ function reducer(state: EditorState, action: Action): EditorState {
       const next = state.future[0];
       if (next === undefined) return state;
       return {
-        spec: next,
-        past: [...state.past, state.spec].slice(-HISTORY_MAX),
+        doc: next,
+        past: [...state.past, state.doc].slice(-HISTORY_MAX),
         future: state.future.slice(1),
         label: null,
       };
@@ -133,40 +424,179 @@ interface Drawn {
 }
 
 const initialState = (): EditorState => ({
-  // Nobody meets an empty canvas: this is the Aura reference build, and it is
-  // already a real, buildable thing.
-  spec: defaultSpec(),
+  doc: {
+    // Nobody meets an empty canvas: this is the Aura reference build, and it
+    // is already a real, buildable thing.
+    spec: defaultSpec(),
+    partitions: [],
+    overrides: NO_OVERRIDES,
+    fixtures: emptyFixtureSet(),
+  },
   past: [],
   future: [],
   label: null,
 });
 
+type ViewMode = "3d" | "2d";
+
+const VIEW_MODES: ReadonlyArray<{ id: ViewMode; label: string; title: string }> = [
+  {
+    id: "3d",
+    label: "3D model",
+    title: "Orbit the home, move the sun, paint surfaces and click a fixture to edit it",
+  },
+  { id: "2d", label: "2D plan", title: "Push walls, drag corners, place openings, draw partitions" },
+];
+
+/* ------------------------------------------------------------ the workspaces
+
+   Five tabs under one always-visible model. See decision 6 in the header for
+   why this is tabs rather than six more panels, and for which of them are
+   hidden rather than unmounted. */
+type Workspace = "shape" | "fixtures" | "drawings" | "export" | "library";
+
+const WORKSPACES: ReadonlyArray<{ id: Workspace; label: string; hint: string }> = [
+  { id: "shape", label: "Shape", hint: "Volumes, roofs, openings, the deck and the sun" },
+  {
+    id: "fixtures",
+    label: "Fixtures",
+    hint: "Stove, tub, cistern, battery, array — and what has to stay clear",
+  },
+  {
+    id: "drawings",
+    label: "Drawings",
+    hint: "The plan engine's sheet, the eight-sheet set, the axonometric",
+  },
+  { id: "export", label: "Export", hint: "Seven files — and the DXF proved by reading it back" },
+  { id: "library", label: "Library", hint: "Save, reopen, duplicate, and survive a closed tab" },
+];
+
+/** Which surface ids differ between two override maps. Used only to LABEL the
+ *  history step, so repainting one wall four times is one undo and painting
+ *  four different walls is four. */
+function changedSurfaces(a: SurfaceOverrides, b: SurfaceOverrides): string[] {
+  const out: string[] = [];
+  const seen: Record<string, true> = {};
+  for (const k of Object.keys(a)) {
+    seen[k] = true;
+    if (a[k] !== b[k]) out.push(k);
+  }
+  for (const k of Object.keys(b)) {
+    if (seen[k] !== true && a[k] !== b[k]) out.push(k);
+  }
+  return out;
+}
+
+/**
+ * The id of the ONE fixture an edit changed, or null when it changed more than
+ * one, added one, or removed one.
+ *
+ * Same job as `changedSurfaces` and for the same reason: `FixturePalette`
+ * hands over the whole next set with no notion of a history step, and dragging
+ * a stove's clearance slider must cost one undo rather than forty. Compared by
+ * value rather than by object identity, because a panel that rebuilds its
+ * items on every keystroke would otherwise report every fixture as changed and
+ * every drag would open a new step.
+ */
+function singleFixtureEdit(a: FixtureSet, b: FixtureSet): string | null {
+  if (a.items.length !== b.items.length) return null;
+  let only: string | null = null;
+  for (let i = 0; i < a.items.length; i++) {
+    const x = a.items[i];
+    const y = b.items[i];
+    if (x.id !== y.id) return null;
+    if (x === y) continue;
+    if (JSON.stringify(x) === JSON.stringify(y)) continue;
+    if (only !== null) return null;
+    only = x.id;
+  }
+  return only;
+}
+
 /* =========================================================================== */
 
 export default function BuilderApp() {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
-  const { spec } = state;
+  const { spec, partitions, overrides, fixtures } = state.doc;
 
+  const [mode, setMode] = useState<ViewMode>("3d");
+  const [workspace, setWorkspace] = useState<Workspace>("shape");
   const [selectedVolumeId, setSelectedVolumeId] = useState<string | null>(null);
   const [selectedOpeningId, setSelectedOpeningId] = useState<string | null>(null);
+  const [pickedSurface, setPickedSurface] = useState<SurfaceId | null>(null);
+  const [selectedFixtureId, setSelectedFixtureId] = useState<string | null>(null);
+  const [showClearances, setShowClearances] = useState(true);
   const [sun, setSun] = useState<SunState>({ hour: 12, season: "winter" });
   const [drawn, setDrawn] = useState<Drawn | null>(null);
   const [loadedFromLink, setLoadedFromLink] = useState(false);
 
   const houseRef: MutableRefObject<THREE.Group | null> = useRef<THREE.Group | null>(null);
+  /* A counter for history labels that must not collide. UI-only, never
+     persisted, so nothing about the geometry or the export depends on it. */
+  const gesture = useRef(0);
 
   const edit = useCallback((next: HomeSpec, label: string) => {
     dispatch({ type: "edit", spec: next, label });
   }, []);
 
-  /* ---- a shared design arrives as a URL fragment. Read once, on mount. */
+  const editPartitions = useCallback((next: Partition[], label: string) => {
+    dispatch({ type: "partitions", partitions: next, label });
+  }, []);
+
+  /* `SurfacePicker` hands over the whole next map with no label — it has no
+     idea what a history step is, and should not. The label is derived from
+     which ids actually changed, which is what makes repainting the same wall
+     coalesce and painting a different one open a new step. */
+  const editSurfaces = useCallback(
+    (next: SurfaceOverrides) => {
+      const changed = changedSurfaces(overrides, next);
+      let label: string;
+      if (changed.length === 1) {
+        label = `surface:${changed[0]}`;
+      } else {
+        gesture.current += 1;
+        label = `surfaces:${gesture.current}`;
+      }
+      dispatch({ type: "surfaces", overrides: next, label });
+    },
+    [overrides],
+  );
+
+  const editFixtures = useCallback(
+    (next: FixtureSet) => {
+      const only = singleFixtureEdit(fixtures, next);
+      let label: string;
+      if (only !== null) {
+        label = `fixture:${only}`;
+      } else {
+        gesture.current += 1;
+        label = `fixtures:${gesture.current}`;
+      }
+      dispatch({ type: "fixtures", fixtures: next, label });
+    },
+    [fixtures],
+  );
+
+  /* ---- a shared design arrives as a URL fragment. Read once, on mount.
+         A link carries the SPEC and nothing else — see the header — so
+         anything the visitor had beside it belongs to a different house and
+         is cleared rather than inherited. */
   useEffect(() => {
     let alive = true;
     void specFromLocation().then((loaded) => {
       if (!alive || !loaded) return;
       // As an edit rather than as the initial state, so undo takes the visitor
       // back to the reference home instead of to a blank one.
-      dispatch({ type: "edit", spec: loaded, label: "share-link" });
+      dispatch({
+        type: "load",
+        doc: {
+          spec: loaded,
+          partitions: [],
+          overrides: NO_OVERRIDES,
+          fixtures: emptyFixtureSet(),
+        },
+        label: "share-link",
+      });
       setLoadedFromLink(true);
     });
     return () => {
@@ -183,6 +613,41 @@ export default function BuilderApp() {
     previous.current = home;
   }, [home]);
 
+  /* ---- every nameable surface on that model, and the geometry → surface map
+         a click is resolved through. One pass over about thirty parts, so it
+         is rebuilt with the geometry rather than cached against it. */
+  const surfaceIndex: SurfaceIndex = useMemo(() => buildSurfaceIndex(home, spec), [home, spec]);
+
+  /* ---- the fixtures, resolved against the shell and then built. The
+         resolution is passed to the palette as well as used here, so the panel
+         and the scene can never disagree about what collides with what —
+         `FixturePalette` would otherwise resolve a second time and two answers
+         to one question is how a clearance warning ends up contradicting the
+         red box next to it. Disposal follows the same previous-value rule
+         `home` does, and for the same StrictMode reason. */
+  const { resolution: fixtureResolution, geometry: fixtureGeometry } = useFixtureGeometry(
+    spec,
+    fixtures,
+    showClearances,
+  );
+  const previousFixtures = useRef<FixtureGeometry | null>(null);
+  useEffect(() => {
+    const old = previousFixtures.current;
+    if (old && old !== fixtureGeometry) disposeFixtureGeometry(old);
+    previousFixtures.current = fixtureGeometry;
+  }, [fixtureGeometry]);
+
+  /* A clearance that is only visible on the tab that made it is a clearance
+     nobody reads. These two are hoisted out of the palette and onto the page. */
+  const clashes = useMemo(
+    () => fixtureResolution.issues.filter((i) => i.severity === "blocked"),
+    [fixtureResolution],
+  );
+  const worthChecking = useMemo(
+    () => fixtureResolution.issues.filter((i) => i.severity === "check"),
+    [fixtureResolution],
+  );
+
   const sunPos = useMemo(() => sunPosition(sun.hour, sun.season), [sun]);
 
   /* ---- selection. Derived rather than stored, so a volume that has just
@@ -193,6 +658,50 @@ export default function BuilderApp() {
   const selectVolume = useCallback((id: string) => {
     setSelectedVolumeId(id);
     setSelectedOpeningId(null);
+  }, []);
+
+  /* A fixture removed from the set — or one that stopped resolving because the
+     volume it stood in went away — must not leave the editor pointing at
+     nothing. Derived for the same reason `activeVolume` is. */
+  const activeFixtureId =
+    selectedFixtureId !== null && fixtures.items.some((i) => i.id === selectedFixtureId)
+      ? selectedFixtureId
+      : null;
+
+  /* Clicking a fixture in the 3D view selects it AND opens the tab that can do
+     something about it. A click that highlights an object and changes nothing
+     you can see reads as broken. */
+  const pickFixture = useCallback((id: string) => {
+    setSelectedFixtureId(id);
+    setWorkspace("fixtures");
+  }, []);
+
+  /* ---- is there work from a session that ended badly?
+
+         `ProjectLibrary` does the real handshake — it reads the autosave slot
+         before it writes to it and holds autosaving until somebody decides.
+         This asks the same question for exactly one purpose: to OPEN THE TAB,
+         so the offer to restore is on screen rather than behind a click nobody
+         knew to make. It restores nothing, writes nothing and decides nothing.
+         A storage failure is swallowed here and reported properly by the panel
+         in the store's own words. See decision 7. */
+  const specRef = useRef(spec);
+  specRef.current = spec;
+  useEffect(() => {
+    let alive = true;
+    void readAutosave().then(
+      (auto) => {
+        if (!alive || !auto.present) return;
+        const differs = !auto.readable || auto.record.signature !== specSignature(specRef.current);
+        if (differs) setWorkspace("library");
+      },
+      () => {
+        /* the panel names the failure; this only chooses which tab opens */
+      },
+    );
+    return () => {
+      alive = false;
+    };
   }, []);
 
   /* ---- undo / redo, also on the keyboard, because this is an editor. */
@@ -248,6 +757,11 @@ export default function BuilderApp() {
     });
   }, [spec]);
 
+  const partitionCount = partitions.length;
+  const finishCount = countOverrides(overrides);
+  const fixtureCount = fixtures.items.length;
+  const sidecarCount = partitionCount + finishCount + fixtureCount;
+
   return (
     <div className="space-y-6">
       {loadedFromLink ? (
@@ -257,23 +771,154 @@ export default function BuilderApp() {
         </p>
       ) : null}
 
-      <Viewport
-        home={home}
-        sun={sunPos}
-        hour={sun.hour}
-        selectedId={activeVolumeId}
-        onSelect={selectVolume}
-        houseRef={houseRef}
-      />
+      {/* --------------------------------------------------------- the toggle */}
+      <div className="rounded-xl border aura-hairline px-5 py-4">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <Segmented<ViewMode> label="View" value={mode} options={VIEW_MODES} onChange={setMode} />
+          <p className="max-w-md text-xs leading-relaxed text-aura-text/55">
+            {mode === "3d"
+              ? "Orbit the massing, move the sun, click any surface to say what it is made of, and click a fixture to edit it."
+              : "North up and to scale. Drag a corner to resize, a wall to push one face, an opening to slide it, or draw an interior partition inside a mass."}
+          </p>
+        </div>
+
+        {/* THE DRIFT, NAMED. Two views over one object, and the three things
+            neither view can put on a drawing. */}
+        <p className="mt-4 border-t aura-hairline pt-4 max-w-3xl text-xs leading-relaxed text-aura-text/60">
+          Both views edit the same <span className="font-mono">HomeSpec</span>: push a wall in the
+          plan and the model moves, drag a slider in the Shape tab and the plan moves. Three things
+          live BESIDE that spec because it has no field for them, and each is visible in one view
+          only. <span className="text-aura-text/80">Partitions</span> are drawn in the 2D plan.{" "}
+          <span className="text-aura-text/80">Finishes</span> and{" "}
+          <span className="text-aura-text/80">fixtures</span> are placed in the 3D model — fixtures
+          being the only one of the three that also travels in the .glb. All three are in undo and
+          all three are written into the .json export. None of them is in a share link, in a saved
+          library design, on the generated sheet set, in the DXF or in the IFC — every one of those
+          is built from the spec, and the spec does not carry them yet.
+          {sidecarCount > 0 ? (
+            <>
+              {" "}
+              Right now: {partitionCount} partition{partitionCount === 1 ? "" : "s"},{" "}
+              {finishCount} finish{finishCount === 1 ? "" : "es"} and {fixtureCount} fixture
+              {fixtureCount === 1 ? "" : "s"}.
+            </>
+          ) : null}
+        </p>
+      </div>
+
+      {/* The 3D canvas is never unmounted — it is the export root. See
+          decision 4 in the header. */}
+      <div className={mode === "3d" ? "block" : "hidden"}>
+        <Viewport
+          home={home}
+          sun={sunPos}
+          hour={sun.hour}
+          selectedId={activeVolumeId}
+          onSelect={selectVolume}
+          houseRef={houseRef}
+          surfaces={{
+            index: surfaceIndex,
+            overrides,
+            picked: pickedSurface,
+            onPick: setPickedSurface,
+            enabled: mode === "3d",
+          }}
+          houseChildren={
+            <FixtureLayer
+              geometry={fixtureGeometry}
+              selectedId={activeFixtureId}
+              onSelect={pickFixture}
+            />
+          }
+        />
+      </div>
+
+      <div className={mode === "2d" ? "block" : "hidden"}>
+        <Plan2D
+          spec={spec}
+          onEdit={edit}
+          partitions={partitions}
+          onPartitions={editPartitions}
+          selectedVolumeId={activeVolumeId}
+          onSelectVolume={selectVolume}
+          selectedOpeningId={selectedOpeningId}
+          onSelectOpening={setSelectedOpeningId}
+        />
+      </div>
+
+      {/* ------------------------------------------------ clearances, unburied
+
+          A wood stove four inches from a combustible wall is the most
+          expensive thing this tool can catch, and it catches it for nothing —
+          which is worth nothing at all if it is three tabs down. So the
+          blocking issues are here, under the model, on every tab and in both
+          views. The full account of every clearance, with the source each one
+          came from, is in the fixtures tab; this is the part that must not be
+          possible to miss. */}
+      {clashes.length > 0 ? (
+        <div className="rounded-xl border border-aura-violet p-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <p className="aura-label text-aura-violet">
+              {clashes.length} clearance clash{clashes.length === 1 ? "" : "es"} in this home
+            </p>
+            <Button tone="danger" onClick={() => setWorkspace("fixtures")}>
+              Open the fixtures
+            </Button>
+          </div>
+          <ul className="mt-3 space-y-2">
+            {clashes.map((i, n) => (
+              <li
+                key={`${i.fixtureId}-${i.ruleKey ?? "fit"}-${n}`}
+                className="flex gap-3 text-sm leading-relaxed text-aura-text/80"
+              >
+                <span aria-hidden className="text-aura-violet">
+                  ·
+                </span>
+                <span>{i.message}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-4 border-t aura-hairline pt-3 text-xs leading-relaxed text-aura-text/60">
+            The violet boxes in the 3D view are the clearance volumes that are obstructed — switch
+            them off with &ldquo;Clearances on&rdquo; in the fixtures tab if they are in the way.
+            Every clearance names the source it came from and whether that source is a code, a
+            manufacturer or a convention. None of it has been verified against the authority having
+            jurisdiction, and a wood-burning appliance is signed off by a WETT inspector on the day,
+            not by this page.
+          </p>
+        </div>
+      ) : null}
+
+      {worthChecking.length > 0 && clashes.length === 0 ? (
+        <p className="rounded-md border border-aura-lime px-4 py-3 text-xs leading-relaxed text-aura-text/70">
+          Nothing is clashing, but {worthChecking.length} thing
+          {worthChecking.length === 1 ? " is" : "s are"} worth checking about your fixtures — the
+          fixtures tab names {worthChecking.length === 1 ? "it" : "them"} in full.
+        </p>
+      ) : null}
 
       <Readout spec={spec} summary={home.summary} warnings={home.warnings} />
+
+      {/* Only in 3D: the panel's own copy says "click any surface in the view
+          above", and in plan mode there is no such view to click. Every
+          assignment already made survives the switch — it is in the document,
+          not in this panel. */}
+      {mode === "3d" ? (
+        <SurfacePicker
+          index={surfaceIndex}
+          overrides={overrides}
+          picked={pickedSurface}
+          onPick={setPickedSurface}
+          onChange={editSurfaces}
+        />
+      ) : null}
 
       {/* ------------------------------------------------------- toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border aura-hairline px-5 py-4">
         <p className="text-xs leading-relaxed text-aura-text/55">
           {state.past.length === 0
             ? "Nothing changed yet. Every edit here is undoable, and nothing in this tool is a dead end."
-            : `${state.past.length} step${state.past.length === 1 ? "" : "s"} back available · Ctrl+Z, Ctrl+Shift+Z`}
+            : `${state.past.length} step${state.past.length === 1 ? "" : "s"} back available · Ctrl+Z, Ctrl+Shift+Z · a wall drag, a partition, a finish, a fixture and opening a saved design are all one kind of step`}
         </p>
         <div className="flex flex-wrap gap-2">
           <Button onClick={() => dispatch({ type: "undo" })} disabled={!canUndo}>
@@ -282,13 +927,112 @@ export default function BuilderApp() {
           <Button onClick={() => dispatch({ type: "redo" })} disabled={!canRedo}>
             Redo
           </Button>
-          <Button onClick={() => edit(defaultSpec(), "reset")} title="Back to the Aura reference build">
+          <Button
+            onClick={() =>
+              dispatch({
+                type: "load",
+                doc: {
+                  spec: defaultSpec(),
+                  partitions: [],
+                  overrides: NO_OVERRIDES,
+                  fixtures: emptyFixtureSet(),
+                },
+                label: "reset",
+              })
+            }
+            title="Back to the Aura reference build"
+          >
             Start over
           </Button>
         </div>
       </div>
 
-      {/* ------------------------------------------------------ generate */}
+      {/* ------------------------------------------------------ the workspaces */}
+      <nav aria-label="Builder workspaces" className="rounded-xl border aura-hairline p-2">
+        <div className="grid gap-1.5 sm:grid-cols-3 lg:grid-cols-5">
+          {WORKSPACES.map((w) => {
+            const on = w.id === workspace;
+            const badge =
+              w.id === "fixtures" && clashes.length > 0
+                ? `${clashes.length} clash${clashes.length === 1 ? "" : "es"}`
+                : null;
+            return (
+              <button
+                key={w.id}
+                type="button"
+                onClick={() => setWorkspace(w.id)}
+                aria-pressed={on}
+                data-cursor="Select"
+                className={`rounded-md border px-3 py-2.5 text-left transition-colors ${
+                  on
+                    ? "border-aura-emerald text-aura-text"
+                    : "aura-hairline text-aura-text/60 hover:text-aura-text"
+                }`}
+              >
+                <span className="flex flex-wrap items-baseline gap-2">
+                  <span className="font-mono text-[0.65rem] uppercase tracking-label">
+                    {w.label}
+                  </span>
+                  {badge ? (
+                    <span className="rounded-full border border-aura-violet px-1.5 font-mono text-[0.55rem] uppercase tracking-label text-aura-violet">
+                      {badge}
+                    </span>
+                  ) : null}
+                </span>
+                <span className="mt-0.5 block text-[0.7rem] leading-snug text-aura-text/55">
+                  {w.hint}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+
+      {/* ============================================================== SHAPE */}
+      <Pane on={workspace === "shape"}>
+        <SpecPanel
+          spec={spec}
+          selectedVolumeId={activeVolumeId}
+          selectedOpeningId={selectedOpeningId}
+          onSelectVolume={selectVolume}
+          onSelectOpening={setSelectedOpeningId}
+          onEdit={edit}
+          sun={sun}
+          onSun={setSun}
+        />
+      </Pane>
+
+      {/* =========================================================== FIXTURES
+
+          The palette works from either view — it is a list, and adding a stove
+          does not need a canvas. What needs the 3D view is CLICKING one, which
+          is why `FixtureLayer` is mounted with the model and a click there
+          opens this tab. */}
+      <Pane on={workspace === "fixtures"}>
+        <FixturePalette
+          spec={spec}
+          value={fixtures}
+          onChange={editFixtures}
+          selectedId={activeFixtureId}
+          onSelect={setSelectedFixtureId}
+          showClearances={showClearances}
+          onShowClearances={setShowClearances}
+          resolution={fixtureResolution}
+        />
+        <p className="mt-5 rounded-md border aura-hairline px-4 py-3 text-xs leading-relaxed text-aura-text/60">
+          Click a fixture in the 3D model to select it, and move it with the sliders here rather
+          than by dragging it around the view. That is deliberate: a stove that comes within about
+          fifteen inches of a wall turns square and seats flat against it, and a solar array is held
+          inside a roof-edge setback — snapping is doing something a free drag cannot express, and
+          the numbers you set here are the numbers that reach the schedule. Fixtures travel in the
+          .glb and in the .json. They are NOT on the drawing set, in the DXF, in the IFC or in a
+          share link, because every one of those is generated from the HomeSpec and the spec has no
+          field for them.
+        </p>
+      </Pane>
+
+      {/* =========================================================== DRAWINGS */}
+      <Pane on={workspace === "drawings"}>
       <section className="rounded-xl border border-aura-emerald p-6">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <p className="aura-label">Generate the drawing</p>
@@ -329,6 +1073,14 @@ export default function BuilderApp() {
           not a permit set. Nothing here has been checked against a building code, sized by an
           engineer, or approved by anyone. A licensed designer and the trades&rsquo; engineers
           produce the drawings you build from — this is the study you take to them.
+          {partitionCount + fixtureCount > 0 ? (
+            <>
+              {" "}
+              The {partitionCount} partition{partitionCount === 1 ? "" : "s"} and {fixtureCount}{" "}
+              fixture{fixtureCount === 1 ? "" : "s"} you placed are not on these sheets: the drawing
+              set is generated from the spec, and the spec does not carry them yet.
+            </>
+          ) : null}
         </p>
       </section>
 
@@ -341,19 +1093,111 @@ export default function BuilderApp() {
         </>
       ) : null}
 
-      {/* ------------------------------------------------------ controls */}
-      <SpecPanel
-        spec={spec}
-        selectedVolumeId={activeVolumeId}
-        selectedOpeningId={selectedOpeningId}
-        onSelectVolume={selectVolume}
-        onSelectOpening={setSelectedOpeningId}
-        onEdit={edit}
-        sun={sun}
-        onSun={setSun}
-      />
+      {/* ------------------------------------------------------ the ninth view
 
-      <ExportRow spec={spec} houseRef={houseRef} onLoad={edit} />
+          Beside the set rather than in it, because it is a different KIND of
+          drawing and saying so is more useful than hiding the difference
+          behind a matching sheet number. A0–A7 are DERIVED: the generator
+          knows what every line means, which is what lets them carry true
+          dimensions. This one is COMPUTED — which lines you can see from
+          three-quarters depends on every solid in the model at once, so there
+          is no closed form and it carries no dimensions on purpose.
+
+          Mounted only while this tab is open. The hidden-line pass costs about
+          27 ms on the reference home and re-runs on every edit; that is worth
+          paying while somebody is reading the drawings and worth nothing at
+          all while they are dragging a slider two tabs away. */}
+      {workspace === "drawings" ? (
+        <div className="mt-6 space-y-3">
+          <p className="max-w-3xl text-xs leading-relaxed text-aura-text/60">
+            One more view, and the only one in this tool that cannot be worked out from arithmetic.
+            It also redraws LIVE from the model on screen, so unlike the sheets above it is never
+            stale — which does mean it can disagree with a set you generated before your last edit.
+          </p>
+          <AxonSheet home={home} name={spec.name} />
+        </div>
+      ) : null}
+      </Pane>
+
+      {/* ============================================================= EXPORT */}
+      <Pane on={workspace === "export"}>
+        <ExportRow
+          spec={spec}
+          partitions={partitions}
+          overrides={overrides}
+          fixtures={fixtures}
+          houseRef={houseRef}
+          onLoad={(loadedSpec, loadedPartitions, loadedOverrides, loadedFixtures, label) =>
+            dispatch({
+              type: "load",
+              doc: {
+                spec: loadedSpec,
+                partitions: loadedPartitions,
+                overrides: loadedOverrides,
+                fixtures: loadedFixtures,
+              },
+              label,
+            })
+          }
+        />
+        {/* Mounted only while this tab is open: `roundTripReport` really does
+            serialise the whole building and parse it back — 4.5 ms for the
+            reference home, 28.8 ms for a deliberately absurd one, both measured
+            by the module itself — and it re-runs on every spec change. */}
+        {workspace === "export" ? (
+          <div className="mt-6">
+            <SemanticExport spec={spec} />
+          </div>
+        ) : null}
+      </Pane>
+
+      {/* ============================================================ LIBRARY
+
+          Always mounted — see decision 7. It owns the autosave loop and the
+          crash-recovery handshake, and both have to be running whether or not
+          this is the tab on screen. */}
+      <Pane on={workspace === "library"}>
+        <ProjectLibrary
+          spec={spec}
+          onOpen={(loaded, label) =>
+            dispatch({
+              type: "load",
+              doc: {
+                spec: loaded,
+                partitions: [],
+                overrides: NO_OVERRIDES,
+                fixtures: emptyFixtureSet(),
+              },
+              label,
+            })
+          }
+        />
+        <p className="mt-5 rounded-md border aura-hairline px-4 py-3 text-xs leading-relaxed text-aura-text/60">
+          A saved design is a <span className="font-mono">HomeSpec</span> and nothing else. So
+          opening one — or restoring the autosave — replaces the house and CLEARS the partitions,
+          finishes and fixtures you had, because those belonged to the home that was on screen a
+          moment ago and nothing in the record says they belong to this one. It arrives as an
+          ordinary edit: Ctrl+Z puts all four values back exactly as they were. When those three
+          matter, the .json in the export tab is the file that carries them.
+        </p>
+      </Pane>
+    </div>
+  );
+}
+
+/* A workspace, hidden rather than unmounted.
+
+   CSS, not a conditional, because the panels inside hold state a tab switch
+   must not destroy: the export row's round-trip verdict cost a press to
+   produce, `DrawingSheets` remembers which sheet you were reading, and — most
+   importantly — `ProjectLibrary` owns the autosave timer and performed a
+   read-before-write handshake on mount that must not be re-run every time
+   somebody looks at the exports. The two genuinely expensive children are
+   conditionally mounted INSIDE their pane instead. See decision 6. */
+function Pane({ on, children }: { on: boolean; children: ReactNode }) {
+  return (
+    <div className={on ? "block" : "hidden"} aria-hidden={!on}>
+      {children}
     </div>
   );
 }
