@@ -1392,6 +1392,35 @@ function GlassRailRun({
   );
 }
 
+/** A plumb newel post, sized so the cap rail of a GlassRailRun lands on top
+ *  of it rather than crossing it.
+ *
+ *  Every free end and every corner gets one. A run that simply stops leaves a
+ *  pane hanging in mid-air, and two runs meeting at a right angle each stop on
+ *  the corner POINT, which leaves a post-section notch of daylight exactly at
+ *  the corner. One component so all of them are identical — mismatched posts
+ *  are what makes a balustrade read as modelled rather than built.
+ *
+ *  `base` is the walking surface, `h` the run's rail height; GlassRailRun puts
+ *  its cap centre at base + h + 0.03, so the post spans base → that. */
+function Newel({
+  at,
+  base,
+  h = 0.98,
+}: {
+  at: [number, number];
+  base: number;
+  h?: number;
+}) {
+  const top = base + h + 0.03;
+  return (
+    <mesh castShadow position={[at[0], (base + top) / 2, at[1]]}>
+      <boxGeometry args={[0.07, top - base, 0.07]} />
+      <meshStandardMaterial color="#5d6663" roughness={0.45} metalness={0.55} />
+    </mesh>
+  );
+}
+
 /** A balustrade that DESCENDS with a flight of steps.
  *
  *  WHY v1 LEFT GAPS, because the failure is instructive and easy to repeat.
@@ -1602,15 +1631,26 @@ function Deck({ glassFloor, glassRail }: { glassFloor: THREE.Material; glassRail
       <GlassRailRun from={[-3.6, 6.24]} to={[-1.09, 6.24]} base={0.485} mat={glassRail} />
       <GlassRailRun from={[1.19, 6.24]} to={[3.45, 6.24]} base={0.485} mat={glassRail} />
       <GlassRailRun from={[-3.6, 3.15]} to={[-3.6, 6.24]} base={0.485} mat={glassRail} />
-      {/* Corner and terminal newels. Two runs meeting at right angles each end
-          on the corner POINT, which leaves a post-section notch of daylight at
-          the corner itself; and a run that simply stops in mid-air reads as
-          unfinished. A post at every junction and every free end closes both. */}
-      {([[-3.6, 6.24], [-3.6, 3.15], [3.45, 6.24]] as [number, number][]).map(([x, z], i) => (
-        <mesh key={`dn${i}`} castShadow position={[x, 0.99, z]}>
-          <boxGeometry args={[0.07, 1.01, 0.07]} />
-          <meshStandardMaterial color="#5d6663" roughness={0.45} metalness={0.55} />
-        </mesh>
+      {/* THE EAST EDGE WAS COMPLETELY UNGUARDED — a 3m open drop along the
+          glass bay from the house to the front corner, with nothing on it. The
+          two runs below close it, leaving a 1m opening at z 4.15–5.15 where
+          the walkway to the hot tub leaves, which is the one place a guard
+          should stop. */}
+      <GlassRailRun from={[3.45, 3.15]} to={[3.45, 4.15]} base={0.485} mat={glassRail} />
+      <GlassRailRun from={[3.45, 5.15]} to={[3.45, 6.24]} base={0.485} mat={glassRail} />
+      {/* A post at every corner, every free end, and both sides of the walkway
+          opening. Anything less leaves a pane hanging or a corner notched. */}
+      {(
+        [
+          [-3.6, 6.24],
+          [-3.6, 3.15],
+          [3.45, 6.24],
+          [3.45, 3.15],
+          [3.45, 4.15],
+          [3.45, 5.15],
+        ] as [number, number][]
+      ).map((at, i) => (
+        <Newel key={`dn${i}`} at={at} base={0.485} />
       ))}
       {/* steps to the meadow */}
       {[0, 1, 2].map((i) => (
@@ -1710,12 +1750,13 @@ function Walkway({ glassFloor, glassRail }: { glassFloor: THREE.Material; glassR
       ))}
       <GlassRailRun from={railA[0]} to={railA[1]} h={0.62} base={0.45} mat={glassRail} />
       <GlassRailRun from={railB[0]} to={railB[1]} h={0.62} base={0.45} mat={glassRail} />
-      {/* newel posts terminate the run instead of leaving a rail in mid-air */}
-      {[railA[1], railB[1]].map(([x, z], i) => (
-        <mesh key={`nw${i}`} castShadow position={[x, 0.72, z]}>
-          <boxGeometry args={[0.07, 0.62, 0.07]} />
-          <meshStandardMaterial color="#5d6663" roughness={0.45} metalness={0.55} />
-        </mesh>
+      {/* A post at BOTH ends of both runs. Only the far ends were posted, so
+          each rail began in mid-air where it left the deck — the same
+          unfinished-end defect the deck rails had, just less obvious because
+          the deck edge is behind it. Same Newel as everywhere else, so the
+          walkway's posts match the deck's rather than being their own size. */}
+      {[railA[0], railA[1], railB[0], railB[1]].map((at, i) => (
+        <Newel key={`nw${i}`} at={at} base={0.45} h={0.62} />
       ))}
     </group>
   );
