@@ -136,6 +136,49 @@ export function Toggle({
   );
 }
 
+/** One branch of a choice, drawn in the same language as `CheckRow`.
+ *
+ *  A real `<input type="radio">` rather than a styled button: grouping,
+ *  arrow-key movement and the announced "2 of 2" come free from the
+ *  platform, and a branch this consequential should not reinvent them. */
+export function ChoiceRow({
+  name,
+  label,
+  detail,
+  checked,
+  onSelect,
+}: {
+  /** Shared across the branches so the browser groups them. */
+  name: string;
+  label: string;
+  detail: string;
+  checked: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <label
+      className={`flex h-full cursor-pointer gap-3 rounded-md border px-4 py-3 transition-colors ${
+        checked ? "border-aura-emerald" : "aura-hairline"
+      }`}
+      data-cursor="Select"
+    >
+      <input
+        type="radio"
+        name={name}
+        checked={checked}
+        onChange={onSelect}
+        className="mt-0.5 h-4 w-4 shrink-0 accent-aura-emerald"
+      />
+      <span className="min-w-0">
+        <span className={`block text-sm ${checked ? "text-aura-text" : "text-aura-text/80"}`}>
+          {label}
+        </span>
+        <span className="mt-1 block text-xs leading-relaxed text-aura-text/60">{detail}</span>
+      </span>
+    </label>
+  );
+}
+
 /** A checklist row. `locked` rows are the standard spec: checked, not
  *  removable, and labelled as such rather than quietly disabled. */
 export function CheckRow({

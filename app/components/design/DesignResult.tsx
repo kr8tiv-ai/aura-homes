@@ -11,10 +11,16 @@
       minimum, or glazing trimmed against the 22% NBC 9.36 ceiling, is the
       honest signal — it is why you would trust the rest of the numbers.
    3. `offline: true` is labelled as what it is: the deterministic geometry
-      path, with the room program derived arithmetically rather than reasoned. */
+      path, with the room program derived arithmetically rather than reasoned.
+   4. When the owner said they already have land, the parcel findings come
+      FIRST — ahead of the layout engine's own warnings. A room that solved
+      six inches under the minimum matters; a home that does not fit the lot
+      at all matters more, and the order on the page says which is which. */
 
 import { Counter, Reveal, Stagger, StaggerItem } from "@/components/Reveal";
 import { feetInches, sqft } from "@/components/design/ecoSpec";
+import ParcelFindings from "@/components/design/ParcelFindings";
+import type { ParcelReport } from "@/lib/design/parcel";
 import { artifactUrl, formatFdwr, type DesignResponse } from "@/lib/designApi";
 
 export const STAMP = "REVIEW-READY DESIGN PACKAGE — NOT FOR CONSTRUCTION";
@@ -41,10 +47,20 @@ function Stat({ k, v, sub }: { k: string; v: React.ReactNode; sub?: string }) {
 export default function DesignResult({
   res,
   engine = "service",
+  parcel = null,
+  onUseLargest,
 }: {
   res: DesignResponse;
   /** which engine produced this — it changes what an absent PDF/DXF MEANS */
   engine?: "service" | "local";
+  /**
+   * Present only when the owner said they already have land. Null is the
+   * ordinary case and renders nothing — an absent parcel report must never
+   * read as a parcel that passed.
+   */
+  parcel?: ParcelReport | null;
+  /** Writes a fitting floor area back into the questionnaire. */
+  onUseLargest?: (totalSqFt: number) => void;
 }) {
   const { plan, artifacts, render_prompts: prompts, notes, offline } = res;
   const windows = plan.rooms.reduce((n, r) => n + r.windows, 0);
@@ -86,6 +102,10 @@ export default function DesignResult({
           </p>
         </div>
       </Reveal>
+
+      {/* ------------------------------------------------ against your land
+           Above the layout warnings on purpose — see rule 4 in the header. */}
+      {parcel ? <ParcelFindings report={parcel} onUseLargest={onUseLargest} /> : null}
 
       {/* --------------------------------------------------------- warnings */}
       {plan.warnings.length > 0 && (

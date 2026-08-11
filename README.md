@@ -8,7 +8,11 @@
 
 ### From USDC on X Layer to the keys of an off-grid eco home.
 
-**Aura Homes is an AI agent that orchestrates the entire journey — design the home, find the land, find the agent, price every material, fund it in escrow, hire the right trade for every task, and babysit the build to completion — with no middlemen, no black boxes, and nothing hidden.** One click to design. One agent watching every step after that. Alberta pilot. Open source from the first commit.
+**Aura Homes is an AI agent that orchestrates the entire journey — design the home, find the land, find the agent, price every material, fund the build, hire the right trade for every task, and babysit it to completion — with no middlemen, no black boxes, and nothing hidden.** One click to design. One agent watching every step after that. Alberta pilot. Open source from the first commit.
+
+**Two doors, and you can take either.** *Design one* — architect your own off-grid home from a questionnaire to a dimensioned drawing, free, and walk out with the plans whether or not you ever build with us. *Or buy one* — from a maker that already accepts crypto, with Aura showing you exactly how your USDC on X Layer reaches them.
+
+**Aura facilitates. It does not sell homes.** It holds no funds, is not a party to any purchase or build contract, and gives no legal, financial or engineering advice. You own your project and every decision in it. That boundary is a design constraint, not fine print — see [What Aura is, and is not](#what-aura-is-and-is-not).
 
 [![Hackathon](https://img.shields.io/badge/OKX_BuildX-AI_Season_2026-059669?style=flat-square&labelColor=f5f5f4)](https://web3.okx.com/xlayer/build-x-hackathon)
 [![Track](https://img.shields.io/badge/track-AI--RWA-7c3aed?style=flat-square&labelColor=f5f5f4)](docs/FEASIBILITY.md#2-the-hackathon-verified-facts)
@@ -40,23 +44,53 @@ Building an eco home today means being your own general contractor across twenty
 <sub><code>FIG.&nbsp;1</code>&nbsp;&nbsp;The five-stage pipeline — one agent process from land to keys.</sub>
 </div>
 
-1. **LAND** — filters parcels against the things that actually kill small-home builds: district minimum-dwelling-size bylaws, aquifer reliability, power-line distance, septic soils, the GST-on-bare-land trap. Then walks the acquisition with crypto-fluent, licensed Alberta professionals. USDC in, title out.
-2. **DESIGN** — an AI architect turns a questionnaire into a **review-ready design package** for a SIP-built small home: floor plan, 3D massing, energy pre-check, code-constraint report (NBC Part 9, climate zone 7A). A local designer finishes the permit set — we say *review-ready* because "AI permit-ready drawings" don't exist anywhere and we won't pretend.
+1. **LAND** — filters parcels against the things that actually kill small-home builds: district minimum-dwelling-size bylaws, aquifer reliability, power-line distance, septic soils, the GST-on-bare-land trap. **Already own land? Say so and skip straight to design** — the parcel you have becomes the constraint the home is drawn against. Aura aggregates listings and zoning and connects you to a licensed realtor; it is not a brokerage and never acts as one.
+2. **DESIGN** — an AI architect turns a questionnaire into a **review-ready design package** for a SIP-built small home: a dimensioned floor plan at 1/4" = 1'-0" with poché walls, door swings, window cuts, a room schedule, a title block and a scale bar; plus an energy pre-check and a code-constraint report (NBC Part 9, climate zone 7A). **It runs in your browser** — no server, no key, no account — and it is free. A local designer finishes the permit set; we say *review-ready* because "AI permit-ready drawings" don't exist anywhere and we won't pretend. Take the plans and build with anyone.
 3. **BUDGET** — a live line-item budget from researched Alberta data ([data/alberta](data/alberta/)): every line has an in-province supplier, a LOW/MID/HIGH range, and an owner-buildable flag. Reference build: 800 sqft off-grid SIP home, **$301,280 CAD mid-range ex-land** (LOW $199,100 / HIGH $443,900), computed line-by-line.
-4. **ESCROW** — milestones funded in **native USDC on X Layer** into [`AuraBuildEscrow`](contracts/): 2-of-3 release (homeowner / builder / arbiter) and Alberta's statutory 10% construction holdback modeled directly in the contract. Every build mints a record in [`AuraBuildRegistry`](contracts/) — the real-world asset is the build itself.
+4. **ESCROW** — milestones funded in **native USDC on X Layer** through [`AuraBuildEscrow`](contracts/): 2-of-3 release (homeowner / builder / arbiter) and Alberta's statutory 10% construction holdback modeled directly in the contract. Every build mints a record in [`AuraBuildRegistry`](contracts/) — the real-world asset is the build itself. **Aura holds no key and takes no custody.** The contract is a tool the homeowner and builder deploy between themselves; the third approver is theirs to choose — their lawyer, an escrow agent, anyone but us. Routing other people's money is what makes an operator a money-services business in Canada, and Aura is software, not a custodian.
 5. **BUILD** — orchestrated permits, a DIY-or-hire decision on every work package, and an AI contractor-research sweep that hands you a ranked shortlist per trade. SIP shell up in days, solar + battery + wood stove, certified-installer septic, cistern or well — and every home ships with a wood-fired hot tub and a beautiful deck, because these homes are meant to be wanted, not endured.
 
 Off-grid everything, grid-optional forever. No conventional concrete: screw piles instead of poured foundations (also *cheaper* in Alberta — [the research](docs/research/FOUNDATIONS-NO-CONCRETE.md)). Nobody needs to own crypto to start: **pay by Visa** and the app converts to USDC in-flow. What runs today versus roadmap, per stage:
 
 | | Stage | Real today | Roadmap |
 |--:|---|---|---|
-| `01` | **LAND** | parcel-verdict engine over structured county data ([agent/src/parcels.ts](agent/src/parcels.ts)) | live listings, district-table lookups, realtor matching, the watching agent |
-| `02` | **DESIGN** | AI design brief + code-constraint report, offline fallback | partner handoff to AI-architecture tools, IFC export, in-browser 3D, HOT2000 |
+| `01` | **LAND** | parcel-verdict engine over structured county data ([agent/src/parcels.ts](agent/src/parcels.ts)) | MLS/listing aggregation, district-table lookups, a zoning engine, realtor matching, the watching agent |
+| `02` | **DESIGN** | **a real dimensioned drawing, generated in the browser** ([app/lib/design](app/lib/design/)) — room packing, wall thickness by material, the 22% FDWR check, SVG at 1/4"=1'-0" | parcel-aware siting (setbacks, solar orientation, slope), a free-form massing builder, IFC export, HOT2000 |
 | `03` | **BUDGET** | full line-item table, reconciles to the JSON model | live quote ingestion, inventory + ordering, invoice learning loop |
 | `04` | **ESCROW** | both contracts written and tested | testnet → mainnet deploy, audit, FINTRAC MSB, account abstraction |
 | `05` | **BUILD** | sequenced milestone plan + playbook knowledge | contractor shortlists per trade, journey brain, inspector-linked draws |
 
 The pipeline is typed end-to-end (`Questionnaire → DesignBrief → Budget → MilestoneSchedule`, [agent/src/types.ts](agent/src/types.ts)) so stages deepen independently.
+
+<br>
+
+## What Aura is, and is not
+
+Most of the hard decisions in this repo come from one line, so it is worth
+stating before the architecture rather than after it.
+
+| Aura **is** | Aura **is not** |
+|---|---|
+| Rails and guidance — software that walks you through a build | The seller of the home, or its builder |
+| An architecture tool whose output is yours to take anywhere | An architect, engineer, or the author of a permit set |
+| A directory that ranks and connects — builders, realtors, suppliers, crypto-aware counsel | A brokerage, a general contractor, or anyone's agent of record |
+| A router that shows you exactly how your USDC reaches a seller | A custodian, an exchange, or a party to your payment |
+| Free to design with, and open source end to end | Free of your own judgement — you own every decision |
+
+**Nobody is asked to trust us with money.** Aura never holds funds. Where a
+contract is involved the parties deploy it themselves and hold their own keys.
+Where advice is needed, Aura points at a licensed human and says so.
+
+**And nobody is asked to become a crypto person.** The initial users are
+crypto-native by design — people who want to spend digital assets on something
+real. Everyone after them should never have to think about it: the chain is
+plumbing, and the app's job is to make it invisible while still being honest
+that it is there.
+
+Where money would eventually come from, since an open-source project should say
+it out loud: small facilitation fees on the things Aura routes, and paid tools
+for the supply side — never a cut of somebody's build budget. Nothing charges
+anyone today, and there is **no token**.
 
 <br>
 
@@ -177,7 +211,11 @@ We say **review-ready design package**, never "permit-ready AI drawings." The se
 
 **What else it screens.** Aquifer reliability and well-record density · distance to the nearest three-phase or single-phase line and the cost per metre to bring it · septic soil classification and percolation viability · road access and seasonal maintenance · the GST-on-bare-land trap that surprises private buyers · setbacks, overlays, and riparian constraints.
 
-**Finding the realtor** *(`SPEC`)*. Rural land is a specialist trade and most residential agents are not it. The platform will shortlist Alberta agents by rural-land transaction history, county familiarity, and the practical crypto-fluency question — because at closing, funds must arrive as CAD in a trust account and someone has to be unbothered by where they came from. Ranked, with basis, and you choose. **We take no referral fee.** The whole thesis is cutting middlemen out, not becoming one.
+**Already have land?** Say so and the whole stage collapses to one question — *where is it?* Your parcel becomes the constraint the home is drawn against: buildable envelope after setbacks, whether the glazing wall can face within 30° of south, and what your slope does to a screw-pile foundation. Most people arriving at a project like this already own the dirt, and making them shop for it first is the fastest way to lose them.
+
+**Listings and zoning** *(`SPEC`)*. For everyone else, Aura aggregates listings across sources and pairs them with what the district actually permits — one search that understands zoning instead of five tabs that don't. **Aura is not a brokerage and never acts as one**; it connects you to a licensed realtor and steps back.
+
+**Finding the realtor** *(`SPEC`)*. Rural land is a specialist trade and most residential agents are not it. The platform will shortlist Alberta agents by rural-land transaction history, county familiarity, and the practical crypto-fluency question — because at closing, funds must arrive as CAD in a trust account and someone has to be unbothered by where they came from. Ranked, with basis, and you choose. **The ranking is never for sale** — nobody buys a higher position, and if a facilitation fee is ever charged it will be disclosed on the page it applies to. The thesis is cutting middlemen out, not quietly becoming one.
 
 **Closing** *(`SPEC`)*. Alberta lawyers cannot hold cryptocurrency in trust, so the flow is convert-then-close: USDC exits at a licensed boundary, CAD lands in the trust account, title transfers through Alberta Land Titles like any other purchase. The app's ledger exports the CRA barter-disposition bookkeeping automatically, because a crypto-funded land purchase is a taxable disposition and pretending otherwise would be malpractice.
 
@@ -229,7 +267,9 @@ The totals rule is frozen: *totals = Σ line items × (1 + contingency), land ex
 
 When engineering completes and the design is frozen, the platform runs a **contractor research sweep per remaining trade** — a wide internet research pass producing a ranked shortlist with basis: licence status, reviews with dates, rural-service radius, whether they actually work with SIP or screw piles, and current lead time. One shortlist per trade, one decision per trade, no bidding-portal theatre.
 
-This is deliberately **research, not a marketplace**. We do not take a cut, we do not sell placement, and we do not become the middleman the whole project exists to remove. Tracked as [issue #7](https://github.com/kr8tiv-ai/aura-homes/issues) alongside the DIY-or-hire toggle.
+**The ranking, specifically.** A builder's score is cross-referenced across independent signals rather than asserted: years in operation, Better Business Bureau standing, review volume *and* recency across more than one platform, social presence and whether it shows finished work, and licence/insurance status where it is publicly checkable. Each becomes a line in a short report you can read and disagree with — the basis is always shown, because a number nobody can audit is just an opinion with a decimal point.
+
+This is deliberately **research, not a marketplace**. **Placement is never for sale** — nobody pays to rank higher, and if Aura ever charges a facilitation fee it appears on the page it applies to. We do not become the middleman the whole project exists to remove. Tracked as [issue #7](https://github.com/kr8tiv-ai/aura-homes/issues) alongside the DIY-or-hire toggle.
 
 <br>
 
@@ -316,6 +356,8 @@ flowchart LR
 - **Door 1 — card-first.** A buyer with zero crypto pays by Visa or Mastercard; an on-ramp partner (MoonPay / Transak / Banxa class) sells USDC into the flow. The user never sees a wallet, an exchange, or a seed phrase. Prices display in CAD throughout. *Partner selection is [issue #1](https://github.com/kr8tiv-ai/aura-homes/issues) — evaluated, not yet integrated.*
 - **Door 2 — bring your own.** Crypto-natives buy USDC on Wealthsimple, Kraken, or Coinbase, withdraw to **Base**, and move it to X Layer via **Circle's CCTP** — burn-and-mint of native USDC, so what lands is the real thing, not a wrapped IOU. Two hops, told honestly, and cheaper than Door 1.
 
+**And a third door that skips the build entirely.** Some makers of prefab, modular and off-grid homes already accept crypto directly — a small, verified, evidence-tiered list rather than a hopeful one. If you would rather buy a finished home than architect one, Aura shows you who they are, what assets each takes, whether they reach Canada, the honest catch on each, and the precise route from your USDC on X Layer to their wallet. It is a facilitated handoff, not a checkout: **Aura is not a party to the purchase and never touches the funds.**
+
 ### Which rail carries which payment
 
 Every payment in the journey, mapped to its rail. This is the section to read if you are wondering how a house gets paid for in stablecoin.
@@ -331,6 +373,7 @@ Every payment in the journey, mapped to its rail. This is the section to read if
 | 7 | **Material orders & suppliers** | Most Alberta suppliers want CAD. Off-ramp at the point of order; the ledger keeps both sides. | `SPEC` |
 | 8 | **Optional borrowing** | Aave V3 on X Layer (~$85M TVL) or Ledn against crypto collateral. Taught in-app, never brokered by us. | `SPEC` |
 | 9 | **Tax bookkeeping** | Every crypto-funded purchase is a CRA barter disposition. The ledger exports it automatically. | `SPEC` |
+| 10 | **Buying a finished eco home** | The other door entirely: a maker that *already* accepts crypto, paid directly. Aura publishes the verified directory and the exact hop sequence from USDC on X Layer to whatever that maker takes — and is not a party to the purchase. | `IN BUILD` |
 
 **On Wealthsimple, since people keep asking:** it has **no crypto-backed loans.** Its portfolio line of credit is securities-collateral only — re-verified August 2026. We would integrate it the day that changes. Until then, saying otherwise would be the exact kind of convenient inaccuracy this project exists to refuse.
 
@@ -408,11 +451,12 @@ Development permit vs building permit, minimum dwelling sizes, setbacks, overlay
 <sub><code>13&nbsp;·&nbsp;THE&nbsp;ROAD&nbsp;TO&nbsp;TRUE&nbsp;ONE-CLICK</code></sub>
 ## What "one click" becomes
 
-Today one click produces a complete costed plan. The destination is one click producing a *house*, with the platform carrying every step in between. The rollout is a designed three-arc story ([docs/ROADMAP.md](docs/ROADMAP.md)):
+Today one click produces a complete costed plan and a dimensioned drawing. The destination is one click producing a *house*, with the platform carrying every step in between. The rollout is a two-arc story ([docs/ROADMAP.md](docs/ROADMAP.md)):
 
-> **Arc 1 — the hackathon MVP** *(now → Aug 21, 2026)*: buy a home with USDC on X Layer, with an agent that directs you to the land. The 3D site is live at aurahomes.fun; the contracts pass 10/10 tests and await a human-gated faucet step before testnet deploy.
+> **Arc 1 — the hackathon MVP** *(now → Aug 21, 2026)*: design and fund an off-grid home with USDC on X Layer — or buy one from a maker that already takes crypto, with the route from X Layer to their wallet made explicit. The 3D site is live at aurahomes.fun, the architecture engine runs in the browser, and both contracts are deployed to X Layer testnet 1952.
 > **Arc 2 — the Locality Hub**: design an eco-only home (SIP sandwich panels, solar setups), source materials and contractors locally, choose buy-vs-build, a vendor directory purchasable in USDC, contractor payments, inventory, build tracking, and latest-technology discovery — rolled out locality by locality, Alberta counties first.
-> **Arc 3 — the HOMES token**: named now, launching on X Layer as part of the phased rollout; its utility will be announced as a phase of its own, after Canadian securities counsel ([docs/TOKEN-RESEARCH.md](docs/TOKEN-RESEARCH.md)).
+
+**There is no third arc, and no token.** One was announced here previously; announcing a token is a promise however carefully the utility is hedged, and this project would rather ship two honest arcs than keep a third for the rhythm. If an arc three ever returns it will be a product, not an asset.
 
 The honest sequence within those arcs, in the order that most reduces the chance of someone getting hurt:
 
@@ -493,7 +537,10 @@ It's the largest carbon line in a small house and the most disruptive thing you 
 It sits in the escrow contract, which no single party can move alone. Unapproved milestones stay funded and recoverable; the arbiter path exists for exactly this. Compare: a deposit in a builder's operating account.
 
 **Is there a token?**
-No — not for the hackathon, and not until securities counsel says how. The build registry NFT is deliberately non-financial. Research and the exact conditions that would change this: [docs/TOKEN-RESEARCH.md](docs/TOKEN-RESEARCH.md).
+No. Not for the hackathon and not on the roadmap — the token arc was removed from this repo and the site on Aug 10, 2026. The build registry NFT is deliberately non-financial: it records that a real home came into existence, and it is not a claim on anything. The research that informed the decision, including the conditions that would have to change: [docs/TOKEN-RESEARCH.md](docs/TOKEN-RESEARCH.md).
+
+**So how does Aura make money?**
+Today it does not — nothing on the site charges anyone and there is no fee anywhere in the escrow contract. The likely shape is small facilitation fees on the things Aura routes, plus paid tools for the supply side, decided once the product is in real use rather than guessed at now. What is already ruled out is taking a large cut of somebody's build: the budget shown is the budget, and every line of it goes to land, materials, trades and permits.
 
 **Why should I trust an AI with a house?**
 You shouldn't, blindly — the architecture never asks you to. The AI orchestrates; licensed humans stamp, install, inspect, and close at every legally-required boundary; deterministic code computes the money; the contract enforces the holdback; and every claim traces to a source you can check.
@@ -521,6 +568,8 @@ You shouldn't, blindly — the architecture never asks you to. The AI orchestrat
 | [docs/AUDIT-LOG.md](docs/AUDIT-LOG.md) | The standing vision-audit loop |
 | [contracts/](contracts/) | `AuraBuildEscrow` + `AuraBuildRegistry`, Hardhat, tested |
 | [app/](app/) | Next.js app — the 3D story site, the five-stage pipeline UI, X Layer wallet flow |
+| [app/lib/design/](app/lib/design/) | **The architecture engine that runs in your browser** — room packing, wall thickness by material, the 22% FDWR check, and the SVG drawing at 1/4"=1'-0". No server, no key, free |
+| [design-api/](design-api/) | The optional Python service: the same geometry plus LLM-authored room programs, AI renders, and PDF/DXF export. The site works without it |
 | [agent/](agent/) | `aura-architect` — the AI design/budget/milestone pipeline and the Brain MCP server |
 | [data/alberta/](data/alberta/) | The researched cost model and no-middlemen supplier directory |
 | [assets/](assets/) | The mark, hero, and README graphics — generated, in the house style |
@@ -543,8 +592,12 @@ npm run brain && npm run mcp:smoke
 # the contracts, and the narrated escrow lifecycle
 cd ../contracts && npm install && npx hardhat test && npm run demo:lifecycle
 
-# the app (3D story site + dashboard)
+# the app (3D story site + dashboard + the in-browser architecture engine)
 cd ../app && npm install && npm run dev
+
+# OPTIONAL — the design service, for LLM room programs, renders and PDF/DXF.
+# The design step works fully without it; this only adds the AI half.
+cd ../design-api && python -m pip install -r requirements.txt && uvicorn app.main:app --port 8000
 ```
 
 Anchors, in the project's own sense of the word — output you can read, not claims you have to trust:
@@ -555,6 +608,7 @@ Anchors, in the project's own sense of the word — output you can read, not cla
 | `npm run demo:lifecycle` | The full money arc, reconciled to the dollar, with a real `HoldbackNotMatured()` revert |
 | `npm run demo` (agent) | LOW/MID/HIGH totals that equal `cost-model.json` exactly, and a live district-minimum REJECT |
 | `npm run build` (app) | The static export that ships to aurahomes.fun |
+| Open `/design`, press **Generate design** | A real dimensioned drawing, produced in the browser with no server running. The default 800 sqft / 2 bed / SIP brief solves to **34'-0" × 23'-6", 799 sq ft gross, 165 mm wall, 10 windows, FDWR 12.8%, 0 warnings** — the same numbers the Python service produces, verified by diffing the two |
 
 <br>
 

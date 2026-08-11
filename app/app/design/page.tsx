@@ -18,12 +18,25 @@
 
    What this page was before that, and where it went: a five-step client-side
    wizard whose answers were pasted into a narrative paragraph in the browser.
-   Its parcel questions (county, planning district, acreage) belong to /land and
-   the agent pipeline — the design service does not take them and this page no
-   longer pretends to price them. Its systems questions did not vanish: wood
-   stove, wood-fired hot tub, deck, greywater, solar and battery are now the
-   STANDARD rows of the Aura eco spec below, and generator, HRV, grid-connect
-   and hempcrete are the four real options.
+   Its systems questions did not vanish: wood stove, wood-fired hot tub, deck,
+   greywater, solar and battery are now the STANDARD rows of the Aura eco spec
+   below, and generator, HRV, grid-connect and hempcrete are the four real
+   options.
+
+   I ALREADY HAVE LAND. The questionnaire now branches at the top, defaulting
+   to still-looking. Saying you have a parcel is not a checkbox: the four facts
+   it collects — lot width and depth, the three setbacks, which way the front
+   lot line faces, and the slope — run through lib/design/parcel.ts against the
+   SOLVED plan and change what the result says, up to and including telling you
+   the home does not fit and offering the largest area that would. That module
+   sits BESIDE the ported engine rather than inside it: layout/materials/
+   blueprint are a verified line-by-line port of the Python service and teaching
+   them about lots would silently break that guarantee.
+
+   The parcel questions this page still does NOT ask — county, planning
+   district, acreage, aquifer, septic soils — are the ones that are not
+   arithmetic. They belong to /land and the agent pipeline, and asking for them
+   here so they could be echoed back would be theatre.
 
    Honesty rules this page keeps:
    · Which engine drew it is stated before any of the numbers. A local plan is
@@ -42,6 +55,13 @@ import { Reveal, Stagger, StaggerItem } from "@/components/Reveal";
 import { Field, NumberInput, Select, Toggle } from "@/components/design/Controls";
 import EcoChecklist from "@/components/design/EcoChecklist";
 import DesignResult from "@/components/design/DesignResult";
+import ParcelPanel, {
+  INITIAL_PARCEL,
+  parcelErrors,
+  parseParcel,
+  type LandStatus,
+  type ParcelForm,
+} from "@/components/design/ParcelPanel";
 import {
   CLIMATE_ZONES,
   MATERIALS,
@@ -49,6 +69,7 @@ import {
   composeNotes,
   materialWallMm,
 } from "@/components/design/ecoSpec";
+import { analyseParcel, type ParcelFacts } from "@/lib/design/parcel";
 import {
   DESIGN_API_BASE,
   DESIGN_API_CONFIGURED,
@@ -111,6 +132,16 @@ export default function DesignPage() {
      rendered apart from each other. */
   const [outcome, setOutcome] = useState<DesignOutcome | null>(null);
 
+  /* The land branch. Default is still-looking, because most people are. */
+  const [land, setLand] = useState<LandStatus>("looking");
+  const [parcel, setParcel] = useState<ParcelForm>(INITIAL_PARCEL);
+
+  /* The parcel AS IT WAS when Generate was pressed. Reading the live form
+     instead would let the findings drift away from the drawing they are
+     describing the moment someone edits a lot dimension — the panel would
+     be measuring a plan that is no longer on screen. */
+  const [sited, setSited] = useState<{ facts: ParcelFacts; storeys: number } | null>(null);
+
   /* undefined = still probing, null = the service did not answer. */
   const [health, setHealth] = useState<DesignHealth | null | undefined>(undefined);
   const [probe, setProbe] = useState(0);
@@ -147,8 +178,17 @@ export default function DesignPage() {
     [form.material, form.ownerNotes, options]
   );
 
+  const setParcelField = useCallback(
+    <K extends keyof ParcelForm>(key: K, value: ParcelForm[K]) =>
+      setParcel((p) => ({ ...p, [key]: value })),
+    []
+  );
+
   /* Client-side checks that mirror the service's Field() constraints, so a
-     typo comes back as a sentence instead of a 422 from Pydantic. */
+     typo comes back as a sentence instead of a 422 from Pydantic. The parcel
+     fields join the same list rather than getting a quiet lane of their own:
+     a fit check run against a number nobody finished typing is worse than no
+     fit check, because it looks like one. */
   const errors = useMemo(() => {
     const out: string[] = [];
     const beds = Number(form.bedrooms);
@@ -166,8 +206,26 @@ export default function DesignPage() {
       out.push("Bathrooms must be in half steps from 0.5 to 4 — 0.5 is a powder room.");
     if (form.totalSqFt.trim() === "" || !Number.isInteger(area) || area < 200 || area > 4000)
       out.push("Total floor area must be a whole number of square feet from 200 to 4,000.");
+    if (land === "have") out.push(...parcelErrors(parcel));
     return out;
-  }, [form.bedrooms, form.bathrooms, form.totalSqFt]);
+  }, [form.bedrooms, form.bathrooms, form.totalSqFt, land, parcel]);
+
+  /** True only when the parcel fields themselves are usable. */
+  const parcelReady = useMemo(
+    () => land === "have" && parcelErrors(parcel).length === 0,
+    [land, parcel]
+  );
+
+  /**
+   * The home, measured against the land — recomputed from the SNAPSHOT taken
+   * at submit, never from the live form, so the findings always describe the
+   * drawing that is actually on screen.
+   */
+  const parcelReport = useMemo(() => {
+    const plan = outcome?.response?.plan;
+    if (!plan || !sited) return null;
+    return analyseParcel(sited.facts, plan, sited.storeys);
+  }, [outcome, sited]);
 
   const request: DesignRequest = useMemo(
     () => ({
@@ -194,6 +252,12 @@ export default function DesignPage() {
 
     setPhase("loading");
     setOutcome(null);
+    /* Freeze the parcel with the brief. `null` when they are still looking,
+       which is what makes an absent findings panel mean "no land was given"
+       rather than "the land was fine". */
+    setSited(
+      parcelReady ? { facts: parseParcel(parcel), storeys: request.storeys ?? 1 } : null
+    );
     try {
       const res = await requestDesign(request, ac.signal);
       if (ac.signal.aborted) return;
@@ -239,8 +303,10 @@ export default function DesignPage() {
           The questionnaire packs a room program into an envelope, checks it against the code, and
           draws a dimensioned plan at 1/4&quot; = 1&apos;-0&quot;. That runs in this page. Nothing on
           the drawing is drawn by a language model — connecting the design service adds an
-          AI-authored room program and renders, not a different drawing. Parcel questions — district
-          minimums, aquifer, septic soils — live on{" "}
+          AI-authored room program and renders, not a different drawing. If you already have a
+          parcel, say so below: the solved home is then measured against the buildable envelope your
+          setbacks leave, against where south is, and against your slope. The parcel questions that
+          are not arithmetic — district minimums, aquifer, septic soils — live on{" "}
           <Link href="/land" data-cursor="Open" className="text-aura-emerald underline underline-offset-4">
             /land
           </Link>{" "}
@@ -306,6 +372,19 @@ export default function DesignPage() {
       </Reveal>
 
       <form onSubmit={submit}>
+        {/* --------------------------------------------------------- the land
+             First, because it is the question that changes what everything
+             below is measured against. */}
+        <Reveal y={18} className="mt-6">
+          <ParcelPanel
+            status={land}
+            onStatus={setLand}
+            value={parcel}
+            onChange={setParcelField}
+            invalid={land === "have" && !parcelReady}
+          />
+        </Reveal>
+
         {/* --------------------------------------------------------- the home */}
         <Reveal y={18} className="mt-6">
           <div className="aura-panel p-8">
@@ -420,6 +499,8 @@ export default function DesignPage() {
             onClick={() => {
               setForm(INITIAL);
               setOptions(INITIAL_OPTIONS);
+              setLand("looking");
+              setParcel(INITIAL_PARCEL);
             }}
             data-cursor="Reset"
             className="rounded-md border aura-hairline px-5 py-2.5 font-mono text-xs uppercase tracking-label text-aura-text/70 transition-colors hover:border-aura-teal"
@@ -429,7 +510,8 @@ export default function DesignPage() {
           <span className="text-xs text-aura-text/55">
             {request.bedrooms} bed · {request.bathrooms} bath ·{" "}
             {Number.isFinite(request.total_sq_ft) ? request.total_sq_ft.toLocaleString("en-CA") : "—"}{" "}
-            sq ft · zone {request.climate_zone}
+            sq ft · zone {request.climate_zone} ·{" "}
+            {land === "have" ? "checked against your lot" : "no lot given"}
           </span>
         </div>
 
@@ -461,7 +543,21 @@ export default function DesignPage() {
         {phase === "done" && outcome && (
           <>
             <EngineNote outcome={outcome} onRecheck={() => setProbe((n) => n + 1)} />
-            {outcome.response ? <DesignResult res={outcome.response} engine={outcome.engine} /> : null}
+            {outcome.response ? (
+              <DesignResult
+                res={outcome.response}
+                engine={outcome.engine}
+                parcel={parcelReport}
+                /* Writes the fitting area into the questionnaire and stops.
+                   The owner still presses Generate — a result that quietly
+                   resized itself would be a different home than the one on
+                   screen, which is the one thing this page will not do. */
+                onUseLargest={(total) => {
+                  setForm((f) => ({ ...f, totalSqFt: String(total) }));
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+              />
+            ) : null}
           </>
         )}
       </div>
