@@ -1004,6 +1004,19 @@ const DEPTH = 3.0; // half depth
 const ROOF_A = Math.atan2(EAVE, RIDGE_H - EAVE_H);
 const SLOPE_L = Math.hypot(EAVE, RIDGE_H - EAVE_H);
 
+/** Half-width of the A-frame at height y — the inside of the roof plane.
+ *
+ *  THE BEAMS THAT COME OUT THE SIDE OF THE ROOF. In an A-frame the usable
+ *  width shrinks as you go up, and anything sized by eye rather than by this
+ *  function eventually pokes through a roof plane and reads as a stray beam
+ *  from the outside. It has happened three times now (the door transom, then
+ *  the loft, then the kitchen run), so the rule is: any horizontal element
+ *  inside the shell takes its width from halfAt(TOP of that element) — the
+ *  top, because that is where the roof is tightest — minus a clearance. */
+const halfAt = (y: number) => (EAVE * (RIDGE_H - y)) / (RIDGE_H - EAVE_H);
+/** Widest a centred element may be if its top sits at y, with 6cm of air. */
+const spanAt = (y: number, clear = 0.06) => Math.max(0, 2 * (halfAt(y) - clear));
+
 function GableGlass({ z, mat }: { z: number; mat: THREE.Material }) {
   const geo = useMemo(() => {
     const g = new THREE.BufferGeometry();
@@ -1193,20 +1206,22 @@ function AFrameHome({ dusk, archGlass, glassRoof }: { dusk: Dusk; archGlass: THR
       </mesh>
 
       {/* bed, with linen and a headboard rather than a single beige slab */}
-      <mesh position={[-2.1, 0.52, -1.7]} castShadow receiveShadow>
-        <boxGeometry args={[1.95, 0.24, 1.55]} />
+      <mesh position={[-1.9, 0.52, -1.7]} castShadow receiveShadow>
+        <boxGeometry args={[1.9, 0.24, 1.55]} />
         <meshStandardMaterial color="#6a5442" roughness={0.9} flatShading />
       </mesh>
-      <mesh position={[-2.1, 0.70, -1.7]} castShadow>
-        <boxGeometry args={[1.9, 0.16, 1.5]} />
+      <mesh position={[-1.9, 0.70, -1.7]} castShadow>
+        <boxGeometry args={[1.85, 0.16, 1.5]} />
         <meshStandardMaterial color="#eae3d3" roughness={0.96} />
       </mesh>
-      <mesh position={[-2.1, 0.80, -2.3]} castShadow>
-        <boxGeometry args={[1.9, 0.14, 0.34]} />
+      <mesh position={[-1.9, 0.80, -2.3]} castShadow>
+        <boxGeometry args={[1.85, 0.14, 0.34]} />
         <meshStandardMaterial color="#f4efe4" roughness={0.97} />
       </mesh>
-      <mesh position={[-2.95, 0.85, -1.7]} castShadow>
-        <boxGeometry args={[0.1, 0.85, 1.6]} />
+      {/* headboard: kept low and pulled in, because at its old top (y 1.28)
+          the roof is only 2.85 m from the centreline and it stood at 3.0 */}
+      <mesh position={[-2.79, 0.72, -1.7]} castShadow>
+        <boxGeometry args={[0.1, 0.66, 1.6]} />
         <meshStandardMaterial color="#4c4038" roughness={0.9} flatShading />
       </mesh>
 
@@ -1222,11 +1237,14 @@ function AFrameHome({ dusk, archGlass, glassRoof }: { dusk: Dusk; archGlass: THR
       </mesh>
 
       {/* kitchen run along the east wall, counter + a dark splashback */}
-      <mesh position={[2.7, 0.83, 0.6]} castShadow receiveShadow>
+      {/* kitchen run: pulled in from x 2.7 to 2.38. The counter top sits at
+          y 1.30, where the roof plane is 2.83 m out — the old 0.74-wide top
+          centred at 2.7 reached 3.07 and pushed through the east slope. */}
+      <mesh position={[2.38, 0.83, 0.6]} castShadow receiveShadow>
         <boxGeometry args={[0.7, 0.85, 2.6]} />
         <meshStandardMaterial color="#7d6f5d" roughness={0.85} flatShading />
       </mesh>
-      <mesh position={[2.7, 1.27, 0.6]} castShadow>
+      <mesh position={[2.38, 1.27, 0.6]} castShadow>
         <boxGeometry args={[0.74, 0.05, 2.66]} />
         <meshStandardMaterial color="#2b302d" roughness={0.4} metalness={0.2} />
       </mesh>
@@ -1234,22 +1252,38 @@ function AFrameHome({ dusk, archGlass, glassRoof }: { dusk: Dusk; archGlass: THR
       {/* sleeping loft over the north end, with a ladder. It reads as a dark
           horizontal band high in the gable, which is what gives the interior
           a sense of VOLUME through the glass instead of one flat floor. */}
+      {/* Widths come from the gable taper, NOT from eye. Both of these were
+          4.4 m — the loft deck reached 0.22 m and its rail 0.42 m THROUGH the
+          roof planes on each side, which is the stray beam visible outside
+          the house on the roof edge. spanAt() takes the top of each element,
+          because that is the height where the A-frame is tightest. */}
       <mesh position={[0, 2.36, -1.95]} castShadow receiveShadow>
-        <boxGeometry args={[4.4, 0.12, 2.0]} />
+        <boxGeometry args={[spanAt(2.42), 0.12, 2.0]} />
         <meshStandardMaterial map={floorTex} color="#9d7b53" roughness={0.78} />
       </mesh>
-      <mesh position={[0, 2.60, -0.98]} castShadow>
-        <boxGeometry args={[4.4, 0.42, 0.06]} />
+      {/* THE VIBRATING LOFT, fixed — and it was never an animation.
+          The rail sat at y 2.60 / z -0.98, which buried it 0.03 INSIDE the
+          deck vertically and 0.06 inside it in z, and left its front face on
+          z = -0.950, EXACTLY coplanar with the deck's front face. Two solids
+          sharing a face is z-fighting: depth precision flips which one wins
+          per pixel as the camera orbits, so the brown deck underneath reads
+          as if it is buzzing. Identical failure to the glass bridge above.
+          The rail now SITS ON the deck (top 2.420 + half its 0.42 height) and
+          its face is pulled 20 mm proud, so nothing is ever coplanar. */}
+      <mesh position={[0, 2.63, -1.00]} castShadow>
+        <boxGeometry args={[spanAt(2.84), 0.42, 0.06]} />
         <meshStandardMaterial color={mullion} roughness={0.6} metalness={0.2} />
       </mesh>
+      {/* Ladder rails: pulled clear of the deck's front face for the same
+          reason — they used to land on z = -0.95 too. */}
       {[-0.42, 0.42].map((x) => (
-        <mesh key={`ld${x}`} position={[x, 1.38, -0.95]} castShadow>
+        <mesh key={`ld${x}`} position={[x, 1.38, -0.90]} castShadow>
           <boxGeometry args={[0.07, 1.95, 0.07]} />
           <meshStandardMaterial color="#6a5442" roughness={0.85} />
         </mesh>
       ))}
       {[0.72, 1.14, 1.56, 1.98].map((y) => (
-        <mesh key={`lr${y}`} position={[0, y, -0.95]} castShadow>
+        <mesh key={`lr${y}`} position={[0, y, -0.90]} castShadow>
           <boxGeometry args={[0.84, 0.05, 0.05]} />
           <meshStandardMaterial color="#6a5442" roughness={0.85} />
         </mesh>
@@ -1358,6 +1392,72 @@ function GlassRailRun({
   );
 }
 
+/** A balustrade that DESCENDS with a flight of steps.
+ *
+ *  GlassRailRun cannot do this: it takes two ground-plane points and holds a
+ *  single base height, so on a stair it either floats above the bottom tread
+ *  or buries itself in the top one. Real stairs raked their handrail parallel
+ *  to the nosing line, so this takes two full 3-D points and rakes the whole
+ *  assembly — pane, cap and channel — about the X axis to match.
+ *
+ *  Newels stay VERTICAL (plumb, like every real newel) rather than being
+ *  rotated with the rake, which is why they are drawn outside the raked
+ *  group. `drop` is how far the bottom newel continues past the rail to reach
+ *  the ground, since the terrain falls away under the last tread.
+ */
+function StepRail({
+  from,
+  to,
+  h = 0.9,
+  mat,
+  drop = 0.55,
+}: {
+  from: [number, number, number];
+  to: [number, number, number];
+  h?: number;
+  mat: THREE.Material;
+  drop?: number;
+}) {
+  const dx = to[0] - from[0];
+  const dy = to[1] - from[1];
+  const dz = to[2] - from[2];
+  const runLen = Math.hypot(dx, dz);
+  const len = Math.hypot(runLen, dy);
+  const yaw = Math.atan2(dx, dz);
+  // negative because +z is "along" after the yaw, and the flight falls away
+  const rake = -Math.atan2(dy, runLen);
+  const cx = (from[0] + to[0]) / 2;
+  const cy = (from[1] + to[1]) / 2;
+  const cz = (from[2] + to[2]) / 2;
+  return (
+    <group>
+      <group position={[cx, cy, cz]} rotation={[rake, yaw, 0, "YXZ"]}>
+        <mesh material={mat} position={[0, h / 2, 0]} renderOrder={RO_GLASS_RAIL}>
+          <boxGeometry args={[0.05, h, len]} />
+        </mesh>
+        <mesh position={[0, h + 0.03, 0]} castShadow>
+          <boxGeometry args={[0.07, 0.06, len + 0.06]} />
+          <meshStandardMaterial color="#5d6663" roughness={0.4} metalness={0.6} />
+        </mesh>
+        <mesh position={[0, 0.035, 0]} castShadow>
+          <boxGeometry args={[0.09, 0.07, len + 0.06]} />
+          <meshStandardMaterial color="#5d6663" roughness={0.45} metalness={0.55} />
+        </mesh>
+      </group>
+      {/* plumb newels: the top one lands on the deck, the bottom one runs on
+          past the last tread to meet the ground */}
+      <mesh castShadow position={[from[0], from[1] + h / 2, from[2]]}>
+        <boxGeometry args={[0.07, h + 0.08, 0.07]} />
+        <meshStandardMaterial color="#5d6663" roughness={0.45} metalness={0.55} />
+      </mesh>
+      <mesh castShadow position={[to[0], to[1] + h / 2 - drop / 2, to[2]]}>
+        <boxGeometry args={[0.07, h + drop, 0.07]} />
+        <meshStandardMaterial color="#5d6663" roughness={0.45} metalness={0.55} />
+      </mesh>
+    </group>
+  );
+}
+
 /** Deterministic per-piece lumber/stone tone (quality pass, Aug 9). Real
  *  wood varies piece to piece; a strict 3-colour rota reads as tiling the
  *  moment two same-tone boards land side by side. Same board, same colour,
@@ -1380,7 +1480,13 @@ function Deck({ glassFloor, glassRail }: { glassFloor: THREE.Material; glassRail
   const cedar = ["#a97e57", "#9b7350", "#b0855e"];
   const grain = useMemo(() => makeWoodGrain(), []);
   const planks = [];
-  for (let i = 0; i < 6; i++) {
+  /* SEVEN rows, not six. At six the deck stopped at z 5.815 while the front
+     balustrade sat at 6.05 and the first tread began at 6.18 — so the rails
+     floated 23cm off the edge and a 36cm band of meadow showed through the
+     entry, which is the unnatural gap in the approach. The seventh row
+     carries the deck to 6.285, the rails now stand ON it, and the top tread
+     tucks under the nosing the way a real stair does. */
+  for (let i = 0; i < 7; i++) {
     const z = 3.25 + i * 0.47;
     planks.push(
       <mesh key={i} castShadow receiveShadow position={[-1.15, 0.44, z]}>
@@ -1406,18 +1512,24 @@ function Deck({ glassFloor, glassRail }: { glassFloor: THREE.Material; glassRail
       {/* glass-floored section, east side, feeding the walkway.
           Frame dropped to 0.345 (top 0.37) so it clears the glass underside
           at 0.40 — they used to interpenetrate between 0.40 and 0.41. */}
-      <mesh material={glassFloor} position={[2.4, 0.44, 4.6]} renderOrder={RO_GLASS_FLOOR}>
-        <boxGeometry args={[2.1, 0.08, 2.85]} />
+      {/* deepened from 2.85 to 3.11 and re-centred so the glass bay ends on
+          the SAME line as the new seventh plank row (6.285). They used to
+          stop 26cm apart, which put a notch in the deck edge right where the
+          balustrade crosses from timber onto glass. */}
+      <mesh material={glassFloor} position={[2.4, 0.44, 4.73]} renderOrder={RO_GLASS_FLOOR}>
+        <boxGeometry args={[2.1, 0.08, 3.11]} />
       </mesh>
       {/* frame under glass */}
-      <mesh castShadow position={[2.4, 0.345, 4.6]}>
-        <boxGeometry args={[2.2, 0.05, 2.95]} />
+      <mesh castShadow position={[2.4, 0.345, 4.73]}>
+        <boxGeometry args={[2.2, 0.05, 3.21]} />
         <meshStandardMaterial color="#5d6663" roughness={0.5} metalness={0.5} />
       </mesh>
       {/* glass railings: front edge with a gap for the steps, west edge */}
-      <GlassRailRun from={[-3.6, 6.05]} to={[-1.1, 6.05]} mat={glassRail} />
-      <GlassRailRun from={[1.2, 6.05]} to={[3.45, 6.05]} mat={glassRail} />
-      <GlassRailRun from={[-3.6, 3.15]} to={[-3.6, 6.05]} mat={glassRail} />
+      {/* moved out to the new deck line at 6.285 (they sat at 6.05, which was
+          23cm past the old edge — a balustrade standing on air) */}
+      <GlassRailRun from={[-3.6, 6.24]} to={[-1.09, 6.24]} mat={glassRail} />
+      <GlassRailRun from={[1.19, 6.24]} to={[3.45, 6.24]} mat={glassRail} />
+      <GlassRailRun from={[-3.6, 3.15]} to={[-3.6, 6.24]} mat={glassRail} />
       {/* steps to the meadow */}
       {[0, 1, 2].map((i) => (
         <mesh key={i} castShadow receiveShadow position={[0.05, 0.34 - i * 0.13, 6.35 + i * 0.34]}>
@@ -1425,6 +1537,15 @@ function Deck({ glassFloor, glassRail }: { glassFloor: THREE.Material; glassRail
           <meshStandardMaterial map={grain} color={pieceTone(cedar[i % 3], i + 11)} roughness={0.85} flatShading />
         </mesh>
       ))}
+      {/* Balustrade down BOTH sides of the flight. The entry was the one
+          opening in an otherwise continuous guard: the deck rail stopped
+          either side of the steps and nothing carried down, so the stair
+          read as a plank ramp rather than as the way into the house. The
+          runs rake from the deck nosing (y 0.485) to the last tread (0.13)
+          and land exactly where the deck rails terminate, so the guard is
+          continuous the whole way round. */}
+      <StepRail from={[-1.09, 0.485, 6.24]} to={[-1.09, 0.13, 7.22]} mat={glassRail} />
+      <StepRail from={[1.19, 0.485, 6.24]} to={[1.19, 0.13, 7.22]} mat={glassRail} />
     </group>
   );
 }
