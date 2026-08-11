@@ -164,6 +164,7 @@ import {
 import { documentSignature, readAutosave } from "@/lib/builder/store";
 import { planFromSpec, type PlanHandoff } from "@/lib/builder/toPlan";
 import AxonSheet from "./AxonSheet";
+import BuilderOrderHandoff from "./BuilderOrderHandoff";
 import ComfortPanel from "./ComfortPanel";
 import DrawingSheets from "./DrawingSheets";
 import ExportRow from "./ExportRow";
@@ -1293,6 +1294,9 @@ export default function BuilderApp() {
 
       {/* ============================================================= EXPORT */}
       <Pane on={workspace === "export"}>
+        <div className="mb-6">
+          <BuilderOrderHandoff document={state.doc} />
+        </div>
         <ExportRow
           value={state.doc}
           comfort={comfort}

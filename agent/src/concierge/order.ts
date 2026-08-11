@@ -40,6 +40,8 @@ export const DEMO_USD_PER_CAD = 0.73;
  *  Nestron's real-world booking fee — US$1,000 — is the floor). */
 export const FACTORY_DEPOSIT_RATE = 0.05;
 export const FACTORY_DEPOSIT_MIN_USD = 1_000;
+/** Estimates expire because supplier pricing and FX assumptions move. */
+export const QUOTE_VALIDITY_DAYS = 7;
 
 /** AuraBuildRegistry status vocabulary — the CONTRACT enum wins over any doc. */
 export type RegistryStatus = "Designed" | "Funded" | "UnderConstruction" | "Complete";
@@ -113,12 +115,77 @@ export interface ParcelChoice {
   atISO: string;
 }
 
-export interface OrderHomeChoice {
+export interface CatalogOrderHomeChoice {
+  kind: "catalog";
   catalogId: string;
   name: string;
   sizeSqft: number;
   fulfillment: "factory-unit" | "sip-site-built";
   atISO: string;
+}
+
+export interface BuilderDesignSummary {
+  material: string;
+  climateZone: string;
+  volumeCount: number;
+  storeys: 1 | 2;
+  footprintSqft: number;
+}
+
+export interface OrderArtifactHashes {
+  /** Keccak-256 of canonical BuilderDocument JSON. */
+  designDocument: string;
+  /** Keccak-256 of canonical budget JSON once a quote is issued. */
+  budget?: string;
+  /** Keccak-256 of canonical OrderQuote JSON. */
+  quote?: string;
+  /** Format or export artifact hashes supplied by the app. */
+  exports?: Record<string, string>;
+}
+
+export interface QuoteBasis {
+  kind: "estimate" | "published-price";
+  jurisdiction: string;
+  source: string;
+  currency: "CAD" | "USD";
+  exclusions: string[];
+  assumptions: string[];
+}
+
+export interface BuilderOrderHomeChoice {
+  kind: "builder";
+  projectId: string;
+  name: string;
+  sizeSqft: number;
+  fulfillment: "sip-site-built";
+  fulfillmentPath: "aura-concierge";
+  documentVersion: number;
+  documentHash: string;
+  designSummary: BuilderDesignSummary;
+  artifactHashes: OrderArtifactHashes;
+  quoteBasis: QuoteBasis;
+  atISO: string;
+}
+
+export type OrderHomeChoice = CatalogOrderHomeChoice | BuilderOrderHomeChoice;
+
+export const ORDER_SNAPSHOT_FORMAT = "aura-order-snapshot" as const;
+export const ORDER_SNAPSHOT_VERSION = 1 as const;
+
+/**
+ * Local, off-chain handoff. `TDesign` is a complete BuilderDocument in the
+ * browser app; the agent contract stays independent of that app module.
+ */
+export interface OrderSnapshot<TDesign = unknown> {
+  readonly format: typeof ORDER_SNAPSHOT_FORMAT;
+  readonly version: typeof ORDER_SNAPSHOT_VERSION;
+  readonly id: string;
+  readonly projectId: string;
+  readonly createdAtISO: string;
+  readonly home: BuilderOrderHomeChoice;
+  readonly design: TDesign;
+  readonly quote: OrderQuote | null;
+  readonly artifactHashes: OrderArtifactHashes;
 }
 
 export interface QuoteReconciliation {
@@ -150,6 +217,10 @@ export interface OrderQuote {
   network: string;
   usdcAsset: string;
   generatedAtISO: string;
+  validUntilISO: string;
+  /** The immutable design identity this quote was calculated against. */
+  designHash?: string;
+  basis: QuoteBasis;
   reconciliation: QuoteReconciliation;
 }
 

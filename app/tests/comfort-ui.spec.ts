@@ -28,3 +28,35 @@ test("durable comfort assumptions participate in builder undo", async ({ page })
   await page.getByRole("button", { name: "Undo", exact: true }).click();
   await expect(winterTemperature).toHaveValue("21");
 });
+
+test("builder design handoff reaches a hash-bound quote without losing the project", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto("/build");
+  await page.getByRole("button", { name: /^Export/ }).click();
+  await page.getByRole("button", { name: "Continue to quote" }).click();
+
+  await page.waitForURL(/\/concierge\?project=project-/, { timeout: 30_000 });
+  await expect(page.getByText("Continue to quote is ready", { exact: false })).toBeVisible();
+  await expect(page.getByText("Builder design:", { exact: false })).toBeVisible();
+
+  await page.getByRole("button", { name: "Try 37 Aspen Road" }).click();
+  await page.getByRole("button", { name: "Quote it" }).click();
+
+  await expect(page.getByText("Immutable quote snapshot saved locally", { exact: false })).toBeVisible();
+  await expect(page.getByText("Full documents stay off-chain", { exact: false })).toBeVisible();
+  await expect(page.getByText("quoted", { exact: true })).toBeVisible();
+
+  const stored = await page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open("aura-order-handoffs", 1);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    return new Promise<number>((resolve, reject) => {
+      const request = db.transaction("snapshots", "readonly").objectStore("snapshots").count();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  });
+  expect(stored).toBe(2);
+});
