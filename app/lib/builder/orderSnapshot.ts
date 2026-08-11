@@ -348,3 +348,57 @@ export async function loadBuilderOrderSnapshot(projectId: string): Promise<Build
   if (!checked.ok) throw new Error(checked.problem);
   return checked.snapshot;
 }
+
+export function selectLatestBuilderOrderSnapshot(
+  values: readonly unknown[],
+  projectId: string,
+  options: { requireQuote?: boolean } = {},
+): BuilderOrderSnapshot {
+  const id = safeProjectId(projectId);
+  const matching = values.filter(
+    (value) => isObject(value) && value.projectId === id,
+  );
+  if (matching.length === 0) {
+    throw new Error(
+      "This project has no local order snapshot. Use the browser that created the quote or recreate the handoff from its .aura.json project.",
+    );
+  }
+
+  const valid = matching.map((value) => {
+    const checked = validateBuilderOrderSnapshot(value);
+    if (!checked.ok) {
+      throw new Error(`A local order snapshot for this project is unreadable: ${checked.problem}`);
+    }
+    return checked.snapshot;
+  });
+  const eligible = options.requireQuote
+    ? valid.filter((snapshot) => snapshot.quote !== null)
+    : valid;
+  if (eligible.length === 0) {
+    throw new Error(
+      "This project has no quoted snapshot. Return to the concierge, issue a current quote, and do not register or pay from the design-only handoff.",
+    );
+  }
+
+  return eligible.sort((left, right) => {
+    const leftAt = Date.parse(left.quote?.generatedAtISO ?? left.createdAtISO);
+    const rightAt = Date.parse(right.quote?.generatedAtISO ?? right.createdAtISO);
+    return rightAt - leftAt || right.id.localeCompare(left.id);
+  })[0];
+}
+
+export async function loadLatestBuilderOrderSnapshot(
+  projectId: string,
+  options: { requireQuote?: boolean } = {},
+): Promise<BuilderOrderSnapshot> {
+  const db = await openDb();
+  const values = await new Promise<unknown[]>((resolve, reject) => {
+    const request = db
+      .transaction(STORE_SNAPSHOTS, "readonly")
+      .objectStore(STORE_SNAPSHOTS)
+      .getAll();
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error ?? new Error("The order snapshots could not be read."));
+  });
+  return selectLatestBuilderOrderSnapshot(values, projectId, options);
+}

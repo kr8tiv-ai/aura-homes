@@ -12,6 +12,7 @@ import { summarizeBuildingGraph } from "@/lib/builder/graphGeometry";
 import {
   createBuilderOrderSnapshot,
   createQuotedBuilderOrderSnapshot,
+  selectLatestBuilderOrderSnapshot,
   validateBuilderOrderSnapshot,
 } from "@/lib/builder/orderSnapshot";
 import { buildContext } from "@/lib/concierge";
@@ -159,4 +160,24 @@ test("expired or design-mismatched builder quotes cannot create payment actions"
   expect(mismatch.order.status).toBe("quoted");
   expect(mismatch.reply).toContain("different version");
   expect(mismatch.actions[0]?.type).toBe("disableBuy");
+});
+
+test("operator lookup selects the latest valid quoted snapshot for one project", () => {
+  const initial = createBuilderOrderSnapshot(defaultBuilderDocument(), now, "project-operator");
+  const context = buildContext(now, 72);
+  let order = createOrder({ id: "order-operator", now });
+  order = reduce(order, { type: "selectBuilderHome", home: initial.home }, context).order;
+  order = reduce(order, { type: "selectParcel", parcelId: "lsa-aspen-road" }, context).order;
+  order = reduce(order, { type: "requestQuote" }, context).order;
+  const quoted = createQuotedBuilderOrderSnapshot(initial, order.quote!);
+  const another = createBuilderOrderSnapshot(defaultBuilderDocument(), now, "project-other");
+
+  expect(
+    selectLatestBuilderOrderSnapshot([another, initial, quoted], "project-operator", {
+      requireQuote: true,
+    }).id,
+  ).toBe(quoted.id);
+  expect(() =>
+    selectLatestBuilderOrderSnapshot([initial], "project-operator", { requireQuote: true }),
+  ).toThrow("quoted snapshot");
 });

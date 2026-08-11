@@ -415,7 +415,7 @@ describe("AuraBuildRegistry", function () {
       0,
     ]);
     const registry = await ethers.deployContract("AuraBuildRegistry");
-    return { registry, escrow, deployer, homeowner, registrar, stranger };
+    return { registry, escrow, usdc, deployer, homeowner, registrar, stranger };
   }
 
   const designHash = ethers.keccak256(ethers.toUtf8Bytes("design-brief-v1"));
@@ -449,5 +449,30 @@ describe("AuraBuildRegistry", function () {
     await registry.connect(deployer).setRegistrar(registrar.address, true);
     await registry.connect(registrar).mint(registrar.address, designHash, budgetHash, escrowAddr, "ipfs://y");
     expect(await registry.nextTokenId()).to.equal(1);
+  });
+
+  it("anchors the design and budget after deposit while a later refund remains honest", async function () {
+    const { registry, escrow, usdc, homeowner } = await loadFixture(registryFixture);
+    const escrowAddr = await escrow.getAddress();
+    const amount = USDC(12_000);
+    await usdc.mint(homeowner.address, amount);
+    await usdc.connect(homeowner).approve(escrowAddr, amount);
+
+    await expect(escrow.connect(homeowner).placeDeposit(amount)).to.emit(escrow, "DepositPlaced");
+    await registry
+      .connect(homeowner)
+      .mint(homeowner.address, designHash, budgetHash, escrowAddr, "urn:aura:order:test");
+
+    const record = await registry.records(0);
+    expect(record.designHash).to.equal(designHash);
+    expect(record.budgetHash).to.equal(budgetHash);
+    expect(record.escrow).to.equal(escrowAddr);
+    expect(record.status).to.equal(0); // Designed while the cooling-off window is open
+
+    await expect(escrow.connect(homeowner).refundDeposit())
+      .to.emit(escrow, "DepositRefunded")
+      .withArgs(amount);
+    expect(await usdc.balanceOf(homeowner.address)).to.equal(amount);
+    expect((await registry.records(0)).status).to.equal(0); // never misrepresented as Funded
   });
 });

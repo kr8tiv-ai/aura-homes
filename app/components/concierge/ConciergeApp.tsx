@@ -34,6 +34,11 @@ import { buildContext, chipsForStatus, parseIntent } from "@/lib/concierge";
 import { CHAIN_ID, ESCROW_ADDRESS, FAUCET_URL, USDC_TESTNET, oklinkTx, shortAddr } from "@/lib/contracts";
 import { auraBuildEscrowAbi, erc20Abi, fmtUsdcUnits, useEscrowLive, useUsdcState } from "@/lib/hooks";
 import type { BuilderOrderSnapshot } from "@/lib/builder/orderSnapshot";
+import {
+  confirmDepositReceipt,
+  confirmRefundReceipt,
+  describeTransactionFailure,
+} from "@/lib/payments/xLayerLifecycle";
 import LiveEscrowCard from "@/components/chain/LiveEscrowCard";
 import { Counter, GrowBar, Reveal, Stagger, StaggerItem } from "@/components/Reveal";
 
@@ -281,6 +286,7 @@ export default function ConciergeApp() {
     if (!depositAmount) return;
     setTxBusy("approve");
     try {
+      if (!publicClient) throw new Error("X Layer testnet RPC client is unavailable.");
       const hash = await writeContractAsync({
         abi: erc20Abi,
         address: USDC_TESTNET,
@@ -288,11 +294,13 @@ export default function ConciergeApp() {
         args: [ESCROW_ADDRESS, depositAmount],
         chainId: CHAIN_ID,
       });
-      await publicClient?.waitForTransactionReceipt({ hash });
+      push("system", `USDC approval submitted — tx ${hash}. Waiting for an X Layer receipt.`);
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      if (receipt.status !== "success") throw new Error("USDC approval transaction reverted.");
       push("system", `USDC approval confirmed on chain ${CHAIN_ID} — tx ${hash} (${oklinkTx(hash)}).`);
       usdcState.refetch();
     } catch (e) {
-      push("system", `Approval did not go through: ${errText(e)}. Nothing moved.`);
+      push("system", describeTransactionFailure(e, "approve"));
     } finally {
       setTxBusy(null);
     }
@@ -302,6 +310,7 @@ export default function ConciergeApp() {
     if (!depositAmount) return;
     setTxBusy("deposit");
     try {
+      if (!publicClient) throw new Error("X Layer testnet RPC client is unavailable.");
       const hash = await writeContractAsync({
         abi: auraBuildEscrowAbi,
         address: ESCROW_ADDRESS,
@@ -309,15 +318,20 @@ export default function ConciergeApp() {
         args: [depositAmount],
         chainId: CHAIN_ID,
       });
-      await publicClient?.waitForTransactionReceipt({ hash });
+      push("system", `placeDeposit() submitted — tx ${hash}. Waiting for the DepositPlaced event.`);
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      const confirmed = confirmDepositReceipt(receipt, ESCROW_ADDRESS, depositAmount);
       setDepositMode("onchain");
       setDepositTxHash(hash);
-      push("system", `placeDeposit() confirmed — tx ${hash} (${oklinkTx(hash)}). USDC is in escrow.`);
+      push(
+        "system",
+        `DepositPlaced confirmed for ${fmtUsdcUnits(confirmed.amount)} — refund deadline ${new Date(Number(confirmed.refundDeadline) * 1000).toISOString()} · tx ${hash} (${oklinkTx(hash)}).`,
+      );
       dispatch({ type: "confirmDeposit", txRef: hash });
       live.refetch();
       usdcState.refetch();
     } catch (e) {
-      push("system", `placeDeposit() did not go through: ${errText(e)}. Nothing moved.`);
+      push("system", describeTransactionFailure(e, "deposit"));
     } finally {
       setTxBusy(null);
     }
@@ -337,6 +351,7 @@ export default function ConciergeApp() {
   const refundOnchain = async () => {
     setTxBusy("refund");
     try {
+      if (!publicClient) throw new Error("X Layer testnet RPC client is unavailable.");
       const hash = await writeContractAsync({
         abi: auraBuildEscrowAbi,
         address: ESCROW_ADDRESS,
@@ -344,13 +359,18 @@ export default function ConciergeApp() {
         args: [],
         chainId: CHAIN_ID,
       });
-      await publicClient?.waitForTransactionReceipt({ hash });
-      push("system", `refundDeposit() confirmed — tx ${hash} (${oklinkTx(hash)}). The full deposit is back in the wallet.`);
+      push("system", `refundDeposit() submitted — tx ${hash}. Waiting for the DepositRefunded event.`);
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      const confirmed = confirmRefundReceipt(receipt, ESCROW_ADDRESS, live.depositAmount);
+      push(
+        "system",
+        `DepositRefunded confirmed for ${fmtUsdcUnits(confirmed.amount)} — tx ${hash} (${oklinkTx(hash)}). The full deposit is back in the wallet.`,
+      );
       dispatch({ type: "requestRefund" });
       live.refetch();
       usdcState.refetch();
     } catch (e) {
-      push("system", `refundDeposit() did not go through: ${errText(e)}. The deposit is untouched.`);
+      push("system", describeTransactionFailure(e, "refund"));
     } finally {
       setTxBusy(null);
     }
@@ -576,11 +596,6 @@ export default function ConciergeApp() {
 }
 
 // ---------------------------------------------------------------- pieces
-
-function errText(e: unknown): string {
-  const any = e as { shortMessage?: string; message?: string };
-  return (any?.shortMessage || any?.message || String(e)).split("\n")[0].slice(0, 220);
-}
 
 function BuyButton({
   enabled,
