@@ -43,7 +43,7 @@ const faqs = [
        still gets asked, so it still gets answered; it is just answered with
        what is true today rather than with a roadmap item. */
     q: "How does Aura make money?",
-    a: "Not by taking a cut of your house. The build budget on this site is the build budget — every line goes to land, materials, trades, and permits. Aura earns on the supply side and on work that stands alone: design packages, parcel feasibility reports, and tools sold to the contractors and suppliers in the Locality Hub. There is no token.",
+    a: "Today it does not — nothing on this site charges anyone anything, and there is no fee in the escrow contract. The likely shape is small transaction fees or membership levels, decided once the product is in real use rather than guessed at now. What is already ruled out is taking a large cut of your build: the budget shown here is the budget, and every line of it goes to land, materials, trades, and permits. There is no token.",
   },
   {
     q: "Where does it start?",

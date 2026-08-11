@@ -1394,16 +1394,26 @@ function GlassRailRun({
 
 /** A balustrade that DESCENDS with a flight of steps.
  *
- *  GlassRailRun cannot do this: it takes two ground-plane points and holds a
- *  single base height, so on a stair it either floats above the bottom tread
- *  or buries itself in the top one. Real stairs raked their handrail parallel
- *  to the nosing line, so this takes two full 3-D points and rakes the whole
- *  assembly — pane, cap and channel — about the X axis to match.
+ *  WHY v1 LEFT GAPS, because the failure is instructive and easy to repeat.
+ *  v1 built the pane, cap and channel as boxes inside ONE group and rotated
+ *  the whole group about its centre. Rotating a box rakes its END FACES too —
+ *  they come out perpendicular to the slope rather than plumb. On this flight
+ *  (0.98 m run, 0.355 m fall) that swung the top of each end 0.29 m along the
+ *  run, so the handrail started a third of a metre inboard of its newel and
+ *  visibly floated. A real stair balustrade is a PARALLELOGRAM: the top and
+ *  bottom edges follow the rake, and the two end edges stay PLUMB.
  *
- *  Newels stay VERTICAL (plumb, like every real newel) rather than being
- *  rotated with the rake, which is why they are drawn outside the raked
- *  group. `drop` is how far the bottom newel continues past the rail to reach
- *  the ground, since the terrain falls away under the last tread.
+ *  So nothing here is a rotated box spanning the whole run:
+ *   · the pane is explicit geometry — four corners, plumb ends, built from the
+ *     two newel lines, so it cannot drift out of contact with them;
+ *   · the cap and the channel are boxes that span NEWEL-TOP TO NEWEL-TOP (and
+ *     nosing to nosing), each rotated only to align its long axis, and each
+ *     over-run slightly at both ends so it dies INTO the newel instead of
+ *     stopping on its centreline and leaving a hairline;
+ *   · the newels are plumb, and sized so the cap lands on top of them.
+ *
+ *  `drop` is how far the bottom newel continues past the rail to reach the
+ *  ground, since the terrain falls away under the last tread.
  */
 function StepRail({
   from,
@@ -1412,46 +1422,103 @@ function StepRail({
   mat,
   drop = 0.55,
 }: {
+  /** the top of the flight: x, the walking surface's y, z */
   from: [number, number, number];
+  /** the bottom of the flight, same convention */
   to: [number, number, number];
   h?: number;
   mat: THREE.Material;
   drop?: number;
 }) {
-  const dx = to[0] - from[0];
-  const dy = to[1] - from[1];
-  const dz = to[2] - from[2];
-  const runLen = Math.hypot(dx, dz);
-  const len = Math.hypot(runLen, dy);
-  const yaw = Math.atan2(dx, dz);
-  // negative because +z is "along" after the yaw, and the flight falls away
-  const rake = -Math.atan2(dy, runLen);
-  const cx = (from[0] + to[0]) / 2;
-  const cy = (from[1] + to[1]) / 2;
-  const cz = (from[2] + to[2]) / 2;
+  const POST = 0.07; // newel section
+  const CAP_T = 0.06; // cap rail thickness
+  const CHAN = 0.07; // base channel thickness
+
+  // The two plumb lines the whole assembly hangs off.
+  const topA: [number, number, number] = [from[0], from[1] + h, from[2]];
+  const topB: [number, number, number] = [to[0], to[1] + h, to[2]];
+
+  /** A box spanning two points, rotated so its LENGTH lies along the segment.
+   *  Only ever a rake here (both ends share x), but solved generally so a
+   *  flight that also turns would still be right. `over` extends the piece
+   *  equally at both ends so it buries into whatever terminates it. */
+  const spanBox = (
+    a: [number, number, number],
+    b: [number, number, number],
+    w: number,
+    t: number,
+    over: number,
+  ) => {
+    const dx = b[0] - a[0];
+    const dy = b[1] - a[1];
+    const dz = b[2] - a[2];
+    const run = Math.hypot(dx, dz);
+    const len = Math.hypot(run, dy) + over * 2;
+    // yaw puts local +Z along the plan direction; rake tips it to the fall
+    const yaw = Math.atan2(dx, dz);
+    const rake = Math.atan2(-dy, run);
+    return {
+      pos: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2] as [number, number, number],
+      rot: [rake, yaw, 0] as [number, number, number],
+      args: [w, t, len] as [number, number, number],
+    };
+  };
+
+  const cap = spanBox(topA, topB, POST, CAP_T, POST * 0.5);
+  /* The channel is lifted by half its own thickness so its TOP face lands on
+     the walking surface + CHAN — which is exactly where the pane's bottom edge
+     starts. Centred on the surface instead, it would sink half into the tread
+     and leave a 3.5cm slot of daylight under the glass. */
+  const channel = spanBox(
+    [from[0], from[1] + CHAN / 2, from[2]],
+    [to[0], to[1] + CHAN / 2, to[2]],
+    0.09,
+    CHAN,
+    POST * 0.5,
+  );
+
+  /* The pane: four explicit corners. Bottom edge rides just above the channel,
+     top edge just under the cap, and BOTH end edges are plumb because each is
+     simply two points sharing an (x, z). */
+  const paneGeo = useMemo(() => {
+    const yBot = (p: [number, number, number]) => p[1] + CHAN;
+    const yTop = (p: [number, number, number]) => p[1] + h - CAP_T * 0.5;
+    const v = new Float32Array([
+      // triangle 1
+      from[0], yBot(from), from[2],
+      to[0], yBot(to), to[2],
+      to[0], yTop(to), to[2],
+      // triangle 2
+      from[0], yBot(from), from[2],
+      to[0], yTop(to), to[2],
+      from[0], yTop(from), from[2],
+    ]);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.BufferAttribute(v, 3));
+    g.computeVertexNormals();
+    return g;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [from[0], from[1], from[2], to[0], to[1], to[2], h]);
+
   return (
     <group>
-      <group position={[cx, cy, cz]} rotation={[rake, yaw, 0, "YXZ"]}>
-        <mesh material={mat} position={[0, h / 2, 0]} renderOrder={RO_GLASS_RAIL}>
-          <boxGeometry args={[0.05, h, len]} />
-        </mesh>
-        <mesh position={[0, h + 0.03, 0]} castShadow>
-          <boxGeometry args={[0.07, 0.06, len + 0.06]} />
-          <meshStandardMaterial color="#5d6663" roughness={0.4} metalness={0.6} />
-        </mesh>
-        <mesh position={[0, 0.035, 0]} castShadow>
-          <boxGeometry args={[0.09, 0.07, len + 0.06]} />
-          <meshStandardMaterial color="#5d6663" roughness={0.45} metalness={0.55} />
-        </mesh>
-      </group>
-      {/* plumb newels: the top one lands on the deck, the bottom one runs on
-          past the last tread to meet the ground */}
-      <mesh castShadow position={[from[0], from[1] + h / 2, from[2]]}>
-        <boxGeometry args={[0.07, h + 0.08, 0.07]} />
+      <mesh geometry={paneGeo} material={mat} renderOrder={RO_GLASS_RAIL} />
+      <mesh castShadow position={cap.pos} rotation={cap.rot}>
+        <boxGeometry args={cap.args} />
+        <meshStandardMaterial color="#5d6663" roughness={0.4} metalness={0.6} />
+      </mesh>
+      <mesh castShadow position={channel.pos} rotation={channel.rot}>
+        <boxGeometry args={channel.args} />
         <meshStandardMaterial color="#5d6663" roughness={0.45} metalness={0.55} />
       </mesh>
-      <mesh castShadow position={[to[0], to[1] + h / 2 - drop / 2, to[2]]}>
-        <boxGeometry args={[0.07, h + drop, 0.07]} />
+      {/* plumb newels. The top one stands on the deck and its top face meets
+          the cap; the bottom one runs on past the last tread into the ground. */}
+      <mesh castShadow position={[from[0], from[1] + h / 2, from[2]]}>
+        <boxGeometry args={[POST, h, POST]} />
+        <meshStandardMaterial color="#5d6663" roughness={0.45} metalness={0.55} />
+      </mesh>
+      <mesh castShadow position={[to[0], to[1] + (h - drop) / 2, to[2]]}>
+        <boxGeometry args={[POST, h + drop, POST]} />
         <meshStandardMaterial color="#5d6663" roughness={0.45} metalness={0.55} />
       </mesh>
     </group>
@@ -1525,11 +1592,26 @@ function Deck({ glassFloor, glassRail }: { glassFloor: THREE.Material; glassRail
         <meshStandardMaterial color="#5d6663" roughness={0.5} metalness={0.5} />
       </mesh>
       {/* glass railings: front edge with a gap for the steps, west edge */}
-      {/* moved out to the new deck line at 6.285 (they sat at 6.05, which was
-          23cm past the old edge — a balustrade standing on air) */}
-      <GlassRailRun from={[-3.6, 6.24]} to={[-1.09, 6.24]} mat={glassRail} />
-      <GlassRailRun from={[1.19, 6.24]} to={[3.45, 6.24]} mat={glassRail} />
-      <GlassRailRun from={[-3.6, 3.15]} to={[-3.6, 6.24]} mat={glassRail} />
+      {/* Moved out to the new deck line at 6.285 (they sat at 6.05, which was
+          23cm past the old edge — a balustrade standing on air).
+
+          base is 0.485, NOT the 0.5 default. The deck's walking surface is
+          0.44 + half a 0.09 plank = 0.485, and GlassRailRun puts the bottom of
+          its channel exactly on `base` — so the default left a 1.5cm slot of
+          daylight running under every pane on the deck. */}
+      <GlassRailRun from={[-3.6, 6.24]} to={[-1.09, 6.24]} base={0.485} mat={glassRail} />
+      <GlassRailRun from={[1.19, 6.24]} to={[3.45, 6.24]} base={0.485} mat={glassRail} />
+      <GlassRailRun from={[-3.6, 3.15]} to={[-3.6, 6.24]} base={0.485} mat={glassRail} />
+      {/* Corner and terminal newels. Two runs meeting at right angles each end
+          on the corner POINT, which leaves a post-section notch of daylight at
+          the corner itself; and a run that simply stops in mid-air reads as
+          unfinished. A post at every junction and every free end closes both. */}
+      {([[-3.6, 6.24], [-3.6, 3.15], [3.45, 6.24]] as [number, number][]).map(([x, z], i) => (
+        <mesh key={`dn${i}`} castShadow position={[x, 0.99, z]}>
+          <boxGeometry args={[0.07, 1.01, 0.07]} />
+          <meshStandardMaterial color="#5d6663" roughness={0.45} metalness={0.55} />
+        </mesh>
+      ))}
       {/* steps to the meadow */}
       {[0, 1, 2].map((i) => (
         <mesh key={i} castShadow receiveShadow position={[0.05, 0.34 - i * 0.13, 6.35 + i * 0.34]}>
@@ -1544,6 +1626,22 @@ function Deck({ glassFloor, glassRail }: { glassFloor: THREE.Material; glassRail
           runs rake from the deck nosing (y 0.485) to the last tread (0.13)
           and land exactly where the deck rails terminate, so the guard is
           continuous the whole way round. */}
+      {/* STRINGERS — the piece whose absence was being read as "gaps in the
+          railing". The balustrade correctly follows the NOSING line (the line
+          through the front edge of each tread), but on any stair that line
+          runs above the tread surfaces behind it, so the flanks of the flight
+          are open triangles and you see straight through to the meadow. Every
+          real stair closes them with a stringer: the raked board the treads
+          land on. Set just outside the 2.1m tread width and just inside the
+          newels, so tread edge, stringer and post stack without a seam. */}
+      {([-1.03, 1.13] as const).map((x, i) => (
+        <group key={`sg${i}`} position={[x, 0.3075, 6.73]} rotation={[Math.atan2(0.355, 0.98), 0, 0]}>
+          <mesh castShadow receiveShadow position={[0, -0.17, 0]}>
+            <boxGeometry args={[0.06, 0.34, 1.13]} />
+            <meshStandardMaterial map={grain} color={pieceTone("#8a6a4a", i + 21)} roughness={0.88} flatShading />
+          </mesh>
+        </group>
+      ))}
       <StepRail from={[-1.09, 0.485, 6.24]} to={[-1.09, 0.13, 7.22]} mat={glassRail} />
       <StepRail from={[1.19, 0.485, 6.24]} to={[1.19, 0.13, 7.22]} mat={glassRail} />
     </group>
