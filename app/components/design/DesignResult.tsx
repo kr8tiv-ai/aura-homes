@@ -38,7 +38,14 @@ function Stat({ k, v, sub }: { k: string; v: React.ReactNode; sub?: string }) {
   );
 }
 
-export default function DesignResult({ res }: { res: DesignResponse }) {
+export default function DesignResult({
+  res,
+  engine = "service",
+}: {
+  res: DesignResponse;
+  /** which engine produced this — it changes what an absent PDF/DXF MEANS */
+  engine?: "service" | "local";
+}) {
   const { plan, artifacts, render_prompts: prompts, notes, offline } = res;
   const windows = plan.rooms.reduce((n, r) => n + r.windows, 0);
   const svg = artifactUrl(artifacts.svg_url);
@@ -207,11 +214,19 @@ export default function DesignResult({ res }: { res: DesignResponse }) {
           )}
           {!pdf || !dxf ? (
             <p className="mt-3 text-xs leading-relaxed text-aura-text/55">
-              {!pdf && !dxf
-                ? "PDF and DXF are unavailable on this service instance (cairosvg / ezdxf not installed)."
-                : !pdf
-                  ? "PDF is unavailable on this service instance (cairosvg not installed)."
-                  : "DXF is unavailable on this service instance (ezdxf not installed)."}
+              {/* An absent PDF means two completely different things depending
+                  on which engine ran, and blaming a "service instance" when no
+                  service was contacted is a plain untruth. cairosvg and ezdxf
+                  are native writers with no browser equivalent, so the local
+                  path can never produce them — that is a property of the path,
+                  not a misconfiguration. */}
+              {engine === "local"
+                ? "PDF and DXF need the design service — both are written by native libraries (cairosvg, ezdxf) that have no browser equivalent. The SVG above is the same drawing, and it prints."
+                : !pdf && !dxf
+                  ? "PDF and DXF are unavailable on this service instance (cairosvg / ezdxf not installed)."
+                  : !pdf
+                    ? "PDF is unavailable on this service instance (cairosvg not installed)."
+                    : "DXF is unavailable on this service instance (ezdxf not installed)."}
             </p>
           ) : null}
         </div>

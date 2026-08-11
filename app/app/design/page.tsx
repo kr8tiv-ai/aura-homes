@@ -1,26 +1,37 @@
 "use client";
 
-/* 02 · DESIGN — wired to the design service (design-api/).
+/* 02 · DESIGN — the geometry engine, in this page by default.
 
    What this page is now: the questionnaire in design-api/app/models.py
-   (DesignRequest), posted through the typed client in lib/designApi.ts, with
-   the solved plan, the room schedule, the blueprint and every warning rendered
+   (DesignRequest), answered by the deterministic engine ported into
+   lib/design/, or by the FastAPI service when one is connected — with the
+   solved plan, the room schedule, the blueprint and every warning rendered
    from the response.
 
-   What it was, and where that went: a five-step client-side wizard whose
-   answers were pasted into a narrative paragraph in the browser. Its parcel
-   questions (county, planning district, acreage) belong to /land and the agent
-   pipeline — the design service does not take them and this page no longer
-   pretends to price them. Its systems questions did not vanish: wood stove,
-   wood-fired hot tub, deck, greywater, solar and battery are now the STANDARD
-   rows of the Aura eco spec below, and generator, HRV, grid-connect and
-   hempcrete are the four real options.
+   THE INVERSION, which is the point of this file. It used to post to the
+   service and show nothing when the service did not answer, which on a static
+   export meant the centrepiece of the product did nothing. The deterministic
+   path never needed a server: it turns a room program into geometry with pure
+   arithmetic. So it runs here, always, and the service became the optional
+   upgrade that adds an LLM-authored room program and AI renders. Running
+   locally is the DEFAULT, not the sad path, and the page says so in that tone.
+
+   What this page was before that, and where it went: a five-step client-side
+   wizard whose answers were pasted into a narrative paragraph in the browser.
+   Its parcel questions (county, planning district, acreage) belong to /land and
+   the agent pipeline — the design service does not take them and this page no
+   longer pretends to price them. Its systems questions did not vanish: wood
+   stove, wood-fired hot tub, deck, greywater, solar and battery are now the
+   STANDARD rows of the Aura eco spec below, and generator, HRV, grid-connect
+   and hempcrete are the four real options.
 
    Honesty rules this page keeps:
-   · No service, no result. If the endpoint does not answer, the page says so
-     and shows nothing in its place — it never composes a fake plan.
-   · `offline: true` from the service is labelled as the deterministic geometry
-     path, not passed off as an AI design.
+   · Which engine drew it is stated before any of the numbers. A local plan is
+     never dressed up as an AI design, and an AI design is never claimed for a
+     drawing the browser produced.
+   · If the service was tried and did not produce this, what it said is shown —
+     including the case where it answered and refused the brief.
+   · `offline: true` is labelled as the deterministic geometry path.
    · Every warning is rendered, and the drawing's REVIEW-READY / NOT FOR
      CONSTRUCTION stamp is carried onto the page. */
 
@@ -39,13 +50,14 @@ import {
   materialWallMm,
 } from "@/components/design/ecoSpec";
 import {
-  artifactUrl,
+  DESIGN_API_BASE,
+  DESIGN_API_CONFIGURED,
   designHealth,
-  generateDesign,
+  requestDesign,
   type ClimateZone,
   type DesignHealth,
+  type DesignOutcome,
   type DesignRequest,
-  type DesignResponse,
   type EcoMaterial,
   type HomeStyle,
 } from "@/lib/designApi";
@@ -53,8 +65,8 @@ import {
 const REPO_AGENT = "https://github.com/kr8tiv-ai/aura-homes/tree/main/agent";
 
 /* The endpoint, taken from the client itself rather than re-read from env, so
-   the address printed in an error message is the address that was called. */
-const API_BASE = (artifactUrl("/") ?? "").replace(/\/$/, "");
+   the address named on screen is the address that was called. */
+const API_BASE = DESIGN_API_BASE;
 
 const STOREYS = [
   { id: "1", label: "Single storey" },
@@ -89,30 +101,15 @@ const INITIAL: FormState = {
 
 const INITIAL_OPTIONS = ["generator", "hrv"];
 
-type Phase = "idle" | "loading" | "done" | "failed";
-
-interface Failure {
-  kind: "unreachable" | "rejected";
-  message: string;
-}
-
-/** generateDesign throws `design service <status>: …` for an answered-but-
- *  refused request, and a network TypeError when nothing answered at all.
- *  The two need different words: one is a bad brief, the other is a service
- *  that is not running. */
-function classify(err: unknown): Failure {
-  const message = err instanceof Error ? err.message : String(err);
-  return /^design service \d+/.test(message)
-    ? { kind: "rejected", message }
-    : { kind: "unreachable", message };
-}
+type Phase = "idle" | "loading" | "done";
 
 export default function DesignPage() {
   const [form, setForm] = useState<FormState>(INITIAL);
   const [options, setOptions] = useState<string[]>(INITIAL_OPTIONS);
   const [phase, setPhase] = useState<Phase>("idle");
-  const [result, setResult] = useState<DesignResponse | null>(null);
-  const [failure, setFailure] = useState<Failure | null>(null);
+  /* One object, so the result and the engine that produced it can never be
+     rendered apart from each other. */
+  const [outcome, setOutcome] = useState<DesignOutcome | null>(null);
 
   /* undefined = still probing, null = the service did not answer. */
   const [health, setHealth] = useState<DesignHealth | null | undefined>(undefined);
@@ -196,22 +193,33 @@ export default function DesignPage() {
     abortRef.current = ac;
 
     setPhase("loading");
-    setFailure(null);
-    setResult(null);
+    setOutcome(null);
     try {
-      const res = await generateDesign(request, ac.signal);
+      const res = await requestDesign(request, ac.signal);
       if (ac.signal.aborted) return;
-      setResult(res);
+      setOutcome(res);
       setPhase("done");
-      // The service answered; re-read /health rather than inferring its
-      // wiring from the response — a guessed status bar is a lie.
-      setProbe((n) => n + 1);
+
+      if (res.engine === "service") {
+        // The service answered; re-read /health rather than inferring its
+        // wiring from the response — a guessed status bar is a lie.
+        setProbe((n) => n + 1);
+      } else if (res.serviceError?.kind === "unreachable") {
+        // Nothing answered on the way to this result, so the pill must not
+        // keep claiming a reachable service from an older probe.
+        setHealth(null);
+      }
     } catch (err) {
-      if (ac.signal.aborted) return;
-      const f = classify(err);
-      setFailure(f);
-      setPhase("failed");
-      if (f.kind === "unreachable") setHealth(null);
+      if (ac.signal.aborted) return; // superseded by a newer Generate
+      /* Defensive: requestDesign documents that it rejects only on abort. If it
+         ever does otherwise, the reason is shown rather than swallowed. */
+      setOutcome({
+        engine: "none",
+        response: null,
+        serviceError: null,
+        localError: err instanceof Error ? err.message : String(err),
+      });
+      setPhase("done");
     }
   }
 
@@ -228,10 +236,11 @@ export default function DesignPage() {
       />
       <Reveal delay={0.12} y={12}>
         <p className="mt-4 max-w-2xl text-[0.95rem] leading-[1.65] text-aura-text/75">
-          The questionnaire posts to the design service, which reasons a room program, re-solves the
-          geometry deterministically, and draws a dimensioned plan at 1/4&quot; = 1&apos;-0&quot;.
-          Python owns the geometry; nothing on the drawing is drawn by a language model. Parcel
-          questions — district minimums, aquifer, septic soils — live on{" "}
+          The questionnaire packs a room program into an envelope, checks it against the code, and
+          draws a dimensioned plan at 1/4&quot; = 1&apos;-0&quot;. That runs in this page. Nothing on
+          the drawing is drawn by a language model — connecting the design service adds an
+          AI-authored room program and renders, not a different drawing. Parcel questions — district
+          minimums, aquifer, septic soils — live on{" "}
           <Link href="/land" data-cursor="Open" className="text-aura-emerald underline underline-offset-4">
             /land
           </Link>{" "}
@@ -249,20 +258,22 @@ export default function DesignPage() {
         </p>
       </Reveal>
 
-      {/* --------------------------------------------------- service status */}
+      {/* ------------------------------------------- which engine is available
+           Not a health readout with a red light: the engine that draws is
+           always present. This says whether the optional upgrade is there. */}
       <Reveal y={12} className="mt-8">
         <div className="flex flex-wrap items-center gap-3">
           {health === undefined ? (
             <span className="rounded border aura-hairline px-2 py-0.5 font-mono text-[0.6rem] uppercase tracking-label text-aura-text/60">
-              Checking service
+              Checking for a service
             </span>
           ) : health === null ? (
-            <span className="rounded border border-aura-violet px-2 py-0.5 font-mono text-[0.6rem] uppercase tracking-label text-aura-violet">
-              Service unreachable
+            <span className="rounded border border-aura-teal px-2 py-0.5 font-mono text-[0.6rem] uppercase tracking-label text-aura-teal">
+              In-browser engine
             </span>
           ) : (
             <span className="rounded border border-aura-emerald px-2 py-0.5 font-mono text-[0.6rem] uppercase tracking-label text-aura-emerald">
-              Service reachable
+              Design service connected
             </span>
           )}
           <span className="font-mono text-xs text-aura-text/55">{API_BASE}</span>
@@ -275,6 +286,12 @@ export default function DesignPage() {
               {health.images
                 ? `Renders: ${health.image_model ?? "image backend"}`
                 : "No image key — blueprint only, no AI renders"}
+            </span>
+          ) : health === null ? (
+            <span className="text-xs text-aura-text/65">
+              {DESIGN_API_CONFIGURED
+                ? "The configured service is not answering — the deterministic engine in this page draws instead."
+                : "No service configured, which is the normal state here — the deterministic engine in this page draws the plan."}
             </span>
           ) : null}
           <button
@@ -427,68 +444,129 @@ export default function DesignPage() {
         )}
       </form>
 
-      {/* ------------------------------------------------- loading / failure */}
+      {/* ------------------------------------------------- loading / outcome */}
       <div aria-live="polite">
         {phase === "loading" && (
           <div className="aura-panel mt-10 p-8">
             <p className="aura-label animate-pulse">Solving</p>
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-aura-text/70">
               Packing the room program into an envelope, clustering the wet rooms onto a shared
-              plumbing wall, checking glazing against the 22% FDWR ceiling, then drawing the plan
-              and writing the PDF and DXF. The geometry is deterministic, so this is the same answer
-              every time for the same brief.
+              plumbing wall, checking glazing against the 22% FDWR ceiling, then drawing the plan.
+              The geometry is deterministic, so this is the same answer every time for the same
+              brief.
             </p>
           </div>
         )}
 
-        {phase === "failed" && failure && (
-          <div className="mt-10 rounded-xl border border-aura-violet p-8">
-            <p className="aura-label text-aura-violet">
-              {failure.kind === "unreachable" ? "The design service did not answer" : "The service refused this brief"}
-            </p>
-            {failure.kind === "unreachable" ? (
-              <>
-                <p className="mt-3 max-w-2xl text-sm leading-relaxed text-aura-text/80">
-                  Nothing answered at <span className="font-mono">{API_BASE}</span>, so there is no
-                  design to show — and this page will not compose one in the browser and call it a
-                  result. Your answers and the brief above are intact; run the service and press
-                  Generate again.
-                </p>
-                <pre className="mt-4 overflow-x-auto rounded-md border aura-hairline p-4 font-mono text-xs leading-relaxed text-aura-text/70">
+        {phase === "done" && outcome && (
+          <>
+            <EngineNote outcome={outcome} onRecheck={() => setProbe((n) => n + 1)} />
+            {outcome.response ? <DesignResult res={outcome.response} engine={outcome.engine} /> : null}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------------
+   WHICH ENGINE DREW IT — stated above the result, before any of the numbers.
+
+   Three outcomes, three different things to say, and none of them buried:
+   · service — the upgrade answered; say what it added.
+   · local   — the default. Plain and non-apologetic: real geometry, drawn
+               here, with what the service would have added named exactly.
+   · none    — the local engine itself failed. No plan is shown, nothing is
+               substituted, and both errors are printed verbatim.
+   ------------------------------------------------------------------------ */
+function EngineNote({
+  outcome,
+  onRecheck,
+}: {
+  outcome: DesignOutcome;
+  onRecheck: () => void;
+}) {
+  if (outcome.engine === "none") {
+    return (
+      <div className="mt-10 rounded-xl border border-aura-violet p-8">
+        <p className="aura-label text-aura-violet">The geometry engine could not solve this brief</p>
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-aura-text/80">
+          This should not happen — the engine is deterministic and has no dependencies. There is no
+          plan to show, and nothing has been substituted for one. Your answers above are intact.
+        </p>
+        <p className="mt-4 break-words font-mono text-xs leading-relaxed text-aura-text/60">
+          {outcome.localError}
+        </p>
+        {outcome.serviceError ? (
+          <p className="mt-2 break-words font-mono text-xs leading-relaxed text-aura-text/50">
+            The service was tried first: {outcome.serviceError.message}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (outcome.engine === "service") {
+    return (
+      <div className="mt-10 rounded-xl border border-aura-emerald p-6">
+        <p className="aura-label text-aura-emerald">Answered by the design service</p>
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-aura-text/80">
+          The service at <span className="font-mono">{API_BASE}</span> produced this. It contributes
+          the room program and, with an image credential, the renders; the packer, the FDWR check
+          and the drawing are the same deterministic code that runs in this page.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-10 rounded-xl border border-aura-teal p-6">
+      <p className="aura-label text-aura-teal">Drawn in your browser</p>
+      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-aura-text/80">
+        This plan was generated here, by the same deterministic geometry the design service runs:
+        the room-program arithmetic, the squarified packer, the 6-foot minimum-dimension check, the
+        22% NBC 9.36 FDWR ceiling and the 1/4&quot; = 1&apos;-0&quot; drafting code, ported to
+        TypeScript. No server was involved and nothing below is a placeholder. Connecting the design
+        service adds an AI-authored room program and, with an image key, renders — it does not draw
+        a more accurate plan.
+      </p>
+      {outcome.serviceError ? (
+        <p className="mt-3 max-w-2xl text-xs leading-relaxed text-aura-text/60">
+          {outcome.serviceError.kind === "rejected"
+            ? "A service answered and refused this brief, so the local engine solved it instead. A refusal usually means a value outside the contract — bedrooms 0–6, bathrooms in half steps to 4, area 200–4,000 sq ft."
+            : `Nothing answered at ${API_BASE} first, which is the normal state for the hosted site.`}{" "}
+          <span className="break-words font-mono text-aura-text/50">
+            {outcome.serviceError.message}
+          </span>
+        </p>
+      ) : null}
+      <details className="mt-4">
+        <summary
+          data-cursor="Open"
+          className="cursor-pointer font-mono text-[0.6rem] uppercase tracking-label text-aura-text/55"
+        >
+          Run the design service for AI room programs and renders
+        </summary>
+        <pre className="mt-3 overflow-x-auto rounded-md border aura-hairline p-4 font-mono text-xs leading-relaxed text-aura-text/70">
 {`cd design-api
 python -m pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000`}
-                </pre>
-                <p className="mt-3 max-w-2xl text-xs leading-relaxed text-aura-text/60">
-                  Every key in the service is optional: with none configured it still returns a full
-                  blueprint from the deterministic planner and reports{" "}
-                  <span className="font-mono">offline: true</span>. Point this page elsewhere with{" "}
-                  <span className="font-mono">NEXT_PUBLIC_DESIGN_API</span>.
-                </p>
-              </>
-            ) : (
-              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-aura-text/80">
-                The service answered and rejected the request, which usually means a value outside
-                the contract — bedrooms 0–6, bathrooms in half steps to 4, area 200–4,000 sq ft, or
-                a room program that cannot be packed into the envelope.
-              </p>
-            )}
-            <p className="mt-4 break-words font-mono text-xs leading-relaxed text-aura-text/60">
-              {failure.message}
-            </p>
-            <button
-              type="button"
-              onClick={() => setProbe((n) => n + 1)}
-              data-cursor="Recheck"
-              className="mt-4 rounded-full border border-aura-teal px-4 py-1.5 font-mono text-[0.6rem] uppercase tracking-label text-aura-teal transition-colors hover:bg-aura-teal/5"
-            >
-              Re-check the service
-            </button>
-          </div>
-        )}
-
-        {phase === "done" && result && <DesignResult res={result} />}
-      </div>
+        </pre>
+        <p className="mt-3 max-w-2xl text-xs leading-relaxed text-aura-text/60">
+          Every key in the service is optional: with none configured it returns the same
+          deterministic blueprint this page just drew, plus PDF and DXF, and reports{" "}
+          <span className="font-mono">offline: true</span>. Point this page at a deployed one with{" "}
+          <span className="font-mono">NEXT_PUBLIC_DESIGN_API</span>.
+        </p>
+        <button
+          type="button"
+          onClick={onRecheck}
+          data-cursor="Recheck"
+          className="mt-4 rounded-full border border-aura-teal px-4 py-1.5 font-mono text-[0.6rem] uppercase tracking-label text-aura-teal transition-colors hover:bg-aura-teal/5"
+        >
+          Re-check for a service
+        </button>
+      </details>
     </div>
   );
 }
