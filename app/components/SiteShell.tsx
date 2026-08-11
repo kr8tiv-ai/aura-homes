@@ -172,8 +172,22 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
               </m.div>
             </main>
             <footer className="mt-24 border-t aura-hairline">
-              <div className="mx-auto max-w-5xl px-6 py-8 text-xs uppercase tracking-label text-aura-text/70">
-                A KR8TIV AI product &middot; Open source (MIT)
+              <div className="mx-auto max-w-5xl px-6 py-8">
+                <p className="text-xs uppercase tracking-label text-aura-text/70">
+                  A KR8TIV AI product &middot; Open source (MIT)
+                </p>
+                {/* THE BOUNDARY, stated once and in plain words. Aura is rails
+                    and guidance; it is not the seller, the builder, or a party
+                    to anyone's contract, and it takes no custody of funds. A
+                    reader should never have to infer that from the absence of
+                    a claim — and the site said "buy a home with USDC" until
+                    Aug 10, 2026, which invited exactly the wrong inference. */}
+                <p className="mt-3 max-w-2xl text-xs leading-relaxed text-aura-text/55">
+                  Aura Homes facilitates. It does not sell homes, hold your funds, act as a party to
+                  any purchase or build contract, or provide legal, financial, or engineering advice.
+                  Designs are review-ready concepts, not permit sets — a licensed professional
+                  completes those. You own your project and the decisions in it.
+                </p>
               </div>
             </footer>
           </>

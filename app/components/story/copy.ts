@@ -26,7 +26,10 @@ export const HERO = {
   n: "00",
   label: "Off-grid, on-chain",
   heading: "Design it. Fund it. Build it.",
-  sub: "Aura Homes is the agent that takes you from USDC on X Layer to the keys of an off-grid eco home — land, design, budget, escrow, and build, orchestrated end to end.",
+  /* "takes you ... to the keys" read as though Aura delivers the house. It
+     does not: it facilitates, and the owner owns the build. The verb is now
+     "walks you", and the last clause says whose project it is. */
+  sub: "Aura Homes is the agent that walks you from USDC on X Layer to the keys of an off-grid eco home — land, design, budget, and build. Your project, orchestrated end to end.",
   cue: "Scroll",
   ledger: [
     { k: "In", v: "USDC on X Layer" },

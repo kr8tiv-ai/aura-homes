@@ -9,7 +9,7 @@ const arcs = [
     n: "01",
     status: "In build",
     name: "The hackathon MVP",
-    line: "Buy a home with USDC on X Layer, with an agent that directs you to the land — the arc being built now.",
+    line: "Design and fund an off-grid home with USDC on X Layer — or buy one from a maker that already takes crypto. The arc being built now.",
     detail:
       "The spine is real and tested: the escrow and registry contracts pass 10 of 10 tests, the land filter rejects real parcels for real bylaw reasons, and the budget reconciles to the open Alberta cost model to the dollar. The buy flow itself — catalog, order, deposit — is in build; testnet deployment waits on one human step, and escrow figures shown here run on fixtures until it lands.",
   },
