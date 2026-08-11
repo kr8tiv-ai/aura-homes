@@ -13,6 +13,26 @@ used within its license terms; nothing here carries NC or ND restrictions.
   (React Three Fiber), our own scene, our own copy, and our own branding. No code,
   assets, writing, or visual identity were taken from the kage page.
 
+- **MengTo — towers** — [github.com/MengTo/towers](https://github.com/MengTo/towers)
+  Offered by our founder as a source of ideas for the parametric home builder, and
+  credited here on principle *before* anything is taken from it. Towers is a
+  procedural building generator; what is relevant to us is the idea of composing a
+  structure from stacked, parameterised volumes rather than from hand-modelled
+  meshes. If any of its code or approach is used in `app/lib/builder/`, this entry
+  gains the specific line and the licence; until then this is an
+  inspiration-and-intent credit, and the builder's geometry is our own.
+
+## Interface pattern reference
+
+- **Beautiful UI, by Turbo** —
+  [beautiful-ui-five.vercel.app](https://beautiful-ui-five.vercel.app/)
+  A gallery of primitives for AI-native interfaces. Referenced for the *shape* of
+  the concierge surfaces — the approval card (which is exactly the "stop for
+  payments and permission" boundary the product needs), tool chips, task rows,
+  expandable thinking traces, and the prompt bar — plus its numbered-section
+  rhythm. Patterns only: our components are written in our own stack against our
+  own tonal ladder and typography. No code or assets copied.
+
 ## 3D models (in `app/public/models/`)
 
 | File | Model | Author | License | Source |
