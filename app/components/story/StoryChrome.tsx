@@ -16,6 +16,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { withBase } from "../../lib/basePath";
+import type { StoryAudience } from "./copy";
 
 export const REPO_URL = "https://github.com/kr8tiv-ai/aura-homes";
 /* The star pill's destination. GitHub publishes no star-intent URL, so this
@@ -29,6 +30,8 @@ export const REPO_URL = "https://github.com/kr8tiv-ai/aura-homes";
    Either way the journey ends at the screen with the Star button. */
 export const STAR_URL = "https://github.com/login?return_to=%2Fkr8tiv-ai%2Faura-homes";
 export const XLAYER_URL = "https://web3.okx.com/xlayer";
+export const OKX_URL = "https://www.okx.com/";
+export const BUILDX_URL = "https://web3.okx.com/xlayer/build-x-series";
 
 /* ----------------------------- the gate ----------------------------- */
 
@@ -37,7 +40,7 @@ export function EnterGate({
   entered,
   onVideoFallback,
 }: {
-  onEnter: (withSound: boolean) => void;
+  onEnter: (audience: StoryAudience, withSound: boolean) => void;
   entered: boolean;
   /** Called when the gate film cannot run (missing/failed asset or
    *  prefers-reduced-motion) so the parent can boot the 3D scene at once —
@@ -45,6 +48,9 @@ export function EnterGate({
   onVideoFallback?: () => void;
 }) {
   const [leaving, setLeaving] = useState(false);
+  const [soundOn, setSoundOn] = useState(true);
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
 
   /* ---- the gate film ----
      The founder's Grok-generated establishing film plays as a muted looping
@@ -75,32 +81,26 @@ export function EnterGate({
   }, [videoDead, onVideoFallback]);
 
   const go = useCallback(
-    (withSound: boolean) => {
+    (audience: StoryAudience) => {
+      if (!hydrated || leaving) return;
       setLeaving(true);
-      // let the veil run before the scene takes the stage
-      window.setTimeout(() => onEnter(withSound), 460);
+      // The same confirmed gesture selects the story, starts optional audio,
+      // and hands off to the scene. Keeping this synchronous avoids a dead
+      // gate if a browser throttles timers during video or WebGL startup.
+      onEnter(audience, soundOn);
     },
-    [onEnter]
+    [hydrated, leaving, onEnter, soundOn]
   );
-
-  // Enter/Space anywhere also enters, with sound — keyboard users get the
-  // same gesture credit the click gets.
-  useEffect(() => {
-    if (entered) return;
-    const k = (e: KeyboardEvent) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        go(true);
-      }
-    };
-    window.addEventListener("keydown", k);
-    return () => window.removeEventListener("keydown", k);
-  }, [entered, go]);
 
   if (entered) return null;
 
   return (
-    <div className={`story-gate${leaving ? " leaving" : ""}`} role="dialog" aria-label="Enter Aura Homes">
+    <div
+      className={`story-gate${leaving ? " leaving" : ""}`}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Choose an Aura Homes journey"
+    >
       {!videoDead && (
         <>
           <video
@@ -132,23 +132,50 @@ export function EnterGate({
         </>
       )}
       <div className="story-gate-inner">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={withBase("/aura-mark.png")} alt="" className="story-gate-mark" width={160} height={160} />
-        <h1 className="story-display story-gate-title">Aura Homes</h1>
+        <div className="story-gate-brand">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={withBase("/aura-mark.png")} alt="" className="story-gate-mark" width={160} height={160} />
+          <span>Aura <em>Homes</em></span>
+        </div>
+        <p className="story-gate-kicker"><span>00</span><i aria-hidden />All-in-one unique stays</p>
+        <h1 className="story-display story-gate-title">
+          Design the home.<br />Find the land.<br />Build it for real.
+        </h1>
         <p className="story-gate-sub">
-          A journey from USDC on X Layer to the keys of an off-grid eco home.
+          Design or choose a tiny eco home, match the site, source a team, compare real costs and
+          prepare one private project for professional review. Or follow the X Layer proof, planned
+          HOMES trust, and path to a user-owned unique-stay network.
         </p>
-
-        <button type="button" className="story-gate-btn" onClick={() => go(true)} autoFocus>
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-            <path d="M8 5v14l11-7z" />
-          </svg>
-          <span>Enter with sound</span>
-        </button>
-
-        <button type="button" className="story-gate-quiet" onClick={() => go(false)}>
-          Enter silently
-        </button>
+        <div className="story-gate-paths" aria-label="Choose your perspective">
+          <button type="button" className="story-gate-path" onClick={() => go("project")} disabled={!hydrated || leaving} autoFocus>
+            <span>For homeowners and hosts</span>
+            <strong>Plan a unique stay</strong>
+            <small>Design, land, team, quotes, buying and handoff.</small>
+          </button>
+          <button type="button" className="story-gate-path story-gate-path-crypto" onClick={() => go("crypto")} disabled={!hydrated || leaving}>
+            <span>For crypto-native builders</span>
+            <strong>Explore HOMES + X Layer</strong>
+            <small>Testnet proof, property trust and owner launchpad.</small>
+          </button>
+        </div>
+        <div className="story-gate-preference">
+          <button
+            type="button"
+            className="story-gate-quiet"
+            aria-pressed={soundOn}
+            aria-label={soundOn ? "Forest sound on" : "Forest sound off"}
+            onClick={() => setSoundOn((value) => !value)}
+            disabled={!hydrated || leaving}
+          >
+            Forest sound {soundOn ? "on" : "off"}
+          </button>
+          <span>Your choice changes the story, not the underlying platform.</span>
+        </div>
+        <p className="story-gate-proof">
+          <a href={BUILDX_URL} target="_blank" rel="noreferrer">OKX Build X · AI Season 2026</a>
+          {" · "}<a href={XLAYER_URL} target="_blank" rel="noreferrer">X Layer testnet</a>
+          {" · HOMES trust and owner launchpad planned"}
+        </p>
       </div>
     </div>
   );
@@ -197,16 +224,32 @@ export function StoryHUD({
   onNight,
   sound,
   onSound,
+  audience,
+  onAudience,
 }: {
   night: boolean;
   onNight: () => void;
   sound: boolean;
   onSound: () => void;
+  audience: StoryAudience;
+  onAudience: (audience: StoryAudience) => void;
 }) {
   const stars = useRepoStars();
 
   return (
     <div className="story-hud">
+      <button
+        type="button"
+        className="story-hud-btn story-hud-perspective"
+        onClick={() => onAudience(audience === "project" ? "crypto" : "project")}
+        aria-label={audience === "project" ? "Switch to the HOMES and X Layer journey" : "Switch to the building journey"}
+        title={audience === "project" ? "HOMES + X Layer view" : "Building view"}
+      >
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+          <path d="M7 7h10m0 0-3-3m3 3-3 3M17 17H7m0 0 3 3m-3-3 3-3" />
+        </svg>
+        <span>{audience === "project" ? "HOMES view" : "Build view"}</span>
+      </button>
       {/* Live star count in OUR design language (founder request, Aug 10).
           The official ghbtns iframe was built and screenshotted first —
           GitHub's rounded grey-gradient widget fought the square 2px mono
@@ -348,12 +391,12 @@ export function useForestAudio() {
  *  site. Kept as a splitter rather than raw HTML so the copy stays plain
  *  strings in copy.ts and nothing has to be escaped. */
 export function WithXLayerLinks({ text }: { text: string }) {
-  const parts = text.split(/(X Layer)/g);
+  const parts = text.split(/(X Layer|OKX)/g);
   return (
     <>
       {parts.map((p, i) =>
-        p === "X Layer" ? (
-          <a key={i} className="story-xlink" href={XLAYER_URL} target="_blank" rel="noreferrer">
+        p === "X Layer" || p === "OKX" ? (
+          <a key={i} className="story-xlink" href={p === "X Layer" ? XLAYER_URL : OKX_URL} target="_blank" rel="noreferrer">
             {p}
           </a>
         ) : (

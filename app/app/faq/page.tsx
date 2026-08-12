@@ -37,13 +37,59 @@ const faqs = [
     link: { href: REPO, label: "Star the repo on GitHub" },
   },
   {
-    /* Replaces "Is there a token?" (removed Aug 10, 2026). The old answer
-       named HOMES and said it would launch — which is a promise no matter how
-       carefully the utility is hedged, and there is no token. The question
-       still gets asked, so it still gets answered; it is just answered with
-       what is true today rather than with a roadmap item. */
+    id: "x-layer",
+    q: "What is X Layer?",
+    a: "X Layer is the EVM-compatible Layer 2 in the OKX ecosystem. Aura uses its testnet as a low-cost public proof surface for reservation, refund, milestone, holdback, and design-hash contracts. The normal project tools do not require X Layer or a wallet. Current Aura contracts use chain 1952 and a faucet-compatible test token with no monetary value; mainnet settlement is not live.",
+    link: { href: "https://web3.okx.com/xlayer", label: "Read the official X Layer overview" },
+  },
+  {
+    id: "okx-buildx",
+    q: "What are OKX and the Build X AI Season?",
+    a: "OKX is the ecosystem behind X Layer, its wallet and developer program. Aura Homes is an independent entry in the August 7–21, 2026 Build X AI Season, which asks teams to combine AI with on-chain value on X Layer. Aura's entry pairs the project copilot and design workflow with deployed testnet escrow and registry proof. Participation is not an OKX endorsement, and OKX account availability varies by region.",
+    link: { href: "https://web3.okx.com/xlayer/build-x-series", label: "Open the official Build X page" },
+  },
+  {
+    id: "homes-token",
+    q: "What is the HOMES token?",
+    a: "HOMES is a planned X Layer token and public property ledger. The proposed model routes 60 percent of recognized platform and venue fees to a first-property fund, targeting 200,000 USDC before an Alberta or Costa Rica acquisition. No HOMES contract, sale, listing, fund balance, property, staking position, or payout exists today; the dashboard shows those verified zeroes instead of preview revenue.",
+    link: { href: "/homes", label: "Open the HOMES ledger" },
+  },
+  {
+    q: "How would Aura fees flow into HOMES?",
+    a: "Aura keeps token supply and revenue separate. Proposed trading-fee revenue is split 60 percent property fund, 10 percent marketing, 10 percent operations, 10 percent development, 5 percent burn reserve, and 5 percent protocol-owned liquidity. Service, API, marketplace, and disclosed AI-routing margins use the operating split: 60 percent property fund and 10 percent each to marketing, operations, development, and maintenance. A source stays planned until its agreement, cost basis, receipts, and allocation are verifiable.",
+  },
+  {
+    q: "How is the HOMES token supply allocated?",
+    a: "The current design reserves 30 percent for labeled team vesting wallets, 10 percent for marketing, 10 percent for approved exchange-listing requirements, 20 percent for protocol-owned liquidity, and 30 percent for public market distribution. These percentages describe token inventory, not fee revenue. No mint or allocation address exists today, and any unused listing allocation must remain visible rather than silently becoming team supply.",
+  },
+  {
+    q: "How would HOMES payouts work?",
+    a: "After a property is operating, Aura would publish gross rent, every operating expense, reserves, and net property profit. The proposed community share is 60 percent of that net profit. A declared X Layer block would select the top 200 staked HOMES addresses, and the community pool would be paid pro rata by stake in X Layer USDC. Snapshot block, cutoff, calculation, payout hashes, and unclaimed amounts all belong in the public ledger. Staking is a later phase, not live.",
+  },
+  {
+    q: "What happens if the first-property program does not proceed?",
+    a: "Before fundraising, Aura would publish an immutable funding deadline, minimum viable target, cancellation process, excluded system addresses, and claim rules. If the deadline expires below the target or the program is formally cancelled, the unspent trading-fee balance earmarked for property purchases would be reconciled and divided pro rata among the top 50 eligible community holders at a declared X Layer snapshot. Team, treasury, liquidity, exchange, and contract addresses are excluded. This wind-down mechanism is a design only and is not configured today.",
+  },
+  {
+    q: "What is the decentralized property trust?",
+    a: "The intended structure separates registered land title from the public on-chain ledger. A properly formed trust or holding entity would own each property in the jurisdiction where it sits; HOMES contracts would publish the community economics, approved governance actions, fee receipts, reserves, and USDC distributions. The legal vehicle does not exist yet and Aura owns no property today, so the dashboard says not formed until formation and title documents can be evidenced.",
+  },
+  {
+    q: "What does decentralized rental mean here?",
+    a: "First, one real home has to work end to end: acquisition, build, booking, cleaning, maintenance, reserves, guest support, and transparent reporting. The next stage is an open rental marketplace where eco-home owners can list stays, guests can book without learning crypto, and payment and operating evidence can settle on-chain. Aura will not call it decentralized while one team still controls every property and decision.",
+  },
+  {
+    q: "What would the real-world asset launchpad do?",
+    a: "It is a later rollout, not a live fundraising product. Aura could help an independent owner prepare the land case, design-intent plans, team, budget, operating model, evidence room, milestones, and on-chain proof for an eco home, cabin, or unique stay. Every project would still need a named sponsor, its own holding structure and rules, sourced evidence, a defined funding window, and explicit participant confirmation. Aura would not publish a campaign, hold funds, or execute transactions in the background.",
+    link: { href: "/homes#launchpad-heading", label: "See the planned launchpad" },
+  },
+  {
+    q: "Could people lock HOMES for a particular stay?",
+    a: "That is a possible later design, but the ledgers must stay separate. A time-bound HOMES lock could signal support, rank interest, or open an eligibility window for one named project. Actual project money would enter a distinct USDC milestone vault after confirmation. HOMES/USDC market liquidity stays in its own treasury-controlled position and cannot be described as construction funds. No lock or project-vault contract exists today.",
+  },
+  {
     q: "How does Aura make money?",
-    a: "Today it does not — nothing on this site charges anyone anything, and there is no fee in the escrow contract. The likely shape is small transaction fees or membership levels, decided once the product is in real use rather than guessed at now. What is already ruled out is taking a large cut of your build: the budget shown here is the budget, and every line of it goes to land, materials, trades, and permits. There is no token.",
+    a: "Today it does not — nothing on this site charges anyone, and there is no platform fee in the current escrow contract. The planned model uses small, disclosed margins on completed services, AI model routing, partner APIs, and eligible venue fees. The HOMES ledger separates gross customer spend, third-party cost, Aura's net fee, the applicable rule version, and every destination so a margin cannot be hidden inside a home budget.",
   },
   {
     q: "Where does it start?",
@@ -112,14 +158,14 @@ export default function FaqPage() {
       <RevealWords text="FAQ" className="max-w-3xl text-5xl font-semibold leading-tight md:text-6xl" />
       <Reveal delay={0.12}>
         <p className="mt-6 max-w-xl text-lg text-aura-text/70">
-          The eight questions people ask first — with the catches stated up front.
+          The questions people ask first — with the catches stated up front.
         </p>
       </Reveal>
 
       <Stagger className="mt-16 grid gap-6 md:grid-cols-2">
         {faqs.map((f, i) => (
           <StaggerItem key={f.q} className="h-full">
-            <article className="aura-panel aura-panel-lift h-full p-8">
+            <article id={"id" in f ? f.id : undefined} className="aura-panel aura-panel-lift h-full p-8 scroll-mt-28">
               {/* a div, not a p: GrowBar renders a div and a div inside a
                   paragraph is invalid nesting React will complain about */}
               <div className="flex items-center gap-3">

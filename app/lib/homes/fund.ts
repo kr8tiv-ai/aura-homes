@@ -1,0 +1,224 @@
+export const HOMES_FEE_ALLOCATION = {
+  propertyFund: 60,
+  marketing: 10,
+  operations: 10,
+  development: 10,
+  maintenance: 10,
+} as const;
+
+export const HOMES_TRADING_FEE_ALLOCATION = {
+  propertyFund: 60,
+  marketing: 10,
+  operations: 10,
+  development: 10,
+  burnReserve: 5,
+  protocolOwnedLiquidity: 5,
+} as const;
+
+export const HOMES_TOKEN_SUPPLY_ALLOCATION = {
+  team: 30,
+  marketing: 10,
+  exchangeListings: 10,
+  protocolOwnedLiquidity: 20,
+  publicMarket: 30,
+} as const;
+
+export const HOMES_PROPERTY_OWNERSHIP = {
+  community: 60,
+  team: 40,
+} as const;
+
+export const HOMES_FIRST_PROPERTY_TARGET_USDC = BigInt(200_000) * BigInt(1_000_000);
+export const HOMES_ELIGIBLE_HOLDER_LIMIT = 200;
+export const HOMES_WIND_DOWN_HOLDER_LIMIT = 50;
+export const HOMES_TEAM_ALLOCATION_PERCENT = 30;
+export const HOMES_INITIAL_BUY_CAP_PERCENT = 2;
+
+export type HomesHolder = {
+  address: `0x${string}`;
+  staked: bigint;
+  classification?: "community" | "team" | "treasury" | "liquidity" | "exchange" | "contract";
+};
+
+export interface HomesSnapshot {
+  status: "planned" | "testnet" | "live";
+  asOfISO: string | null;
+  chain: {
+    name: "X Layer";
+    chainId: number | null;
+    tokenAddress: `0x${string}` | null;
+    stakingAddress: `0x${string}` | null;
+    treasuryAddress: `0x${string}` | null;
+    snapshotBlock: bigint | null;
+  };
+  fees: {
+    totalUsdc: bigint;
+    lastReceiptHash: `0x${string}` | null;
+    sources: Array<{
+      id: string;
+      label: string;
+      model: string;
+      status: "planned" | "active";
+      recognizedUsdc: bigint;
+    }>;
+  };
+  propertyFund: {
+    balanceUsdc: bigint;
+    tradingFeeBalanceUsdc: bigint;
+    serviceFeeBalanceUsdc: bigint;
+    targetUsdc: bigint;
+    escrowAddress: `0x${string}` | null;
+  };
+  holders: {
+    stakedCount: number;
+    eligibleCount: number;
+    cutoffStake: bigint | null;
+  };
+  properties: Array<{
+    id: string;
+    location: string;
+    status: "candidate" | "due-diligence" | "acquired" | "building" | "operating";
+    acquisitionReceiptHash: `0x${string}` | null;
+  }>;
+  distributions: Array<{
+    period: string;
+    netProfitUsdc: bigint;
+    communityPoolUsdc: bigint;
+    transactionHash: `0x${string}` | null;
+  }>;
+  windDown: {
+    status: "not-configured" | "fundraising" | "eligible" | "claiming" | "closed";
+    fundingDeadlineISO: string | null;
+    minimumViableTargetUsdc: bigint | null;
+    snapshotBlock: bigint | null;
+    eligibleHolderLimit: number;
+    distributableUsdc: bigint;
+    claimAddress: `0x${string}` | null;
+  };
+}
+
+export function allocateHomesFees(totalUsdc: bigint): Record<keyof typeof HOMES_FEE_ALLOCATION, bigint> {
+  if (totalUsdc < BigInt(0)) throw new Error("Fee totals cannot be negative.");
+  const basis = BigInt(100);
+  const allocations = {
+    propertyFund: totalUsdc * BigInt(HOMES_FEE_ALLOCATION.propertyFund) / basis,
+    marketing: totalUsdc * BigInt(HOMES_FEE_ALLOCATION.marketing) / basis,
+    operations: totalUsdc * BigInt(HOMES_FEE_ALLOCATION.operations) / basis,
+    development: totalUsdc * BigInt(HOMES_FEE_ALLOCATION.development) / basis,
+    maintenance: totalUsdc * BigInt(HOMES_FEE_ALLOCATION.maintenance) / basis,
+  };
+  const assigned = Object.values(allocations).reduce((sum, value) => sum + value, BigInt(0));
+  allocations.propertyFund += totalUsdc - assigned;
+  return allocations;
+}
+
+export function allocateHomesTradingFees(totalUsdc: bigint): Record<keyof typeof HOMES_TRADING_FEE_ALLOCATION, bigint> {
+  if (totalUsdc < BigInt(0)) throw new Error("Trading fee totals cannot be negative.");
+  const basis = BigInt(100);
+  const allocations = {
+    propertyFund: totalUsdc * BigInt(HOMES_TRADING_FEE_ALLOCATION.propertyFund) / basis,
+    marketing: totalUsdc * BigInt(HOMES_TRADING_FEE_ALLOCATION.marketing) / basis,
+    operations: totalUsdc * BigInt(HOMES_TRADING_FEE_ALLOCATION.operations) / basis,
+    development: totalUsdc * BigInt(HOMES_TRADING_FEE_ALLOCATION.development) / basis,
+    burnReserve: totalUsdc * BigInt(HOMES_TRADING_FEE_ALLOCATION.burnReserve) / basis,
+    protocolOwnedLiquidity: totalUsdc * BigInt(HOMES_TRADING_FEE_ALLOCATION.protocolOwnedLiquidity) / basis,
+  };
+  const assigned = Object.values(allocations).reduce((sum, value) => sum + value, BigInt(0));
+  allocations.propertyFund += totalUsdc - assigned;
+  return allocations;
+}
+
+function eligibleCommunityHolders(holders: readonly HomesHolder[], limit: number): HomesHolder[] {
+  return holders
+    .filter((holder) => holder.staked > BigInt(0) && (holder.classification ?? "community") === "community")
+    .map((holder) => ({ ...holder }))
+    .sort((a, b) => a.staked === b.staked
+      ? a.address.localeCompare(b.address)
+      : a.staked > b.staked ? -1 : 1)
+    .slice(0, limit);
+}
+
+export function eligibleHomesHolders(holders: readonly HomesHolder[]): HomesHolder[] {
+  return eligibleCommunityHolders(holders, HOMES_ELIGIBLE_HOLDER_LIMIT);
+}
+
+export function homesProfitPayouts(netProfitUsdc: bigint, holders: readonly HomesHolder[]): {
+  communityPool: bigint;
+  teamShare: bigint;
+  payouts: Array<HomesHolder & { amount: bigint }>;
+  unallocated: bigint;
+} {
+  if (netProfitUsdc < BigInt(0)) throw new Error("Net property profit cannot be negative.");
+  const eligible = eligibleHomesHolders(holders);
+  const communityPool = netProfitUsdc * BigInt(HOMES_PROPERTY_OWNERSHIP.community) / BigInt(100);
+  const teamShare = netProfitUsdc - communityPool;
+  const totalStake = eligible.reduce((sum, holder) => sum + holder.staked, BigInt(0));
+  if (totalStake === BigInt(0)) return { communityPool, teamShare, payouts: [], unallocated: communityPool };
+  const payouts = eligible.map((holder) => ({
+    ...holder,
+    amount: communityPool * holder.staked / totalStake,
+  }));
+  const paid = payouts.reduce((sum, payout) => sum + payout.amount, BigInt(0));
+  return { communityPool, teamShare, payouts, unallocated: communityPool - paid };
+}
+
+export function homesWindDownPayouts(propertyFundBalanceUsdc: bigint, holders: readonly HomesHolder[]): {
+  eligible: HomesHolder[];
+  payouts: Array<HomesHolder & { amount: bigint }>;
+  unallocated: bigint;
+} {
+  if (propertyFundBalanceUsdc < BigInt(0)) throw new Error("Wind-down balance cannot be negative.");
+  const eligible = eligibleCommunityHolders(holders, HOMES_WIND_DOWN_HOLDER_LIMIT);
+  const totalStake = eligible.reduce((sum, holder) => sum + holder.staked, BigInt(0));
+  if (totalStake === BigInt(0)) return { eligible, payouts: [], unallocated: propertyFundBalanceUsdc };
+  const payouts = eligible.map((holder) => ({
+    ...holder,
+    amount: propertyFundBalanceUsdc * holder.staked / totalStake,
+  }));
+  const paid = payouts.reduce((sum, payout) => sum + payout.amount, BigInt(0));
+  return { eligible, payouts, unallocated: propertyFundBalanceUsdc - paid };
+}
+
+export function plannedHomesSnapshot(): HomesSnapshot {
+  return {
+    status: "planned",
+    asOfISO: null,
+    chain: {
+      name: "X Layer",
+      chainId: null,
+      tokenAddress: null,
+      stakingAddress: null,
+      treasuryAddress: null,
+      snapshotBlock: null,
+    },
+    fees: {
+      totalUsdc: BigInt(0),
+      lastReceiptHash: null,
+      sources: [
+        { id: "venue", label: "Token venue fee share", model: "Requires a documented venue agreement", status: "planned", recognizedUsdc: BigInt(0) },
+        { id: "services", label: "Aura service fees", model: "Small disclosed margins on completed marketplace services", status: "planned", recognizedUsdc: BigInt(0) },
+        { id: "ai", label: "AI model routing", model: "Provider cost plus a disclosed orchestration margin, including OpenRouter where used", status: "planned", recognizedUsdc: BigInt(0) },
+        { id: "api", label: "Partner and API access", model: "Usage-priced tools when Aura's project intelligence is production-ready", status: "planned", recognizedUsdc: BigInt(0) },
+      ],
+    },
+    propertyFund: {
+      balanceUsdc: BigInt(0),
+      tradingFeeBalanceUsdc: BigInt(0),
+      serviceFeeBalanceUsdc: BigInt(0),
+      targetUsdc: HOMES_FIRST_PROPERTY_TARGET_USDC,
+      escrowAddress: null,
+    },
+    holders: { stakedCount: 0, eligibleCount: 0, cutoffStake: null },
+    properties: [],
+    distributions: [],
+    windDown: {
+      status: "not-configured",
+      fundingDeadlineISO: null,
+      minimumViableTargetUsdc: null,
+      snapshotBlock: null,
+      eligibleHolderLimit: HOMES_WIND_DOWN_HOLDER_LIMIT,
+      distributableUsdc: BigInt(0),
+      claimAddress: null,
+    },
+  };
+}

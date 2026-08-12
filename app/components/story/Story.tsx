@@ -5,10 +5,12 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { frame, cancelFrame } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { HERO, BEATS, END, BUILD_CTA, type LedgerRow } from "./copy";
+import { STORY_COPY, type LedgerRow, type StoryAudience } from "./copy";
 import { withBase } from "../../lib/basePath";
 import { applyTheme, currentTheme, onThemeChange } from "../../lib/theme";
-import { EnterGate, StoryHUD, useForestAudio, WithXLayerLinks, REPO_URL } from "./StoryChrome";
+import { BUILDX_URL, EnterGate, StoryHUD, useForestAudio, WithXLayerLinks, REPO_URL, XLAYER_URL } from "./StoryChrome";
+import StillScene from "./StillScene";
+import SocialShareLinks from "../SocialShareLinks";
 
 const StoryCanvas = dynamic(() => import("./StoryCanvas"), { ssr: false });
 
@@ -150,6 +152,26 @@ function EscrowLine() {
   );
 }
 
+function CryptoEcosystemLinks({ onNavigate }: { onNavigate: (href: string) => (event: React.MouseEvent) => void }) {
+  return (
+    <div className="story-ecosystem-links" aria-label="OKX and X Layer resources">
+      <a href={BUILDX_URL} target="_blank" rel="noreferrer" className="story-ecosystem-card">
+        {/* Unmodified OKX mark, CC BY-SA 4.0; attribution in docs/CREDITS.md. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={withBase("/brand/okx-logo.svg")} alt="OKX" width={44} height={44} />
+        <span><strong>Build X · AI Season</strong><small>Official hackathon page</small></span>
+      </a>
+      <a href={XLAYER_URL} target="_blank" rel="noreferrer" className="story-ecosystem-card">
+        <span className="story-xlayer-lockup" aria-hidden>X Layer</span>
+        <span><strong>Network overview</strong><small>Official X Layer site</small></span>
+      </a>
+      <Link href="/faq#x-layer" onClick={onNavigate("/faq#x-layer")} className="story-ecosystem-faq">
+        What are OKX and X Layer? <i aria-hidden>&rarr;</i>
+      </Link>
+    </div>
+  );
+}
+
 export default function Story() {
   const progressRef = useRef(0);
   const sectionsRef = useRef<(HTMLElement | null)[]>([]);
@@ -161,6 +183,8 @@ export default function Story() {
   const router = useRouter();
 
   const [entered, setEntered] = useState(false);
+  const [audience, setAudience] = useState<StoryAudience>("project");
+  const { hero, beats, end, buildCta } = STORY_COPY[audience];
   /* ONE switch, one world. The HUD's NIGHT button no longer only darkens the
      sky — it is the site theme. Flipping it here turns the paper plates,
      the rail, the header and every document page to charcoal at the same
@@ -178,18 +202,13 @@ export default function Story() {
   }, []);
   const audio = useForestAudio();
 
-  /* The gate film gets the wire first. The 3.4 MB establishing film and the
-     three.js scene used to race each other for bandwidth on first load; now
-     the canvas holds back briefly so the film's opening seconds stream
-     clean, then boots behind the opaque gate as before. It boots at once if
-     the film can't run (error / reduced motion — the scene IS the fallback)
-     or the visitor enters early. First paint is the gate either way. */
+  /* 3D is interaction-gated. The poster and authored still paint immediately;
+     WebGL does no automatic work on mobile, reduced-motion, low-power, or
+     short visits. Entering the story is the explicit request to begin. */
   const [canvasBoot, setCanvasBoot] = useState(false);
+  const [canvasReady, setCanvasReady] = useState(false);
+  const handleCanvasReady = useCallback(() => setCanvasReady(true), []);
   const bootCanvas = useCallback(() => setCanvasBoot(true), []);
-  useEffect(() => {
-    const t = window.setTimeout(bootCanvas, 1600);
-    return () => window.clearTimeout(t);
-  }, [bootCanvas]);
 
   /* DOWNLOAD EARLY, MOUNT LATE — the two used to be the same timer, and that
      is most of the "couple of seconds" before the 3D appears.
@@ -208,6 +227,7 @@ export default function Story() {
      signal that the scene is about to be needed. Repeat calls are free —
      webpack resolves an already-loaded chunk from cache. */
   useEffect(() => {
+    if (!window.matchMedia("(min-width: 820px) and (prefers-reduced-motion: no-preference)").matches) return;
     let warmed = false;
     const warm = () => {
       if (warmed) return;
@@ -227,7 +247,8 @@ export default function Story() {
   /* The gate's click is the audio gesture. Entering silently still enters —
      the sound button in the HUD stays available either way. */
   const handleEnter = useCallback(
-    (withSound: boolean) => {
+    (selectedAudience: StoryAudience, withSound: boolean) => {
+      setAudience(selectedAudience);
       setEntered(true);
       setCanvasBoot(true);
       document.documentElement.classList.remove("story-gated");
@@ -299,7 +320,7 @@ export default function Story() {
        at the midpoint between two beats both are already at zero, so the
        page is never a double exposure. */
     const paint = (p: number) => {
-      for (let i = 0; i < BEATS.length; i++) {
+      for (let i = 0; i < beats.length; i++) {
         const el = plateRefs.current[i];
         if (!el) continue;
         const o = 1 - smoothstep(0.3, 0.5, Math.abs(p - (i + 1)));
@@ -346,7 +367,7 @@ export default function Story() {
       window.removeEventListener("resize", onResize);
       cancelFrame(paintNow);
     };
-  }, []);
+  }, [beats]);
 
   // Reveal-on-enter for the in-flow copy blocks (hero and the end sheet).
   useEffect(() => {
@@ -374,25 +395,38 @@ export default function Story() {
   /* The rail lives in the gutter OPPOSITE the page that is on screen, so it
      can never be drawn over the copy — the collision the critics found at
      every single beat. It retires on the closing sheet. */
-  const railSide = active >= 1 && active <= BEATS.length ? BEATS[active - 1].side : "left";
-  const railClass = `story-rail${railSide === "right" ? " at-left" : ""}${active >= BEATS.length + 1 ? " off" : ""}`;
+  const railSide = active >= 1 && active <= beats.length ? beats[active - 1].side : "left";
+  const railClass = `story-rail${railSide === "right" ? " at-left" : ""}${active >= beats.length + 1 ? " off" : ""}`;
 
   return (
-    <div className={`story-scope${night ? " night" : ""}`}>
+    <div className={`story-scope${night ? " night" : ""}`} data-story-audience={audience}>
       <div className="story-sky" aria-hidden />
-      {reduced !== null && (canvasBoot || reduced) && (
-        <StoryCanvas progressRef={progressRef} reduced={reduced} night={night} />
+      <StillScene hidden={canvasReady} />
+      {reduced === false && canvasBoot && (
+        <StoryCanvas
+          progressRef={progressRef}
+          reduced={reduced}
+          night={night}
+          onReady={handleCanvasReady}
+        />
       )}
       <div className="story-grain" aria-hidden />
       <div className={`story-veil${leaving ? " on" : ""}`} aria-hidden />
 
       {audio.element}
       <EnterGate onEnter={handleEnter} entered={entered} onVideoFallback={bootCanvas} />
-      <StoryHUD night={night} onNight={flipNight} sound={audio.on} onSound={audio.toggle} />
+      <StoryHUD
+        night={night}
+        onNight={flipNight}
+        sound={audio.on}
+        onSound={audio.toggle}
+        audience={audience}
+        onAudience={setAudience}
+      />
 
       {/* progress rail */}
       <nav className={railClass} aria-label="Story progress">
-        {BEATS.map((b, i) => (
+        {beats.map((b, i) => (
           <button
             key={b.id}
             type="button"
@@ -414,7 +448,7 @@ export default function Story() {
 
       {/* ---- the pinned copy stage: paper pages laid over the world ---- */}
       <div className="story-stage">
-        {BEATS.map((b, i) => (
+        {beats.map((b, i) => (
           <article
             key={b.id}
             ref={(el) => {
@@ -431,15 +465,27 @@ export default function Story() {
             {b.ledger && <Ledger rows={b.ledger} />}
             {b.id === "budget" && <BudgetBand />}
             {b.id === "escrow" && <EscrowLine />}
-            {b.id === "build" && (
+            {b.cta && (
               <Link
-                href={BUILD_CTA.href}
-                onClick={enterApp(BUILD_CTA.href)}
+                href={b.cta.href}
+                onClick={enterApp(b.cta.href)}
                 className="story-cta"
                 data-rv
                 style={{ transitionDelay: "400ms" }}
               >
-                {BUILD_CTA.label}
+                {b.cta.label}
+                <i aria-hidden>&rarr;</i>
+              </Link>
+            )}
+            {b.id === "build" && (
+              <Link
+                href={buildCta.href}
+                onClick={enterApp(buildCta.href)}
+                className="story-cta"
+                data-rv
+                style={{ transitionDelay: "400ms" }}
+              >
+                {buildCta.label}
                 <i aria-hidden>&rarr;</i>
               </Link>
             )}
@@ -458,21 +504,30 @@ export default function Story() {
           <div className="story-hero-inner">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={withBase("/aura-mark.png")} alt="" className="story-mark" data-rv width={160} height={160} />
-            <Kicker n={HERO.n} label={HERO.label} delay={80} />
-            <Reveal as="h1" className="story-display story-display-xl" text={HERO.heading} />
+            <Kicker n={hero.n} label={hero.label} delay={80} />
+            <Reveal as="h1" className="story-display story-display-xl" text={hero.heading} />
             <p className="story-sub" data-rv style={{ transitionDelay: "380ms" }}>
-              <WithXLayerLinks text={HERO.sub} />
+              <WithXLayerLinks text={hero.sub} />
             </p>
-            <Ledger rows={HERO.ledger} delay={480} fx />
+            <Ledger rows={hero.ledger} delay={480} fx />
+            {audience === "crypto" ? <CryptoEcosystemLinks onNavigate={enterApp} /> : null}
+            <button
+              type="button"
+              className="story-perspective-link"
+              onClick={() => setAudience(audience === "project" ? "crypto" : "project")}
+            >
+              {audience === "project" ? "Explore the on-chain story" : "Switch to the home-building story"}
+              <i aria-hidden>&rarr;</i>
+            </button>
             <div className="story-cue" data-rv style={{ transitionDelay: "640ms" }}>
-              <span>{HERO.cue}</span>
+              <span>{hero.cue}</span>
               <i aria-hidden />
             </div>
           </div>
         </section>
 
         {/* the five beats are scroll distance only — their copy is pinned */}
-        {BEATS.map((b, i) => (
+        {beats.map((b, i) => (
           <section
             key={b.id}
             id={b.id + "-beat"}
@@ -487,7 +542,7 @@ export default function Story() {
         {/* closing sheet */}
         <section
           ref={(el) => {
-            sectionsRef.current[BEATS.length + 1] = el;
+            sectionsRef.current[beats.length + 1] = el;
           }}
           className="story-end story-rv-group"
         >
@@ -497,29 +552,37 @@ export default function Story() {
                 <p className="story-wordmark" data-rv>
                   Aura <em>Homes</em>
                 </p>
-                <Reveal className="story-display story-end-tagline" text={END.tagline} />
+                <Reveal className="story-display story-end-tagline" text={end.tagline} />
                 <div data-rv style={{ transitionDelay: "260ms" }}>
                   <Link
-                    href={END.cta.href}
-                    onClick={enterApp(END.cta.href)}
+                    href={end.cta.href}
+                    onClick={enterApp(end.cta.href)}
                     className="story-cta story-cta-primary"
                   >
-                    {END.cta.label}
+                    {end.cta.label}
                     <i aria-hidden>&rarr;</i>
                   </Link>
                 </div>
                 <p className="story-end-rollout" data-rv style={{ transitionDelay: "320ms" }}>
-                  {END.rollout.text}{" "}
-                  <Link href={END.rollout.href} onClick={enterApp(END.rollout.href)}>
-                    {END.rollout.label} &rarr;
+                  {end.rollout.text}{" "}
+                  <Link href={end.rollout.href} onClick={enterApp(end.rollout.href)}>
+                    {end.rollout.label} &rarr;
                   </Link>
                 </p>
+                <button
+                  type="button"
+                  className="story-perspective-link story-perspective-link-end"
+                  onClick={() => setAudience(audience === "project" ? "crypto" : "project")}
+                >
+                  {audience === "project" ? "Explore HOMES + X Layer" : "Return to the building journey"}
+                  <i aria-hidden>&rarr;</i>
+                </button>
               </div>
 
               <div className="story-end-side">
-                <Kicker n={END.n} label={END.label} delay={200} />
+                <Kicker n={end.n} label={end.label} delay={200} />
                 <nav className="story-end-links" data-rv style={{ transitionDelay: "300ms" }} aria-label="Product">
-                  {END.links.map((l) => (
+                  {end.links.map((l) => (
                     <Link key={l.href} href={l.href} onClick={enterApp(l.href)}>
                       <span>{l.label}</span>
                       <i aria-hidden>&rarr;</i>
@@ -527,7 +590,8 @@ export default function Story() {
                   ))}
                 </nav>
                 <div className="story-end-meta" data-rv style={{ transitionDelay: "400ms" }}>
-                  <p className="story-end-season">{END.season}</p>
+                  <SocialShareLinks compact />
+                  <p className="story-end-season">{end.season}</p>
                   <div className="story-kr8tiv">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={withBase("/kr8tiv-badge.png")} alt="" width={72} height={72} />
@@ -539,7 +603,7 @@ export default function Story() {
                       GitHub
                     </a>{" "}
                     ·{" "}
-                    <a href={END.creditsUrl} target="_blank" rel="noreferrer">
+                    <a href={end.creditsUrl} target="_blank" rel="noreferrer">
                       scene inspired by MengTo&apos;s kage (credited)
                     </a>
                   </p>

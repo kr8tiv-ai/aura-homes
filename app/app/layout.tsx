@@ -7,9 +7,9 @@ import { Providers } from "./providers";
 import SiteShell from "../components/SiteShell";
 import { NO_FLASH_SCRIPT } from "../lib/theme";
 
-const TITLE = "Aura Homes — AI-designed off-grid eco homes, funded in USDC on X Layer";
+const TITLE = "Aura Homes — Design the home. Find the land. Build it for real.";
 const DESCRIPTION =
-  "From USDC on X Layer to the keys of an off-grid eco home. Land, design, budget, escrow, and build — orchestrated end-to-end by AI, in Alberta first.";
+  "Design or choose a tiny eco home, match land, source a team, compare real costs and prepare one private project for professional handoff.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://aurahomes.fun"),
@@ -21,15 +21,20 @@ export const metadata: Metadata = {
     type: "website",
     url: "/",
     siteName: "Aura Homes",
-    /* site-card.png is the paper-ground card (BRAND.md §10); the old
-       social-card.png was the pre-flip dark card, flagged in Audit #4 */
-    images: [{ url: "/site-card.png", width: 1200, height: 630, alt: "Aura Homes" }],
+    images: [
+      {
+        url: "/social/aura-homes-social-v2.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Aura Homes — a Nordic eco home among evergreen trees",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: TITLE,
     description: DESCRIPTION,
-    images: ["/site-card.png"],
+    images: ["/social/aura-homes-social-v2.jpg"],
   },
 };
 

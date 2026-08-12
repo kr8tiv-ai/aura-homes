@@ -9,7 +9,6 @@ import {
   type SceneQuality,
 } from "@/lib/three/sceneQuality";
 import Scene from "./Scene";
-import StillScene from "./StillScene";
 import SceneLoader, { SceneReady } from "./Loader";
 
 /* ---------------------------------------------------------------------
@@ -107,10 +106,12 @@ export default function StoryCanvas({
   progressRef,
   reduced,
   night = false,
+  onReady,
 }: {
   progressRef: React.MutableRefObject<number>;
   reduced: boolean;
   night?: boolean;
+  onReady?: () => void;
 }) {
   const [webgl, setWebgl] = useState<boolean | null>(probeWebGL);
   /* Latched, never cleared: <Scene> is not expected to suspend a second
@@ -133,7 +134,10 @@ export default function StoryCanvas({
      the canvas dozens of times during load. It is read inside SceneLoader,
      which is the only thing that needs it. */
   const [ready, setReady] = useState(false);
-  const markReady = useCallback(() => setReady(true), []);
+  const markReady = useCallback(() => {
+    setReady(true);
+    onReady?.();
+  }, [onReady]);
   const [quality, setQuality] = useState<SceneQuality>(() => runtimeQuality(reduced));
   const runtimeDegraded = useRef(false);
   const degrade = useCallback(() => {
@@ -156,7 +160,7 @@ export default function StoryCanvas({
   }, [reduced]);
 
   if (webgl === null) return null;
-  if (webgl === false) return <StillScene />;
+  if (webgl === false) return null;
 
   return (
     <>

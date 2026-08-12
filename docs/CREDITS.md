@@ -44,6 +44,18 @@ used within its license terms; nothing here carries NC or ND restrictions.
   rhythm. Patterns only: our components are written in our own stack against our
   own tonal ladder and typography. No code or assets copied.
 
+## Ecosystem marks
+
+- **OKX logo** (`app/public/brand/okx-logo.svg`) — authored by OKX, used
+  unmodified from [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:OKX_Logo.svg)
+  under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). It
+  links to the official Build X page and does not imply endorsement.
+- **X Layer** — rendered as plain typographic text linked to the
+  [official X Layer site](https://web3.okx.com/xlayer). Aura does **not** bundle
+  or recreate the X Layer logo: the published X Layer terms require express
+  approval for logo/trademark use, so the interface keeps the attribution
+  factual and permission-safe.
+
 ## 3D models (in `app/public/models/`)
 
 | File | Model | Author | License | Source |

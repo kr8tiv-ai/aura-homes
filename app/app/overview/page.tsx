@@ -2,16 +2,16 @@ import Link from "next/link";
 import RevealWords from "@/components/RevealWords";
 import { Reveal, Stagger, StaggerItem, GrowBar, Counter } from "@/components/Reveal";
 
-// The site tells the same rollout story as docs/ROADMAP.md — two arcs,
+// The site tells the same rollout story as docs/ROADMAP.md — three arcs,
 // honest labels on every one. If the roadmap changes, this page changes.
 const arcs = [
   {
     n: "01",
     status: "In build",
     name: "The hackathon MVP",
-    line: "Design and fund an off-grid home with USDC on X Layer — or buy one from a maker that already takes crypto. The arc being built now.",
+    line: "Start with a brief, shape the home, match land, assemble the team, reconcile quotes, and prepare an optional X Layer testnet action.",
     detail:
-      "The spine is real and tested: the escrow and registry contracts pass 10 of 10 tests, the land filter rejects real parcels for real bylaw reasons, and the budget reconciles to the open Alberta cost model to the dollar. The buy flow itself — catalog, order, deposit — is in build; testnet deployment waits on one human step, and escrow figures shown here run on fixtures until it lands.",
+      "The browser-first project and builder work locally without an account. Live data partners, contractor evidence, RFQs, quote reconciliation, and public-chain deployment remain staged work and are labelled where they appear.",
   },
   {
     n: "02",
@@ -21,27 +21,28 @@ const arcs = [
     detail:
       "Design your own eco home (SIP sandwich panels, solar), source every material and contractor locally, and choose buy-versus-build. A vendor directory purchasable in USDC, with bridge-in guidance where vendors take CAD. Pay contractors, manage inventory, track the build, and discover the latest building technology — one hub per locality.",
   },
+  {
+    n: "03",
+    status: "Later",
+    name: "The RWA launchpad",
+    line: "Help future owners prepare an eco home or unique stay, the land case, the plans, the operating model, and a transparent project-fund proposal.",
+    detail:
+      "HOMES would first prove one property end to end. A later launchpad could let independent sponsors assemble evidence and prepare their own project campaigns, but no project becomes a live raise without its own legal structure, disclosures, eligibility rules, custody path, risk review, and human confirmations.",
+  },
 ] as const;
-/* THE TOKEN ARC IS GONE FROM THE SITE (Aug 10, 2026, founder's call).
-   It read "The HOMES token — announced", and announcing a token is a promise
-   whether or not the copy hedges the utility. There is no token, the build is
-   what is being judged, and a roadmap card is not the place to carry a
-   financial expectation the product has not earned yet. Nothing replaced it:
-   inventing a third arc to keep the rhythm would be worse than shipping two
-   honest ones. If an arc three returns it will be a product, not an asset. */
 
 const pipeline = [
-  { step: "01", name: "Land", detail: "Real parcels filtered against district bylaws, aquifers, grid distance, and septic soils" },
-  { step: "02", name: "Design", detail: "AI architect turns your land and lifestyle into a buildable brief" },
-  { step: "03", name: "Budget", detail: "Alberta-researched LOW / MID / HIGH costing, line by line" },
-  { step: "04", name: "Escrow", detail: "Milestones funded in native USDC on X Layer with statutory holdback" },
-  { step: "05", name: "Build", detail: "Releases on 2-of-3 approval; the build record anchored on-chain" },
+  { step: "01", name: "Brief", detail: "Household, location, budget, accessibility, utilities, timing, and land status" },
+  { step: "02", name: "Design", detail: "Guided and Pro tools shape one portable design-intent document" },
+  { step: "03", name: "Land", detail: "Sourced parcel evidence compared against the home and project requirements" },
+  { step: "04", name: "Team", detail: "Evidence case files, comparable scopes, RFQs, and reconciled quotes" },
+  { step: "05", name: "Handoff", detail: "Milestones, proof, optional testnet funding, commissioning, and home book" },
 ] as const;
 
 export const metadata = {
   title: "Overview — Aura Homes",
   description:
-    "The rollout: the USDC buy arc in build, and the Locality Hub next — design your own eco home and source it locally.",
+    "Aura Homes now, next, and later: a private eco-home project workspace, locality marketplace, and planned RWA launchpad.",
 };
 
 export default function OverviewPage() {
@@ -50,12 +51,12 @@ export default function OverviewPage() {
       {/* The first screen is deliberately NOT faded in: label, headline and
           lede render at full opacity so the page is readable the instant it
           paints. Only the call-to-action row arrives, and it arrives fast. */}
-      <p className="aura-label mb-6">Off-grid, on-chain</p>
+      <p className="aura-label mb-6">One project, end to end</p>
       <h1 className="max-w-3xl text-5xl font-semibold leading-tight md:text-6xl">
-        Design it. <span className="text-aura-emerald">Fund it.</span> Build it.
+        Design the home. <span className="text-aura-emerald">Find the land.</span> Build it for real.
       </h1>
       <p className="mt-6 max-w-xl text-lg text-aura-text/70">
-        AI-designed off-grid eco homes on X Layer, paid in USDC.
+        A local-first workspace for moving an eco home from first brief to verified handoff.
       </p>
 
       <Stagger className="mt-10 flex gap-4">
@@ -64,11 +65,11 @@ export default function OverviewPage() {
             height, which stretch used to do for free */}
         <StaggerItem y={8} className="flex">
           <Link
-            href="/design"
+            href="/start"
             data-cursor="Design"
             className="inline-flex items-center rounded-full bg-aura-ink px-6 py-3 font-mono text-sm font-medium uppercase tracking-label text-aura-paper transition-opacity hover:opacity-85"
           >
-            Start a design
+            Start a project
           </Link>
         </StaggerItem>
         <StaggerItem y={8} className="flex">
@@ -94,12 +95,10 @@ export default function OverviewPage() {
         </Reveal>
         <RevealWords
           as="h2"
-          text="One story, two arcs — each one ships whole, not sliced."
+          text="One useful product now, with a measured path outward."
           className="mt-5 max-w-2xl text-3xl font-semibold leading-snug"
         />
-        {/* two columns, not three — a three-column grid with two cards leaves
-            a hole where the token card used to be */}
-        <Stagger className="mt-10 grid gap-6 md:grid-cols-2">
+        <Stagger className="mt-10 grid gap-6 md:grid-cols-3">
           {arcs.map((a) => (
             /* StaggerItem is the grid child now, so the card keeps its own
                equal-height stretch via h-full on both. */
