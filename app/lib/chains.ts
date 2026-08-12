@@ -27,7 +27,7 @@ export const xLayerTestnet = defineChain({
 /** Native USDC (6 decimals) per chain — never the bridged USDC.e. */
 export const USDC_ADDRESS: Record<number, `0x${string}`> = {
   [xLayer.id]: "0xB6CEceAB302E2E4948951eE7843FC24E92933061",
-  [xLayerTestnet.id]: "0xDec90b78111Ba2fc6FC6d84d8B9ec159A2d4b9B3",
+  [xLayerTestnet.id]: "0xcB8BF24c6cE16Ad21D707c9505421a17f2bec79D",
 };
 
 export const USDC_DECIMALS = 6;

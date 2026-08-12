@@ -2,6 +2,8 @@ import { expect, test } from "playwright/test";
 import { encodeAbiParameters, encodeEventTopics } from "viem";
 
 import { auraBuildEscrowAbi, auraBuildRegistryAbi } from "@/lib/escrowAbi";
+import { USDC_ADDRESS, xLayerTestnet } from "@/lib/chains";
+import { ESCROW_ADDRESS, REGISTRY_ADDRESS, USDC_TESTNET } from "@/lib/contracts";
 import {
   confirmDepositReceipt,
   confirmRegistryMintReceipt,
@@ -16,6 +18,18 @@ const owner = "0x3333333333333333333333333333333333333333" as const;
 const designHash = `0x${"a".repeat(64)}` as const;
 const budgetHash = `0x${"b".repeat(64)}` as const;
 const txHash = `0x${"c".repeat(64)}` as const;
+
+test("the app uses the USDC_TEST contract currently funded by the official X Layer faucet", () => {
+  const faucetUsdc = "0xcB8BF24c6cE16Ad21D707c9505421a17f2bec79D";
+
+  expect(USDC_ADDRESS[xLayerTestnet.id]).toBe(faucetUsdc);
+  expect(USDC_TESTNET).toBe(faucetUsdc);
+});
+
+test("the app targets the verified faucet-compatible testnet deployment", () => {
+  expect(ESCROW_ADDRESS).toBe("0x4A777bf71d8809244c77A3c2b39ef68793A463b5");
+  expect(REGISTRY_ADDRESS).toBe("0x1195ED713EEF2Adc32DcF5Bb1c4627F43f1EC32e");
+});
 
 function receipt(
   address: `0x${string}`,

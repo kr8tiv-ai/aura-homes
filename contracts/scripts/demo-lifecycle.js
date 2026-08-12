@@ -28,14 +28,9 @@
 const fs = require("fs");
 const path = require("path");
 const { ethers, network } = require("hardhat");
+const { XLAYER_USDC } = require("./network-config");
 
 // ---------------------------------------------------------------- config
-
-// Native USDC (6 decimals) — never bridged USDC.e. Mirrors scripts/deploy.js.
-const NATIVE_USDC = {
-  196: "0xB6CEceAB302E2E4948951eE7843FC24E92933061", // X Layer mainnet
-  1952: "0xDec90b78111Ba2fc6FC6d84d8B9ec159A2d4b9B3", // X Layer testnet
-};
 
 const HOLDBACK_BPS = 1000; // 10% — Alberta Prompt Payment and Construction Lien Act model
 const HOLDBACK_PERIOD = 60 * 24 * 60 * 60; // 60 days, in seconds
@@ -223,7 +218,7 @@ async function main() {
     await step("mint build budget", usdc.mint(homeowner.address, totalUnits));
     note(`${fmt(totalUnits)} USDC minted to the homeowner — the full build budget`);
   } else {
-    const usdcAddr = process.env.USDC ?? NATIVE_USDC[chainId];
+    const usdcAddr = process.env.USDC ?? XLAYER_USDC[chainId];
     if (!usdcAddr) throw new Error(`no native USDC known for chainId ${chainId} — set USDC env var`);
     usdc = await ethers.getContractAt("MockUSDC", usdcAddr); // ERC20 surface only; mint is never called on live networks
     line("native USDC", usdcAddr);

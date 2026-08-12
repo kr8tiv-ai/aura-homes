@@ -80,7 +80,7 @@ x402 / OKX Agent Payments Protocol integration would gate it:
      "code": 402,
      "scheme": "exact",
      "network": "eip155:1952",
-     "asset": "0xDec90b78111Ba2fc6FC6d84d8B9ec159A2d4b9B3",
+     "asset": "0xcB8BF24c6cE16Ad21D707c9505421a17f2bec79D",
      "amount": "10000",
      "payTo": "0x831Fb0C6f8A96dE7c7253bF76C98a780d6E0f260"
    }

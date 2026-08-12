@@ -9,12 +9,7 @@
 //                                   pass 0 or omit for the default (14 days)
 
 const { ethers, network } = require("hardhat");
-
-// Native USDC (6 decimals) — never bridged USDC.e.
-const NATIVE_USDC = {
-  196: "0xB6CEceAB302E2E4948951eE7843FC24E92933061", // X Layer mainnet
-  1952: "0xDec90b78111Ba2fc6FC6d84d8B9ec159A2d4b9B3", // X Layer testnet
-};
+const { XLAYER_USDC } = require("./network-config");
 
 async function main() {
   const [deployer] = await ethers.getSigners();
@@ -22,7 +17,7 @@ async function main() {
   console.log(`network: ${network.name} (chainId ${chainId})`);
   console.log(`deployer: ${deployer.address}`);
 
-  let usdc = process.env.USDC ?? NATIVE_USDC[chainId];
+  let usdc = process.env.USDC ?? XLAYER_USDC[chainId];
   if (!usdc) {
     console.log("no USDC for this chain — deploying MockUSDC (local dev only)");
     const mock = await ethers.deployContract("MockUSDC");

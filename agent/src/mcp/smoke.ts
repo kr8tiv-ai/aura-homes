@@ -154,7 +154,7 @@ async function paidMode(): Promise<void> {
     check(challenge?.scheme === "exact", 'challenge scheme is "exact"');
     check(challenge?.network === "eip155:1952", "challenge network is eip155:1952 (X Layer testnet)");
     check(
-      challenge?.asset === "0xDec90b78111Ba2fc6FC6d84d8B9ec159A2d4b9B3",
+      challenge?.asset === "0xcB8BF24c6cE16Ad21D707c9505421a17f2bec79D",
       "challenge asset is native testnet USDC"
     );
     check(challenge?.amount === "10000", "challenge amount is 10000 (= $0.01 at 6 decimals)");

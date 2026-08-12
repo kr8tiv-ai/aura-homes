@@ -18,7 +18,7 @@ import { z } from "zod";
 /** X Layer testnet (post-Terigon chain id 1952) — docs/ARCHITECTURE.md. */
 const NETWORK = "eip155:1952";
 /** Native testnet USDC on X Layer testnet (never USDC.e). */
-const ASSET = "0xDec90b78111Ba2fc6FC6d84d8B9ec159A2d4b9B3";
+const ASSET = "0xcB8BF24c6cE16Ad21D707c9505421a17f2bec79D";
 /** Demo pay-to address for metered tool calls. */
 const PAY_TO = "0x831Fb0C6f8A96dE7c7253bF76C98a780d6E0f260";
 /** $0.01 USDC at 6 decimals. */

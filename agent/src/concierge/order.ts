@@ -16,7 +16,8 @@ export const X_LAYER_TESTNET = "eip155:1952";
 /** X Layer mainnet (chain id 196). */
 export const X_LAYER_MAINNET = "eip155:196";
 /** Native Circle USDC on X Layer testnet — never bridged USDC.e. */
-export const NATIVE_USDC_TESTNET = "0xDec90b78111Ba2fc6FC6d84d8B9ec159A2d4b9B3";
+/** Official USDC_TEST token currently funded by the X Layer testnet faucet. */
+export const NATIVE_USDC_TESTNET = "0xcB8BF24c6cE16Ad21D707c9505421a17f2bec79D";
 /** Native Circle USDC on X Layer mainnet — never bridged USDC.e. */
 export const NATIVE_USDC_MAINNET = "0xB6CEceAB302E2E4948951eE7843FC24E92933061";
 
