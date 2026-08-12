@@ -12,6 +12,7 @@ import type { Provider } from "./data";
 import { needsPhoneCheck, reachLabel, reachesCanada } from "./data";
 import EvidenceBadge from "./EvidenceBadge";
 import type { ProviderPurchaseReadiness } from "@/lib/marketplace/buyReadiness";
+import type { ManufacturerInquiry } from "@/lib/project/manufacturerInquiry";
 
 const reachSkin: Record<string, string> = {
   yes: "text-aura-emerald",
@@ -33,11 +34,21 @@ export default function ProviderCard({
   readiness,
   selected,
   onSelect,
+  projectState,
 }: {
   provider: Provider;
   readiness: ProviderPurchaseReadiness;
   selected: boolean;
   onSelect: () => void;
+  projectState: {
+    hasProject: boolean;
+    saved: boolean;
+    busy: boolean;
+    inquiry: ManufacturerInquiry | undefined;
+    onToggle: () => void;
+    onPrepare: () => void;
+    onDownload?: () => void;
+  };
 }) {
   const reach = reachesCanada(provider);
   const callFirst = needsPhoneCheck(provider);
@@ -188,6 +199,19 @@ export default function ProviderCard({
         >
           Their site
         </a>
+      </div>
+
+      <div className="manufacturer-payment-choice" aria-label="Potential payment paths">
+        <div><span>Cash or card</span><strong>Ask on the written quote</strong><p>Provider-native invoicing remains the simplest path when offered.</p></div>
+        <div><span>X Layer USDC</span><strong>{provider.cryptoStatus === "current-live" ? "Conversion and recipient checks required" : "No verified direct path"}</strong><p>Aura never hides the swap, bridge, fee, asset network or recipient behind this option.</p></div>
+      </div>
+      <div className="manufacturer-project-actions">
+        <div><span>{projectState.inquiry ? "Inquiry prepared" : projectState.saved ? "Saved research" : "Project marketplace"}</span><p>{projectState.inquiry ? `Bound to ${projectState.inquiry.designHash.slice(0, 12)}…` : "Shortlist evidence before asking for a quote."}</p></div>
+        <div>
+          <button type="button" disabled={!projectState.hasProject || projectState.busy} aria-pressed={projectState.saved} onClick={projectState.onToggle}>{!projectState.hasProject ? "Start a project to save" : projectState.busy ? "Saving…" : projectState.saved ? "Saved to project" : "Save to project"}</button>
+          {projectState.saved && !projectState.inquiry ? <button type="button" disabled={projectState.busy} onClick={projectState.onPrepare}>Prepare quote request</button> : null}
+          {projectState.inquiry && projectState.onDownload ? <button type="button" onClick={projectState.onDownload}>Download inquiry</button> : null}
+        </div>
       </div>
     </article>
   );

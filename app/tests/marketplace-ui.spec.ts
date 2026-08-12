@@ -85,3 +85,22 @@ test("the global buy guide filters evidence and blocks an unconnected ChangeNOW 
   await expect(page).toHaveURL(/\/concierge\/?\?ask=/);
   await expect(page.getByText(/For a third-party manufacturer purchase, I guide rather than transact/)).toBeVisible();
 });
+
+test("a finished-home project preserves manufacturer research and a quote inquiry", async ({ page }) => {
+  await page.goto("/start");
+  await page.getByRole("button", { name: "Buy a finished home" }).click();
+  await page.getByLabel("Project name").fill("Finished cabin search");
+  await page.getByRole("button", { name: "Create my project" }).click();
+  await expect(page).toHaveURL(/\/buy/);
+
+  const boxabl = page.getByRole("heading", { name: "BOXABL", exact: true }).locator("xpath=ancestor::article");
+  await expect(boxabl.getByText("Cash or card", { exact: true })).toBeVisible();
+  await expect(boxabl.getByText("X Layer USDC", { exact: true })).toBeVisible();
+  await boxabl.getByRole("button", { name: "Save to project" }).click();
+  await expect(boxabl.getByRole("button", { name: "Saved to project" })).toBeVisible();
+  await boxabl.getByRole("button", { name: "Prepare quote request" }).click();
+  await expect(boxabl.getByRole("button", { name: "Download inquiry" })).toBeVisible();
+  await expect(boxabl.getByText(/Bound to 0x/)).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "BOXABL", exact: true }).locator("xpath=ancestor::article").getByRole("button", { name: "Download inquiry" })).toBeVisible();
+});

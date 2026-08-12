@@ -746,6 +746,24 @@ main p {
   .rfq-card-actions { align-items: flex-start; flex-direction: column; }
 }
 
+/* Finished-home provider research becomes project work, while keeping cash
+   and optional X Layer paths at the same visual level. */
+.manufacturer-payment-choice { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.45rem; margin-top: 1rem; }
+.manufacturer-payment-choice > div { padding: 0.75rem; border: 1px solid color-mix(in srgb, var(--aura-text) 15%, transparent); }
+.manufacturer-payment-choice span,
+.manufacturer-project-actions span { font-family: var(--st-mono-font); font-size: 0.53rem; letter-spacing: 0.09em; text-transform: uppercase; color: var(--aura-emerald); }
+.manufacturer-payment-choice strong { display: block; margin-top: 0.25rem; font-size: 0.68rem; }
+.manufacturer-payment-choice p,
+.manufacturer-project-actions p { margin-top: 0.25rem; font-size: 0.62rem; line-height: 1.45; color: color-mix(in srgb, var(--aura-text) 60%, transparent); }
+.manufacturer-project-actions { margin-top: 1rem; padding: 0.8rem; border-top: 1px solid color-mix(in srgb, var(--aura-text) 16%, transparent); background: rgb(var(--tone-base) / 0.5); }
+.manufacturer-project-actions > div:last-child { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.65rem; }
+.manufacturer-project-actions button { padding: 0.48rem 0.62rem; border: 1px solid color-mix(in srgb, var(--aura-text) 20%, transparent); font-size: 0.58rem; font-weight: 650; text-transform: uppercase; letter-spacing: 0.06em; }
+.manufacturer-project-actions button:first-child { background: var(--aura-ink); color: var(--aura-paper); border-color: var(--aura-ink); }
+.manufacturer-project-actions button:disabled { opacity: 0.4; }
+@media (max-width: 480px) {
+  .manufacturer-payment-choice { grid-template-columns: 1fr; }
+}
+
 /* skip link: first child of body, revealed only on keyboard focus */
 .skip-link {
   position: fixed;

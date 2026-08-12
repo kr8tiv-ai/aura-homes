@@ -9,6 +9,7 @@
 
 import { useMemo, useState } from "react";
 import { Counter, Reveal, Stagger, StaggerItem } from "@/components/Reveal";
+import { useAuraProject } from "@/components/project/ProjectContext";
 import ProviderCard from "./ProviderCard";
 import RoutePlan from "./RoutePlan";
 import {
@@ -24,6 +25,17 @@ import {
   type PurchaseProduct,
   type TargetRegion,
 } from "@/lib/marketplace/buyReadiness";
+import {
+  createDiscoveryRecord,
+  setProjectShortlist,
+  upsertProjectDiscoveryRecord,
+} from "@/lib/project/discoveryRecord";
+import {
+  createManufacturerInquiry,
+  manufacturerSubjectId,
+  validateManufacturerInquiry,
+  type ManufacturerInquiry,
+} from "@/lib/project/manufacturerInquiry";
 
 const REGION_FILTERS: Array<{ id: TargetRegion; label: string }> = [
   { id: "any", label: "Anywhere" },
@@ -46,10 +58,13 @@ const PRODUCT_FILTERS: Array<{ id: PurchaseProduct; label: string }> = [
 ];
 
 export default function BuyDirectory() {
+  const { project, update } = useAuraProject();
   const [asset, setAsset] = useState<string>("any");
   const [targetRegion, setTargetRegion] = useState<TargetRegion>("any");
   const [product, setProduct] = useState<PurchaseProduct>("any");
   const [selected, setSelected] = useState<string>(PROVIDERS[0]?.name ?? "");
+  const [problem, setProblem] = useState<string | null>(null);
+  const [busyProvider, setBusyProvider] = useState<string | null>(null);
 
   const tickers = useMemo(() => allTickers(), []);
 
@@ -75,6 +90,60 @@ export default function BuyDirectory() {
     () => shown.find((item) => item.provider.name === selected)?.provider ?? shown[0]?.provider,
     [selected, shown],
   );
+  const manufacturerShortlist = new Set(project?.discovery.manufacturers.shortlist ?? []);
+  const inquiries = (project?.delivery.rfqs ?? []).flatMap((value) => {
+    const checked = validateManufacturerInquiry(value);
+    return checked.ok ? [checked.inquiry] : [];
+  });
+
+  async function toggleProvider(item: typeof PROVIDERS[number], readiness: ReturnType<typeof providerPurchaseReadiness>) {
+    if (!project) return;
+    const subjectId = manufacturerSubjectId(item);
+    const selectedNow = !project.discovery.manufacturers.shortlist.includes(subjectId);
+    setBusyProvider(subjectId); setProblem(null);
+    try {
+      await update((current) => {
+        const at = new Date();
+        const evidenceExpiry = new Date(Date.parse(item.evidenceCheckedAtISO) + 90 * 24 * 60 * 60 * 1000).toISOString();
+        const withRecord = selectedNow ? upsertProjectDiscoveryRecord(current, "manufacturers", createDiscoveryRecord({
+          id: `record-${subjectId}`,
+          subjectId,
+          access: "external",
+          sourceLabel: item.evidenceTier === "A-own-site" ? "Manufacturer-owned source" : "Independent press or launch source",
+          sourceUrl: item.evidenceUrl,
+          collectedAtISO: item.evidenceCheckedAtISO,
+          expiresAtISO: evidenceExpiry,
+          confidence: "source-checked",
+          data: { provider: item, readiness, intent: { targetRegion, product } },
+        }), at) : current;
+        return setProjectShortlist(withRecord, "manufacturers", subjectId, selectedNow, at);
+      });
+    } catch (error) { setProblem(error instanceof Error ? error.message : String(error)); }
+    finally { setBusyProvider(null); }
+  }
+
+  async function prepareInquiry(item: typeof PROVIDERS[number], readiness: ReturnType<typeof providerPurchaseReadiness>) {
+    if (!project) return;
+    const subjectId = manufacturerSubjectId(item);
+    if (!project.discovery.manufacturers.shortlist.includes(subjectId)) { setProblem("Save this manufacturer to the project before preparing an inquiry."); return; }
+    setBusyProvider(subjectId); setProblem(null);
+    try {
+      const now = new Date();
+      const inquiry = createManufacturerInquiry({
+        id: typeof crypto !== "undefined" && crypto.randomUUID ? `inquiry-${crypto.randomUUID()}` : `inquiry-${Date.now().toString(36)}`,
+        project, provider: item, readiness, targetRegion, product, createdAtISO: now.toISOString(),
+      });
+      await update((current) => ({ ...current, delivery: { ...current.delivery, rfqs: [...current.delivery.rfqs, inquiry] }, updatedAtISO: now.toISOString() }));
+    } catch (error) { setProblem(error instanceof Error ? error.message : String(error)); }
+    finally { setBusyProvider(null); }
+  }
+
+  function downloadInquiry(inquiry: ManufacturerInquiry) {
+    const blob = new Blob([JSON.stringify(inquiry, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a"); anchor.href = url; anchor.download = `${inquiry.projectId}-${inquiry.providerSubjectId}.aura-inquiry.json`; anchor.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
 
   return (
     <>
@@ -185,19 +254,33 @@ export default function BuyDirectory() {
 
       </div>
 
+      {problem ? <p role="alert" className="mt-5 rounded-md border border-aura-violet px-4 py-3 text-sm text-aura-violet">{problem}</p> : null}
+
       {/* ----------------------------------------------------------- the cards */}
       {shown.length > 0 ? (
         <Stagger className="mt-10 grid gap-6 lg:grid-cols-2">
-          {shown.map(({ provider: item, readiness }) => (
+          {shown.map(({ provider: item, readiness }) => {
+            const subjectId = manufacturerSubjectId(item);
+            const inquiry = inquiries.filter((entry) => entry.providerSubjectId === subjectId).at(-1);
+            return (
             <StaggerItem key={item.name} className="h-full">
               <ProviderCard
                 provider={item}
                 readiness={readiness}
                 selected={provider?.name === item.name}
                 onSelect={() => setSelected(item.name)}
+                projectState={{
+                  hasProject: !!project,
+                  saved: manufacturerShortlist.has(subjectId),
+                  busy: busyProvider === subjectId,
+                  inquiry,
+                  onToggle: () => void toggleProvider(item, readiness),
+                  onPrepare: () => void prepareInquiry(item, readiness),
+                  onDownload: inquiry ? () => downloadInquiry(inquiry) : undefined,
+                }}
               />
             </StaggerItem>
-          ))}
+          )})}
         </Stagger>
       ) : (
         <Reveal y={12} className="mt-10">
