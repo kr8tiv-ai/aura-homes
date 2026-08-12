@@ -138,14 +138,14 @@ export default function PlanCatalog({ onChoose, currentName }: Props) {
      sentence claiming "twelve" the day the thirteenth lands is exactly the
      kind of small lie this site refuses to tell. */
   const totalCount = entries.length;
-  const openCount = entries.filter(({ plan }) => plan.source.kind === "licensed-adaptation").length;
+  const openCount = entries.filter(({ plan }) => plan.source.kind !== "aura-authored").length;
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return entries.filter(({ plan, estimate }) => {
       if (size !== "all" && sizeOf(estimate.areaSqFt) !== size) return false;
       if (bedrooms !== "all" && bedroomsOf(plan.bedrooms) !== bedrooms) return false;
       if (source === "aura" && plan.source.kind !== "aura-authored") return false;
-      if (source === "open" && plan.source.kind !== "licensed-adaptation") return false;
+      if (source === "open" && plan.source.kind === "aura-authored") return false;
       if (!needle) return true;
       return `${plan.title} ${plan.summary} ${plan.bestFor} ${plan.tags.join(" ")}`
         .toLowerCase()
@@ -161,14 +161,14 @@ export default function PlanCatalog({ onChoose, currentName }: Props) {
           <p className="aura-label text-aura-emerald">Prebuilt plan library</p>
           <h2 id="plan-library-heading">Start from a plan, then make it yours.</h2>
           <p>
-            Compare {totalCount} editable eco-home concepts, including {openCount} carefully attributed
-            open-licence studies. Every choice becomes a complete Aura project—3D, plan, autosave,
-            exports and cost range included.
+            Compare {totalCount} editable eco-home concepts, including {openCount} adapted from
+            open-licence or public-domain sources with their provenance stated in full. Every choice
+            becomes a complete Aura project—3D, plan, autosave, exports and cost range included.
           </p>
         </div>
         <div className="plan-library__truth">
           <span>{totalCount} editable concepts</span>
-          <span>{openCount} licensed sources</span>
+          <span>{openCount} sourced adaptations</span>
           <span>Alberta cost ranges</span>
         </div>
       </div>
@@ -206,7 +206,7 @@ export default function PlanCatalog({ onChoose, currentName }: Props) {
           <select value={source} onChange={(event) => setSource(event.target.value as SourceFilter)}>
             <option value="all">All sources</option>
             <option value="aura">Aura originals</option>
-            <option value="open">Open source</option>
+            <option value="open">Open + public domain</option>
           </select>
         </label>
       </div>
@@ -225,8 +225,12 @@ export default function PlanCatalog({ onChoose, currentName }: Props) {
               >
                 <div className="plan-card__visual">
                   <PlanDiagram plan={plan} />
-                  <span className={plan.source.kind === "licensed-adaptation" ? "plan-source plan-source--open" : "plan-source"}>
-                    {plan.source.kind === "licensed-adaptation" ? "Open source" : "Aura original"}
+                  <span className={plan.source.kind === "aura-authored" ? "plan-source" : "plan-source plan-source--open"}>
+                    {plan.source.kind === "aura-authored"
+                      ? "Aura original"
+                      : plan.source.kind === "licensed-adaptation"
+                        ? "Open source"
+                        : "Public domain"}
                   </span>
                 </div>
                 <div className="plan-card__copy">
@@ -278,7 +282,11 @@ export default function PlanCatalog({ onChoose, currentName }: Props) {
                 Use {selected.plan.title}
               </Button>
               <a href={selected.plan.source.url} target="_blank" rel="noreferrer">
-                {selected.plan.source.kind === "licensed-adaptation" ? "Open source files ↗" : "About Aura’s method ↗"}
+                {selected.plan.source.kind === "aura-authored"
+                  ? "About Aura’s method ↗"
+                  : selected.plan.source.kind === "licensed-adaptation"
+                    ? "Open source files ↗"
+                    : "Original plan set ↗"}
               </a>
             </div>
             <details className="plan-preview__source">

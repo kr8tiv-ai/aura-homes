@@ -262,3 +262,36 @@ with no `PlanTemplate`.
 USDA 5965 (22×36 A-frame), USDA 7148 (18×26 passive-solar cottage), USDA 6013 (loft cabin), Hexayurt
 (12-ft model), Open Source Tiny Home V2 (308 sq ft) — blocked only on schema gap 1 (PD variant) for the
 first four.
+
+## 8. Authored into the catalog — Aug 12, 2026
+
+Schema gap 1 is resolved: `PlanSource` now carries `kind: "public-domain-adaptation"`
+(`shareAlike: false`, provenance stated as a fact rather than a grant), and
+`app/lib/builder/planCatalog.ts` grew from 12 to 20 templates. What landed, and
+from which candidate:
+
+| Template id | Source | Relationship |
+|---|---|---|
+| `postcard-a-frame` | USDA 6003 (24×24 + deck; archive.org scan, NAL "not in copyright") | dimensional-adaptation |
+| `timberline-a-frame` | USDA 5965 (22×36 loft A-frame; NDSU sheets, series verified via Misc. Pub. 981 scan) | dimensional-adaptation |
+| `solstice-cottage` | USDA 7148 (18×26 passive-solar cottage, 1983; NDSU sheets) | dimensional-adaptation |
+| `bunkhouse-loft` | USDA 6013 (cabin with dormitory loft; archive.org scan) — programme only, envelope authored fresh | system-informed-study |
+| `prairie-dwelling` | USDA 7176 (2-bedroom farm dwelling, 1967; archive.org scan) — programme only | system-informed-study |
+| `beltsville-farmhouse` | USDA 7161 (3-bedroom farmhouse + Beltsville energy-saving kitchen-workroom, 1965; archive.org scan) — programme only | system-informed-study |
+| `boreal-longhouse` | Aura original (SIP style target — no cleared source existed, authored per § 6) | original |
+| `lightframe-pavilion` | Aura original (steel + polycarbonate style target, per § 6; notes state the cost engine prices its timber/SIP basis) | original |
+
+Deliberately NOT taken this round: USDA 5964 (near-duplicate of 6003's footprint —
+padding, not choice), Hexayurt (panel shelter reads as emergency architecture beside
+homes), Open Source Tiny Home V2 (MIT link-back pinch, schema gap 2, still open).
+Candidates remain in `data/plans/candidates.json` for the next authoring round.
+
+## 9. Interaction-pattern inspirations (no code taken)
+
+- **salsita.ai** (Salsita Software's conversational 3D-configurator work) — named by the
+  founder Aug 12, 2026 as inspiration for the build engine. Their public pattern:
+  natural-language guided selling driving a live parametric 3D model. No source code is
+  published on that site, so nothing is copied and no licence question arises; the
+  pattern lands in Aura as a deterministic phrase-to-edit layer over the builder's
+  immutable document (each understood phrase becomes one labelled, undoable edit).
+  Recorded here so the influence is credited even where the law requires nothing.

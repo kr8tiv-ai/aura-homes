@@ -6,7 +6,7 @@ import { PLAN_TEMPLATES } from "@/lib/builder/planCatalog";
    day the library held twelve — the library grows by provenance sweep, and
    this spec's job is that the page COUNTS honestly, not that growth stopped. */
 const TOTAL = PLAN_TEMPLATES.length;
-const OPEN = PLAN_TEMPLATES.filter((plan) => plan.source.kind === "licensed-adaptation").length;
+const OPEN = PLAN_TEMPLATES.filter((plan) => plan.source.kind !== "aura-authored").length;
 
 test("the builder opens on a filterable, source-aware plan library", async ({ page }) => {
   test.setTimeout(90_000);
@@ -15,7 +15,7 @@ test("the builder opens on a filterable, source-aware plan library", async ({ pa
   await expect(page.getByRole("heading", { name: "Start from a plan, then make it yours." })).toBeVisible({ timeout: 60_000 });
   await expect(page.locator(".plan-card")).toHaveCount(TOTAL);
   await expect(page.getByText(`${TOTAL} editable concepts`, { exact: true })).toBeVisible();
-  await expect(page.getByText(`${OPEN} licensed sources`, { exact: true })).toBeVisible();
+  await expect(page.getByText(`${OPEN} sourced adaptations`, { exact: true })).toBeVisible();
 
   await page.getByLabel("Source").selectOption("open");
   await expect(page.locator(".plan-card")).toHaveCount(OPEN);

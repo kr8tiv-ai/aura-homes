@@ -44,6 +44,23 @@ export type PlanSource =
       changes: string;
       shareAlike: true;
       relationship: "dimensional-adaptation" | "system-informed-study";
+    }
+  /** US-government plan sets (17 USC 105) and other verified public-domain
+   *  work. No licence survives to pass on — shareAlike is structurally false —
+   *  but the provenance chain is recorded exactly as carefully as a licence,
+   *  because "public domain" claimed without evidence is how a catalog ends up
+   *  shipping somebody's copyrighted drawings. Every entry names where the
+   *  rights statement was read and what Aura changed. */
+  | {
+      kind: "public-domain-adaptation";
+      name: string;
+      url: string;
+      license: string;
+      licenseUrl: string;
+      attribution: string;
+      changes: string;
+      shareAlike: false;
+      relationship: "dimensional-adaptation" | "system-informed-study";
     };
 
 export interface PlanTemplate {
@@ -200,6 +217,25 @@ function adapted(
   value: Omit<PlanTemplate, "spec"> & { material?: EcoMaterial; volumes: Volume[]; notes: string; deck?: SpecInput["deck"]; slope?: SpecInput["slope"] },
 ): PlanTemplate {
   const notice = `${value.source.attribution} ${value.source.changes} Licensed ${value.source.license}: ${value.source.licenseUrl}. Source: ${value.source.url}.`;
+  return {
+    ...value,
+    spec: spec({
+      title: value.title,
+      material: value.material,
+      volumes: value.volumes,
+      notes: `${notice}\n\n${value.notes}`,
+      deck: value.deck,
+      slope: value.slope,
+    }),
+  };
+}
+
+/** Same shape as `adapted`, different sentence in the embedded notice: public
+ *  domain is stated as a provenance fact rather than as a licence grant. */
+function publicDomain(
+  value: Omit<PlanTemplate, "spec"> & { material?: EcoMaterial; volumes: Volume[]; notes: string; deck?: SpecInput["deck"]; slope?: SpecInput["slope"] },
+): PlanTemplate {
+  const notice = `${value.source.attribution} ${value.source.changes} Rights: ${value.source.license} (${value.source.licenseUrl}). Source: ${value.source.url}.`;
   return {
     ...value,
     spec: spec({
@@ -451,6 +487,216 @@ export const PLAN_TEMPLATES: readonly PlanTemplate[] = [
     volumes: [volume({ width: 16, depth: 32, storeys: 2, height: 8.5, roof: "gable", pitch: 38, glass: false })],
     deck: { width: 14, depth: 7 },
     notes: "Consult the source drawing set for the original design. Aura’s model is a dimensional adaptation, not those construction drawings and not an architectural service.",
+  }),
+
+  /* ------------------------------------------------------------------------
+     The 2026 provenance sweep (docs/research/PLAN-LIBRARY-SOURCES.md and
+     data/plans/candidates.json). Six of these re-author USDA Cooperative Farm
+     Building Plan Exchange sets — federal plan sets whose scans carry the
+     National Agricultural Library's "not in copyright" statement — and two
+     are Aura originals filling the styles the sweep could not clear. Every
+     adaptation names its plan number, the page the rights statement was read
+     on, and exactly what Aura changed. */
+  publicDomain({
+    id: "postcard-a-frame",
+    title: "Postcard A-Frame",
+    kicker: "576 sq ft · USDA 6003 (1966)",
+    summary: "The classic government A-frame with its outdoor deck, re-authored on the published 24 × 24 ft envelope with a fully glazed south gable.",
+    bestFor: "A lake or forest stay with the silhouette everyone recognizes",
+    bedrooms: 1,
+    bathrooms: 1,
+    sleeping: "Main-floor sleeping",
+    storeys: 1,
+    tags: ["400–800 sq ft", "a-frame", "public domain"],
+    features: ["Published 24 × 24 envelope", "Original deck kept", "Glazed gable end"],
+    source: {
+      kind: "public-domain-adaptation",
+      name: "USDA Cooperative Farm Building Plan Exchange",
+      url: "https://archive.org/details/aframecabin1093unit",
+      license: "US Government work (17 USC 105); the National Agricultural Library scan's rights statement reads \"not in copyright\"",
+      licenseUrl: "https://www.usa.gov/government-works",
+      attribution: "Based on A-Frame Cabin, Plan Exchange No. 6003 (October 1966–68 series), United States Department of Agriculture; sheets also mirrored by NDSU Extension.",
+      changes: "Aura kept the published 24 × 24 ft footprint and deck, glazed the south gable end, and re-based the shell on cold-climate SIP assumptions; the original rafter, foundation and specification sheets are not reproduced.",
+      shareAlike: false,
+      relationship: "dimensional-adaptation",
+    },
+    volumes: [volume({ width: 24, depth: 24, roof: "a-frame", pitch: 54, height: 8 })],
+    deck: { width: 16, depth: 8 },
+    notes: "The two-sheet federal drawing set remains the authority for the original design. The A-frame thrust path and snow load must be engineered for the site.",
+  }),
+  publicDomain({
+    id: "timberline-a-frame",
+    title: "Timberline A-Frame",
+    kicker: "792 sq ft · USDA 5965",
+    summary: "The family-sized A-frame — 22 × 36 ft with a dormitory loft and enclosed stairs in the source set, re-authored as a long glazed-gable hall.",
+    bestFor: "A larger A-frame stay that sleeps a family, not just a couple",
+    bedrooms: 2,
+    bathrooms: 1,
+    sleeping: "Main-floor bedroom + dormitory loft (loft not modelled)",
+    storeys: 1,
+    tags: ["400–800 sq ft", "a-frame", "public domain"],
+    features: ["Published 22 × 36 envelope", "Real stairs in the source", "Long snow-shedding ridge"],
+    source: {
+      kind: "public-domain-adaptation",
+      name: "USDA Cooperative Farm Building Plan Exchange",
+      url: "https://www.ag.ndsu.edu/aben-plans/5965.pdf",
+      license: "US Government work (17 USC 105); the same USDA A-frame series is verified \"not in copyright\" on the National Agricultural Library scan of Misc. Pub. 981",
+      licenseUrl: "https://www.usa.gov/government-works",
+      attribution: "Based on A-Frame Cabin, Plan Exchange No. 5965 (22 × 36 ft with loft and enclosed stairs, double 2 × 6 rafters), United States Department of Agriculture; sheets served by NDSU Extension.",
+      changes: "Aura kept the published 22 × 36 ft footprint and roof form, glazed the south gable, and left the loft and stair unmodelled in the legacy shell; the three-sheet structural set is not reproduced.",
+      shareAlike: false,
+      relationship: "dimensional-adaptation",
+    },
+    volumes: [volume({ width: 22, depth: 36, roof: "a-frame", pitch: 55, height: 8 })],
+    deck: { width: 16, depth: 9 },
+    slope: "gentle",
+    notes: "The dormitory loft and enclosed stair exist in the source sheets but not in this massing model — they need graph editing and professional design.",
+  }),
+  publicDomain({
+    id: "solstice-cottage",
+    title: "Solstice Cottage",
+    kicker: "468 sq ft · USDA 7148 (1983)",
+    summary: "A federal passive-solar cottage from 1983 — 18 × 26 ft, one bedroom, designed to heat itself with its south face before that was fashionable.",
+    bestFor: "A genuinely solar-tempered small home with a documented lineage",
+    bedrooms: 1,
+    bathrooms: 1,
+    sleeping: "One enclosed bedroom",
+    storeys: 1,
+    tags: ["400–800 sq ft", "passive solar", "public domain"],
+    features: ["Published 18 × 26 envelope", "Passive-solar lineage", "Compact one-bedroom plan"],
+    source: {
+      kind: "public-domain-adaptation",
+      name: "USDA Cooperative Farm Building Plan Exchange",
+      url: "https://www.ag.ndsu.edu/aben-plans/7148.pdf",
+      license: "US Government work (17 USC 105) via the USDA Plan Exchange series provenance recorded in NDSU Extension's index",
+      licenseUrl: "https://www.usa.gov/government-works",
+      attribution: "Based on the 1-Bedroom Passive Solar Cottage, Plan Exchange No. 7148 (1983 revision), United States Department of Agriculture; sheets served by NDSU Extension.",
+      changes: "Aura kept the published 18 × 26 ft footprint and south-glazed intent, and re-based the envelope on SIP assumptions; the original solar storage details are not reproduced and are worth reading.",
+      shareAlike: false,
+      relationship: "dimensional-adaptation",
+    },
+    volumes: [volume({ width: 18, depth: 26, roof: "gable", pitch: 35 })],
+    deck: { width: 14, depth: 7 },
+    notes: "Passive-solar performance is a site fact, not a plan fact: orientation, shading and thermal mass need a professional energy check before the lineage becomes a claim.",
+  }),
+  publicDomain({
+    id: "bunkhouse-loft",
+    title: "Bunkhouse Loft",
+    kicker: "480 sq ft · USDA 6013 (1968)",
+    summary: "A cabin built around a dormitory loft — the federal ancestor of every mezzanine tiny home, re-authored as a group-stay bunkhouse.",
+    bestFor: "Hosts who sleep six friends, a retreat crew or a family of cousins",
+    bedrooms: 1,
+    bathrooms: 1,
+    sleeping: "Main floor + dormitory loft (loft not modelled)",
+    storeys: 1,
+    tags: ["400–800 sq ft", "group stays", "public domain"],
+    features: ["Dormitory-loft programme", "Eight-sheet source set", "Simple gable shell"],
+    source: {
+      kind: "public-domain-adaptation",
+      name: "USDA Cooperative Farm Building Plan Exchange",
+      url: "https://archive.org/details/cabinwithdormito1074unit",
+      license: "US Government work (17 USC 105); the National Agricultural Library scan's rights statement reads \"not in copyright\"",
+      licenseUrl: "https://www.usa.gov/government-works",
+      attribution: "Based on Cabin with Dormitory Loft, Plan Exchange No. 6013 (March 1968), United States Department of Agriculture.",
+      changes: "Aura took the programme — an open cabin under a sleeping loft — and authored a new 20 × 24 ft envelope for it; the source dimensions, loft framing and specification sheets are not traced.",
+      shareAlike: false,
+      relationship: "system-informed-study",
+    },
+    material: "timber_frame",
+    volumes: [volume({ width: 20, depth: 24, roof: "gable", pitch: 42, height: 10 })],
+    deck: { width: 14, depth: 8 },
+    notes: "The loft, its ladder or stair, and its egress are not in this massing model. Group-sleeping occupancy classification is a local code question — ask early.",
+  }),
+  publicDomain({
+    id: "prairie-dwelling",
+    title: "Prairie Dwelling",
+    kicker: "768 sq ft · USDA 7176 (1967)",
+    summary: "A complete two-bedroom farm dwelling from the federal exchange, re-authored as an entry-level everyday eco home.",
+    bestFor: "A first full-time family home at a disciplined budget",
+    bedrooms: 2,
+    bathrooms: 1,
+    sleeping: "Two enclosed bedrooms",
+    storeys: 1,
+    tags: ["400–800 sq ft", "two bedroom", "public domain"],
+    features: ["Two-bedroom programme", "Eight-sheet source set", "Ordinary spans throughout"],
+    source: {
+      kind: "public-domain-adaptation",
+      name: "USDA Cooperative Farm Building Plan Exchange",
+      url: "https://archive.org/details/2bedroomfarmdwel1042unit",
+      license: "US Government work (17 USC 105); the National Agricultural Library scan's rights statement reads \"not in copyright\"",
+      licenseUrl: "https://www.usa.gov/government-works",
+      attribution: "Based on the 2-Bedroom Farm Dwelling, Plan Exchange No. 7176 (January 1967), United States Department of Agriculture.",
+      changes: "Aura took the compact two-bedroom programme and authored a new 24 × 32 ft envelope with a south glazing wall; the source room layout and working drawings are not traced.",
+      shareAlike: false,
+      relationship: "system-informed-study",
+    },
+    material: "timber_frame",
+    volumes: [volume({ width: 24, depth: 32, roof: "gable", pitch: 32 })],
+    deck: { width: 18, depth: 9 },
+    notes: "The 1967 working drawings remain worth reading for their economy. Aura’s envelope is a fresh concept, not a tracing, and needs full professional design.",
+  }),
+  publicDomain({
+    id: "beltsville-farmhouse",
+    title: "Beltsville Farmhouse",
+    kicker: "1,292 sq ft · USDA 7161 (1965)",
+    summary: "The three-bedroom farmhouse designed around the Beltsville energy-saving kitchen-workroom — federal efficiency research, sixty years early.",
+    bestFor: "A family home with the deepest eco-design lineage in the library",
+    bedrooms: 3,
+    bathrooms: 1.5,
+    sleeping: "Three enclosed bedrooms",
+    storeys: 1,
+    tags: ["1,200+ sq ft", "three bedroom", "public domain"],
+    features: ["Energy-research lineage", "Kitchen-workroom wing", "Single-storey family plan"],
+    source: {
+      kind: "public-domain-adaptation",
+      name: "USDA Agricultural Research Service",
+      url: "https://archive.org/details/3bedroomfarmhous993unit",
+      license: "US Government work (17 USC 105); the National Agricultural Library scan's rights statement reads \"not in copyright\"",
+      licenseUrl: "https://www.usa.gov/government-works",
+      attribution: "Based on the 3-Bedroom Farmhouse with the Beltsville Energy-Saving Kitchen-Workroom, Plan Exchange No. 7161 (May 1965), USDA Agricultural Research Service.",
+      changes: "Aura kept the programme — three bedrooms beside a working kitchen-workroom wing — and authored a new two-volume envelope for it; the 1965 room geometry and eight working sheets are not traced.",
+      shareAlike: false,
+      relationship: "system-informed-study",
+    },
+    material: "timber_frame",
+    volumes: [
+      volume({ id: "house", name: "Main house", width: 26, depth: 38 }),
+      volume({ id: "workroom", name: "Kitchen-workroom wing", width: 14, depth: 22, x: 20, z: 4, roof: "shed", pitch: 14, glass: false }),
+    ],
+    deck: { width: 20, depth: 10 },
+    notes: "The Beltsville kitchen-workroom studies measured steps saved per meal — the original research is a genuinely good read before a professional replans the wing.",
+  }),
+  original({
+    id: "boreal-longhouse",
+    title: "Boreal Longhouse",
+    kicker: "704 sq ft · SIP bar",
+    summary: "One long SIP bar under one south-facing shed roof: every room on the light side, every service on the quiet side, no corridor.",
+    bestFor: "A modern panelized build that goes up fast and sheds snow one way",
+    bedrooms: 2,
+    bathrooms: 1.5,
+    sleeping: "Two bedrooms at the quiet end",
+    storeys: 1,
+    tags: ["400–800 sq ft", "two bedroom", "sip panel"],
+    features: ["Single-plane solar roof", "Panel-friendly 16 ft spans", "Rooms on the light side"],
+    volumes: [volume({ width: 44, depth: 16, roof: "shed", pitch: 14 })],
+    deck: { width: 22, depth: 9 },
+    notes: "Aura-authored SIP longhouse concept. Panel layout, point loads at openings and the long-wall wind case are the engineer’s first three questions — bring them early.",
+  }),
+  original({
+    id: "lightframe-pavilion",
+    title: "Lightframe Pavilion",
+    kicker: "600 sq ft · glass-and-frame study",
+    summary: "A flat-roofed pavilion drawn for the steel-and-polycarbonate look — deep glazing on the long south face, services in a solid back band.",
+    bestFor: "A design-forward stay or studio that wants to read as a lantern",
+    bedrooms: 1,
+    bathrooms: 1,
+    sleeping: "One enclosed bedroom",
+    storeys: 1,
+    tags: ["400–800 sq ft", "steel + polycarbonate", "design forward"],
+    features: ["Lantern glazing band", "Solid service spine", "Parapet flat roof"],
+    volumes: [volume({ width: 30, depth: 20, roof: "flat", height: 11 })],
+    deck: { width: 24, depth: 10 },
+    notes: "Aura-authored concept for a steel portal frame with polycarbonate glazing. The cost engine prices this shell on its timber/SIP Alberta basis until a steel basis lands — treat the range as a floor, and have the frame engineered as steel from day one.",
   }),
 ] as const;
 

@@ -9,9 +9,10 @@ import {
 import { totalFloorAreaSqFt } from "@/lib/builder/spec";
 
 test("the plan library is substantial, deterministic and contains licensed open work", () => {
-  expect(PLAN_TEMPLATES.length).toBeGreaterThanOrEqual(10);
+  expect(PLAN_TEMPLATES.length).toBeGreaterThanOrEqual(20);
   expect(new Set(PLAN_TEMPLATES.map((plan) => plan.id)).size).toBe(PLAN_TEMPLATES.length);
   expect(PLAN_TEMPLATES.filter((plan) => plan.source.kind === "licensed-adaptation").length).toBeGreaterThanOrEqual(3);
+  expect(PLAN_TEMPLATES.filter((plan) => plan.source.kind === "public-domain-adaptation").length).toBeGreaterThanOrEqual(6);
 
   for (const plan of PLAN_TEMPLATES) {
     expect(plan.title.trim().length).toBeGreaterThan(0);
@@ -26,6 +27,16 @@ test("the plan library is substantial, deterministic and contains licensed open 
       expect(plan.source.attribution.trim().length).toBeGreaterThan(20);
       expect(plan.source.changes.trim().length).toBeGreaterThan(20);
       expect(plan.source.shareAlike).toBe(true);
+    }
+
+    if (plan.source.kind === "public-domain-adaptation") {
+      // Public domain claimed without a stated provenance chain is exactly how
+      // a catalog ships someone's copyrighted drawings — the claim must name
+      // its legal basis, and attribution stays even though none is owed.
+      expect(plan.source.license).toMatch(/17 USC 105|public domain|not in copyright/i);
+      expect(plan.source.attribution.trim().length).toBeGreaterThan(20);
+      expect(plan.source.changes.trim().length).toBeGreaterThan(20);
+      expect(plan.source.shareAlike).toBe(false);
     }
   }
 });
