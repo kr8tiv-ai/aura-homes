@@ -49,7 +49,7 @@ Building an eco home today means being your own general contractor across twenty
 
 ### Money rails
 
-Native USDC only — mainnet `0xB6CEceAB302E2E4948951eE7843FC24E92933061`, testnet `0xDec90b78111Ba2fc6FC6d84d8B9ec159A2d4b9B3`. **Never USDC.e.** X Layer mainnet **196**, testnet **1952** (legacy docs say 195 — verify `eth_chainId` before deploying). Two doors in: **card-first** (Visa/Mastercard → on-ramp partner sells USDC in-flow, user never sees a wallet) and **bring-your-own** (Wealthsimple/Kraken/Coinbase → Base → Circle **CCTP**). Alberta lawyers cannot hold crypto in trust, so land closes convert-then-close at a licensed boundary. Every crypto-funded purchase is a **CRA barter disposition** and the ledger must export it.
+Settlement configuration must be explicit: X Layer mainnet native USDC is `0xB6CEceAB302E2E4948951eE7843FC24E92933061`; the current testnet demo uses faucet-compatible 6-decimal test USDC `0xcB8BF24c6cE16Ad21D707c9505421a17f2bec79D`. The retired `0xDec90…b9B3` deployment is provenance only. **Never infer token identity from a symbol, and never substitute USDC.e.** X Layer mainnet is **196**, testnet is **1952**; verify `eth_chainId` and the configured asset before every transaction. Two doors in remain the product direction: **card-first** (an authorized on-ramp sells the settlement asset in-flow) and **bring-your-own** (a supported wallet and reviewed bridge route). Alberta land closing stays at the licensed fiat/trust boundary, with the required bookkeeping exported.
 
 ### Never un-learn these
 

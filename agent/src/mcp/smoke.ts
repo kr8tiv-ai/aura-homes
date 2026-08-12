@@ -155,7 +155,7 @@ async function paidMode(): Promise<void> {
     check(challenge?.network === "eip155:1952", "challenge network is eip155:1952 (X Layer testnet)");
     check(
       challenge?.asset === "0xcB8BF24c6cE16Ad21D707c9505421a17f2bec79D",
-      "challenge asset is native testnet USDC"
+      "challenge asset is the configured faucet-compatible test USDC"
     );
     check(challenge?.amount === "10000", "challenge amount is 10000 (= $0.01 at 6 decimals)");
     check(

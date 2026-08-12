@@ -58,12 +58,23 @@ npm test
 - Explorer (mainnet): https://www.oklink.com/xlayer
 - Faucet (testnet): https://web3.okx.com/xlayer/faucet
 
-Native USDC (6 decimals) — always native, never bridged USDC.e:
+Configured USDC-compatible settlement assets (6 decimals):
 
 | Network | USDC address |
 | --- | --- |
 | Mainnet (196) | `0xB6CEceAB302E2E4948951eE7843FC24E92933061` |
-| Testnet (1952) | `0xDec90b78111Ba2fc6FC6d84d8B9ec159A2d4b9B3` |
+| Testnet (1952) | `0xcB8BF24c6cE16Ad21D707c9505421a17f2bec79D` — faucet-compatible test token; no monetary value |
+
+## Current testnet deployment
+
+| Contract | Address |
+| --- | --- |
+| `AuraBuildEscrow` | [`0x4A777bf71d8809244c77A3c2b39ef68793A463b5`](https://www.oklink.com/xlayer-test/address/0x4A777bf71d8809244c77A3c2b39ef68793A463b5) |
+| `AuraBuildRegistry` | [`0x1195ED713EEF2Adc32DcF5Bb1c4627F43f1EC32e`](https://www.oklink.com/xlayer-test/address/0x1195ED713EEF2Adc32DcF5Bb1c4627F43f1EC32e) |
+
+Both contracts were deployed successfully on X Layer testnet on 2026-08-12. The application, lifecycle tests, deploy script, and network configuration all use the faucet-compatible token above. The initial deployment against `0xDec90…b9B3` is retired and preserved in [`docs/DEPLOYMENTS.md`](../docs/DEPLOYMENTS.md) for provenance.
+
+This remains dev/testnet wiring: all three escrow roles currently point to one development wallet, registry `nextTokenId` is zero, and no mainnet or HOMES contracts exist.
 
 ## Deploying
 

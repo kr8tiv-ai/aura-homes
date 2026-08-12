@@ -3,7 +3,8 @@
 // This module demonstrates the flow SHAPE of the x402 / OKX Agent Payments
 // Protocol over MCP: in paid mode, a tool call without payment fails with an
 // error shaped like an HTTP 402 challenge (scheme/network/asset/amount/payTo,
-// targeting native testnet USDC on X Layer testnet, eip155:1952), and a call
+// targeting the configured faucet-compatible test USDC on X Layer testnet,
+// eip155:1952), and a call
 // bearing {payment: {simulated: true}} succeeds and carries a receipt.
 //
 // Settlement is SIMULATED. No wallet is contacted, no signature is verified,

@@ -87,8 +87,9 @@ x402 / OKX Agent Payments Protocol integration would gate it:
    ```
 
    `network` is X Layer testnet (chain id 1952, post-Terigon), `asset` is the
-   native testnet USDC address (never USDC.e), and `amount` is $0.01 at USDC's
-   6 decimals.
+   configured faucet-compatible 6-decimal test USDC address, and `amount` is
+   $0.01 in test-token units. The settlement is simulated and the token has no
+   monetary value.
 
 2. Retrying the same call with `{"payment": {"simulated": true}}` in the tool
    arguments succeeds, and the result carries a `receipt` field

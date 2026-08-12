@@ -9,7 +9,7 @@
 3. **Standing constraints inherited from TOKEN-RESEARCH.md** (do not re-litigate without new evidence):
    - **No transfer tax in the token contract.** OKX DEX's automated risk scanner flags tax-on-transfer as honeypot-adjacent and can warning-label or buy-disable the token in the exact interface we need. All value coupling is buyback-and-burn from revenue or atomic burn-on-usage via a plain `ERC20Burnable`.
    - **AA stack is Particle Network + Safe.** X Layer's documented account-abstraction stack. **Pimlico does not support chain 196** — do not plan on Pimlico/ZeroDev; it's Particle's bundler/paymaster or self-hosted.
-   - Native USDC only: mainnet `0xB6CEceAB302E2E4948951eE7843FC24E92933061`, testnet `0xDec90b78111Ba2fc6FC6d84d8B9ec159A2d4b9B3`. Testnet chain ID **1952**.
+   - Settlement assets: mainnet native USDC `0xB6CEceAB302E2E4948951eE7843FC24E92933061`; current faucet-compatible test USDC `0xcB8BF24c6cE16Ad21D707c9505421a17f2bec79D`. The older `0xDec90…b9B3` testnet deployment is retired. Testnet chain ID is **1952**.
    - Gas is effectively free (0.02 gwei measured; full token launch ≈ $0.013). Cost lines below therefore count engineering, liquidity, legal, and audit — not gas.
    - CSA Staff Notice 46-308 is the legal lens: substance over form, and nearly every token sold to raise funds is a security. "Utility" labeling exempts nothing.
 4. **Oracle gap (flagged, needs verification before any build):** no confirmed Chainlink price feed on X Layer was found in the Aug 9 research pass. Every design that needs a USDC/AURA price uses the Uniswap v3 pool **TWAP with hard sanity bounds** (max deviation per epoch, min observation window). If a real feed exists by build time, substitute it.

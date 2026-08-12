@@ -19,7 +19,7 @@ flowchart LR
 | Chain ID | **1952** (post-Terigon; legacy docs say 195 — always verify `eth_chainId`) | **196** |
 | RPC | `https://testrpc.xlayer.tech/terigon` | `https://rpc.xlayer.tech` |
 | Gas token | OKB (faucet: web3.okx.com/xlayer/faucet, ~0.2/day — claim daily) | OKB |
-| Native USDC | `0xDec90b78111Ba2fc6FC6d84d8B9ec159A2d4b9B3` | `0xB6CEceAB302E2E4948951eE7843FC24E92933061` |
+| Configured settlement asset | `0xcB8BF24c6cE16Ad21D707c9505421a17f2bec79D` — faucet-compatible 6-decimal test USDC | `0xB6CEceAB302E2E4948951eE7843FC24E92933061` — native USDC |
 | Explorer | OKLink X Layer testnet | `https://www.oklink.com/xlayer` |
 
 **Rule: native USDC only.** Three USDC variants circulate on X Layer (native, USDC.e, USDC_Bridged); integrations hard-code the native address. Bridging in: Circle CCTP from Base/Ethereum (burn-and-mint, no wrapped risk).
