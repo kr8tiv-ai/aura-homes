@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "next start",
     "social:card": "node scripts/build-social-card.mjs",
-    "test": "playwright test tests/comfort.spec.ts tests/document.spec.ts tests/store.spec.ts tests/share-document.spec.ts tests/order-snapshot.spec.ts tests/project-document.spec.ts tests/homes-fund.spec.ts tests/building-graph.spec.ts tests/building-graph-multistorey.spec.ts tests/graph-geometry.spec.ts tests/marketplace-discovery.spec.ts tests/buy-readiness.spec.ts tests/scene-quality.spec.ts tests/xlayer-lifecycle.spec.ts tests/plan-catalog.spec.ts",
+    "test": "playwright test tests/comfort.spec.ts tests/document.spec.ts tests/store.spec.ts tests/share-document.spec.ts tests/order-snapshot.spec.ts tests/project-document.spec.ts tests/homes-fund.spec.ts tests/building-graph.spec.ts tests/building-graph-multistorey.spec.ts tests/graph-geometry.spec.ts tests/marketplace-discovery.spec.ts tests/buy-readiness.spec.ts tests/scene-quality.spec.ts tests/xlayer-lifecycle.spec.ts tests/plan-catalog.spec.ts tests/project-budget.spec.ts tests/quote-reconciliation.spec.ts",
     "test:ui": "playwright test --config=playwright.ui.config.ts"
   },
   "dependencies": {

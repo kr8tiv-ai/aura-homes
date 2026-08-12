@@ -1,205 +1,224 @@
 "use client";
 
-/* The DIY-or-hire view (issue #7, the toggle half). The cost model already
-   knows which lines an Alberta owner may legally do themselves; this page
-   now shows it and lets you slice the budget by it. Honesty rule: the
-   LOW/MID/HIGH figures ARE the owner-builder path — hiring everything out
-   is the $450K-$650K builder-delivered comparison, and no invented per-line
-   "hire" price appears here. The months-versus-money economics per line is
-   the contractor-scout work tracked in issue #7's research half. */
-
+import Link from "next/link";
 import { useMemo, useState } from "react";
-import * as m from "motion/react-m";
-import { budgetFixture, type OwnerBuildable } from "@/lib/fixtures";
-import RevealWords from "@/components/RevealWords";
-import { Reveal, Stagger, StaggerItem, Counter } from "@/components/Reveal";
+import { useAuraProject } from "@/components/project/ProjectContext";
+import QuoteWorkbench from "@/components/project/QuoteWorkbench";
+import { defaultBuilderDocument } from "@/lib/builder/document";
+import {
+  createProjectBudget,
+  defaultProjectBudgetScenario,
+  type DeliveryMode,
+  type FinishLevel,
+  type ProjectBudgetLine,
+  type ProjectBudgetScenario,
+  type SiteCondition,
+  type UtilityStrategy,
+} from "@/lib/builder/projectBudget";
 
-const cad = (n: number) => `$${n.toLocaleString("en-CA")}`;
+const cad = (value: number) =>
+  new Intl.NumberFormat("en-CA", {
+    style: "currency",
+    currency: "CAD",
+    maximumFractionDigits: 0,
+  }).format(value);
 
-/* Module scope on purpose: <Counter> keeps `format` in its effect deps, so an
-   inline arrow would restart the count on every parent render (i.e. every
-   filter click would re-animate all three totals, not just the changed ones). */
-const cadCount = (n: number) => Math.round(n).toLocaleString("en-CA");
+const titleCase = (value: string) =>
+  value.replace(/-/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 
-/* The house curve, spelled as a mutable tuple so motion's Easing type takes it. */
-const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
+type Filter = "all" | "owner" | "trade" | "quote";
 
-type Filter = "all" | "diy" | "licensed";
-
-const FILTERS: { id: Filter; label: string }[] = [
-  { id: "all", label: "All lines" },
-  { id: "diy", label: "Owner-buildable" },
-  { id: "licensed", label: "Licensed / contracted" },
+const FILTERS: Array<{ id: Filter; label: string }> = [
+  { id: "all", label: "All costs" },
+  { id: "owner", label: "Owner-buildable" },
+  { id: "trade", label: "Trade / supplier" },
+  { id: "quote", label: "Needs a quote" },
 ];
 
-function DiyBadge({ v }: { v: OwnerBuildable }) {
-  if (v === "na") return <span className="text-aura-text/40">—</span>;
-  return v === "yes" ? (
-    <span className="font-mono text-[0.65rem] uppercase tracking-label text-aura-emerald">DIY yes</span>
-  ) : (
-    <span className="font-mono text-[0.65rem] uppercase tracking-label text-aura-text/55">Hire</span>
+function LineStatus({ line }: { line: ProjectBudgetLine }) {
+  return (
+    <span className={`budget-status budget-status-${line.status}`}>
+      {line.status === "modelled" ? "Modelled" : line.status === "allowance" ? "Allowance" : "Quote needed"}
+    </span>
   );
 }
 
 export default function BudgetPage() {
-  const { lines, total } = budgetFixture;
+  const { project, ready } = useAuraProject();
+  const [scenario, setScenario] = useState<ProjectBudgetScenario>(defaultProjectBudgetScenario);
   const [filter, setFilter] = useState<Filter>("all");
-
-  const shown = useMemo(
-    () =>
-      filter === "all"
-        ? lines
-        : lines.filter((l) =>
-            filter === "diy" ? l.ownerBuildable === "yes" : l.ownerBuildable === "no"
-          ),
-    [filter, lines]
+  const document = project?.design.document ?? defaultBuilderDocument();
+  const region = project?.requirements.location.region ?? "Alberta";
+  const municipality = project?.requirements.location.municipality ?? "";
+  const capCad = project?.requirements.budgetCad.max ?? null;
+  const budget = useMemo(
+    () => createProjectBudget({ document, scenario, region, municipality, budgetCapCad: capCad }),
+    [capCad, document, municipality, region, scenario],
   );
+  const shown = budget.lines.filter((line) => {
+    if (filter === "owner") return line.ownerBuildable;
+    if (filter === "trade") return !line.ownerBuildable;
+    if (filter === "quote") return line.status === "quote-needed";
+    return true;
+  });
 
-  const subtotal = useMemo(
-    () =>
-      shown.reduce(
-        (acc, l) => ({
-          lowCad: acc.lowCad + l.lowCad,
-          midCad: acc.midCad + l.midCad,
-          highCad: acc.highCad + l.highCad,
-        }),
-        { lowCad: 0, midCad: 0, highCad: 0 }
-      ),
-    [shown]
-  );
-
-  const isAll = filter === "all";
-  const diyCount = lines.filter((l) => l.ownerBuildable === "yes").length;
-  const licensedCount = lines.filter((l) => l.ownerBuildable === "no").length;
+  function select<K extends keyof ProjectBudgetScenario>(key: K, value: ProjectBudgetScenario[K]) {
+    setScenario((current) => ({ ...current, [key]: value }));
+  }
 
   return (
-    <div className="py-16">
-      <Reveal y={10}>
-        <p className="aura-label mb-4">Alberta cost model</p>
-      </Reveal>
-      <RevealWords
-        text="Build budget"
-        className="font-display text-[2.35rem] font-medium leading-[1.08] tracking-[-0.025em]"
-      />
-      <Reveal delay={0.08} y={12} className="mt-4">
-        <p className="max-w-xl text-[0.95rem] leading-[1.65] text-aura-text/75">
-          Researched LOW / MID / HIGH ranges in CAD, excluding land. Every line has an
-          in-province supply path — and a DIY-or-hire answer: {diyCount} lines are legally
-          yours in Alberta, {licensedCount} are licensed or contracted work.
-        </p>
-      </Reveal>
+    <div className="budget-page py-12 sm:py-16">
+      <header className="budget-hero">
+        <div>
+          <p className="aura-label mb-4">Project cost readiness</p>
+          <h1 className="font-display text-[clamp(2.35rem,6vw,5.7rem)] font-medium leading-[0.98] tracking-[-0.045em]">
+            A range that moves<br className="hidden sm:block" /> with the design.
+          </h1>
+          <p className="mt-6 max-w-2xl text-[1rem] leading-[1.7] text-aura-text/70 sm:text-[1.06rem]">
+            Change the home, site, utility strategy or delivery path and the range changes with it.
+            Assumptions and missing quotes stay visible.
+          </p>
+        </div>
+        <aside className="budget-project-card" aria-label="Budget design basis">
+          <span>{project ? "Active project" : ready ? "Reference design" : "Opening project"}</span>
+          <strong>{project?.name ?? "My Aura home"}</strong>
+          <dl>
+            <div><dt>Design</dt><dd>{budget.designHash.slice(0, 10)}</dd></div>
+            <div><dt>Floor area</dt><dd>{Math.round(budget.areaSqFt).toLocaleString("en-CA")} sq ft</dd></div>
+            <div><dt>Location</dt><dd>{municipality || region}</dd></div>
+          </dl>
+          <Link href={project ? "/build" : "/start"}>{project ? "Edit this home" : "Start a project"} →</Link>
+        </aside>
+      </header>
 
-      <div className="mt-8" role="group" aria-label="Filter budget lines">
-        <Stagger className="flex flex-wrap gap-2">
-          {FILTERS.map((f) => (
-            <StaggerItem key={f.id}>
-              <button
-                type="button"
-                onClick={() => setFilter(f.id)}
-                aria-pressed={filter === f.id}
-                data-cursor="Filter"
-                className={
-                  filter === f.id
-                    ? "rounded-full bg-aura-ink px-4 py-2 font-mono text-xs uppercase tracking-label text-aura-paper"
-                    : "rounded-full border aura-hairline px-4 py-2 font-mono text-xs uppercase tracking-label text-aura-text/70 transition-colors hover:border-aura-teal"
-                }
-              >
-                {f.label}
-              </button>
-            </StaggerItem>
-          ))}
-        </Stagger>
-      </div>
+      <section className="budget-range" aria-label="Current project range">
+        {(["low", "mid", "high"] as const).map((key) => (
+          <div key={key} className={key === "mid" ? "is-mid" : ""}>
+            <span>{key === "low" ? "Lean path" : key === "mid" ? "Working midpoint" : "Risk envelope"}</span>
+            <strong>{cad(budget.total[key])}</strong>
+            <small>including {scenario.contingencyPct}% contingency</small>
+          </div>
+        ))}
+      </section>
 
-      <Reveal y={18} className="mt-8">
-        <div className="aura-panel aura-panel-lift overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b aura-hairline text-left">
-                <th className="aura-label px-6 py-4 font-normal">Category</th>
-                <th className="aura-label px-6 py-4 font-normal">Line item</th>
-                <th className="aura-label px-6 py-4 font-normal">DIY or hire</th>
-                <th className="aura-label px-6 py-4 text-right font-normal">Low</th>
-                <th className="aura-label px-6 py-4 text-right font-normal">Mid</th>
-                <th className="aura-label px-6 py-4 text-right font-normal">High</th>
-              </tr>
-            </thead>
-            {/* Keyed by filter so the cascade replays on every slice — the table
-                re-deals itself instead of silently swapping its rows. */}
-            <m.tbody
-              key={filter}
-              initial="hidden"
-              whileInView="show"
-              viewport={{ once: true, margin: "-40px" }}
-              variants={{ hidden: {}, show: { transition: { staggerChildren: 0.035 } } }}
-            >
+      <section className="budget-workbench">
+        <div className="budget-controls aura-panel">
+          <div className="budget-section-head">
+            <div><span>01</span><h2>Shape the scenario</h2></div>
+            <p>Planning range — not a quote</p>
+          </div>
+          <div className="budget-control-grid">
+            <label>Site condition
+              <select aria-label="Site condition" value={scenario.site} onChange={(event) => select("site", event.target.value as SiteCondition)}>
+                <option value="unknown">Not assessed yet</option>
+                <option value="serviced-flat">Flat + serviced</option>
+                <option value="rural-flat">Flat + rural</option>
+                <option value="sloped">Sloped</option>
+                <option value="remote">Remote access</option>
+              </select>
+            </label>
+            <label>Utility strategy
+              <select aria-label="Utility strategy" value={scenario.utilities} onChange={(event) => select("utilities", event.target.value as UtilityStrategy)}>
+                <option value="serviced">Municipal services</option>
+                <option value="hybrid">Hybrid resilience</option>
+                <option value="off-grid">Off-grid</option>
+              </select>
+            </label>
+            <label>Finish level
+              <select aria-label="Finish level" value={scenario.finish} onChange={(event) => select("finish", event.target.value as FinishLevel)}>
+                <option value="essential">Essential</option>
+                <option value="standard">Standard</option>
+                <option value="elevated">Elevated</option>
+              </select>
+            </label>
+            <label>Delivery path
+              <select aria-label="Delivery path" value={scenario.delivery} onChange={(event) => select("delivery", event.target.value as DeliveryMode)}>
+                <option value="owner-builder">Owner-builder</option>
+                <option value="hybrid">Owner + trades</option>
+                <option value="full-service">Full service</option>
+              </select>
+            </label>
+            <label>Delivery distance (km)
+              <input aria-label="Delivery distance (km)" type="number" min="0" max="20000" step="10" value={scenario.shippingDistanceKm} onChange={(event) => select("shippingDistanceKm", Number(event.target.value))} />
+            </label>
+            <label>Contingency
+              <div className="budget-range-input">
+                <input aria-label="Contingency percentage" type="range" min="5" max="35" step="1" value={scenario.contingencyPct} onChange={(event) => select("contingencyPct", Number(event.target.value))} />
+                <output>{scenario.contingencyPct}%</output>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <aside className="budget-readiness aura-panel">
+          <div className="budget-section-head">
+            <div><span>02</span><h2>Readiness</h2></div>
+            <p>{budget.confidence.label} · {budget.confidence.score}/100</p>
+          </div>
+          <div className="budget-meter"><i style={{ width: `${budget.confidence.score}%` }} /></div>
+          {budget.cap ? (
+            <div className={`budget-cap is-${budget.cap.state}`}>
+              <span>Working cap · {cad(budget.cap.capCad)}</span>
+              <strong>{budget.cap.midpointDeltaCad >= 0 ? `${cad(budget.cap.midpointDeltaCad)} breathing room` : `${cad(Math.abs(budget.cap.midpointDeltaCad))} above cap`}</strong>
+              <p>{budget.cap.state === "within" ? "The full range sits within the cap." : budget.cap.state === "over" ? "Even the lean range is above the cap." : "The midpoint fits, but unresolved risks can exceed the cap."}</p>
+            </div>
+          ) : (
+            <div className="budget-cap"><span>No working cap</span><strong>Add one in project intake</strong></div>
+          )}
+          <h3>What is still missing</h3>
+          {budget.gaps.length ? (
+            <ul>{budget.gaps.map((gap) => <li key={gap}>{gap}</li>)}</ul>
+          ) : <p className="budget-clear">The current planning inputs are complete. Supplier quotes still supersede this model.</p>}
+        </aside>
+      </section>
+
+      <section className="mt-12 sm:mt-16">
+        <div className="budget-lines-head">
+          <div><p className="aura-label">03 · Cost basis</p><h2>See what makes the number.</h2></div>
+          <div role="group" aria-label="Filter budget lines">
+            {FILTERS.map((option) => (
+              <button key={option.id} type="button" aria-pressed={filter === option.id} onClick={() => setFilter(option.id)}>{option.label}</button>
+            ))}
+          </div>
+        </div>
+
+        <div className="budget-lines-desktop aura-panel">
+          <table>
+            <thead><tr><th>Scope</th><th>Basis</th><th>Status</th><th>Low</th><th>Mid</th><th>High</th></tr></thead>
+            <tbody>
               {shown.map((line) => (
-                <m.tr
-                  key={line.id}
-                  variants={{
-                    hidden: { opacity: 0, y: 8 },
-                    show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: EASE } },
-                  }}
-                  className="border-b aura-hairline transition-colors last:border-b-0 hover:bg-aura-ink/[0.04]"
-                >
-                  <td className="px-6 py-4 text-aura-teal">{line.category}</td>
-                  <td className="px-6 py-4 text-aura-text/80">{line.item}</td>
-                  <td className="px-6 py-4">
-                    <DiyBadge v={line.ownerBuildable} />
-                    <p className="mt-1 max-w-[15rem] text-xs leading-snug text-aura-text/55">
-                      {line.diyBasis}
-                    </p>
-                  </td>
-                  <td className="px-6 py-4 text-right tabular-nums">{cad(line.lowCad)}</td>
-                  <td className="px-6 py-4 text-right tabular-nums text-aura-text">
-                    {cad(line.midCad)}
-                  </td>
-                  <td className="px-6 py-4 text-right tabular-nums">{cad(line.highCad)}</td>
-                </m.tr>
+                <tr key={line.id}>
+                  <td><span>{titleCase(line.category)}</span><strong>{line.label}</strong><small>{line.ownerBuildable ? "Owner-buildable" : "Trade or supplier"}</small></td>
+                  <td>{line.basis}</td>
+                  <td><LineStatus line={line} /></td>
+                  <td>{cad(line.low)}</td><td>{cad(line.mid)}</td><td>{cad(line.high)}</td>
+                </tr>
               ))}
-            </m.tbody>
-            <tfoot>
-              <tr className="border-t aura-hairline">
-                <td className="px-6 py-5" colSpan={3}>
-                  <span className="aura-label">
-                    {isAll ? "Total (excl. land)" : "Subtotal — shown lines"}
-                  </span>
-                </td>
-                <td className="px-6 py-5 text-right font-semibold tabular-nums">
-                  <Counter
-                    value={isAll ? total.lowCad : subtotal.lowCad}
-                    format={cadCount}
-                    prefix="$"
-                  />
-                </td>
-                <td className="px-6 py-5 text-right font-semibold tabular-nums text-aura-lime">
-                  <Counter
-                    value={isAll ? total.midCad : subtotal.midCad}
-                    format={cadCount}
-                    prefix="$"
-                  />
-                </td>
-                <td className="px-6 py-5 text-right font-semibold tabular-nums">
-                  <Counter
-                    value={isAll ? total.highCad : subtotal.highCad}
-                    format={cadCount}
-                    prefix="$"
-                  />
-                </td>
-              </tr>
-            </tfoot>
+            </tbody>
           </table>
         </div>
-      </Reveal>
+        <div className="budget-lines-mobile">
+          {shown.map((line) => (
+            <article key={line.id} className="aura-panel">
+              <div><span>{titleCase(line.category)}</span><LineStatus line={line} /></div>
+              <h3>{line.label}</h3><p>{line.basis}</p>
+              <dl><div><dt>Low</dt><dd>{cad(line.low)}</dd></div><div><dt>Mid</dt><dd>{cad(line.mid)}</dd></div><div><dt>High</dt><dd>{cad(line.high)}</dd></div></dl>
+            </article>
+          ))}
+        </div>
+      </section>
 
-      <Reveal y={12} className="mt-6">
-        <p className="max-w-2xl text-sm leading-relaxed text-aura-text/70">
-          These figures are the owner-builder path with licensed trades where the law requires
-          them. Hiring everything out is the builder-delivered comparison — $450,000 to
-          $650,000 ex-land for the same home. The per-line months-versus-money answer, and the
-          ranked contractor shortlist per trade, are the contractor-scout roadmap (issue #7).
-        </p>
-      </Reveal>
+      <section className="budget-ledger aura-panel">
+        <div><p className="aura-label">Assumptions</p><ul>{budget.assumptions.map((item) => <li key={item}>{item}</li>)}</ul></div>
+        <div><p className="aura-label">Not included</p><ul>{budget.exclusions.map((item) => <li key={item}>{item}</li>)}</ul></div>
+      </section>
+
+      <QuoteWorkbench budget={budget} />
+
+      <footer className="budget-footer">
+        <p>Use this range to frame decisions. RFQs and reconciled quotes are the next source of truth.</p>
+        <div><Link href="/build">Refine the design</Link><Link href="/contractors">Find the team</Link></div>
+      </footer>
     </div>
   );
 }

@@ -43,7 +43,6 @@ export default function ProjectIntake() {
   const [budget, setBudget] = useState("");
   const [household, setHousehold] = useState("2");
   const [timeline, setTimeline] = useState("");
-  const [cryptoComfort, setCryptoComfort] = useState<"avoid" | "guided" | "experienced">("avoid");
   const [saving, setSaving] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -67,7 +66,6 @@ export default function ProjectIntake() {
           budgetCad: { min: null, max: max !== null && Number.isFinite(max) ? max : null },
           householdSize: people !== null && Number.isInteger(people) && people > 0 ? people : null,
           timeline: timeline.trim(),
-          cryptoComfort,
           completedAtISO: now.toISOString(),
         },
       };
@@ -105,13 +103,6 @@ export default function ProjectIntake() {
         <label>Maximum working budget<input type="number" value={budget} onChange={(event) => setBudget(event.target.value)} min="0" step="1000" inputMode="numeric" /></label>
         <label>People in the home<input type="number" value={household} onChange={(event) => setHousehold(event.target.value)} min="1" max="20" inputMode="numeric" /></label>
         <label>Target timeline<input value={timeline} onChange={(event) => setTimeline(event.target.value)} placeholder="Move in within 18 months" /></label>
-        <label>Crypto preference
-          <select value={cryptoComfort} onChange={(event) => setCryptoComfort(event.target.value as typeof cryptoComfort)}>
-            <option value="avoid">Keep it invisible</option>
-            <option value="guided">Guide me carefully</option>
-            <option value="experienced">I use wallets already</option>
-          </select>
-        </label>
       </div>
       <div className="project-intake-submit">
         <div><span>Private by default</span><p>Saved in this browser. No wallet or account required.</p></div>
