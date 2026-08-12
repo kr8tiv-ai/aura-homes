@@ -2,7 +2,7 @@
   "name": "aura-app",
   "version": "0.1.0",
   "private": true,
-  "description": "Aura Homes web app: design, budget, and USDC escrow on X Layer",
+  "description": "Aura Homes: plan an eco home, find land, assemble a team, and manage the project",
   "author": "Matt Aurora Ventures <lucidbloks@gmail.com>",
   "license": "MIT",
   "scripts": {

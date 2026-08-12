@@ -137,25 +137,24 @@ export function EnterGate({
           <img src={withBase("/aura-mark.png")} alt="" className="story-gate-mark" width={160} height={160} />
           <span>Aura <em>Homes</em></span>
         </div>
-        <p className="story-gate-kicker"><span>00</span><i aria-hidden />All-in-one unique stays</p>
+        <p className="story-gate-kicker"><span>00</span><i aria-hidden />Eco Homes, Tiny Homes, Unique Stays</p>
         <h1 className="story-display story-gate-title">
-          Design the home.<br />Find the land.<br />Build it for real.
+          Design your eco home.<br />Find the land.<br />Manage the build.
         </h1>
         <p className="story-gate-sub">
-          Design or choose a tiny eco home, match the site, source a team, compare real costs and
-          prepare one private project for professional review. Or follow the X Layer proof, planned
-          HOMES trust, and path to a user-owned unique-stay network.
+          Plan or choose an eco home, match it with the right property and keep your team, costs and
+          next steps together.
         </p>
         <div className="story-gate-paths" aria-label="Choose your perspective">
           <button type="button" className="story-gate-path" onClick={() => go("project")} disabled={!hydrated || leaving} autoFocus>
-            <span>For homeowners and hosts</span>
-            <strong>Plan a unique stay</strong>
-            <small>Design, land, team, quotes, buying and handoff.</small>
+            <span>For eco-home enthusiasts</span>
+            <strong>Plan an eco property</strong>
+            <small>Design the home, find land and manage the project.</small>
           </button>
-          <button type="button" className="story-gate-path story-gate-path-crypto" onClick={() => go("crypto")} disabled={!hydrated || leaving}>
-            <span>For crypto-native builders</span>
-            <strong>Explore HOMES + X Layer</strong>
-            <small>Testnet proof, property trust and owner launchpad.</small>
+          <button type="button" className="story-gate-path" onClick={() => go("crypto")} disabled={!hydrated || leaving}>
+            <span>Blockchain ecosystem</span>
+            <strong>Explore HOMES on X Layer</strong>
+            <small>Buy homes with crypto. Follow the HOMES token, property trust and RWA launchpad.</small>
           </button>
         </div>
         <div className="story-gate-preference">
@@ -169,7 +168,6 @@ export function EnterGate({
           >
             Forest sound {soundOn ? "on" : "off"}
           </button>
-          <span>Your choice changes the story, not the underlying platform.</span>
         </div>
         <p className="story-gate-proof">
           <a href={BUILDX_URL} target="_blank" rel="noreferrer">OKX Build X · AI Season 2026</a>
@@ -242,13 +240,13 @@ export function StoryHUD({
         type="button"
         className="story-hud-btn story-hud-perspective"
         onClick={() => onAudience(audience === "project" ? "crypto" : "project")}
-        aria-label={audience === "project" ? "Switch to the HOMES and X Layer journey" : "Switch to the building journey"}
-        title={audience === "project" ? "HOMES + X Layer view" : "Building view"}
+        aria-label={audience === "project" ? "Switch to the blockchain ecosystem" : "Switch to the eco-property journey"}
+        title={audience === "project" ? "Blockchain ecosystem" : "Eco-property journey"}
       >
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
           <path d="M7 7h10m0 0-3-3m3 3-3 3M17 17H7m0 0 3 3m-3-3 3-3" />
         </svg>
-        <span>{audience === "project" ? "HOMES view" : "Build view"}</span>
+        <span>{audience === "project" ? "Blockchain" : "Eco property"}</span>
       </button>
       {/* Live star count in OUR design language (founder request, Aug 10).
           The official ghbtns iframe was built and screenshotted first —

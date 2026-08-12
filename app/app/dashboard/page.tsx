@@ -23,7 +23,7 @@ export const metadata = {
 export default function DashboardPage() {
   const d = dashboardFixture;
 
-  // Escrow position, derived from the milestone fixture.
+  // Project payment position, derived from the milestone fixture.
   const totalCad = milestonesFixture.reduce((s, m) => s + m.amountCad, 0);
   const fundedCad = milestonesFixture
     .filter((m) => m.status === "Funded" || m.status === "Released")
@@ -109,18 +109,12 @@ export default function DashboardPage() {
           the grid child now, so it carries `grid` to keep the panels the
           equal height the bare grid used to give them. */}
       <Stagger className="mt-12 grid gap-8 lg:grid-cols-2">
-        {/* Escrow position */}
+        {/* Project payment position */}
         <StaggerItem className="grid">
           <section className="aura-panel aura-panel-lift p-6">
             <div className="flex items-baseline justify-between gap-4">
-              <h2 className="aura-label">Escrow position</h2>
-              <Link
-                href="/escrow"
-                data-cursor="Open"
-                className="text-xs uppercase tracking-label text-aura-teal hover:text-aura-lime"
-              >
-                Open escrow
-              </Link>
+              <h2 className="aura-label">Project payments</h2>
+              <span className="text-xs uppercase tracking-label text-aura-teal">Preview</span>
             </div>
             <p className="mt-5 font-display text-[2.35rem] font-medium leading-[1.08] tracking-[-0.02em] tabular-nums">
               <Counter value={totalCad} prefix="$" />
@@ -131,7 +125,7 @@ export default function DashboardPage() {
             </p>
             <dl className="mt-6 space-y-3 text-sm">
               {[
-                { label: "Funded to escrow", value: fundedCad, tone: "text-aura-teal" },
+                { label: "Paid to date", value: fundedCad, tone: "text-aura-teal" },
                 {
                   label: "Released to builder (net)",
                   value: releasedNetCad,
@@ -156,7 +150,7 @@ export default function DashboardPage() {
               <GrowBar pct={fundedPct} className="h-full rounded-full bg-aura-emerald-bright" />
             </div>
             <p className="mt-2 text-xs text-aura-text/65">
-              {fundedPct} percent of the build funded in native USDC on X Layer
+              {fundedPct} percent of scheduled project payments recorded in this preview
             </p>
           </section>
         </StaggerItem>

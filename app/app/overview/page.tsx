@@ -9,9 +9,9 @@ const arcs = [
     n: "01",
     status: "In build",
     name: "The hackathon MVP",
-    line: "Start with a brief, shape the home, match land, assemble the team, reconcile quotes, and prepare an optional X Layer testnet action.",
+    line: "Start with a brief, shape the home, match land, assemble the team, reconcile quotes, and keep the project moving.",
     detail:
-      "The browser-first project and builder work locally without an account. Live data partners, contractor evidence, RFQs, quote reconciliation, and public-chain deployment remain staged work and are labelled where they appear.",
+      "The browser-first project and builder work locally without an account. Live data partners, contractor evidence, RFQs, quote reconciliation, card payments, and provider-supported X Layer USDC remain staged work and are labelled where they appear.",
   },
   {
     n: "02",
@@ -36,7 +36,7 @@ const pipeline = [
   { step: "02", name: "Design", detail: "Guided and Pro tools shape one portable design-intent document" },
   { step: "03", name: "Land", detail: "Sourced parcel evidence compared against the home and project requirements" },
   { step: "04", name: "Team", detail: "Evidence case files, comparable scopes, RFQs, and reconciled quotes" },
-  { step: "05", name: "Handoff", detail: "Milestones, proof, optional testnet funding, commissioning, and home book" },
+  { step: "05", name: "Project", detail: "Payment options, milestones, evidence, commissioning, and the home book" },
 ] as const;
 
 export const metadata = {
@@ -53,10 +53,10 @@ export default function OverviewPage() {
           paints. Only the call-to-action row arrives, and it arrives fast. */}
       <p className="aura-label mb-6">One project, end to end</p>
       <h1 className="max-w-3xl text-5xl font-semibold leading-tight md:text-6xl">
-        Design the home. <span className="text-aura-emerald">Find the land.</span> Build it for real.
+        Design your eco home. <span className="text-aura-emerald">Find the land.</span> Manage the build.
       </h1>
       <p className="mt-6 max-w-xl text-lg text-aura-text/70">
-        A local-first workspace for moving an eco home from first brief to verified handoff.
+        A local-first workspace for keeping the home, land, team, costs and next steps together.
       </p>
 
       <Stagger className="mt-10 flex gap-4">
@@ -74,11 +74,11 @@ export default function OverviewPage() {
         </StaggerItem>
         <StaggerItem y={8} className="flex">
           <Link
-            href="/escrow"
+            href="/buy"
             data-cursor="Open"
             className="inline-flex items-center rounded-md border aura-hairline px-6 py-3 text-sm font-medium uppercase tracking-label transition-colors hover:border-aura-teal"
           >
-            View escrow
+            Explore homes
           </Link>
         </StaggerItem>
       </Stagger>

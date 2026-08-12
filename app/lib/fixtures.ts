@@ -1,5 +1,5 @@
 // Fixture data mirroring the aura-architect pipeline output shapes.
-// The /budget and /escrow pages render these until the contract reads are wired.
+// Preview budget and project-payment records for routes that do not have live providers yet.
 
 /** Mirrors `ownerBuildable` in data/alberta/cost-model.json: can the owner
  *  legally do this line themselves in Alberta, and on what basis. "na" is a
@@ -132,7 +132,7 @@ export const slipsFixture: SlipFixture[] = [
     suggestedAction: "Release the matured holdback on milestone 1 to the builder.",
   },
   {
-    ruleId: "escrow-milestone-stale",
+    ruleId: "payment-milestone-stale",
     severity: "warn",
     message:
       "Milestone 2 (Site prep & foundation) was approved by the builder 7 days ago and is still waiting on the owner's approval before the release can execute.",
@@ -151,7 +151,7 @@ export const slipsFixture: SlipFixture[] = [
 const slipOwner: Record<string, string> = {
   "sip-kit-unordered": "You",
   "holdback-maturity": "You",
-  "escrow-milestone-stale": "You",
+  "payment-milestone-stale": "You",
   "waiting-escalation": "Supplier",
   "permit-unsubmitted": "You",
   "winter-window": "Builder",
@@ -171,7 +171,7 @@ export function slipToNextAction(slip: SlipFixture): NextActionFixture {
 
 // ---------------------------------------------------------------- dashboard
 
-export type PipelineStage = "LAND" | "DESIGN" | "BUDGET" | "ESCROW" | "BUILD";
+export type PipelineStage = "LAND" | "DESIGN" | "BUDGET" | "PAYMENTS" | "BUILD";
 
 export interface NextActionFixture {
   id: string;
@@ -199,8 +199,8 @@ export interface CategoryActualFixture {
 export const dashboardFixture = {
   projectName: "Aura Pilot Build 01",
   parcel: "37 Aspen Road, Lac Ste. Anne County (Agricultural district)",
-  stages: ["LAND", "DESIGN", "BUDGET", "ESCROW", "BUILD"] as PipelineStage[],
-  currentStage: "ESCROW" as PipelineStage,
+  stages: ["LAND", "DESIGN", "BUDGET", "PAYMENTS", "BUILD"] as PipelineStage[],
+  currentStage: "PAYMENTS" as PipelineStage,
   /** Committed spend to date by category; categories without a row are at $0. */
   actuals: [
     { category: "Soft costs", actualCad: 11420, note: "Permits issued, drawings stamped" },
@@ -214,7 +214,7 @@ export const dashboardFixture = {
       id: "fund-m3",
       title: "Fund milestone 03 — SIP shell & envelope",
       slip: false,
-      detail: "$77,000 to escrow so the shell contract can be signed against funded milestones.",
+      detail: "$77,000 scheduled for the SIP supplier once the final scope, payment method, and recipient are confirmed.",
       owner: "You",
       due: "Before kit order",
     },
@@ -233,7 +233,7 @@ export const dashboardFixture = {
     moved: "Development and building permits issued. Site clearing finished; driveway is in.",
     blocked: "SIP kit order — flagged 9 days idle against a 12-20 week lead time.",
     moneyPosition:
-      "$30,000 funded to escrow, $10,800 released to the builder, $1,200 held back under the statutory holdback.",
+      "$30,000 recorded as paid, $10,800 paid to the builder, and $1,200 retained under the statutory holdback.",
   },
 };
 

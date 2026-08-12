@@ -9,7 +9,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useGLTF, Sparkles, Environment, Lightformer, SoftShadows } from "@react-three/drei";
 import { EffectComposer, Bloom, Vignette, Noise } from "@react-three/postprocessing";
 import { withBase } from "../../lib/basePath";
-import type { SceneQuality } from "@/lib/three/sceneQuality";
+import type { OpeningSceneStage, SceneQuality } from "@/lib/three/sceneQuality";
 import { NORDIC_MATERIALS } from "@/lib/three/nordicMaterials";
 import SceneDetail, { meadowShade, trailTrodden } from "./SceneDetail";
 
@@ -63,7 +63,7 @@ const CTRL: Ctrl[] = [
   { p: [-1.0, 3.0, 12.6], t: [0.4, 1.9, 1.4], fov: 43, ground: 1 }, //   swinging across the lawn
   { p: [7.4, 5.6, 13.6], t: [0.0, 1.8, 1.6], fov: 44 }, // 3 BUDGET — elevated 3/4, whole property
   { p: [4.4, 2.2, 9.8], t: [0.6, 1.8, 4.4], fov: 42, ground: 1 }, //   coming down to the lawn
-  { p: [0.8, 1.8, 8.3], t: [0.2, 2.0, 3.8], fov: 41, ground: 1 }, // 4 ESCROW — at the foot of the steps
+  { p: [0.8, 1.8, 8.3], t: [0.2, 2.0, 3.8], fov: 41, ground: 1 }, // 4 PAYMENTS — at the foot of the steps
   { p: [0.3, 2.35, 5.7], t: [4.6, 1.1, 5.3], fov: 42 }, //   up the steps, eyes on the walkway
   { p: [5.6, 2.0, 7.6], t: [0.6, 2.1, 2.8], fov: 42 }, // 5 BUILD — past the tub, looking back home
   { p: [7.4, 2.4, 9.4], t: [0.4, 2.2, 1.8], fov: 40 }, //   drifting out the northeast corner
@@ -126,20 +126,30 @@ function useNormalizedClones(
 
 /* ----------------------------- materials ---------------------------- */
 
-/** Big architectural glass — real transmission, used only on the gables. */
-function useArchGlass() {
+/** Big architectural glass. The full material remains available for an
+ * explicit high-quality view; the landing uses the transparent standard
+ * shader so four transmission programs cannot block its first frame. */
+function useArchGlass(rich: boolean) {
   return useMemo(() => {
-    const m = new THREE.MeshPhysicalMaterial({
-      transmission: 0.94,
-      roughness: 0.06,
-      ior: 1.5,
-      thickness: 0.4,
-      color: new THREE.Color("#e4f4ee"),
-      envMapIntensity: 1.3,
-      side: THREE.DoubleSide,
-    });
-    return m;
-  }, []);
+    return rich
+      ? new THREE.MeshPhysicalMaterial({
+          transmission: 0.94,
+          roughness: 0.06,
+          ior: 1.5,
+          thickness: 0.4,
+          color: new THREE.Color("#e4f4ee"),
+          envMapIntensity: 1.3,
+          side: THREE.DoubleSide,
+        })
+      : new THREE.MeshStandardMaterial({
+          transparent: true,
+          opacity: 0.3,
+          roughness: 0.18,
+          color: new THREE.Color("#cfe3dd"),
+          side: THREE.DoubleSide,
+          depthWrite: false,
+        });
+  }, [rich]);
 }
 
 /* ---------------------------------------------------------------------
@@ -169,10 +179,10 @@ function useArchGlass() {
 --------------------------------------------------------------------- */
 
 /** Structural glass — walkway deck, deck floor panel. Writes depth. */
-function useGlassFloor() {
+function useGlassFloor(rich: boolean) {
   return useMemo(
     () =>
-      new THREE.MeshPhysicalMaterial({
+      new (rich ? THREE.MeshPhysicalMaterial : THREE.MeshStandardMaterial)({
         transparent: true,
         opacity: 0.34,
         roughness: 0.05,
@@ -185,7 +195,7 @@ function useGlassFloor() {
         polygonOffsetFactor: -2,
         polygonOffsetUnits: -2,
       }),
-    []
+    [rich]
   );
 }
 
@@ -204,10 +214,10 @@ function useGlassFloor() {
  *  It keeps depthWrite and the floor renderOrder, because the sort-thrash and
  *  z-fighting fixes documented above apply to it identically.
  */
-function useGlassRoof() {
+function useGlassRoof(rich: boolean) {
   return useMemo(
     () =>
-      new THREE.MeshPhysicalMaterial({
+      new (rich ? THREE.MeshPhysicalMaterial : THREE.MeshStandardMaterial)({
         transparent: true,
         opacity: 0.42,
         roughness: 0.22,
@@ -220,7 +230,7 @@ function useGlassRoof() {
         polygonOffsetFactor: -2,
         polygonOffsetUnits: -2,
       }),
-    []
+    [rich]
   );
 }
 
@@ -238,10 +248,10 @@ function useGlassRoof() {
  *  single-sided, 0.11, and a calmer reflection. Verified by cropping the
  *  seam, not by assuming.
  */
-function useGlassRail() {
+function useGlassRail(rich: boolean) {
   return useMemo(
     () =>
-      new THREE.MeshPhysicalMaterial({
+      new (rich ? THREE.MeshPhysicalMaterial : THREE.MeshStandardMaterial)({
         transparent: true,
         opacity: 0.11,
         roughness: 0.05,
@@ -251,7 +261,7 @@ function useGlassRail() {
         side: THREE.FrontSide,
         depthWrite: false,
       }),
-    []
+    [rich]
   );
 }
 
@@ -271,9 +281,9 @@ const RO_GLASS_RAIL = 20;
    the colour of the soil it grows from, and the two must not drift), and
    adds a high-frequency mottle on top plus a per-facet value jitter. At
    ~0.8 m per vertex that mottle is what a meadow looks like from 40 m. */
-function Terrain() {
+function Terrain({ segments = 200 }: { segments?: number }) {
   const geo = useMemo(() => {
-    const SEG = 200;
+    const SEG = segments;
     const g = new THREE.PlaneGeometry(170, 170, SEG, SEG);
     g.rotateX(-Math.PI / 2);
     const p = g.attributes.position as THREE.BufferAttribute;
@@ -348,7 +358,7 @@ function Terrain() {
     g.setAttribute("color", new THREE.BufferAttribute(colors, 3));
     g.computeVertexNormals();
     return g;
-  }, []);
+  }, [segments]);
   /* TEXTURE PASS (Aug 10): sub-vertex ground detail lives in GLSL, not in a
      canvas. The vertex mottle above tops out at the mesh's own frequency —
      one facet per ~0.85 m — so anything the camera reads at 2-20 m was a
@@ -2328,11 +2338,70 @@ const LANTERNS: { pos: [number, number, number]; rotY?: number; scale?: number }
   { pos: [-2.65, 0, 30.15], rotY: 2.8, scale: 1 },
 ];
 
-function Forest({ frozen }: { frozen: boolean }) {
+/** Safe-tier forest: two instanced draw calls, authored from the same tree
+ * placements as the rich GLTF grove. It preserves the alpine silhouette
+ * without cloning dozens of multi-material model graphs during the story. */
+function LiteForest() {
+  const crowns = useRef<THREE.InstancedMesh>(null);
+  const trunks = useRef<THREE.InstancedMesh>(null);
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  const placements = useMemo(
+    () => [...PATCHES.slice(0, 12), ...TEAL_PINES.slice(0, 9)],
+    [],
+  );
+
+  useLayoutEffect(() => {
+    placements.forEach((placement, index) => {
+      const scale = placement.scale ?? 1;
+      const height = (index < 12 ? 5.2 : 4.3) * scale;
+      const y = terrainH(placement.pos[0], placement.pos[2]);
+
+      dummy.position.set(placement.pos[0], y + height * 0.52, placement.pos[2]);
+      dummy.rotation.set(0, placement.rotY ?? 0, 0);
+      dummy.scale.set(1.25 * scale, height, 1.25 * scale);
+      dummy.updateMatrix();
+      crowns.current?.setMatrixAt(index, dummy.matrix);
+
+      dummy.position.set(placement.pos[0], y + height * 0.14, placement.pos[2]);
+      dummy.scale.set(0.16 * scale, height * 0.28, 0.16 * scale);
+      dummy.updateMatrix();
+      trunks.current?.setMatrixAt(index, dummy.matrix);
+    });
+    if (crowns.current) crowns.current.instanceMatrix.needsUpdate = true;
+    if (trunks.current) trunks.current.instanceMatrix.needsUpdate = true;
+  }, [dummy, placements]);
+
+  return (
+    <group>
+      <instancedMesh ref={crowns} args={[undefined, undefined, placements.length]} receiveShadow>
+        <coneGeometry args={[1, 1, 6]} />
+        <meshStandardMaterial color="#356247" roughness={1} flatShading />
+      </instancedMesh>
+      <instancedMesh ref={trunks} args={[undefined, undefined, placements.length]}>
+        <cylinderGeometry args={[1, 1.18, 1, 6]} />
+        <meshStandardMaterial color="#5d4030" roughness={1} flatShading />
+      </instancedMesh>
+    </group>
+  );
+}
+
+function Forest({ frozen, densityScale = 1 }: { frozen: boolean; densityScale?: number }) {
   const pines = useGLTF(MODELS.pines);
   const teal = useGLTF(MODELS.pineTeal);
   const rocks = useGLTF(MODELS.rocks);
   const sway = useRef<THREE.Group[]>([]);
+  const patchPlacements = useMemo(
+    () => PATCHES.slice(0, Math.max(1, Math.ceil(PATCHES.length * densityScale))),
+    [densityScale],
+  );
+  const tealPlacements = useMemo(
+    () => TEAL_PINES.slice(0, Math.max(1, Math.ceil(TEAL_PINES.length * densityScale))),
+    [densityScale],
+  );
+  const rockPlacements = useMemo(
+    () => ROCKS.slice(0, Math.max(1, Math.ceil(ROCKS.length * densityScale))),
+    [densityScale],
+  );
 
   useLayoutEffect(() => {
     /* The GLTF pines shipped glossy: env-map specular painted white glints
@@ -2367,9 +2436,9 @@ function Forest({ frozen }: { frozen: boolean }) {
     });
   }, [pines.scene, teal.scene, rocks.scene]);
 
-  const patchClones = useNormalizedClones(pines.scene, 5.2, PATCHES);
-  const tealClones = useNormalizedClones(teal.scene, 4.3, TEAL_PINES);
-  const rockClones = useNormalizedClones(rocks.scene, 1.4, ROCKS);
+  const patchClones = useNormalizedClones(pines.scene, 5.2, patchPlacements);
+  const tealClones = useNormalizedClones(teal.scene, 4.3, tealPlacements);
+  const rockClones = useNormalizedClones(rocks.scene, 1.4, rockPlacements);
 
   /* WIND v2 — a single direction, so trees BEND instead of bobbing.
      v1's mistake was driving rotation.z and rotation.x from two independent
@@ -2417,7 +2486,7 @@ function Forest({ frozen }: { frozen: boolean }) {
         <group
           key={`t${i}`}
           ref={(el) => {
-            if (el) sway.current[PATCHES.length + i] = el;
+            if (el) sway.current[patchClones.length + i] = el;
           }}
         >
           <primitive object={g} />
@@ -2630,12 +2699,14 @@ function LightArc({
   reduced,
   dusk,
   shadowMapSize,
+  shadows,
   night = 0,
 }: {
   progressRef: React.MutableRefObject<number>;
   reduced: boolean;
   dusk: Dusk;
   shadowMapSize: 1024 | 2048;
+  shadows: boolean;
   night?: number;
 }) {
   const sun = useRef<THREE.DirectionalLight>(null);
@@ -2709,7 +2780,7 @@ function LightArc({
       <ambientLight intensity={0.14} />
       <directionalLight
         ref={sun}
-        castShadow
+        castShadow={shadows}
         position={[27, 24, 19.5]}
         color="#fff3dd"
         intensity={2.6}
@@ -2742,18 +2813,25 @@ export default function Scene({
   progressRef,
   reduced,
   quality,
+  stage,
   night = false,
 }: {
   progressRef: React.MutableRefObject<number>;
   reduced: boolean;
   quality: SceneQuality;
+  stage: OpeningSceneStage;
   night?: boolean;
 }) {
   const dusk = useDuskRegistry();
-  const archGlass = useArchGlass();
-  const glassFloor = useGlassFloor();
-  const glassRoof = useGlassRoof();
-  const glassRail = useGlassRail();
+  const richMaterials = quality.tier === "full";
+  const archGlass = useArchGlass(richMaterials);
+  const glassFloor = useGlassFloor(richMaterials);
+  const glassRoof = useGlassRoof(richMaterials);
+  const glassRail = useGlassRail(richMaterials);
+  const includeSite = stage !== "core";
+  const includeForest = stage === "forest" || stage === "atmosphere" || stage === "meadow";
+  const includeAtmosphere = stage === "atmosphere" || stage === "meadow";
+  const includeMeadow = stage === "meadow";
 
   /* Texture pass: every procedural detail texture filters at the GPU's max
      anisotropy (16 on the target hardware). Runs during Scene's own render,
@@ -2794,23 +2872,31 @@ export default function Scene({
         dusk={dusk}
         night={nightAmt}
         shadowMapSize={quality.shadowMapSize}
+        shadows={quality.softShadows}
       />
 
-      <Environment resolution={quality.environmentResolution} frames={1}>
-        <mesh scale={90}>
-          <sphereGeometry args={[1, 16, 16]} />
-          <meshBasicMaterial color="#dcebe2" side={THREE.BackSide} />
-        </mesh>
-        <Lightformer intensity={3} position={[8, 10, 6]} scale={[8, 6, 1]} color="#fff2d8" />
-        <Lightformer intensity={1.2} position={[-8, 6, -6]} scale={[10, 4, 1]} color="#d9f4ea" />
-      </Environment>
+      {includeForest && richMaterials ? (
+        <Environment resolution={quality.environmentResolution} frames={1}>
+          <mesh scale={90}>
+            <sphereGeometry args={[1, 16, 16]} />
+            <meshBasicMaterial color="#dcebe2" side={THREE.BackSide} />
+          </mesh>
+          <Lightformer intensity={3} position={[8, 10, 6]} scale={[8, 6, 1]} color="#fff2d8" />
+          <Lightformer intensity={1.2} position={[-8, 6, -6]} scale={[10, 4, 1]} color="#d9f4ea" />
+        </Environment>
+      ) : null}
 
-      {/* Stars — only ever built once, faded in by the night amount. */}
-      <StarField amount={nightAmt} />
+      {/* The first painted frame is deliberately architectural. Site and
+          atmosphere layers join only after the prior stage has drawn. */}
+      {includeAtmosphere ? <StarField amount={nightAmt} /> : null}
 
-      <Terrain />
-      <Forest frozen={reduced} />
-      <Props dusk={dusk} />
+      <Terrain segments={quality.tier === "full" ? 200 : 108} />
+      {includeForest ? (
+        richMaterials
+          ? <Forest frozen={reduced} densityScale={1} />
+          : <LiteForest />
+      ) : null}
+      {includeForest && richMaterials ? <Props dusk={dusk} /> : null}
 
       <AFrameHome dusk={dusk} archGlass={archGlass} glassRoof={glassRoof} />
       <Deck glassFloor={glassFloor} glassRail={glassRail} />
@@ -2818,35 +2904,43 @@ export default function Scene({
 
       {/* The additive detail layer — mountains, clouds, grass, steps,
           hammock, netting, wildlife, outdoor lighting, tub steam. */}
-      <SceneDetail
-        frozen={reduced}
-        night={nightAmt}
-        glassRail={glassRail}
-        dusk={dusk}
-        qualityScale={quality.grassScale}
-      />
-      <HotTub position={[5.9, 0, 5.4]} dusk={dusk} frozen={reduced} />
-      <FirePit dusk={dusk} />
-      <Bench position={[8.6, terrainH(8.6, 18.0) - 0.14, 18.0]} rotY={Math.PI * 1.12} />
-      <PathStones />
-      <Trailhead />
-      <Fence />
+      {includeAtmosphere ? (
+        <SceneDetail
+          frozen={reduced}
+          night={nightAmt}
+          glassRail={glassRail}
+          dusk={dusk}
+          qualityScale={quality.grassScale}
+          includeMeadow={includeMeadow}
+          lite={!richMaterials}
+        />
+      ) : null}
+      {includeSite ? <HotTub position={[5.9, 0, 5.4]} dusk={dusk} frozen={reduced} /> : null}
+      {includeForest && richMaterials ? <FirePit dusk={dusk} /> : null}
+      {includeSite ? <Bench position={[8.6, terrainH(8.6, 18.0) - 0.14, 18.0]} rotY={Math.PI * 1.12} /> : null}
+      {includeSite ? <PathStones /> : null}
+      {includeSite ? <Trailhead /> : null}
+      {includeSite ? <Fence /> : null}
 
       {/* string lights: a small canopy over the fire-pit lounge only —
           never crossing the glass facade or the deck framing */}
-      <LightPole position={[-3.95, 2.5, 3.1]} />
-      <LightPole position={[-6.7, 2.4, 5.3]} />
-      <LightPole position={[-4.7, 2.45, 8.1]} />
-      <StringLights
-        points={[
-          [-3.95, 2.46, 3.1],
-          [-6.7, 2.36, 5.3],
-          [-4.7, 2.41, 8.1],
-        ]}
-        dusk={dusk}
-      />
+      {includeSite ? (
+        <>
+          <LightPole position={[-3.95, 2.5, 3.1]} />
+          <LightPole position={[-6.7, 2.4, 5.3]} />
+          <LightPole position={[-4.7, 2.45, 8.1]} />
+          <StringLights
+            points={[
+              [-3.95, 2.46, 3.1],
+              [-6.7, 2.36, 5.3],
+              [-4.7, 2.41, 8.1],
+            ]}
+            dusk={dusk}
+          />
+        </>
+      ) : null}
 
-      <BeatProps progressRef={progressRef} reduced={reduced} />
+      {includeSite ? <BeatProps progressRef={progressRef} reduced={reduced} /> : null}
 
       {/* chimney wisp; tub steam; fire pit smoke */}
       {/* THE CHIMNEY. Was size 0.62 / opacity 0.3 in the shared near-white
@@ -2856,28 +2950,30 @@ export default function Scene({
           cheapest possible signal that a home is occupied, and this plume is
           readable from the crest beat onward. 10 sprites, no new draw call
           class — sprites batch with the two plumes below. */}
-      <Smoke
-        origin={[0.9, 5.28, -2.2]}
-        count={10}
-        rate={0.13}
-        size={0.85}
-        rise={4.6}
-        drift={0.55}
-        opacity={0.6}
-        color="#b3bbb8"
-        frozen={reduced}
-      />
+      {includeAtmosphere ? (
+        <Smoke
+          origin={[0.9, 5.28, -2.2]}
+          count={10}
+          rate={0.13}
+          size={0.85}
+          rise={4.6}
+          drift={0.55}
+          opacity={0.6}
+          color="#b3bbb8"
+          frozen={reduced}
+        />
+      ) : null}
       {/* hot tub steam and fire-pit smoke: steam stays white (it IS vapour),
           the fire pit goes faintly grey so it separates from the tub */}
-      <Smoke origin={[5.9, 1.15, 5.4]} count={6} rate={0.2} size={0.44} rise={1.6} drift={0.16} opacity={0.42} frozen={reduced} />
-      <Smoke origin={[-4.6, 0.8, 6.2]} count={5} rate={0.13} size={0.5} rise={2.2} drift={0.24} opacity={0.3} color="#c8cdc9" frozen={reduced} />
+      {includeAtmosphere ? <Smoke origin={[5.9, 1.15, 5.4]} count={6} rate={0.2} size={0.44} rise={1.6} drift={0.16} opacity={0.42} frozen={reduced} /> : null}
+      {includeAtmosphere ? <Smoke origin={[-4.6, 0.8, 6.2]} count={5} rate={0.13} size={0.5} rise={2.2} drift={0.24} opacity={0.3} color="#c8cdc9" frozen={reduced} /> : null}
 
-      <Mist frozen={reduced} />
-      <Birds frozen={reduced} />
+      {includeAtmosphere ? <Mist frozen={reduced} /> : null}
+      {includeAtmosphere ? <Birds frozen={reduced} /> : null}
       {/* size 2.2 / opacity 0.4 read as UFO orbs once dusk emissives pushed
           them over the bloom threshold — dust motes, not fireflies */}
-      <Sparkles count={quality.sparkleCount} scale={[28, 8, 28]} position={[0, 3.5, 2]} size={1.6} speed={reduced ? 0 : 0.25} opacity={0.28} color="#fff6dd" />
-      <SunShafts progressRef={progressRef} night={nightAmt} reduced={reduced} />
+      {includeAtmosphere ? <Sparkles count={quality.sparkleCount} scale={[28, 8, 28]} position={[0, 3.5, 2]} size={1.6} speed={reduced ? 0 : 0.25} opacity={0.28} color="#fff6dd" /> : null}
+      {includeAtmosphere ? <SunShafts progressRef={progressRef} night={nightAmt} reduced={reduced} /> : null}
 
       <CameraRig progressRef={progressRef} reduced={reduced} />
 

@@ -1,20 +1,20 @@
 <div align="center">
 
-<img src="app/public/social/aura-homes-social-v2.jpg" alt="Aura Homes — design the home, find the land, build it for real" width="100%">
+<img src="app/public/social/aura-homes-social-v2.jpg" alt="Aura Homes — design your eco home, find the land, manage the build" width="100%">
 
 <br>
 
-<sub><code>AURA HOMES · ALL-IN-ONE UNIQUE STAYS · ALBERTA PILOT · OKX BUILDX AI 2026</code></sub>
+<sub><code>AURA HOMES · ECO HOMES, TINY HOMES, UNIQUE STAYS · ALBERTA PILOT · OKX BUILDX AI 2026</code></sub>
 
 # From an idea to a real small home.
 
 **Aura Homes gives normal people one calm place to define a project, design or choose an eco-home, match it to land, source the right team, understand the budget, and prepare a verifiable build handoff. Cash works. Crypto is optional plumbing.**
 
-[**Start a project**](https://aurahomes.fun/start) · [**Open the builder**](https://aurahomes.fun/build) · [**Explore the live site**](https://aurahomes.fun) · [**Read the proof**](#x-layer-proof)
+[**Start a project**](https://aurahomes.fun/start) · [**Open the builder**](https://aurahomes.fun/build) · [**Explore the live site**](https://aurahomes.fun) · [**Explore the blockchain layer**](#x-layer-experiments)
 
 [![Live](https://img.shields.io/badge/live-aurahomes.fun-047857?style=flat-square&labelColor=f5f5f4)](https://aurahomes.fun)
-[![X Layer](https://img.shields.io/badge/X_Layer-testnet_1952-171a18?style=flat-square&labelColor=f5f5f4)](#x-layer-proof)
-[![Tests](https://img.shields.io/badge/release_checkpoint-87_%2B_24_%2B_24_passing-171a18?style=flat-square&labelColor=f5f5f4)](#verification)
+[![X Layer](https://img.shields.io/badge/X_Layer-testnet_1952-171a18?style=flat-square&labelColor=f5f5f4)](#x-layer-experiments)
+[![Tests](https://img.shields.io/badge/release_checkpoint-93_%2B_27_%2B_24_passing-171a18?style=flat-square&labelColor=f5f5f4)](#verification)
 [![License](https://img.shields.io/badge/license-MIT-171a18?style=flat-square&labelColor=f5f5f4)](LICENSE)
 
 <sub>Open-source product and hackathon submission by <a href="https://github.com/Matt-Aurora-Ventures">Matt Haynes / Aura Ventures</a>. Alberta first; designed to travel.</sub>
@@ -32,11 +32,11 @@ Aura is built around one provable journey rather than a collection of disconnect
 | 0:00 | [Start a project](https://aurahomes.fun/start) and choose `Find land + build`, `Build on my land`, or `Buy a finished home` | A non-technical intake creates a durable, account-free project. |
 | 0:15 | Open [the builder](https://aurahomes.fun/build), switch between Guided and Pro, then edit the same design | Both editor modes write one canonical document and one deterministic design hash. |
 | 0:30 | Visit [land](https://aurahomes.fun/land) and [contractors](https://aurahomes.fun/contractors) | Project-fit and evidence scoring work, while pilot/demo records are labelled honestly. |
-| 0:40 | Open [X Layer escrow](https://aurahomes.fun/escrow) | The app knows the configured chain, test token, deployed escrow, receipt events, and registry hash model. |
+| 0:40 | Compare [finished-home routes](https://aurahomes.fun/buy) and payment readiness | Card and X Layer USDC paths stay side by side, and neither is presented as live without a real provider and destination. |
 | 0:50 | Open the [HOMES dashboard](https://aurahomes.fun/homes) | The future trust is presented as a public zero-state ledger: no token, fees, property, staking, or distributions are invented. |
 | 1:00 | Inspect [deployment evidence](docs/DEPLOYMENTS.md) and run the suites below | The product claims can be reproduced from code, tests, and public testnet state. |
 
-> The strongest demo is: **brief → design → local save/reload → land fit → team evidence → quote basis → prepared testnet deposit → receipt/hash verification.** Aura prepares and explains; the person confirms.
+> The strongest demo is: **brief → design → local save/reload → land fit → team evidence → quote basis → portable project handoff.** Aura prepares and explains; the person confirms.
 
 <div align="center"><img src="assets/section-rule.png" alt="" width="88%"></div>
 
@@ -46,8 +46,8 @@ The landing page now asks one useful question before the story begins: **what br
 
 | Perspective | What the story makes clear |
 | --- | --- |
-| **For homeowners and hosts** | Design or choose a unique eco-home, find suitable land, source a team, compare quotes, and carry one private project toward professional review and construction. No wallet is required. The longer-term destination is a user-owned alternative to a centralized Airbnb-style marketplace: real stays with transparent operating records and optional shared ownership rails. |
-| **For crypto-native builders** | Follow the live [X Layer](https://web3.okx.com/xlayer) testnet proof, the [OKX Build X · AI Season](https://web3.okx.com/xlayer/build-x-series) submission, the planned HOMES decentralized trust, and the path toward an accountable network of independently operated unique stays. The later owner launchpad lets people prepare a real home project before any token, vault, or public raise exists. |
+| **For eco-home enthusiasts** | Design or choose an eco-home, find suitable land, source a team, compare quotes, and carry one private project toward professional review and construction. No wallet is required. The longer-term destination is a user-owned alternative to a centralized Airbnb-style marketplace: real stays with transparent operating records and optional shared ownership rails. |
+| **Blockchain ecosystem** | Explore provider-supported [X Layer](https://web3.okx.com/xlayer) payments, the [OKX Build X · AI Season](https://web3.okx.com/xlayer/build-x-series) submission, the planned HOMES property trust, and the path toward an accountable network of independently operated stays. The later owner launchpad lets people prepare a real home project before any token, vault, or public raise exists. |
 
 The crypto story still leads to the useful product: homes can be designed, matched to land, costed, sourced, and eventually paid for with cash or confirmed X Layer USDC where a real provider and payment destination exist. The homeowner story still explains the larger ambition in plain language: people should eventually be able to build, host, and participate in a user-owned network of distinctive stays without first becoming crypto experts.
 
@@ -95,7 +95,7 @@ Aura uses explicit status language throughout the interface and this submission:
 | Contractor evidence scoring | **Pilot** | Explainable score model and gates exist; fictional profiles stay in demo mode. Aura does not call a contractor “vetted.” |
 | Finished-home readiness catalog | **Pilot** | Research and quote preparation, not instant global purchasing. |
 | Deterministic Aura brain and MCP tools | **Live locally** | Hosted, evidence-grounded concierge and `PreparedAction` confirmations remain in build. |
-| Reservation, refund, milestone, holdback and registry contracts | **Testnet** | Deployed on X Layer testnet with dev-only roles and a valueless faucet token. |
+| X Layer payment and registry experiments | **Testnet / isolated** | Technical prototypes remain outside the customer journey. Provider-supported USDC payments are the relevant product path. |
 | HOMES trust, token, staking and property ledger | **Planned** | Public dashboard intentionally reads zero. No address, venue, pool, property, or payout exists. |
 | Owner-led unique-stay launchpad | **Planned** | Architecture published; project vaults, review, contracts and operating partners are future work. |
 
@@ -183,39 +183,13 @@ The hosted concierge is intentionally bounded:
 
 The existing x402-shaped MCP gate demonstrates the OKX Agent Payments Protocol request/receipt shape with **simulated settlement**. It does not claim a real token transfer. The planned Hostinger VPS service keeps provider keys out of the static bundle; project files remain local unless a person deliberately submits a bounded request.
 
-## X Layer proof
+## X Layer experiments
 
-Aura's on-chain layer records compact commitments and governs money movement; it does not publish private plans or personal data.
+X Layer is optional infrastructure, not the front door. The relevant product path is simple: show ordinary card payments alongside X Layer USDC wherever a real manufacturer or contractor supports them, with the price, provider, recipient, network and fees visible before confirmation.
 
-<div align="center">
-<img src="assets/escrow-flow.png" alt="AuraBuildEscrow reservation, refund, milestone release, holdback, and registry flow on X Layer" width="92%">
-</div>
+Aura also uses canonical `keccak256` commitments to verify that a portable design or budget still matches the project a person reviewed. Full plans and private homeowner records stay off-chain.
 
-### Current executable configuration
-
-| Component | X Layer testnet proof |
-| --- | --- |
-| Chain | `1952` |
-| Faucet-compatible test USDC | [`0xcB8B…c79D`](https://www.oklink.com/xlayer-test/address/0xcB8BF24c6cE16Ad21D707c9505421a17f2bec79D) |
-| `AuraBuildEscrow` | [`0x4A77…63b5`](https://www.oklink.com/xlayer-test/address/0x4A777bf71d8809244c77A3c2b39ef68793A463b5) · [creation tx](https://www.oklink.com/xlayer-test/tx/0x19129a38eeb9a72531ad9c21a5fb93737814b2e17b533eb2ad9cc595f648bbce) |
-| `AuraBuildRegistry` | [`0x1195…C32e`](https://www.oklink.com/xlayer-test/address/0x1195ED713EEF2Adc32DcF5Bb1c4627F43f1EC32e) · [creation tx](https://www.oklink.com/xlayer-test/tx/0xd3e783c02b803256865593081a7442062949b341884dbce32d5a23632c430800) |
-| Escrow terms | 14-day reservation refund window, 10% holdback, 60-day holdback period |
-| Registry state | `nextTokenId = 0` — no home record has been minted |
-
-### Lifecycle
-
-1. Validate chain and configured settlement asset.
-2. Create an immutable design/budget snapshot.
-3. Check balance and allowance; request approval if required.
-4. Place a refundable testnet reservation deposit.
-5. Decode the receipt and `DepositPlaced` event.
-6. Refund within the window, or convert the deposit into the first milestone after it closes.
-7. Release milestones with 2-of-3 approval while retaining the holdback.
-8. Verify canonical design and budget hashes through the registry.
-
-The contracts and UI cover wrong network, insufficient token balance, allowance, rejection, pending and reverted transactions, receipt decoding, hash mismatch, refund boundaries, role authorization, and independent project state in tests.
-
-The current deployment is a public technical proof, not a live escrow: homeowner, builder, and arbiter are the same development address; the token has no monetary value; source verification and independent review remain release work. See the complete [deployment ledger](docs/DEPLOYMENTS.md).
+The repository retains an isolated testnet registry and earlier payment experiments for reproducible hackathon evidence. They use valueless test assets and development-only roles, are not linked from the customer navigation, and are not presented as a problem Aura has solved. Technical provenance remains available in [`docs/DEPLOYMENTS.md`](docs/DEPLOYMENTS.md).
 
 <div align="center"><img src="assets/section-rule.png" alt="" width="88%"></div>
 
@@ -269,7 +243,7 @@ Read the full, versioned concept in [`docs/HOMES-TOKEN-CONCEPT.md`](docs/HOMES-T
 aura-homes/
 ├── app/          Next.js 14 app, local-first project workspace, builder, discovery and testnet UI
 ├── agent/        deterministic journey brain + MCP server + x402-shaped simulated payment gate
-├── contracts/    AuraBuildEscrow + AuraBuildRegistry, Hardhat, OpenZeppelin, X Layer scripts
+├── contracts/    isolated X Layer testnet experiments, Hardhat and OpenZeppelin
 ├── design-api/   optional FastAPI design service; deterministic geometry works without model keys
 ├── data/         Alberta pilot costs, parcels, suppliers and evidence inputs
 ├── docs/         architecture, claims, research, roadmap, token concept and deployment proof
@@ -288,7 +262,7 @@ The Hostinger VPS target is `api.aurahomes.fun` with FastAPI, Uvicorn, Caddy, Do
 
 ### Contracts
 
-Solidity + OpenZeppelin + Hardhat on X Layer. `AuraBuildEscrow` holds one build's reservation and milestones with explicit roles, refund rules, 2-of-3 releases, and holdback. `AuraBuildRegistry` anchors compact design/budget commitments and lifecycle state. Full documents remain off-chain.
+Solidity + OpenZeppelin + Hardhat on X Layer. The active product direction is provider-supported USDC payment preparation plus compact design/budget commitments. Earlier testnet contract work remains isolated for provenance and testing. Full documents remain off-chain.
 
 ## Verification
 
@@ -297,11 +271,11 @@ The current release checkpoint produced:
 | Suite | Result |
 | --- | ---: |
 | TypeScript / production compilation | Passed |
-| Deterministic app tests | **87 passed** |
-| Playwright UI tests | **24 passed** |
+| Deterministic app tests | **93 passed** |
+| Playwright UI tests | **27 passed** |
 | Hardhat contract tests | **24 passed** |
 | Static routes generated | **19** |
-| Homepage first-load JavaScript | **106 kB** in the production build |
+| Homepage first-load JavaScript | **109 kB** in the production build |
 
 Run the same checks:
 
@@ -399,17 +373,17 @@ Never commit private keys. Testnet deployment instructions and provenance are in
 2. Connect authorized/public land adapters and real evidence case files.
 3. Generate RFQs, reconcile real quotes, and activate providers only after evidence exists.
 4. Deploy the bounded Hostinger API and prepared-action confirmations.
-5. Replace the dev escrow with a factory and distinct per-project roles; verify source and complete external review.
+5. Connect card and X Layer USDC payment providers only where quotes, recipients, fees, region support and failure handling are verified.
 6. Deliver milestone evidence, commissioning, warranty, maintenance and home-book operations.
 7. Only then evaluate HOMES, the trust structure, venue mechanics, property operations and owner project vaults.
 
-The project stays approachable by keeping the chain underneath the journey. A person can design, compare, export, and organize a home without a wallet. When on-chain proof helps—escrow receipts, hash commitments, milestone approvals, or public fund accounting—it appears at the exact point it earns its complexity.
+The project stays approachable by keeping the chain underneath the journey. A person can design, compare, export, and organize a home without a wallet. When on-chain proof helps—hash commitments, provider-supported payments, or public fund accounting—it appears at the exact point it earns its complexity.
 
 <div align="center">
 
 <img src="assets/section-rule.png" alt="" width="88%">
 
-**Design the home. Find the land. Build it for real.**
+**Design your eco home. Find the land. Manage the build.**
 
 <sub>Aura Homes · Alberta pilot · X Layer testnet · HOMES trust and owner launchpad planned</sub>
 

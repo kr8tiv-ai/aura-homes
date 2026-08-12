@@ -73,6 +73,11 @@ import {
 } from "@/lib/builder/surfaces";
 import { currentTheme, onThemeChange, type Theme } from "@/lib/theme";
 import { NORDIC_MATERIALS } from "@/lib/three/nordicMaterials";
+import {
+  degradeBuilderSceneQuality,
+  selectBuilderSceneQuality,
+  type BuilderSceneQuality,
+} from "@/lib/three/sceneQuality";
 import { ThumbnailProbe } from "./ProjectLibrary";
 import { SurfacePickLayer } from "./SurfacePicker";
 import { bearingWords, hourLabel, type SunPosition } from "./sun";
@@ -236,6 +241,29 @@ function useTheme(): Theme {
     return onThemeChange(setTheme);
   }, []);
   return theme;
+}
+
+interface NavigatorWithMemory extends Navigator {
+  deviceMemory?: number;
+}
+
+function runtimeBuilderQuality(): BuilderSceneQuality {
+  if (typeof window === "undefined") {
+    return selectBuilderSceneQuality({
+      width: 1280,
+      devicePixelRatio: 1,
+      reducedMotion: false,
+    });
+  }
+
+  const nav = navigator as NavigatorWithMemory;
+  return selectBuilderSceneQuality({
+    width: window.innerWidth,
+    devicePixelRatio: window.devicePixelRatio || 1,
+    deviceMemoryGb: nav.deviceMemory,
+    hardwareConcurrency: nav.hardwareConcurrency,
+    reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  });
 }
 
 /* ------------------------------------------------------------------ parts */
@@ -496,6 +524,7 @@ function Scene({
   surfaces,
   comfort,
   houseChildren,
+  quality,
 }: {
   home: HomeGeometry;
   sun: SunPosition;
@@ -506,6 +535,7 @@ function Scene({
   surfaces: ViewportSurfaces | null;
   comfort: ViewportComfort | null;
   houseChildren: ReactNode;
+  quality: BuilderSceneQuality;
 }) {
   const w = WORLD[theme];
   const night = theme === "dark";
@@ -536,7 +566,7 @@ function Scene({
       <color attach="background" args={[w.sky]} />
       <fog attach="fog" args={[w.sky, Math.max(120, radius * 4), Math.max(700, radius * 18)]} />
 
-      <Environment resolution={32} frames={1}>
+      <Environment resolution={quality.environmentResolution} frames={1}>
         <mesh scale={90}>
           <sphereGeometry args={[1, 12, 12]} />
           <meshBasicMaterial color={w.sky} side={THREE.BackSide} />
@@ -555,7 +585,7 @@ function Scene({
            south wall at midnight would quietly undo the whole point of the
            slider. What is left is sky and ambient, which is what dusk is. */
         intensity={sun.aboveHorizon ? w.key * Math.min(1, 0.35 + sun.altitudeDeg / 45) : 0}
-        shadow-mapSize={[1536, 1536]}
+        shadow-mapSize={[quality.shadowMapSize, quality.shadowMapSize]}
         shadow-bias={-0.0004}
         shadow-normalBias={0.02}
         shadow-camera-left={-shadowSpan}
@@ -577,7 +607,7 @@ function Scene({
         opacity={night ? 0.58 : 0.38}
         blur={2.6}
         far={Math.max(45, radius * 3)}
-        resolution={512}
+        resolution={quality.contactShadowResolution}
         frames={1}
         color={night ? "#050807" : "#314137"}
       />
@@ -663,6 +693,23 @@ export default function Viewport({
 }) {
   const theme = useTheme();
   const controls = useRef<ElementRef<typeof OrbitControls>>(null);
+  const runtimeDegraded = useRef(false);
+  const [quality, setQuality] = useState<BuilderSceneQuality>(runtimeBuilderQuality);
+
+  useEffect(() => {
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const refreshQuality = () => {
+      const next = runtimeBuilderQuality();
+      setQuality(runtimeDegraded.current ? degradeBuilderSceneQuality(next) : next);
+    };
+    refreshQuality();
+    window.addEventListener("resize", refreshQuality, { passive: true });
+    motion.addEventListener("change", refreshQuality);
+    return () => {
+      window.removeEventListener("resize", refreshQuality);
+      motion.removeEventListener("change", refreshQuality);
+    };
+  }, []);
 
   /* The camera is framed once, from the FIRST model it is given, and the orbit
      TARGET is fixed with it. Re-deriving either on every edit would yank the
@@ -683,13 +730,16 @@ export default function Viewport({
   const frame = () => controls.current?.reset();
 
   return (
-    <div className="builder-viewport relative overflow-hidden rounded-2xl bg-aura-sunken">
+    <div
+      data-builder-quality={quality.tier}
+      className="builder-viewport relative overflow-hidden rounded-2xl bg-aura-sunken"
+    >
       <div className="aspect-[16/10] min-h-[22rem] w-full lg:aspect-[16/9] lg:min-h-[34rem]">
         <Canvas
           shadows
-          dpr={[1, 1.75]}
+          dpr={[1, quality.maxDpr]}
           /* nothing in this scene animates on its own — see rule 3 */
-          frameloop="demand"
+          frameloop={quality.frameloop}
           camera={{
             fov: 38,
             near: 1,
@@ -700,6 +750,17 @@ export default function Viewport({
           onCreated={({ gl }) => {
             gl.toneMapping = THREE.ACESFilmicToneMapping;
             gl.toneMappingExposure = 1.05;
+            const context = gl.getContext();
+            const debug = context.getExtension("WEBGL_debug_renderer_info");
+            const renderer = String(
+              debug
+                ? context.getParameter(debug.UNMASKED_RENDERER_WEBGL)
+                : context.getParameter(context.RENDERER),
+            );
+            if (/swiftshader|llvmpipe|software/i.test(renderer)) {
+              runtimeDegraded.current = true;
+              setQuality((current) => degradeBuilderSceneQuality(current));
+            }
           }}
         >
           <Scene
@@ -712,6 +773,7 @@ export default function Viewport({
             surfaces={surfaces}
             comfort={comfort}
             houseChildren={houseChildren}
+            quality={quality}
           />
           {/* Renders nothing. It registers the capture the project library
               asks for when it saves a thumbnail, and it has to be INSIDE this

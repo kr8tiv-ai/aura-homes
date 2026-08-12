@@ -170,9 +170,9 @@ try {
         <div class="brand">Aura <em>Homes</em></div>
         <div class="route">Design · land · team · build</div>
         <main class="panel">
-          <div class="kicker"><span>All-in-one unique stays</span><i></i></div>
-          <h1>Design the home.<br />Find the land.<br />Build it for real.</h1>
-          <p class="lede">Design or choose a small eco home, match the site, source a team and prepare one private project for professional handoff.</p>
+          <div class="kicker"><span>Eco Homes, Tiny Homes, Unique Stays</span><i></i></div>
+          <h1>Design your eco home.<br />Find the land.<br />Manage the build.</h1>
+          <p class="lede">Plan or choose an eco home, match it with the right property and keep your team, costs and next steps together.</p>
           <div class="rule"></div>
           <div class="action-row">
             <span class="action">Start a project&nbsp;&nbsp;→</span>

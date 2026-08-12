@@ -35,7 +35,7 @@ const serviceAllocationRows = [
 ] as const;
 
 const tradingAllocationRows = [
-  { key: "propertyFund", label: "Property fund", detail: "Escrowed toward the published land and home acquisition target" },
+  { key: "propertyFund", label: "Property fund", detail: "Reserved for the published land and home acquisition target" },
   { key: "marketing", label: "Marketing", detail: "Measured acquisition and community growth" },
   { key: "operations", label: "Operations", detail: "Administration, reporting and project operations" },
   { key: "development", label: "Development", detail: "Product, contracts and integrations" },
@@ -72,7 +72,7 @@ export default function HomesPage() {
 
       <section className="homes-metrics" aria-label="HOMES verified totals">
         <article><span>Total recognized fees</span><strong>{usdc(snapshot.fees.totalUsdc)}</strong><small>No receipt hash</small></article>
-        <article><span>Property fund balance</span><strong>{usdc(snapshot.propertyFund.balanceUsdc)}</strong><small>Escrow not deployed</small></article>
+        <article><span>Property fund balance</span><strong>{usdc(snapshot.propertyFund.balanceUsdc)}</strong><small>Dedicated fund vault not deployed</small></article>
         <article><span>First-property target</span><strong>{usdc(HOMES_FIRST_PROPERTY_TARGET_USDC).replace(".00", "")}</strong><small>Alberta or Costa Rica · not selected</small></article>
         <article><span>Eligible stakers</span><strong>{snapshot.holders.eligibleCount} / 200</strong><small>Top 200 · snapshot block not set</small></article>
       </section>
@@ -165,7 +165,7 @@ export default function HomesPage() {
         </div>
         <dl className="homes-proof">
           <div><dt>HOMES token contract</dt><dd>Not deployed</dd></div>
-          <div><dt>Property-fund escrow</dt><dd>Not deployed</dd></div>
+          <div><dt>Property-fund vault</dt><dd>Not deployed</dd></div>
           <div><dt>Staking + distribution</dt><dd>Coming later · design only</dd></div>
           <div><dt>Property holding trust</dt><dd>Not formed; no legal title held</dd></div>
           <div><dt>OKX listing</dt><dd>Not applied / not approved</dd></div>

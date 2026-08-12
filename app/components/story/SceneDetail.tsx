@@ -2104,12 +2104,22 @@ export default function SceneDetail({
   glassRail,
   dusk,
   qualityScale = 1,
+  includeMeadow = true,
+  lite = false,
 }: {
   frozen: boolean;
   night: number;
   glassRail: THREE.Material;
   dusk: Dusk;
   qualityScale?: number;
+  /** Grass is the final progressive stage so it can never hold the first
+   * interactive frame hostage. The terrain already carries a complete,
+   * authored meadow surface while these instances are prepared. */
+  includeMeadow?: boolean;
+  /** Uses the authored low-poly ridge and a reduced meadow population on the
+   * automatic landing path. Rich snow terrain and amenities remain reserved
+   * for deliberate high-quality rendering. */
+  lite?: boolean;
 }) {
   /* Blade budget by device. A phone draws the whole meadow a few centimetres
      across, so blades past a few thousand are texels it physically cannot
@@ -2177,27 +2187,32 @@ export default function SceneDetail({
      the BASE density back at v9 levels — the doubling stays where it was
      aimed (the yard), paid for by the far field, not by new instances. */
   const mobile = size.width < 820;
-  const heroCount = Math.max(12000, Math.round((mobile ? 42000 : 120000) * qualityScale));
+  const meadowScale = lite ? qualityScale * 0.4 : qualityScale;
+  const heroCount = Math.max(lite ? 6000 : 12000, Math.round((mobile ? 42000 : 120000) * meadowScale));
   /* Founder "ridiculously good and smooth, no spacing" round: the filler
      count climbs (desktop 715k -> 980k, mobile 250k -> 340k) AND the far
      reach tightens (below) so the extra blades all land where the eye judges
      coverage — the first ~22 m the story cameras sit in. Paired with wider
      blades, a relaxed near-field height gate, and a deeper ground shade, the
      near field reads as one closed sward instead of separable spikes. */
-  const fillCount = Math.max(80000, Math.round((mobile ? 340000 : 980000) * qualityScale));
+  const fillCount = Math.max(lite ? 28000 : 80000, Math.round((mobile ? 340000 : 980000) * meadowScale));
 
   return (
     <group>
-      <SnowRange night={night} dusk={dusk} />
+      {lite ? <MountainRange /> : <SnowRange night={night} dusk={dusk} />}
       <Clouds frozen={frozen} night={night} />
-      <GrassField frozen={frozen} budget={heroCount} night={night} dusk={dusk} cfg={G_HERO} />
-      <GrassField frozen={frozen} budget={fillCount} night={night} dusk={dusk} cfg={G_FILL} />
-      <Scrub />
+      {includeMeadow ? (
+        <>
+          <GrassField frozen={frozen} budget={heroCount} night={night} dusk={dusk} cfg={G_HERO} />
+          <GrassField frozen={frozen} budget={fillCount} night={night} dusk={dusk} cfg={G_FILL} />
+          <Scrub />
+        </>
+      ) : null}
       <EntranceSteps glassRail={glassRail} />
-      <Hammock frozen={frozen} />
-      <NetLounge />
-      <Moose position={[-15.5, 20.5]} rotY={2.1} graze frozen={frozen} />
-      <Moose position={[16.5, 24.0]} rotY={-1.15} scale={0.86} frozen={frozen} />
+      {lite ? null : <Hammock frozen={frozen} />}
+      {lite ? null : <NetLounge />}
+      {lite ? null : <Moose position={[-15.5, 20.5]} rotY={2.1} graze frozen={frozen} />}
+      {lite ? null : <Moose position={[16.5, 24.0]} rotY={-1.15} scale={0.86} frozen={frozen} />}
       <OutdoorLighting night={night} />
       <TubSteam frozen={frozen} />
     </group>

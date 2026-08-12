@@ -65,7 +65,9 @@ import { frame, cancelFrame } from "motion/react";
 const SEL = ".aura-panel, [data-fx]";
 const MAX_TRACED = 14;
 const STARS_PER_EDGE = 2;
-const SPEED = 42; // px/s down the edge — constant SPEED, not duration
+/** Founder-tuned Aug 12: 75% slower than the approved 42 px/s pass so the
+ * border light stays atmospheric instead of competing with the copy. */
+export const CARD_TRACER_SPEED_PX_PER_SECOND = 10.5;
 const HEAD_PX = 9; // head quad size; the bright core inside reads ~3px
 const HALO_PX = 16; // soft halo quad under the head, alpha <= 0.07
 const TAIL_PX = 26; // comet tail length
@@ -420,7 +422,8 @@ export default function CardFXLayer() {
           if (edgeLen < MIN_EDGE) return;
 
           const bright = 1 + 0.6 * c.warm;
-          const speed = (SPEED * (1 + 0.25 * c.warm)) / edgeLen;
+          const speed =
+            (CARD_TRACER_SPEED_PX_PER_SECOND * (1 + 0.25 * c.warm)) / edgeLen;
 
           for (let e = 0; e < c.edges.length; e++) {
             const x = c.edges[e].side === "l" ? rx + 0.5 : rx + rw - 0.5;

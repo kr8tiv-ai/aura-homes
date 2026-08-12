@@ -1,15 +1,16 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, startTransition, useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame } from "@react-three/fiber";
 import {
-  degradeSceneQuality,
-  selectSceneQuality,
+  nextOpeningSceneStage,
+  selectOpeningSceneQuality,
+  type OpeningSceneStage,
   type SceneQuality,
 } from "@/lib/three/sceneQuality";
+import { probeWebGL } from "@/lib/three/webgl";
 import Scene from "./Scene";
-import SceneLoader, { SceneReady } from "./Loader";
 
 /* ---------------------------------------------------------------------
    WEBGL PROBE — run on render, not in an effect, and hand the context back.
@@ -34,26 +35,13 @@ import SceneLoader, { SceneReady } from "./Loader";
    where `document` does not exist the probe returns null and the effect
    re-runs it after mount, i.e. exactly the old behaviour.
 --------------------------------------------------------------------- */
-function probeWebGL(): boolean | null {
-  if (typeof document === "undefined") return null;
-  try {
-    const c = document.createElement("canvas");
-    const gl = c.getContext("webgl2") || c.getContext("webgl");
-    if (!gl) return false;
-    gl.getExtension("WEBGL_lose_context")?.loseContext();
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 interface NavigatorWithMemory extends Navigator {
   deviceMemory?: number;
 }
 
 function runtimeQuality(reduced: boolean): SceneQuality {
   const nav = navigator as NavigatorWithMemory;
-  return selectSceneQuality({
+  return selectOpeningSceneQuality({
     width: window.innerWidth,
     devicePixelRatio: window.devicePixelRatio || 1,
     deviceMemoryGb: nav.deviceMemory,
@@ -62,40 +50,24 @@ function runtimeQuality(reduced: boolean): SceneQuality {
   });
 }
 
-/**
- * Capability hints choose the opening composition; delivered frames get the
- * final word. A full scene that cannot clear 42 fps after a short warm-up is
- * reduced once to the balanced budget. There is no oscillation and no
- * quality-up event halfway through somebody's scroll.
- */
-function SceneQualityGovernor({
-  quality,
-  onDegrade,
+/** Signal each progressive phase only after R3F has completed a real frame.
+ * The core signal releases the DOM loader; every later signal authorizes one
+ * more idle-scheduled layer. */
+function SceneFrameSignal({
+  stage,
+  onPainted,
 }: {
-  quality: SceneQuality;
-  onDegrade: () => void;
+  stage: OpeningSceneStage;
+  onPainted: (stage: OpeningSceneStage) => void;
 }) {
-  const sample = useRef({ warmup: 0, frames: 0, elapsed: 0, decided: false });
+  const sent = useRef(false);
+  const callback = useRef(onPainted);
+  callback.current = onPainted;
 
-  useEffect(() => {
-    sample.current = { warmup: 0, frames: 0, elapsed: 0, decided: quality.tier !== "full" };
-  }, [quality.tier]);
-
-  useFrame((_, delta) => {
-    const state = sample.current;
-    if (state.decided || quality.tier !== "full") return;
-    // Background tabs are intentionally throttled by the browser; that says
-    // nothing about the device's ability to render the scene while visible.
-    if (document.visibilityState !== "visible") return;
-    if (state.warmup < 8) {
-      state.warmup += 1;
-      return;
-    }
-    state.frames += 1;
-    state.elapsed += Math.min(delta, 0.25);
-    if (state.elapsed < 1.6) return;
-    state.decided = true;
-    if (state.frames / state.elapsed < 42) onDegrade();
+  useFrame(() => {
+    if (sent.current) return;
+    sent.current = true;
+    window.requestAnimationFrame(() => callback.current(stage));
   });
   return null;
 }
@@ -107,66 +79,91 @@ export default function StoryCanvas({
   reduced,
   night = false,
   onReady,
+  onUnavailable,
 }: {
   progressRef: React.MutableRefObject<number>;
   reduced: boolean;
   night?: boolean;
   onReady?: () => void;
+  onUnavailable?: () => void;
 }) {
   const [webgl, setWebgl] = useState<boolean | null>(probeWebGL);
-  /* Latched, never cleared: <Scene> is not expected to suspend a second
-     time (every model is preloaded and Environment is procedural), and if
-     it ever did, re-showing the loader mid-story would be worse than the
-     brief hitch it was reporting.
-
-     `ready` lives HERE because <SceneReady> (inside the canvas) and
-     <SceneLoader> (outside it) are siblings, so this is their nearest
-     common owner. Name the cost: flipping it re-renders <Canvas> once, so
-     Scene's render pass runs a second time. Nothing is rebuilt — every
-     geometry/material in Scene is behind a useMemo with stable deps — and
-     it happens AFTER the scene is committed and on screen, so it delays
-     nothing the visitor is waiting for. A module-level store would avoid
-     even that, at the price of state that outlives the component and has
-     to be hand-reset on remount; not worth the trap.
-
-     The progress SUBSCRIPTION deliberately does not live here. useProgress
-     fires on every loader event; reading it in StoryCanvas would re-render
-     the canvas dozens of times during load. It is read inside SceneLoader,
-     which is the only thing that needs it. */
-  const [ready, setReady] = useState(false);
-  const markReady = useCallback(() => {
-    setReady(true);
-    onReady?.();
-  }, [onReady]);
   const [quality, setQuality] = useState<SceneQuality>(() => runtimeQuality(reduced));
-  const runtimeDegraded = useRef(false);
-  const degrade = useCallback(() => {
-    runtimeDegraded.current = true;
-    setQuality((current) => degradeSceneQuality(current));
-  }, []);
+  const [stage, setStage] = useState<OpeningSceneStage>("core");
+  const [paintedStage, setPaintedStage] = useState<OpeningSceneStage | null>(null);
+  const openingReadySent = useRef(false);
+
+  const handleStagePainted = useCallback((painted: OpeningSceneStage) => {
+    setPaintedStage(painted);
+    if (painted === "core" && !openingReadySent.current) {
+      openingReadySent.current = true;
+      onReady?.();
+    }
+  }, [onReady]);
 
   useEffect(() => {
     if (webgl === null) setWebgl(probeWebGL() ?? false);
   }, [webgl]);
 
   useEffect(() => {
+    if (webgl === false) onUnavailable?.();
+  }, [onUnavailable, webgl]);
+
+  useEffect(() => {
     const refreshQuality = () => {
-      const next = runtimeQuality(reduced);
-      setQuality(runtimeDegraded.current ? degradeSceneQuality(next) : next);
+      setQuality(runtimeQuality(reduced));
     };
     refreshQuality();
     window.addEventListener("resize", refreshQuality, { passive: true });
     return () => window.removeEventListener("resize", refreshQuality);
   }, [reduced]);
 
+  /* Progress only after the current stage has produced a real frame. Each
+     addition is scheduled through an idle boundary, so model cloning,
+     atmosphere shaders and meadow instances cannot collapse back into the
+     single 19-second task this replaces. */
+  useEffect(() => {
+    if (paintedStage !== stage) return;
+    const next = nextOpeningSceneStage(stage);
+    if (!next) return;
+
+    const delay = stage === "core" ? 450 : stage === "site" ? 550 : stage === "forest" ? 700 : 900;
+    let idleHandle: number | null = null;
+    const idleWindow = window as unknown as {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    const timer = window.setTimeout(() => {
+      const advance = () => startTransition(() => {
+        setStage((current) => current === stage ? next : current);
+      });
+      if (idleWindow.requestIdleCallback) {
+        idleHandle = idleWindow.requestIdleCallback(advance, { timeout: 1_200 });
+      } else {
+        window.requestAnimationFrame(advance);
+      }
+    }, delay);
+
+    return () => {
+      window.clearTimeout(timer);
+      if (idleHandle !== null && idleWindow.cancelIdleCallback) {
+        idleWindow.cancelIdleCallback(idleHandle);
+      }
+    };
+  }, [paintedStage, stage]);
+
   if (webgl === null) return null;
   if (webgl === false) return null;
 
   return (
     <>
-      <div data-scene-quality={quality.tier} className="story-scene-root">
+      <div
+        data-scene-quality={quality.tier}
+        data-scene-phase={stage}
+        className="story-scene-root"
+      >
         <Canvas
-          shadows
+          shadows={quality.softShadows}
           dpr={[1, quality.maxDpr]}
           frameloop={quality.frameloop}
         /* far was 140 — the mountain range sits well beyond that and was being
@@ -185,33 +182,25 @@ export default function StoryCanvas({
              fixed was never actually a problem here. */
           gl.toneMapping = THREE.ACESFilmicToneMapping;
           gl.toneMappingExposure = 1.12;
-          const context = gl.getContext();
-          const debug = context.getExtension("WEBGL_debug_renderer_info");
-          const renderer = String(
-            debug ? context.getParameter(debug.UNMASKED_RENDERER_WEBGL) : context.getParameter(context.RENDERER),
-          );
-          if (/swiftshader|llvmpipe|software/i.test(renderer)) degrade();
         }}
         style={{ position: "fixed", inset: 0, zIndex: 0 }}
         aria-hidden
       >
-        {/* The fallback stays null ON PURPOSE. A Suspense fallback inside
-            <Canvas> is reconciled by R3F, so it can only be 3D — the loader
-            has to be DOM, and it is the sibling below. <SceneReady> is the
-            other half: React cannot commit it while this boundary is
-            suspended, so its effect firing is the exact instant <Scene> is
-            really on screen. See Loader.tsx for the full argument. */}
+        {/* The fallback stays null on purpose. A Suspense fallback inside
+            Canvas can only be 3D; the status card lives in Story.tsx so it
+            paints before this bundle and survives main-thread scene work. */}
         <Suspense fallback={null}>
-          <SceneQualityGovernor quality={quality} onDegrade={degrade} />
-          <Scene progressRef={progressRef} reduced={reduced} night={night} quality={quality} />
-          <SceneReady onReady={markReady} />
+          <Scene
+            progressRef={progressRef}
+            reduced={reduced}
+            night={night}
+            quality={quality}
+            stage={stage}
+          />
+          <SceneFrameSignal key={stage} stage={stage} onPainted={handleStagePainted} />
         </Suspense>
         </Canvas>
       </div>
-      {/* Outside the canvas: a plain fixed div, no R3F context, no <Html>
-          portal, no second render loop. Honours prefers-reduced-motion and
-          both themes in CSS (globals.css, "THE SCENE LOADER"). */}
-      <SceneLoader ready={ready} />
     </>
   );
 }

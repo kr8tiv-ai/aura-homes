@@ -106,7 +106,7 @@ interface FormState {
   ownerNotes: string;
 }
 
-/* The Alberta pilot, which is also the reference build the budget and escrow
+/* The Alberta pilot, which is also the reference build the budget and payment
    pages cost: 800 sq ft, zone 7A, SIP, off grid. */
 const INITIAL: FormState = {
   bedrooms: "2",

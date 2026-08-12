@@ -8,8 +8,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { STORY_COPY, type LedgerRow, type StoryAudience } from "./copy";
 import { withBase } from "../../lib/basePath";
 import { applyTheme, currentTheme, onThemeChange } from "../../lib/theme";
+import { probeWebGL } from "@/lib/three/webgl";
 import { BUILDX_URL, EnterGate, StoryHUD, useForestAudio, WithXLayerLinks, REPO_URL, XLAYER_URL } from "./StoryChrome";
 import StillScene from "./StillScene";
+import SceneHandoff from "./SceneHandoff";
 import SocialShareLinks from "../SocialShareLinks";
 
 const StoryCanvas = dynamic(() => import("./StoryCanvas"), { ssr: false });
@@ -134,24 +136,6 @@ function BudgetBand() {
   );
 }
 
-const MILESTONES = ["Deposit", "Foundation", "Shell", "Systems", "Keys"];
-
-function EscrowLine() {
-  return (
-    <div className="story-mline" data-rv style={{ transitionDelay: "300ms" }}>
-      <div className="story-mline-track">
-        {MILESTONES.map((m, i) => (
-          <span key={m} className="story-mline-node" style={{ left: `${(i / (MILESTONES.length - 1)) * 100}%` }}>
-            <i />
-            <em>{m}</em>
-          </span>
-        ))}
-      </div>
-      <p className="story-mline-note">10% holdback, released at completion.</p>
-    </div>
-  );
-}
-
 function CryptoEcosystemLinks({ onNavigate }: { onNavigate: (href: string) => (event: React.MouseEvent) => void }) {
   return (
     <div className="story-ecosystem-links" aria-label="OKX and X Layer resources">
@@ -206,9 +190,27 @@ export default function Story() {
      WebGL does no automatic work on mobile, reduced-motion, low-power, or
      short visits. Entering the story is the explicit request to begin. */
   const [canvasBoot, setCanvasBoot] = useState(false);
+  const [canvasMount, setCanvasMount] = useState(false);
   const [canvasReady, setCanvasReady] = useState(false);
+  const [canvasUnavailable, setCanvasUnavailable] = useState(false);
   const handleCanvasReady = useCallback(() => setCanvasReady(true), []);
+  const handleCanvasUnavailable = useCallback(() => setCanvasUnavailable(true), []);
   const bootCanvas = useCallback(() => setCanvasBoot(true), []);
+
+  /* Paint the DOM handoff before mounting Three.js. Two animation frames
+     guarantee the centred status card reaches the compositor before scene
+     construction can occupy the main thread. */
+  useEffect(() => {
+    if (!canvasBoot || reduced !== false || canvasMount) return;
+    let second = 0;
+    const first = window.requestAnimationFrame(() => {
+      second = window.requestAnimationFrame(() => setCanvasMount(true));
+    });
+    return () => {
+      window.cancelAnimationFrame(first);
+      if (second) window.cancelAnimationFrame(second);
+    };
+  }, [canvasBoot, canvasMount, reduced]);
 
   /* DOWNLOAD EARLY, MOUNT LATE — the two used to be the same timer, and that
      is most of the "couple of seconds" before the 3D appears.
@@ -250,7 +252,9 @@ export default function Story() {
     (selectedAudience: StoryAudience, withSound: boolean) => {
       setAudience(selectedAudience);
       setEntered(true);
-      setCanvasBoot(true);
+      const webgl = probeWebGL();
+      if (webgl === false) setCanvasUnavailable(true);
+      else setCanvasBoot(true);
       document.documentElement.classList.remove("story-gated");
       if (withSound) audio.start();
     },
@@ -402,12 +406,16 @@ export default function Story() {
     <div className={`story-scope${night ? " night" : ""}`} data-story-audience={audience}>
       <div className="story-sky" aria-hidden />
       <StillScene hidden={canvasReady} />
-      {reduced === false && canvasBoot && (
+      <SceneHandoff
+        visible={entered && reduced === false && !canvasReady && !canvasUnavailable}
+      />
+      {reduced === false && canvasMount && (
         <StoryCanvas
           progressRef={progressRef}
           reduced={reduced}
           night={night}
           onReady={handleCanvasReady}
+          onUnavailable={handleCanvasUnavailable}
         />
       )}
       <div className="story-grain" aria-hidden />
@@ -464,7 +472,6 @@ export default function Story() {
             </p>
             {b.ledger && <Ledger rows={b.ledger} />}
             {b.id === "budget" && <BudgetBand />}
-            {b.id === "escrow" && <EscrowLine />}
             {b.cta && (
               <Link
                 href={b.cta.href}
@@ -516,7 +523,7 @@ export default function Story() {
               className="story-perspective-link"
               onClick={() => setAudience(audience === "project" ? "crypto" : "project")}
             >
-              {audience === "project" ? "Explore the on-chain story" : "Switch to the home-building story"}
+              {audience === "project" ? "Explore the blockchain ecosystem" : "Return to the eco-property journey"}
               <i aria-hidden>&rarr;</i>
             </button>
             <div className="story-cue" data-rv style={{ transitionDelay: "640ms" }}>
@@ -574,7 +581,7 @@ export default function Story() {
                   className="story-perspective-link story-perspective-link-end"
                   onClick={() => setAudience(audience === "project" ? "crypto" : "project")}
                 >
-                  {audience === "project" ? "Explore HOMES + X Layer" : "Return to the building journey"}
+                  {audience === "project" ? "Explore the blockchain ecosystem" : "Return to the eco-property journey"}
                   <i aria-hidden>&rarr;</i>
                 </button>
               </div>

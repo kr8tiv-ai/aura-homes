@@ -1,5 +1,5 @@
 const SHARE_URL = "https://aurahomes.fun/";
-const SHARE_TEXT = "Design the home. Find the land. Build it for real with Aura Homes.";
+const SHARE_TEXT = "Design your eco home. Find the land. Manage the build with Aura Homes.";
 
 const encodedUrl = encodeURIComponent(SHARE_URL);
 const encodedText = encodeURIComponent(SHARE_TEXT);

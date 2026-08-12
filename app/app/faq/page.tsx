@@ -13,7 +13,7 @@ const REPO = "https://github.com/kr8tiv-ai/aura-homes";
 const faqs = [
   {
     q: "Do I need to own crypto?",
-    a: "Eventually, no — the designed onboarding path is card-first: pay by Visa or Mastercard, an on-ramp partner converts to USDC in-flow, and you see prices in CAD throughout. That integration is pending, not live; the current build assumes USDC you already hold. Even after cards land, bringing your own USDC stays faster and cheaper.",
+    a: "No. Aura is designed to support ordinary card payments through Stripe as providers are connected, alongside X Layer USDC where a seller or contractor accepts it. Those payment integrations are planned, not live. Every payment screen will show the available methods, price, fees and recipient before you confirm anything.",
   },
   {
     q: "Do I need an architect?",
@@ -39,13 +39,13 @@ const faqs = [
   {
     id: "x-layer",
     q: "What is X Layer?",
-    a: "X Layer is the EVM-compatible Layer 2 in the OKX ecosystem. Aura uses its testnet as a low-cost public proof surface for reservation, refund, milestone, holdback, and design-hash contracts. The normal project tools do not require X Layer or a wallet. Current Aura contracts use chain 1952 and a faucet-compatible test token with no monetary value; mainnet settlement is not live.",
+    a: "X Layer is the EVM-compatible Layer 2 in the OKX ecosystem. Aura plans to use it for provider-supported USDC payments, public HOMES records and verifiable project artifacts. The normal design and project tools do not require X Layer or a wallet. Current contract work is testnet-only and has no monetary value; mainnet settlement is not live.",
     link: { href: "https://web3.okx.com/xlayer", label: "Read the official X Layer overview" },
   },
   {
     id: "okx-buildx",
     q: "What are OKX and the Build X AI Season?",
-    a: "OKX is the ecosystem behind X Layer, its wallet and developer program. Aura Homes is an independent entry in the August 7–21, 2026 Build X AI Season, which asks teams to combine AI with on-chain value on X Layer. Aura's entry pairs the project copilot and design workflow with deployed testnet escrow and registry proof. Participation is not an OKX endorsement, and OKX account availability varies by region.",
+    a: "OKX is the ecosystem behind X Layer, its wallet and developer program. Aura Homes is an independent entry in the August 7–21, 2026 Build X AI Season, combining the eco-home project workspace with optional X Layer payments, verifiable project artifacts and the planned HOMES property ledger. Participation is not an OKX endorsement, and OKX account availability varies by region.",
     link: { href: "https://web3.okx.com/xlayer/build-x-series", label: "Open the official Build X page" },
   },
   {
@@ -89,7 +89,7 @@ const faqs = [
   },
   {
     q: "How does Aura make money?",
-    a: "Today it does not — nothing on this site charges anyone, and there is no platform fee in the current escrow contract. The planned model uses small, disclosed margins on completed services, AI model routing, partner APIs, and eligible venue fees. The HOMES ledger separates gross customer spend, third-party cost, Aura's net fee, the applicable rule version, and every destination so a margin cannot be hidden inside a home budget.",
+    a: "Today it does not — nothing on this site charges anyone. The planned model uses small, disclosed margins on completed services, partner APIs, marketplaces and AI model routing. OpenRouter-powered services may include a clearly shown 15 percent service margin. The HOMES ledger separates gross customer spend, third-party cost, Aura's net fee, the applicable rule version, and every destination so a margin cannot be hidden inside a home budget.",
   },
   {
     q: "Where does it start?",

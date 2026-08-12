@@ -91,15 +91,8 @@ export default function BuyPage() {
           >
             Alberta cost model
           </Link>
-          , funded through the{" "}
-          <Link
-            href="/escrow"
-            data-cursor="Open"
-            className="text-aura-emerald underline underline-offset-4"
-          >
-            milestone escrow
-          </Link>
-          , which is the only place on this site where Aura&rsquo;s own contract holds anything.
+          . Card payments through Stripe and X Layer USDC will appear together wherever a verified
+          provider supports them; neither payment path is live on this directory yet.
         </p>
       </Reveal>
     </div>

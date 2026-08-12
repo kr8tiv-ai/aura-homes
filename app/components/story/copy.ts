@@ -27,9 +27,9 @@ export type StoryAudience = "project" | "crypto";
 
 export const HERO = {
   n: "00",
-  label: "All-in-one unique stays",
-  heading: "Design the home. Find the land. Build it for real.",
-  sub: "Design or choose a small eco home, match suitable land, source a team, compare real costs, and prepare the project for professional review. Aura stays useful without an account, wallet, or crypto; X Layer proof and USDC are optional rails.",
+  label: "Eco Homes, Tiny Homes, Unique Stays",
+  heading: "Design your eco home. Find the land. Manage the build.",
+  sub: "Plan or choose an eco home, match it with the right property and keep your team, costs and next steps together. No wallet is required; card payments and X Layer USDC are optional provider-supported paths.",
   cue: "Scroll",
   ledger: [
     { k: "In", v: "Household, site, budget" },
@@ -74,13 +74,17 @@ export const BEATS: Beat[] = [
     accent: "teal",
   },
   {
-    id: "escrow",
+    id: "payments",
     n: "04",
-    label: "Escrow",
-    heading: "Prepare proof before payment.",
-    body: "Aura prepares an X Layer testnet escrow action with the design and budget hashes attached. The user validates the network, reviews every assumption, and confirms every wallet action.",
+    label: "Payments",
+    heading: "Pay in the way that works for you.",
+    body: "Pay by card as providers add Stripe, or use X Layer USDC where a verified provider supports it. Aura will show the price, service margin, recipient, network and confirmation step before money moves.",
     side: "left",
     accent: "violet",
+    ledger: [
+      { k: "Card", v: "Stripe path planned" },
+      { k: "Crypto", v: "X Layer USDC where supported" },
+    ],
   },
   {
     id: "homes",
@@ -131,7 +135,7 @@ export const END = {
     { href: "/land", label: "Land" },
     { href: "/design", label: "Design" },
     { href: "/budget", label: "Budget" },
-    { href: "/escrow", label: "Escrow" },
+    { href: "/buy", label: "Payments" },
     { href: "/homes", label: "HOMES" },
     { href: "/faq", label: "FAQ" },
   ],
@@ -144,30 +148,30 @@ export const BUILD_CTA = { href: "/start", label: "Start your project" } as cons
 
 export const CRYPTO_HERO = {
   n: "00",
-  label: "HOMES + X Layer",
-  heading: "Build the stay. Prove the system around it.",
-  sub: "Explore Aura's on-chain path: working X Layer testnet escrow today, a planned HOMES property trust and user-owned stay network next, and a later launchpad for owner-led eco homes. Every live claim starts with an address, receipt, or verifiable project artifact.",
-  cue: "Follow the proof",
+  label: "Blockchain ecosystem",
+  heading: "Buy homes with crypto. Build what comes next.",
+  sub: "Explore provider-supported X Layer payments, the planned HOMES token and property trust, and a future RWA launchpad for eco homes, tiny homes and unique stays.",
+  cue: "Explore the ecosystem",
   ledger: [
-    { k: "Live proof", v: "X Layer testnet contracts" },
-    { k: "Planned", v: "HOMES trust + owner launchpad" },
+    { k: "Payments", v: "Card + X Layer USDC paths" },
+    { k: "Planned", v: "HOMES trust + RWA launchpad" },
   ] as LedgerRow[],
 } as const;
 
 export const CRYPTO_BEATS: Beat[] = [
   {
-    id: "escrow",
+    id: "payments",
     n: "01",
-    label: "Testnet proof",
-    heading: "Start with what the chain can prove.",
-    body: "Aura's X Layer testnet contracts cover a reservation deposit, a 14-day refund window, milestone funding, 2-of-3 releases, a 10 percent holdback, and design and budget hash verification. The current token is faucet-compatible test USDC with no monetary value.",
+    label: "Payments",
+    heading: "Buy a home with the payment method that works for you.",
+    body: "Use card payments as providers add Stripe, or pay in X Layer USDC when a verified seller or contractor supports it. Aura keeps pricing familiar and shows every fee, destination and confirmation before payment.",
     side: "right",
     accent: "violet",
     ledger: [
-      { k: "Network", v: "X Layer testnet · chain 1952" },
-      { k: "Registry", v: "Zero homes minted" },
+      { k: "Card", v: "Stripe integration planned" },
+      { k: "Crypto", v: "X Layer USDC · provider supported" },
     ],
-    cta: { href: "/escrow", label: "Inspect the testnet flow" },
+    cta: { href: "/buy", label: "Explore homes" },
   },
   {
     id: "homes",
@@ -253,7 +257,6 @@ export const CRYPTO_END = {
   },
   links: [
     { href: "/homes", label: "HOMES ledger" },
-    { href: "/escrow", label: "X Layer proof" },
     { href: "/faq#x-layer", label: "OKX + X Layer FAQ" },
     { href: "/build", label: "Design a home" },
     { href: "/buy", label: "Choose a home" },

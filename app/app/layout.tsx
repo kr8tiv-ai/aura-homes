@@ -7,9 +7,9 @@ import { Providers } from "./providers";
 import SiteShell from "../components/SiteShell";
 import { NO_FLASH_SCRIPT } from "../lib/theme";
 
-const TITLE = "Aura Homes — Design the home. Find the land. Build it for real.";
+const TITLE = "Aura Homes — Design your eco home. Find the land. Manage the build.";
 const DESCRIPTION =
-  "Design or choose a tiny eco home, match land, source a team, compare real costs and prepare one private project for professional handoff.";
+  "Plan or choose an eco home, match it with the right property and keep your team, costs and next steps together.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://aurahomes.fun"),

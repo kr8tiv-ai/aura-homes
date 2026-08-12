@@ -146,7 +146,7 @@ export default function RoutePlan({ provider }: { provider: Provider }) {
                 any milestone. {provider.howToPay}
               </p>
               <p className="mt-4 text-xs leading-relaxed text-aura-text/70">
-                Aura is not a party, holds no funds, supplies no international-purchase escrow,
+                Aura is not a party, holds no purchase funds,
                 and has no relationship with {provider.name}. Tax, customs, code acceptance,
                 warranty, installation and dispute recourse remain buyer due diligence.
               </p>
