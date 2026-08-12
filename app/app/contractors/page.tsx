@@ -20,9 +20,9 @@ export default function ContractorsPage() {
       </Reveal>
       <Reveal y={12} delay={0.08} className="mt-4">
         <p className="max-w-2xl text-[0.95rem] leading-[1.65] text-aura-text/75">
-          Search by region and trade, then reopen every source behind the score. Aura will later
-          connect authorized directory data; today&rsquo;s fictional profiles demonstrate the scoring
-          contract without presenting scraped reviews or invented businesses as vetted firms.
+          Add a company from a quote, registry search or referral, record the exact evidence you
+          checked, and reopen every source behind the score. Fictional profiles are available only
+          in explicit demo mode and can never enter a project shortlist.
         </p>
       </Reveal>
 

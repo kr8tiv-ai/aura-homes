@@ -43,9 +43,9 @@ export interface AuraProject {
   };
   design: { document: BuilderDocument; documentHash: `0x${string}` };
   discovery: {
-    land: { shortlist: string[] };
-    contractors: { shortlist: string[] };
-    manufacturers: { shortlist: string[] };
+    land: { shortlist: string[]; records?: unknown[] };
+    contractors: { shortlist: string[]; records?: unknown[] };
+    manufacturers: { shortlist: string[]; records?: unknown[] };
   };
   delivery: {
     rfqs: unknown[];
@@ -104,9 +104,9 @@ export function createAuraProject(_input: {
     },
     design: { document, documentHash: hashBuilderDocument(document) },
     discovery: {
-      land: { shortlist: [] },
-      contractors: { shortlist: [] },
-      manufacturers: { shortlist: [] },
+      land: { shortlist: [], records: [] },
+      contractors: { shortlist: [], records: [] },
+      manufacturers: { shortlist: [], records: [] },
     },
     delivery: { rfqs: [], quotes: [], orderSnapshotIds: [] },
     milestones: [],
@@ -292,7 +292,10 @@ function validateRequirements(value: unknown): value is AuraProject["requirement
 function validateDiscovery(value: unknown): value is AuraProject["discovery"] {
   if (!isObject(value)) return false;
   return [value.land, value.contractors, value.manufacturers].every(
-    (group) => isObject(group) && Array.isArray(group.shortlist) && group.shortlist.every((id) => typeof id === "string"),
+    (group) => isObject(group) &&
+      Array.isArray(group.shortlist) &&
+      group.shortlist.every((id) => typeof id === "string") &&
+      (group.records === undefined || Array.isArray(group.records)),
   );
 }
 

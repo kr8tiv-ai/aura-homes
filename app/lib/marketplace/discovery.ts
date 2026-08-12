@@ -27,6 +27,7 @@ export interface LandDiscoveryListing {
   region: string;
   priceCad: number | null;
   acreage: number | null;
+  coordinates: { longitude: number; latitude: number } | null;
   listingUrl: string | null;
   /** True means this record demonstrates the product and is not offered for sale. */
   demonstration: boolean;
@@ -279,6 +280,12 @@ export const DEMO_LAND_LISTINGS: LandDiscoveryListing[] = sampleParcels.map((par
     [105, 180],
   ];
   const [width, depth] = envelopes[index] ?? [null, null];
+  const coordinates = [
+    { longitude: -114.35, latitude: 53.73 },
+    { longitude: -113.93, latitude: 53.82 },
+    { longitude: -113.66, latitude: 52.27 },
+    { longitude: -114.08, latitude: 51.29 },
+  ][index] ?? null;
   return {
     id: parcel.id,
     providerId: "aura-demo-land",
@@ -287,6 +294,7 @@ export const DEMO_LAND_LISTINGS: LandDiscoveryListing[] = sampleParcels.map((par
     region: `${parcel.county} · ${parcel.district}`,
     priceCad: parcel.priceCad,
     acreage: parcel.acreage ?? null,
+    coordinates,
     listingUrl: null,
     demonstration: true,
     facts: {

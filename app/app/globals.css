@@ -636,6 +636,116 @@ main p {
   .quote-file span { white-space: normal; overflow-wrap: anywhere; }
 }
 
+/* Project land map. MapLibre is route-lazy; the list below it remains the
+   complete interaction and accessibility fallback. */
+.land-map-shell {
+  position: relative;
+  min-height: clamp(21rem, 48vw, 38rem);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--aura-text) 16%, transparent);
+  background:
+    radial-gradient(circle at 26% 30%, rgb(var(--tone-emerald-bright) / 0.11), transparent 32%),
+    rgb(var(--tone-floating));
+}
+.land-map-canvas,
+.land-map-canvas .maplibregl-map,
+.land-map-canvas .maplibregl-canvas-container,
+.land-map-canvas canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.land-map-canvas .maplibregl-canvas { outline: none; }
+.land-map-canvas .maplibregl-marker { position: absolute; top: 0; left: 0; will-change: transform; }
+.land-map-canvas .maplibregl-control-container { position: absolute; inset: 0; pointer-events: none; }
+.land-map-canvas .maplibregl-ctrl-bottom-right { position: absolute; right: 0; bottom: 0; pointer-events: auto; }
+.land-map-canvas .maplibregl-ctrl-attrib { padding: 0.25rem 0.4rem; background: rgb(var(--tone-base) / 0.86); font-size: 0.55rem; }
+.land-map-canvas .maplibregl-ctrl-attrib a { color: var(--aura-text); text-decoration: underline; }
+.land-map-marker {
+  display: grid;
+  width: 2.65rem;
+  height: 2.65rem;
+  place-items: center;
+  transform: rotate(45deg);
+  border: 2px solid rgb(var(--tone-base));
+  border-radius: 50% 50% 50% 0;
+  box-shadow: 0 8px 18px rgba(23, 26, 24, 0.24);
+  color: white;
+  cursor: pointer;
+}
+.land-map-marker span { transform: rotate(-45deg); font-family: var(--st-mono-font); font-size: 0.61rem; font-weight: 700; }
+.land-map-marker.is-potential-match { background: var(--aura-emerald); }
+.land-map-marker.is-manual-review { background: #9a763b; }
+.land-map-marker.is-does-not-match { background: var(--aura-violet); }
+.land-map-marker:focus-visible { outline: 3px solid var(--aura-ink); outline-offset: 3px; }
+.land-map-state {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 0.35rem;
+  padding: 2rem;
+  text-align: center;
+  background: rgb(var(--tone-floating) / 0.92);
+}
+.land-map-state strong { font-family: var(--st-display-font); font-size: 1.25rem; font-weight: 520; }
+.land-map-state span { max-width: 29rem; font-size: 0.76rem; line-height: 1.5; color: color-mix(in srgb, var(--aura-text) 65%, transparent); }
+.land-map-legend { position: absolute; z-index: 3; top: 0.75rem; left: 0.75rem; display: flex; gap: 0.3rem; padding: 0.35rem; background: rgb(var(--tone-base) / 0.88); box-shadow: var(--shadow-1); }
+.land-map-legend span { padding: 0.3rem 0.42rem; border-left: 3px solid; font-family: var(--st-mono-font); font-size: 0.52rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.land-map-legend .is-potential-match { border-color: var(--aura-emerald); }
+.land-map-legend .is-manual-review { border-color: #9a763b; }
+.land-map-legend .is-does-not-match { border-color: var(--aura-violet); }
+@media (max-width: 640px) {
+  .land-map-shell { min-height: 24rem; }
+  .land-map-legend { top: auto; bottom: 0.75rem; right: 0.75rem; flex-wrap: wrap; }
+}
+
+/* Contractor evidence case files + comparable RFQs */
+.contractor-case-form { margin-top: 1rem; padding: clamp(1rem, 3vw, 1.7rem); }
+.contractor-case-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.7rem; margin-top: 1rem; }
+.contractor-case-form label,
+.rfq-form label { font-family: var(--st-mono-font); font-size: 0.58rem; letter-spacing: 0.09em; text-transform: uppercase; color: color-mix(in srgb, var(--aura-text) 58%, transparent); }
+.contractor-case-form input:not([type="checkbox"]),
+.contractor-case-form select,
+.rfq-form input,
+.rfq-form select { display: block; width: 100%; min-height: 2.55rem; margin-top: 0.3rem; padding: 0.5rem 0.6rem; border: 1px solid color-mix(in srgb, var(--aura-text) 16%, transparent); border-radius: 0; background: rgb(var(--tone-base) / 0.5); color: var(--aura-text); font-family: var(--st-sans-font); font-size: 0.76rem; letter-spacing: 0; text-transform: none; }
+.contractor-case-form fieldset { margin-top: 1rem; padding: 1rem; border: 1px solid color-mix(in srgb, var(--aura-text) 16%, transparent); }
+.contractor-case-form legend { padding-inline: 0.35rem; font-size: 0.75rem; font-weight: 650; }
+.contractor-case-form fieldset > p { margin-bottom: 0.8rem; font-size: 0.68rem; color: color-mix(in srgb, var(--aura-text) 62%, transparent); }
+.contractor-evidence-checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.7rem 1rem; }
+.contractor-evidence-checks label:has(input[type="checkbox"]) { display: flex; align-items: flex-start; gap: 0.5rem; line-height: 1.45; }
+.contractor-evidence-checks input[type="checkbox"] { flex: 0 0 auto; width: 1rem; height: 1rem; margin-top: 0.05rem; accent-color: var(--aura-emerald); }
+.contractor-case-form > button { width: 100%; margin-top: 0.8rem; padding: 0.75rem; background: var(--aura-ink); color: var(--aura-paper); font-size: 0.7rem; font-weight: 650; text-transform: uppercase; letter-spacing: 0.08em; }
+.rfq-workbench { margin-top: clamp(3rem, 7vw, 6rem); }
+.rfq-layout { display: grid; grid-template-columns: minmax(17rem, 0.62fr) minmax(0, 1.38fr); gap: 1rem; margin-top: 1rem; align-items: start; }
+.rfq-form,
+.rfq-results { min-width: 0; padding: clamp(1rem, 3vw, 1.5rem); border: 1px solid color-mix(in srgb, var(--aura-text) 16%, transparent); }
+.rfq-form > label { display: block; margin-top: 0.75rem; }
+.rfq-basis { margin-top: 1rem; padding: 0.9rem; border: 1px solid color-mix(in srgb, var(--aura-text) 16%, transparent); }
+.rfq-basis span { display: block; font-family: var(--st-mono-font); font-size: 0.53rem; letter-spacing: 0.1em; text-transform: uppercase; color: color-mix(in srgb, var(--aura-text) 52%, transparent); }
+.rfq-basis strong { display: block; margin-top: 0.25rem; font-size: 0.78rem; }
+.rfq-basis p { margin-top: 0.3rem; font-size: 0.65rem; line-height: 1.5; color: color-mix(in srgb, var(--aura-text) 60%, transparent); overflow-wrap: anywhere; }
+.rfq-form > button { width: 100%; margin-top: 0.8rem; padding: 0.75rem; background: var(--aura-ink); color: var(--aura-paper); font-size: 0.7rem; font-weight: 650; }
+.rfq-form > button:disabled { opacity: 0.4; }
+.rfq-card { margin-top: 0.7rem; padding: 1rem; }
+.rfq-card > div:first-child { display: flex; justify-content: space-between; gap: 0.7rem; }
+.rfq-card > div:first-child span { font-family: var(--st-mono-font); font-size: 0.54rem; letter-spacing: 0.09em; text-transform: uppercase; color: var(--aura-emerald); }
+.rfq-card > div:first-child strong { font-size: 0.78rem; font-variant-numeric: tabular-nums; }
+.rfq-card h3 { margin-top: 0.45rem; font-family: var(--st-display-font); font-size: 1.15rem; font-weight: 520; }
+.rfq-card > p { margin-top: 0.25rem; font-size: 0.64rem; color: color-mix(in srgb, var(--aura-text) 58%, transparent); }
+.rfq-card ul { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.35rem; margin-top: 0.75rem; }
+.rfq-card li { padding: 0.55rem; border: 1px solid color-mix(in srgb, var(--aura-text) 14%, transparent); font-size: 0.62rem; line-height: 1.45; }
+.rfq-card-actions { display: flex; align-items: center; justify-content: space-between; gap: 0.7rem; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid color-mix(in srgb, var(--aura-text) 16%, transparent); }
+.rfq-card-actions button { padding: 0.5rem 0.65rem; border: 1px solid color-mix(in srgb, var(--aura-text) 20%, transparent); font-size: 0.62rem; font-weight: 650; }
+.rfq-card-actions span { font-family: var(--st-mono-font); font-size: 0.52rem; color: color-mix(in srgb, var(--aura-text) 50%, transparent); }
+@media (max-width: 860px) {
+  .rfq-layout { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .contractor-case-fields,
+  .contractor-evidence-checks { grid-template-columns: 1fr; }
+  .rfq-card ul { grid-template-columns: 1fr; }
+  .rfq-card-actions { align-items: flex-start; flex-direction: column; }
+}
+
 /* skip link: first child of body, revealed only on keyboard focus */
 .skip-link {
   position: fixed;

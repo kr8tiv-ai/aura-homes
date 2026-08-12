@@ -27,6 +27,7 @@ function listing(overrides: Partial<LandDiscoveryListing> = {}): LandDiscoveryLi
     region: "Lac Ste. Anne County, Alberta",
     priceCad: 125_000,
     acreage: 3.2,
+    coordinates: { longitude: -114.35, latitude: 53.73 },
     listingUrl: null,
     demonstration: true,
     facts: {

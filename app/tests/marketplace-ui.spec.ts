@@ -29,6 +29,8 @@ test("the builder hands exact durable geometry to land matching", async ({ page 
 
 test("contractor evidence filters and legal-name verification stay explicit", async ({ page }) => {
   await page.goto("/contractors");
+  await expect(page.getByRole("heading", { name: "No contractor case files yet." })).toBeVisible();
+  await page.getByRole("button", { name: "Open demonstration profiles" }).click();
   await expect(page.getByText("Fictional demonstration · not a referral")).toHaveCount(3);
   await page.getByLabel("Trade").selectOption("off-grid-systems");
   await expect(page.getByText("Fictional demonstration · not a referral")).toHaveCount(1);
@@ -36,6 +38,36 @@ test("contractor evidence filters and legal-name verification stay explicit", as
   await expect(page.getByText("Verify “Example Build Co. Ltd.” as an exact legal name")).toBeVisible();
   await expect(page.getByText("Current WCB clearance is not confirmed.")).toHaveCount(0);
   await expect(page.getByText("Active Alberta residential builder licence is not confirmed.")).toBeVisible();
+});
+
+test("project land and contractor choices become a hash-bound RFQ", async ({ page }) => {
+  await page.goto("/start");
+  await page.getByLabel("Project name").fill("RFQ field house");
+  await page.getByRole("button", { name: "Create my project" }).click();
+  await page.goto("/land");
+  await expect(page.getByLabel("Map of demonstration parcel fit results")).toBeVisible();
+  await page.getByRole("button", { name: "Save demo comparison" }).first().click();
+  await expect(page.getByRole("button", { name: "Saved to project" })).toBeVisible();
+
+  await page.goto("/contractors");
+  await page.getByRole("button", { name: "+ Add contractor" }).click();
+  await page.getByLabel("Exact legal name", { exact: true }).fill("Prairie Field Build Ltd.");
+  await page.getByLabel("Service region").fill("Foothills County");
+  await page.getByLabel("Exact legal name appears in the Alberta builder registry").check();
+  await page.getByLabel("Current WCB clearance recorded").check();
+  await page.getByLabel("Liability insurance certificate recorded").check();
+  await page.getByLabel("Comparable projects and references recorded").check();
+  await page.getByRole("button", { name: "Save case file" }).click();
+  await expect(page.getByText("User-supplied project case file")).toBeVisible();
+  await page.getByRole("button", { name: "Add to project shortlist" }).click();
+  await expect(page.getByRole("button", { name: "Saved to project shortlist" })).toBeVisible();
+
+  await page.getByLabel("Scope").selectOption("shell-envelope");
+  await page.getByRole("button", { name: "Prepare RFQ package" }).click();
+  await expect(page.locator(".rfq-card").getByText("Shell + envelope", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Download JSON package" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Download JSON package" })).toBeVisible();
 });
 
 test("the global buy guide filters evidence and blocks an unconnected ChangeNOW path", async ({ page }) => {

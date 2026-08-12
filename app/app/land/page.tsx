@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Counter, GrowBar, Reveal, Stagger, StaggerItem } from "@/components/Reveal";
+import LandMap from "@/components/land/LandMap";
+import { useAuraProject } from "@/components/project/ProjectContext";
+import { createDiscoveryRecord, setProjectShortlist, upsertProjectDiscoveryRecord } from "@/lib/project/discoveryRecord";
 import {
   DEMO_LAND_LISTINGS,
   LAND_LISTING_PROVIDERS,
@@ -44,6 +47,7 @@ function numberValue(value: string, fallback: number): number {
 }
 
 export default function LandPage() {
+  const { project, ready, update } = useAuraProject();
   const [requirements, setRequirements] = useState(DEFAULT_REQUIREMENTS);
   const [projectState, setProjectState] = useState<
     | { kind: "manual" }
@@ -52,10 +56,20 @@ export default function LandPage() {
     | { kind: "error"; message: string }
   >({ kind: "manual" });
   const [show, setShow] = useState<"all" | LandFitResult["verdict"]>("all");
+  const [saveProblem, setSaveProblem] = useState<string | null>(null);
 
   useEffect(() => {
     const projectId = new URLSearchParams(window.location.search).get("project");
-    if (!projectId) return;
+    if (!projectId) {
+      if (!ready || !project) return;
+      let alive = true;
+      void import("@/lib/marketplace/designLandRequirements").then((adapter) => {
+        if (!alive) return;
+        setRequirements(adapter.deriveLandRequirements(project.design.document));
+        setProjectState({ kind: "loaded", id: project.id, name: project.name, hash: project.design.documentHash });
+      });
+      return () => { alive = false; };
+    }
     let alive = true;
     setProjectState({ kind: "loading", id: projectId });
     void Promise.all([
@@ -87,7 +101,7 @@ export default function LandPage() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [project?.design.documentHash, project?.id, project?.name, ready]);
 
   const results = useMemo(
     () =>
@@ -99,9 +113,41 @@ export default function LandPage() {
   const shown = show === "all" ? results : results.filter((result) => result.verdict === show);
   const potential = results.filter((result) => result.verdict === "potential-match").length;
   const review = results.filter((result) => result.verdict === "manual-review").length;
+  const shortlisted = new Set(project?.discovery.land.shortlist ?? []);
 
   const updateNumber = (key: "floorAreaSqft" | "footprintSqft" | "maxHeightFt", raw: string) =>
     setRequirements((current) => ({ ...current, [key]: numberValue(raw, current[key]) }));
+
+  const selectFromMap = useCallback((id: string) => {
+    setShow("all");
+    requestAnimationFrame(() => document.getElementById(`land-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
+  }, []);
+
+  async function toggleShortlist(id: string) {
+    if (!project) return;
+    setSaveProblem(null);
+    try {
+      const result = results.find((item) => item.listing.id === id);
+      const selected = !project.discovery.land.shortlist.includes(id);
+      await update((current) => {
+        const at = new Date();
+        const withEvidence = selected && result ? upsertProjectDiscoveryRecord(current, "land", createDiscoveryRecord({
+          id: `record-${result.listing.id}`,
+          subjectId: result.listing.id,
+          access: "demonstration",
+          sourceLabel: "Aura demonstration fit scenario",
+          sourceUrl: null,
+          collectedAtISO: at.toISOString(),
+          expiresAtISO: null,
+          confidence: "declared",
+          data: result,
+        }), at) : current;
+        return setProjectShortlist(withEvidence, "land", id, selected, at);
+      });
+    } catch (error) {
+      setSaveProblem(error instanceof Error ? error.message : String(error));
+    }
+  }
 
   return (
     <div className="py-16">
@@ -111,12 +157,23 @@ export default function LandPage() {
           Find land for the home you actually designed
         </h1>
       </Reveal>
+
       <Reveal className="mt-4 max-w-2xl" delay={0.08} y={12}>
         <p className="text-[0.95rem] leading-[1.65] text-aura-text/75">
           Aura compares the design&rsquo;s exact floor area, ground footprint, storeys and height
           with parcel evidence. Unknown zoning, setbacks, access, water or wastewater stays
           unknown. A high fit score is a screening result, never a permit or purchase opinion.
         </p>
+      </Reveal>
+
+      <Reveal className="mt-8" y={14}>
+        <section aria-labelledby="land-map-heading">
+          <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+            <div><p className="aura-label">Project map</p><h2 id="land-map-heading" className="mt-2 font-display text-xl font-medium">Compare fit before opening a listing</h2></div>
+            <p className="max-w-md text-xs leading-relaxed text-aura-text/60">Demonstration markers are approximate scenario locations, not parcels for sale. The authorized feed will replace them when connected.</p>
+          </div>
+          <LandMap results={results} onSelect={selectFromMap} />
+        </section>
       </Reveal>
 
       <Reveal className="mt-9" delay={0.12} y={14}>
@@ -237,7 +294,7 @@ export default function LandPage() {
       <Stagger className="mt-6 space-y-5">
         {shown.map((result) => (
           <StaggerItem key={result.listing.id}>
-            <article className="aura-panel aura-panel-lift p-6 sm:p-7">
+            <article id={`land-${result.listing.id}`} className="aura-panel aura-panel-lift scroll-mt-32 p-6 sm:p-7">
               <div className="flex flex-wrap items-start justify-between gap-5">
                 <div>
                   <p className="text-base font-semibold">{result.listing.title}</p>
@@ -277,6 +334,15 @@ export default function LandPage() {
                 ))}
               </div>
               <div className="mt-5 flex flex-wrap items-center gap-4">
+                <button
+                  type="button"
+                  disabled={!project}
+                  aria-pressed={shortlisted.has(result.listing.id)}
+                  onClick={() => void toggleShortlist(result.listing.id)}
+                  className="rounded-md bg-aura-ink px-4 py-2 text-xs font-medium uppercase tracking-label text-aura-paper disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  {!project ? "Start a project to save" : shortlisted.has(result.listing.id) ? "Saved to project" : "Save demo comparison"}
+                </button>
                 <Link href={`/concierge?parcel=${result.listing.id}`} className="rounded-md border aura-hairline px-4 py-2 text-xs font-medium uppercase tracking-label transition-colors hover:border-aura-emerald hover:text-aura-emerald">
                   Test in concierge
                 </Link>
@@ -288,6 +354,8 @@ export default function LandPage() {
           </StaggerItem>
         ))}
       </Stagger>
+
+      {saveProblem ? <p role="alert" className="mt-4 text-sm text-aura-violet">{saveProblem}</p> : null}
 
       {shown.length === 0 ? (
         <Reveal className="mt-6" y={10}>
