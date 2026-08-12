@@ -2296,6 +2296,22 @@ main p {
 
 /* ---- CTAs and the leave veil ---- */
 
+/* The hero's two doors — "Design my home" / "Find land" — ride one row and
+   wrap on narrow screens. Children zero their own top margin so the row,
+   not each pill, owns the rhythm. */
+.story-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.7rem 0.8rem;
+  margin-top: 1.7rem;
+}
+.story-hero-actions .story-cta {
+  margin-top: 0;
+  /* comfortable touch target on phones without inflating the desktop pill */
+  min-height: 2.75rem;
+}
+
 .story-cta {
   display: inline-flex;
   align-items: center;
@@ -3409,6 +3425,12 @@ html.story-gated body { overflow: hidden; }
   white-space: nowrap;
   color: var(--st-ink-dim);
 }
+/* pct + elapsed clock ride one row under the stage name */
+.aura-loader-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+}
 .aura-loader-pct {
   font-family: var(--st-mono-font);
   font-size: 0.72rem;
@@ -3418,6 +3440,19 @@ html.story-gated body { overflow: hidden; }
   color: var(--st-emerald-deep);
   /* tabular so the number does not jitter the badge as it counts */
   font-variant-numeric: tabular-nums slashed-zero;
+}
+/* the liveness clock: keeps counting through a stalled stage, which is the
+   visible difference between "working" and "dead" (founder complaint,
+   Aug 2026 — the loader must never read as a frozen page) */
+.aura-loader-time {
+  font-family: var(--st-mono-font);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  color: var(--st-ink-dim);
+  font-variant-numeric: tabular-nums slashed-zero;
+  min-width: 3.4ch;
 }
 /* the visible readout is aria-hidden; THIS is what the live region says, and
    it only changes in quarters so a polite announcer is not flooded */

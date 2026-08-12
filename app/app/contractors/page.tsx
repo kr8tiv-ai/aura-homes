@@ -4,7 +4,7 @@ import ContractorDirectory from "@/components/contractors/ContractorDirectory";
 import { Reveal } from "@/components/Reveal";
 
 export const metadata = {
-  title: "Contractor evidence search — Aura Homes",
+  title: "Check a contractor — Aura Homes",
   description:
     "Compare Alberta build-team evidence with transparent registry, WCB, insurance, licence, project-history, and review-source contributions.",
 };
@@ -13,7 +13,7 @@ export default function ContractorsPage() {
   return (
     <div className="py-16">
       <Reveal y={12}>
-        <p className="aura-label mb-4">Contractor search · evidence you can reopen</p>
+        <p className="aura-label mb-4">Check a contractor · evidence you can reopen</p>
         <h1 className="max-w-3xl font-display text-[2.35rem] font-medium leading-[1.08] tracking-[-0.025em]">
           Build a shortlist without hiding the missing pieces
         </h1>

@@ -152,7 +152,7 @@ export default function LandPage() {
   return (
     <div className="py-16">
       <Reveal y={12}>
-        <p className="aura-label mb-4">Land discovery · evidence before enthusiasm</p>
+        <p className="aura-label mb-4">Land fit pilot · evidence before enthusiasm</p>
         <h1 className="max-w-3xl font-display text-[2.35rem] font-medium leading-[1.08] tracking-[-0.025em]">
           Find land for the home you actually designed
         </h1>

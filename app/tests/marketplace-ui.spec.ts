@@ -70,37 +70,56 @@ test("project land and contractor choices become a hash-bound RFQ", async ({ pag
   await expect(page.getByRole("button", { name: "Download JSON package" })).toBeVisible();
 });
 
-test("the global buy guide filters evidence and blocks an unconnected ChangeNOW path", async ({ page }) => {
+test("the buy catalog renders the honest card hierarchy with no ranking and no routing detail", async ({ page }) => {
   await page.goto("/buy");
-  await page.getByRole("combobox", { name: "Destination", exact: true }).selectOption("europe");
-  await page.getByRole("combobox", { name: "What you want to buy", exact: true }).selectOption("existing-property");
-  await expect(page.locator("article")).toHaveCount(1);
-  await expect(page.getByRole("heading", { name: "Crypto Emporium", exact: true })).toBeVisible();
-  await expect(page.getByText("ChangeNOW partner path")).toBeVisible();
-  await expect(page.getByText("Not connected", { exact: true })).toBeVisible();
-  await expect(page.getByText("0xB6CEceAB302E2E4948951eE7843FC24E92933061")).toBeVisible();
-  await expect(page.getByText("The conversion quote is missing or expired.")).toBeVisible();
-  await expect(page.getByRole("button", { name: /send|swap|pay/i })).toHaveCount(0);
-  await page.getByRole("link", { name: "Walk through with Aura" }).click();
-  await expect(page).toHaveURL(/\/concierge\/?\?ask=/);
-  await expect(page.getByText(/For a third-party manufacturer purchase, I guide rather than transact/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Choose a finished eco home" })).toBeVisible();
+  await expect(page.locator("[data-slot='home-identity']")).toHaveCount(3);
+  await expect(page.getByText("Reliable pricing not found — request a quote.")).toHaveCount(3);
+  await expect(page.getByText("Aura illustrative visual — not a product photo")).toHaveCount(3);
+  const visibleText = await page.locator("body").innerText();
+  expect(visibleText).not.toMatch(/readiness|\/100|purchase evidence|ChangeNOW/i);
+
+  await page.getByRole("combobox", { name: "Destination", exact: true }).selectOption("japan");
+  await expect(page.locator("[data-slot='home-identity']")).toHaveCount(1);
+  await expect(page.getByText("Lib Earth House model B")).toBeVisible();
+  await page.getByRole("combobox", { name: "Destination", exact: true }).selectOption("any");
+
+  // compare fills to its cap of three
+  await page.getByRole("button", { name: "Compare", exact: true }).first().click();
+  await page.getByRole("button", { name: "Compare", exact: true }).first().click();
+  await page.getByRole("button", { name: "Compare", exact: true }).first().click();
+  await expect(page.getByRole("heading", { name: "3 of 3 homes" })).toBeVisible();
+  await page.getByRole("button", { name: "Clear comparison" }).click();
+  await expect(page.getByRole("heading", { name: "3 of 3 homes" })).toHaveCount(0);
+
+  // the "published price" filter has nothing to show, and says so honestly
+  await page.getByRole("combobox", { name: "Price", exact: true }).selectOption("published");
+  await expect(page.getByText("No homes match, and that is the finding")).toBeVisible();
 });
 
-test("a finished-home project preserves manufacturer research and a quote inquiry", async ({ page }) => {
+test("a finished-home project saves a home, requests a quote, and gates payment on a real quote", async ({ page }) => {
   await page.goto("/start");
   await page.getByRole("button", { name: "Buy a finished home" }).click();
   await page.getByLabel("Project name").fill("Finished cabin search");
   await page.getByRole("button", { name: "Create my project" }).click();
   await expect(page).toHaveURL(/\/buy/);
 
-  const boxabl = page.getByRole("heading", { name: "BOXABL", exact: true }).locator("xpath=ancestor::article");
-  await expect(boxabl.getByText("Cash or card", { exact: true })).toBeVisible();
-  await expect(boxabl.getByText("X Layer USDC", { exact: true })).toBeVisible();
-  await boxabl.getByRole("button", { name: "Save to project" }).click();
-  await expect(boxabl.getByRole("button", { name: "Saved to project" })).toBeVisible();
-  await boxabl.getByRole("button", { name: "Prepare quote request" }).click();
-  await expect(boxabl.getByRole("button", { name: "Download inquiry" })).toBeVisible();
-  await expect(boxabl.getByText(/Bound to 0x/)).toBeVisible();
+  const casita = page.locator("article", { hasText: "BOXABL" });
+  // no quote exists, so no payment methods exist — only the waiting sentence
+  await expect(casita.getByText(/Payment options appear beside a written quote/)).toBeVisible();
+  await expect(casita.getByText("Cash or card")).toHaveCount(0);
+  await expect(casita.getByText("X Layer USDC")).toHaveCount(0);
+
+  await casita.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(casita.getByRole("button", { name: "Saved", exact: true })).toBeVisible();
+  await casita.getByRole("button", { name: "Request quote" }).click();
+  await expect(casita.getByRole("button", { name: "Quote request prepared" })).toBeVisible();
+  await expect(casita.getByText(/bound to design 0x/i)).toBeVisible();
+  await expect(casita.getByRole("button", { name: "Download request" })).toBeVisible();
+  // still no payment methods: a prepared request is not a real quote
+  await expect(casita.getByText("Cash or card")).toHaveCount(0);
   await page.reload();
-  await expect(page.getByRole("heading", { name: "BOXABL", exact: true }).locator("xpath=ancestor::article").getByRole("button", { name: "Download inquiry" })).toBeVisible();
+  await expect(
+    page.locator("article", { hasText: "BOXABL" }).getByRole("button", { name: "Quote request prepared" }),
+  ).toBeVisible();
 });

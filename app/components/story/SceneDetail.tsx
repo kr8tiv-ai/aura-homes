@@ -13,6 +13,7 @@
 
    Performance shape:
      · grass is ONE InstancedMesh with GPU wind (no per-frame CPU work)
+     · flowers are ONE instanced draw sharing the meadow's wind (flora.ts)
      · mountains are three low-segment ridges, no shadows, fog-blended
      · clouds and steam are canvas-gradient sprites — no image downloads
      · the moose, hammock, netting and lights are primitive assemblies
@@ -23,6 +24,17 @@ import { useMemo, useRef, useLayoutEffect } from "react";
 import * as THREE from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 import { terrainH, makeWoodGrain, sharpen, type Dusk } from "./Scene";
+/* The meadow's weather (wind direction, gust envelope, frozen instant) and
+   the flower system live in flora.ts — one wind, shared by every planted
+   thing, so grass and flowers can never sway to different clocks. */
+import {
+  WIND_DIR,
+  FROZEN_T,
+  gustEnvelope,
+  buildFlowerField,
+  makeFlowerMaterial,
+  type FloraSample,
+} from "./flora";
 
 /* --------------------------- small helpers -------------------------- */
 
@@ -669,7 +681,12 @@ type GrassLayerCfg = {
    layer's draws back again. Culling granularity stays far finer than a
    camera beat. Filler tiles are bigger still — the layer is short-range, so
    few of its tiles are ever in frustum at once. */
-export const G_HERO: GrassLayerCfg = { near: 14, far: 34, pmin: 0.04, band: 0.16, tile: 8, segs: 4 };
+/* Botanical pass (Aug 12) — "bring back the much thicker grass": near 14 ->
+   16. Two more metres of full-density hero ring around the camera, which is
+   the band the close beats actually judge thickness in. Cost is the LOD
+   keep-fraction between 14 and ~30 m rising a step (~+5-8% hero triangles
+   at the worst beat, est. +25-35k); the planted budget does not move. */
+export const G_HERO: GrassLayerCfg = { near: 16, far: 34, pmin: 0.04, band: 0.16, tile: 8, segs: 4 };
 /* Founder x3 escalation (Aug 9, on top of the x4): the extra density all
    lands in the filler, and it pays for itself twice — the blades got
    SHORTER (8-18 cm, was 9-21), so the projected-height gate prunes them
@@ -1291,8 +1308,24 @@ function buildGrassTiles(budget: number, cfg: GrassLayerCfg) {
       const corridor =
         (1 - smooth01(9, 18, Math.abs(x))) * smooth01(5.5, 11, z) * (1 - smooth01(33, 41, z));
       dens *= Math.max(1 - smooth01(18, 28, Math.hypot(x, z)), corridor);
-      const yard = 1 - smooth01(9, 20, Math.hypot(x, z - 3.6));
-      dens *= 1 + 1.25 * yard;
+      /* Botanical pass (Aug 12): yard boost 1.25 -> 1.55 and its feather
+         widened 9-20 -> 10-21 m — the founder's "thicker grass" spent where
+         the close beats look, by the same budget-conserving construction as
+         v10: the boost raises E, E sizes the grid cell, so the far field
+         pays for the yard instead of new instances appearing. Peak dens is
+         now 2.55, which the third-candidate leg below spends exactly. */
+      const yard = 1 - smooth01(10, 21, Math.hypot(x, z - 3.6));
+      dens *= 1 + 1.55 * yard;
+    } else {
+      /* Hero far-trim (botanical pass): past ~26 m a 0.2-0.5 m hero blade is
+         a couple of texels and mostly LOD-dissolved anyway; rejection
+         sampling against a FIXED budget means every acceptance lost out
+         there is re-won inside the ring the camera lives in. Redistribution
+         toward the house, zero planted delta — the same doctrine as the
+         filler's v10 far trim. Never to zero: the far field keeps 68% so
+         the crest beat still reads meadow to the fog line (Scrub and the
+         sward-toned ground carry the rest). */
+      dens *= 1 - 0.32 * smooth01(26, 44, Math.hypot(x, z));
     }
     return dens;
   };
@@ -1337,12 +1370,13 @@ function buildGrassTiles(budget: number, cfg: GrassLayerCfg) {
         ? 0.095 + Math.pow(rand(i, 45 + S), 1.3) * 0.13
         : (0.176 + Math.pow(rand(i, 45 + S), 1.6) * 0.32) * (1 + far * 0.3), // height
       filler
-        ? /* v8 went +15%, v9 another +24% (0.042-0.075 m). Width is the one
-             lever that closes ground for ZERO extra triangles, and at v9's
-             jittered-grid spacing (~5 cm between filler roots in the core)
-             the mean blade is now WIDER than its spacing — the definition
-             of a closed sward. Overlap is fine; bare ground is not. */
-          0.063 + rand(i, 46 + S) * 0.048
+        ? /* v8 went +15%, v9 another +24%, botanical pass another +13%
+             (0.071-0.125 m). Width is the one lever that closes ground for
+             ZERO extra triangles, and at the jittered-grid spacing (~5 cm
+             between filler roots in the core) the mean blade runs well past
+             its spacing — the definition of a closed sward. Overlap is
+             fine; bare ground is not. */
+          0.071 + rand(i, 46 + S) * 0.054
         : 0.026 + rand(i, 46 + S) * 0.018, // width — reference range, no far term
       rand(i, 47 + S) // fade seed
     );
@@ -1396,6 +1430,19 @@ function buildGrassTiles(budget: number, cfg: GrassLayerCfg) {
             i + 9000017,
             X0 + ((q + rand(i, 144)) / cols) * (X1 - X0),
             Z0 + ((r + rand(i, 145)) / rows) * (Z1 - Z0)
+          );
+        }
+        /* Botanical pass: the 1.55 yard boost peaks at dens 2.55, past what
+           two candidates can spend (the second's probability clamps at 1).
+           A third leg keeps the E-integral construction exact for dens up
+           to 3 — expected spend per cell is 1 + min(1, d-1) + max(0, d-2)
+           = d — so the yard core genuinely receives the density the far
+           trim paid for instead of silently under-planting. */
+        if (d > 2 && rand(i, 146) < d - 2) {
+          place(
+            i + 17000023,
+            X0 + ((q + rand(i, 147)) / cols) * (X1 - X0),
+            Z0 + ((r + rand(i, 148)) / rows) * (Z1 - Z0)
           );
         }
       }
@@ -1455,29 +1502,9 @@ function buildGrassTiles(budget: number, cfg: GrassLayerCfg) {
   return tiles;
 }
 
-/** Weather: ramp -> hold -> decay -> lull, so gusts arrive rather than loop.
- *  11 s -> 9 s ("busier overall" — founder). The lull returning 0 does NOT
- *  stop the meadow: the envelope only gates the gust FRONT, and the advected
- *  gust field underneath keeps travelling on the same clock, so a lull reads
- *  as the air going soft rather than as the animation pausing. */
-function gustEnvelope(t: number) {
-  const T = 9.0;
-  const u = (t % T) / T;
-  if (u < 0.18) return smooth01(0, 1, u / 0.18);
-  if (u < 0.46) return 1;
-  if (u < 0.78) return 1 - smooth01(0, 1, (u - 0.46) / 0.32);
-  return 0;
-}
-
-/* THE FROZEN INSTANT. prefers-reduced-motion sets frameloop="demand": the
-   canvas renders exactly one frame and stops, so whatever the wind uniforms
-   hold at that moment is the picture forever. t=0 is the worst possible
-   choice — every advected noise is at its unshifted origin and the gust
-   envelope is at zero, i.e. the field is caught in a dead lull with no gust
-   anywhere. 5.6 s lands mid-decay of the second gust (envelope ~0.49), which
-   is a composed frame: a wave part-way across the meadow, blades leaning at
-   a range of angles and none of them at full whip. */
-const FROZEN_T = 5.6;
+/* gustEnvelope and FROZEN_T moved to flora.ts (botanical pass): the flowers
+   ride the same envelope and the same frozen instant, so there is exactly
+   one definition of the weather. Their block comments moved with them. */
 
 function GrassField({
   frozen,
@@ -1506,7 +1533,7 @@ function GrassField({
         side: THREE.DoubleSide,
         uniforms: {
           uTime: { value: 0 },
-          uWindDir: { value: new THREE.Vector2(0.82, 0.57).normalize() },
+          uWindDir: { value: WIND_DIR.clone() },
           uCamPos: { value: new THREE.Vector3() },
           uProjScale: { value: 2.7 },
           uGust: { value: 0.4 },
@@ -2096,6 +2123,83 @@ function ScrubBucket({
   );
 }
 
+/* ============================== FLOWERS =============================
+   The botanical pass ("...and add some flowers" — founder). The system —
+   geometry tiers, deterministic drift placement, shaders — lives in
+   flora.ts; this component is the mounting: it hands flora the meadow's
+   own masks (density, clearance, terrain) so flowers grow exactly where
+   grass grows and never inside a clearance apron, and it drives the
+   material from the same clock, envelope, dusk registry and fog the two
+   GrassField layers use. ONE instanced draw call for every flower.
+
+   Reduced motion: uTime holds FROZEN_T like the grass, so the single
+   rendered frame catches the drifts mid-nod in the same gust the blades
+   are leaning to — a composed still, not a dead lull.
+=================================================================== */
+
+/* Module-level so the sample object is referentially stable across renders
+   — it keys the useMemo that plants the field. Flowers use HERO-width
+   clearance: they never shorten into an apron the way filler grass does,
+   they stand back from it. */
+const FLORA_SAMPLE: FloraSample = {
+  ground: terrainH,
+  density: meadowDensity,
+  clearance: (x, z) => clearance(x, z),
+};
+
+function FlowerField({
+  frozen,
+  night,
+  dusk,
+  rich,
+  count,
+}: {
+  frozen: boolean;
+  night: number;
+  dusk: Dusk;
+  rich: boolean;
+  count: number;
+}) {
+  const { camera } = useThree();
+  const built = useMemo(() => buildFlowerField(count, rich, FLORA_SAMPLE), [count, rich]);
+  const mat = useMemo(() => makeFlowerMaterial(), []);
+
+  /* The light arc owns the sun; flowers follow it with the SAME lerp the
+     grass runs, so petals warm at dusk in step with the blades under them. */
+  useLayoutEffect(
+    () =>
+      dusk.add((d: number) => {
+        const u = mat.uniforms;
+        (u.uSunCol.value as THREE.Color).setHex(0xfff3dd).lerp(new THREE.Color("#ffc48c"), d);
+        (u.uSunDir.value as THREE.Vector3)
+          .copy(KEY)
+          .lerp(new THREE.Vector3(-18, 7, 18).normalize(), d)
+          .normalize();
+        u.uSunI.value = 1.15 - d * 0.3;
+      }),
+    [dusk, mat]
+  );
+
+  useFrame(({ clock, scene }) => {
+    const u = mat.uniforms;
+    // the meadow's clock and envelope, verbatim — one weather
+    const t = frozen ? FROZEN_T : clock.elapsedTime;
+    u.uTime.value = t;
+    u.uGust.value = gustEnvelope(t);
+    (u.uCamPos.value as THREE.Vector3).copy(camera.position);
+    u.uNight.value = night;
+    const fog = scene.fog as THREE.Fog | null;
+    if (fog) {
+      (u.uFogColor.value as THREE.Color).copy(fog.color);
+      u.uFogNear.value = fog.near;
+      u.uFogFar.value = fog.far;
+    }
+  });
+
+  if (!built) return null;
+  return <mesh geometry={built.geo} material={mat} frustumCulled />;
+}
+
 /* ============================ THE LAYER ============================= */
 
 export default function SceneDetail({
@@ -2196,6 +2300,16 @@ export default function SceneDetail({
      blades, a relaxed near-field height gate, and a deeper ground shade, the
      near field reads as one closed sward instead of separable spikes. */
   const fillCount = Math.max(lite ? 28000 : 80000, Math.round((mobile ? 340000 : 980000) * meadowScale));
+  /* Flowers (botanical pass): rounding error next to the grass — ~1,000
+     instances x 18 tris on the rich tier is ~18k triangles in ONE draw
+     call, ~1.3% of the worst-beat budget. Rich petal geometry is reserved
+     for the capable desktop tier; every other tier (mobile, balanced,
+     lite, the opening stage, reduced-motion stills) gets the 11-tri
+     flower, and reduced motion holds them at the composed FROZEN_T
+     instant. The floor keeps the drifts legible even at the opening
+     stage's 0.14 scale — 200 static flowers cost nothing. */
+  const richFlora = !lite && !mobile && qualityScale >= 0.99;
+  const flowerCount = Math.max(200, Math.round((mobile ? 380 : 1000) * Math.min(1, meadowScale * 2)));
 
   return (
     <group>
@@ -2205,6 +2319,7 @@ export default function SceneDetail({
         <>
           <GrassField frozen={frozen} budget={heroCount} night={night} dusk={dusk} cfg={G_HERO} />
           <GrassField frozen={frozen} budget={fillCount} night={night} dusk={dusk} cfg={G_FILL} />
+          <FlowerField frozen={frozen} night={night} dusk={dusk} rich={richFlora} count={flowerCount} />
           <Scrub />
         </>
       ) : null}

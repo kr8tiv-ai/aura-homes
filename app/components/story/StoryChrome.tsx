@@ -14,9 +14,9 @@
    the scroll story: star the repo, flip day/night, mute the forest.
 --------------------------------------------------------------------- */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { withBase } from "../../lib/basePath";
-import type { StoryAudience } from "./copy";
+import { GATE, type StoryAudience } from "./copy";
 
 export const REPO_URL = "https://github.com/kr8tiv-ai/aura-homes";
 /* The star pill's destination. GitHub publishes no star-intent URL, so this
@@ -139,22 +139,24 @@ export function EnterGate({
         </div>
         <p className="story-gate-kicker"><span>00</span><i aria-hidden />Eco Homes, Tiny Homes, Unique Stays</p>
         <h1 className="story-display story-gate-title">
-          Design your eco home.<br />Find the land.<br />Manage the build.
+          {GATE.titleLines.map((line, i) => (
+            <Fragment key={line}>
+              {i > 0 ? <br /> : null}
+              {line}
+            </Fragment>
+          ))}
         </h1>
-        <p className="story-gate-sub">
-          Plan or choose an eco home, match it with the right property and keep your team, costs and
-          next steps together.
-        </p>
-        <div className="story-gate-paths" aria-label="Choose your perspective">
+        <p className="story-gate-sub">{GATE.sub}</p>
+        {/* Both journeys are visible together — there is no hidden or default
+            selection. Copy is the founder's verbatim pick (copy.ts GATE). */}
+        <div className="story-gate-paths" aria-label="Choose your journey">
           <button type="button" className="story-gate-path" onClick={() => go("project")} disabled={!hydrated || leaving} autoFocus>
-            <span>For eco-home enthusiasts</span>
-            <strong>Plan an eco property</strong>
-            <small>Design the home, find land and manage the project.</small>
+            <strong>{GATE.paths.project.title}</strong>
+            <small>{GATE.paths.project.desc}</small>
           </button>
           <button type="button" className="story-gate-path" onClick={() => go("crypto")} disabled={!hydrated || leaving}>
-            <span>Blockchain ecosystem</span>
-            <strong>Explore HOMES on X Layer</strong>
-            <small>Buy homes with crypto. Follow the HOMES token, property trust and RWA launchpad.</small>
+            <strong>{GATE.paths.crypto.title}</strong>
+            <small>{GATE.paths.crypto.desc}</small>
           </button>
         </div>
         <div className="story-gate-preference">
@@ -240,13 +242,13 @@ export function StoryHUD({
         type="button"
         className="story-hud-btn story-hud-perspective"
         onClick={() => onAudience(audience === "project" ? "crypto" : "project")}
-        aria-label={audience === "project" ? "Switch to the blockchain ecosystem" : "Switch to the eco-property journey"}
-        title={audience === "project" ? "Blockchain ecosystem" : "Eco-property journey"}
+        aria-label={audience === "project" ? "Switch to the X Layer ecosystem" : "Switch to the eco-home journey"}
+        title={audience === "project" ? "X Layer ecosystem" : "Eco-home journey"}
       >
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
           <path d="M7 7h10m0 0-3-3m3 3-3 3M17 17H7m0 0 3 3m-3-3 3-3" />
         </svg>
-        <span>{audience === "project" ? "Blockchain" : "Eco property"}</span>
+        <span>{audience === "project" ? "X Layer" : "Eco home"}</span>
       </button>
       {/* Live star count in OUR design language (founder request, Aug 10).
           The official ghbtns iframe was built and screenshotted first —

@@ -18,25 +18,54 @@ import SocialShareLinks from "./SocialShareLinks";
    prefers-reduced-motion — BRAND.md §8's "a still of equal beauty". */
 const loadDomAnimation = () => import("./motion-features").then((mod) => mod.default);
 
+/* The approved global navigation: Explore homes · Design a home ·
+   How it works · My projects · More. What the old menu carried and where
+   it went — nothing here vanished silently:
+   · "Start a project" (/start) — reached from Design a home, My projects,
+     and the project workspace; no longer a top-level entry.
+   · "Builder" (/build) — is now the primary "Design a home" entry.
+   · "Budget and quotes" (/budget) — workspace-only: the journey spine's
+     Quotes and Funding steps route there.
+   · "HOMES ledger" (/homes) and "Project record" (/dashboard) — left the
+     ordinary utility menu on purpose; the story's blockchain journey links
+     them, and the workspace spine still reaches /dashboard.
+   · "Design questionnaire" (/design) — the route now redirects to the
+     guided editor (/build?mode=guided).
+   · "How Aura works" (/overview) — replaced by /how-it-works. */
 const JOURNEY_NAV = [
-  { href: "/start", label: "Start a project" },
   { href: "/buy", label: "Explore homes" },
-  { href: "/overview", label: "How Aura works" },
+  { href: "/build", label: "Design a home" },
+  { href: "/how-it-works", label: "How it works" },
+  { href: "/projects", label: "My projects" },
 ] as const;
 
 const UTILITY_NAV = [
-  { href: "/projects", label: "My projects" },
-  { href: "/build", label: "Builder" },
-  { href: "/land", label: "Find land" },
-  { href: "/contractors", label: "Contractors" },
-  { href: "/budget", label: "Budget and quotes" },
-  { href: "/homes", label: "HOMES ledger" },
-  { href: "/dashboard", label: "Project record" },
-  { href: "/design", label: "Design questionnaire" },
+  { href: "/land", label: "Land fit pilot" },
+  { href: "/contractors", label: "Check a contractor" },
   { href: "/faq", label: "FAQ" },
+  { href: "/about", label: "About" },
 ] as const;
 
 const ALL_NAV = [...JOURNEY_NAV, ...UTILITY_NAV] as const;
+
+/* The journey spine is workspace chrome. It mounts only on the routes where
+   an active project is actually worked — never on education, marketplace,
+   or labs pages — and the spine itself renders nothing without a project. */
+const WORKSPACE_ROUTES = new Set([
+  "/projects",
+  "/start",
+  "/build",
+  "/land",
+  "/contractors",
+  "/budget",
+  "/dashboard",
+]);
+
+/** GH Pages exports with trailingSlash, so "/build/" must equal "/build". */
+function normalizePath(pathname: string): string {
+  const trimmed = pathname.replace(/\/+$/, "");
+  return trimmed === "" ? "/" : trimmed;
+}
 
 function UtilityMenu({ pathname, story = false }: { pathname: string; story?: boolean }) {
   const hasCurrent = UTILITY_NAV.some((item) => item.href === pathname);
@@ -225,8 +254,10 @@ function StandardHeader() {
 /** Site chrome. The story landing ("/") is a full-bleed page with its own
  *  floating header; every other page keeps the contained paper shell. */
 export default function SiteShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
+  const rawPathname = usePathname();
+  const pathname = normalizePath(rawPathname);
   const isStory = pathname === "/";
+  const isWorkspace = WORKSPACE_ROUTES.has(pathname);
 
   return (
     <LazyMotion features={loadDomAnimation} strict>
@@ -242,9 +273,11 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
         ) : (
           <>
             <StandardHeader />
-            <div className={pathname === "/build" ? "mx-auto max-w-[90rem] px-4 pt-4 sm:px-6" : "mx-auto max-w-5xl px-6 pt-4"}>
-              <ProjectJourneySpine />
-            </div>
+            {isWorkspace && (
+              <div className={pathname === "/build" ? "mx-auto max-w-[90rem] px-4 pt-4 sm:px-6" : "mx-auto max-w-5xl px-6 pt-4"}>
+                <ProjectJourneySpine />
+              </div>
+            )}
             <main
               id="main"
               className={pathname === "/build" ? "mx-auto max-w-[90rem] px-4 sm:px-6" : "mx-auto max-w-5xl px-6"}

@@ -1,28 +1,27 @@
 /* ---------------------------------------------------------------------
-   BUY — the second path.
+   BUY — an honest home catalog.
 
-   Aura's other half is "design and build your own". This is the half that
-   says: you already hold crypto, somebody out there already sells homes
-   for it, here is who they actually are and here is the route from USDC
-   on X Layer to their hands.
+   The other half of Aura is "design and build your own". This half shows
+   the finished homes the research record can actually support: model and
+   maker, what a price would even mean, where delivery is documented, and
+   what still has to be asked. No number ranks a maker, no listing is
+   invented, and payment options only exist beside a real written quote.
 
-   Every provider on this page was fetched, not searched. Every one of
-   them carries the caveat that came back with it — including the one
-   whose acceptance page is twelve years old, the one whose only working
-   payment path is a $45 hoodie, and the one that has never named a coin.
-   Aura facilitates; it is not the seller, and it has no relationship with
-   any company named here.
+   Clean and bright on purpose: a browsing reader gets cards, filters and
+   compare; the careful reader opens "Details and sources" and finds every
+   date, link, caveat and unresolved question the researcher recorded.
 --------------------------------------------------------------------- */
 
 import Link from "next/link";
 import RevealWords from "@/components/RevealWords";
-import { GrowBar, Reveal } from "@/components/Reveal";
-import BuyDirectory from "@/components/buy/BuyDirectory";
+import { Reveal } from "@/components/Reveal";
+import HomeCatalog from "@/components/buy/HomeCatalog";
+import LegacyResearch from "@/components/buy/LegacyResearch";
 
 export const metadata = {
   title: "Choose a finished eco home — Aura Homes",
   description:
-    "Compare evidence-backed eco-home makers, delivery regions, quote readiness and cash or crypto payment paths. Aura facilitates; it does not sell.",
+    "A catalog of finished home models mapped honestly from dated research: model and maker, price state, delivery regions, and sources. Aura facilitates; it does not sell.",
 };
 
 export default function BuyPage() {
@@ -37,51 +36,48 @@ export default function BuyPage() {
       />
       <Reveal delay={0.08} y={12} className="mt-4">
         <p className="max-w-2xl text-[0.95rem] leading-[1.65] text-aura-text/75">
-          Compare what a maker offers, where it delivers, how current the evidence is, what still
-          needs a quote, and whether payment can happen in cash or through an optional crypto path.
-          This pilot is an evidence record, not a storefront: stale claims stay labelled, regional
-          gaps stay visible, and refuted leads remain in the record.
+          Every home below is a real model from a real maker, mapped from dated research — never
+          dressed up beyond what the evidence says. Where the record has no price, the card says
+          so and offers a quote request instead. Where delivery is unconfirmed, the card says ask
+          the maker.
+        </p>
+      </Reveal>
+      <Reveal delay={0.12} y={12} className="mt-4">
+        <p className="max-w-2xl text-xs leading-relaxed text-aura-dim">
+          Aura facilitates. It does not sell homes, broker them, or hold funds, and it has no
+          relationship with any maker named here — every claim links to its dated source.
         </p>
       </Reveal>
 
-      {/* THE BOUNDARY — stated here, where the action is, not in the footer.
-          The site already carries this line at the bottom of every page; on
-          the one page that sends money somewhere it gets said again, first,
-          and in full. */}
-      <Reveal delay={0.12} y={14} className="mt-8">
-        {/* No border-* utility here on purpose: globals.css re-declares
-            .aura-panel's border-color after the utilities layer, so it would
-            be dead code. The emerald rule below carries the emphasis. */}
+      <HomeCatalog />
+
+      <LegacyResearch />
+
+      {/* THE BOUNDARY — said in full once, above the footer, where a reader
+          who got this far is deciding whether to contact a maker. */}
+      <Reveal y={14} className="mt-24">
         <div className="aura-panel p-7">
-          <p className="aura-label mb-2">Read this before anything else</p>
-          <div className="mb-4 h-0.5 w-16">
-            <GrowBar pct={100} className="h-full bg-aura-emerald" />
-          </div>
+          <p className="aura-label mb-2">Before you contact a maker</p>
           <p className="max-w-3xl text-sm leading-relaxed text-aura-text/80">
-            Aura facilitates. It does not sell homes, does not broker them, holds no custody of
-            your funds at any point on this page, is not a party to any purchase you make, and
-            carries no liability for it. It has{" "}
-            <span className="font-medium text-aura-text">no relationship</span> — commercial,
-            referral, or otherwise — with any company named here. They are listed because they are
-            supported by a public acceptance claim or launch record. That is the entire basis for
-            inclusion; it is not a vetted-seller designation.
+            Aura is not a party to any purchase you make and carries no liability for it. Makers
+            appear because a public claim or launch record supports them — that is the entire
+            basis for inclusion, not a vetted-seller designation. Verify each claim at its source
+            link before you act on it, and treat any payment instruction that arrives over email
+            or chat as unverified until you have confirmed it by voice.
           </p>
           <p className="mt-4 max-w-3xl text-sm leading-relaxed text-aura-text/80">
-            Nothing on this page executes a transfer, quotes a rate, or takes a fee. Every leg of
-            every route is something you do yourself, in your own wallet, with your own eyes on the
-            address. Verify each claim at the source link on the card before you move any money —
-            and treat a wallet address that arrives over email or chat as unverified until you have
-            confirmed it by voice.
+            Payment today means the maker&rsquo;s own paperwork — cash or card on a written quote.
+            Paying with X Layer USDC is a future path: no maker in this record accepts it
+            directly, and Aura will show the two options side by side, with nothing hidden and
+            nothing preselected, wherever a real quote makes them meaningful.
           </p>
-          <p className="mt-4 text-[0.68rem] uppercase leading-relaxed tracking-label text-aura-text/55">
-            Not legal, financial, tax, or engineering advice · Evidence dated Aug 10, 2026
+          <p className="mt-4 text-[0.68rem] uppercase leading-relaxed tracking-label text-aura-faint">
+            Not legal, financial, tax, or engineering advice · Research dated Aug 10, 2026
           </p>
         </div>
       </Reveal>
 
-      <BuyDirectory />
-
-      <Reveal y={12} className="mt-20">
+      <Reveal y={12} className="mt-12">
         <p className="max-w-2xl text-sm leading-relaxed text-aura-text/70">
           Buying is one of two paths. The other is building your own — priced line by line in the{" "}
           <Link
@@ -91,8 +87,7 @@ export default function BuyPage() {
           >
             Alberta cost model
           </Link>
-          . Card payments through Stripe and X Layer USDC will appear together wherever a verified
-          provider supports them; neither payment path is live on this directory yet.
+          .
         </p>
       </Reveal>
     </div>

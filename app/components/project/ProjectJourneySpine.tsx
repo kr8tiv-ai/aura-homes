@@ -10,22 +10,21 @@ const STEP_META: Record<JourneyStepId, { label: string; next: string; href: stri
   land: { label: "Land", next: "Find suitable land", href: "/land" },
   team: { label: "Team", next: "Build your team", href: "/contractors" },
   quotes: { label: "Quotes", next: "Compare real quotes", href: "/budget" },
-  funding: { label: "Funding", next: "Prepare protected funding", href: "/concierge" },
+  /* Funding lives with the numbers in /budget — never the legacy concierge. */
+  funding: { label: "Funding", next: "Plan your funding", href: "/budget" },
   build: { label: "Build", next: "Plan delivery milestones", href: "/dashboard" },
   operate: { label: "Operate", next: "Prepare your home book", href: "/dashboard" },
 };
 
 export default function ProjectJourneySpine() {
-  const { project, ready, problem } = useAuraProject();
-  if (!ready) return <div className="project-spine project-spine-loading" aria-hidden />;
-  if (!project) {
-    return (
-      <aside className="project-empty-rail" aria-label="Project status">
-        <span>{problem ?? "No active project"}</span>
-        <Link href="/start">Start with your goals <span aria-hidden>→</span></Link>
-      </aside>
-    );
-  }
+  const { project, ready } = useAuraProject();
+  /* The spine appears ONLY inside an active project workspace. What the old
+     component did without one — a loading placeholder, and an empty rail
+     that prompted "No active project · Start with your goals" (also the
+     surface where a storage `problem` was reported) — is deliberately gone
+     from global chrome; /projects remains the place that reports storage
+     state and offers the start path. */
+  if (!ready || !project) return null;
   const journey = projectJourney(project);
   const next = STEP_META[journey.next.id];
   return (

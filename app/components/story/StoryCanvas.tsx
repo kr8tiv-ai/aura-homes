@@ -3,6 +3,7 @@
 import { Suspense, startTransition, useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame } from "@react-three/fiber";
+import { useProgress } from "@react-three/drei";
 import {
   nextOpeningSceneStage,
   selectOpeningSceneQuality,
@@ -80,12 +81,20 @@ export default function StoryCanvas({
   night = false,
   onReady,
   onUnavailable,
+  onStagePainted,
+  onFetch,
 }: {
   progressRef: React.MutableRefObject<number>;
   reduced: boolean;
   night?: boolean;
   onReady?: () => void;
   onUnavailable?: () => void;
+  /** Reports each progressive stage's first committed frame up to the DOM
+   *  loader, which stays visible until the meadow has painted. */
+  onStagePainted?: (stage: OpeningSceneStage) => void;
+  /** Reports THREE.DefaultLoadingManager counts (the six GLBs) up to the
+   *  DOM loader. Observed here so drei stays inside this dynamic chunk. */
+  onFetch?: (loaded: number, total: number) => void;
 }) {
   const [webgl, setWebgl] = useState<boolean | null>(probeWebGL);
   const [quality, setQuality] = useState<SceneQuality>(() => runtimeQuality(reduced));
@@ -95,11 +104,20 @@ export default function StoryCanvas({
 
   const handleStagePainted = useCallback((painted: OpeningSceneStage) => {
     setPaintedStage(painted);
+    onStagePainted?.(painted);
     if (painted === "core" && !openingReadySent.current) {
       openingReadySent.current = true;
       onReady?.();
     }
-  }, [onReady]);
+  }, [onReady, onStagePainted]);
+
+  /* useProgress is a global zustand store wired to THREE.DefaultLoadingManager
+     at module scope; Scene.tsx preloads the GLBs at module scope, so it is
+     already counting by the time this component first renders. */
+  const { loaded: fetchLoaded, total: fetchTotal } = useProgress();
+  useEffect(() => {
+    onFetch?.(fetchLoaded, fetchTotal);
+  }, [onFetch, fetchLoaded, fetchTotal]);
 
   useEffect(() => {
     if (webgl === null) setWebgl(probeWebGL() ?? false);

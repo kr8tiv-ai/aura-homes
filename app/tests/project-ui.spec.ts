@@ -1,16 +1,17 @@
 import { expect, test } from "playwright/test";
 
-test("the primary navigation starts a project and moves route utilities behind More", async ({ page }) => {
+test("the primary navigation carries the approved journey and moves utilities behind More", async ({ page }) => {
   await page.goto("/build");
   const journey = page.getByRole("navigation", { name: "Primary" });
-  await expect(journey.getByRole("link", { name: "Start a project" })).toBeVisible();
   await expect(journey.getByRole("link", { name: "Explore homes" })).toBeVisible();
-  await expect(journey.getByRole("link", { name: "How Aura works" })).toBeVisible();
-  await expect(journey.getByRole("link")).toHaveCount(3);
+  await expect(journey.getByRole("link", { name: "Design a home" })).toBeVisible();
+  await expect(journey.getByRole("link", { name: "How it works" })).toBeVisible();
+  await expect(journey.getByRole("link", { name: "My projects" })).toBeVisible();
+  await expect(journey.getByRole("link")).toHaveCount(4);
 
   await page.getByText("More", { exact: true }).click();
-  await expect(page.getByRole("link", { name: "Find land" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Contractors" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Land fit pilot" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Check a contractor" })).toBeVisible();
 });
 
 test("a non-technical intake creates and restores one local project", async ({ page }) => {

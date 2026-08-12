@@ -9,9 +9,10 @@ import { STORY_COPY, type LedgerRow, type StoryAudience } from "./copy";
 import { withBase } from "../../lib/basePath";
 import { applyTheme, currentTheme, onThemeChange } from "../../lib/theme";
 import { probeWebGL } from "@/lib/three/webgl";
+import type { OpeningSceneStage } from "@/lib/three/sceneQuality";
 import { BUILDX_URL, EnterGate, StoryHUD, useForestAudio, WithXLayerLinks, REPO_URL, XLAYER_URL } from "./StoryChrome";
 import StillScene from "./StillScene";
-import SceneHandoff from "./SceneHandoff";
+import SceneLoader, { type LoaderFetchState } from "./Loader";
 import SocialShareLinks from "../SocialShareLinks";
 
 const StoryCanvas = dynamic(() => import("./StoryCanvas"), { ssr: false });
@@ -196,6 +197,15 @@ export default function Story() {
   const handleCanvasReady = useCallback(() => setCanvasReady(true), []);
   const handleCanvasUnavailable = useCallback(() => setCanvasUnavailable(true), []);
   const bootCanvas = useCallback(() => setCanvasBoot(true), []);
+
+  /* The central loader's real signals, reported up from inside the 3D chunk:
+     GLB fetch counts and each progressive stage's first committed frame. The
+     loader itself is DOM-only (see Loader.tsx) and holds until the meadow —
+     the last progressive layer — has genuinely painted. */
+  const [paintedStage, setPaintedStage] = useState<OpeningSceneStage | null>(null);
+  const [fetchState, setFetchState] = useState<LoaderFetchState>({ loaded: 0, total: 0 });
+  const handleStagePainted = useCallback((stage: OpeningSceneStage) => setPaintedStage(stage), []);
+  const handleFetch = useCallback((loaded: number, total: number) => setFetchState({ loaded, total }), []);
 
   /* Paint the DOM handoff before mounting Three.js. Two animation frames
      guarantee the centred status card reaches the compositor before scene
@@ -406,8 +416,11 @@ export default function Story() {
     <div className={`story-scope${night ? " night" : ""}`} data-story-audience={audience}>
       <div className="story-sky" aria-hidden />
       <StillScene hidden={canvasReady} />
-      <SceneHandoff
-        visible={entered && reduced === false && !canvasReady && !canvasUnavailable}
+      <SceneLoader
+        active={entered && reduced === false && !canvasUnavailable}
+        canvasLive={canvasMount}
+        fetched={fetchState}
+        painted={paintedStage}
       />
       {reduced === false && canvasMount && (
         <StoryCanvas
@@ -416,6 +429,8 @@ export default function Story() {
           night={night}
           onReady={handleCanvasReady}
           onUnavailable={handleCanvasUnavailable}
+          onStagePainted={handleStagePainted}
+          onFetch={handleFetch}
         />
       )}
       <div className="story-grain" aria-hidden />
@@ -484,7 +499,10 @@ export default function Story() {
                 <i aria-hidden>&rarr;</i>
               </Link>
             )}
-            {b.id === "build" && (
+            {/* the journey's closing door rides the LAST beat — unless that
+                beat already carries its own cta (two doors on one plate is
+                noise, not choice) */}
+            {i === beats.length - 1 && !b.cta && (
               <Link
                 href={buildCta.href}
                 onClick={enterApp(buildCta.href)}
@@ -516,6 +534,21 @@ export default function Story() {
             <p className="story-sub" data-rv style={{ transitionDelay: "380ms" }}>
               <WithXLayerLinks text={hero.sub} />
             </p>
+            {hero.actions && hero.actions.length > 0 ? (
+              <div className="story-hero-actions" data-rv style={{ transitionDelay: "440ms" }}>
+                {hero.actions.map((a, i) => (
+                  <Link
+                    key={a.href}
+                    href={a.href}
+                    onClick={enterApp(a.href)}
+                    className={`story-cta${i === 0 ? " story-cta-primary" : ""}`}
+                  >
+                    {a.label}
+                    <i aria-hidden>&rarr;</i>
+                  </Link>
+                ))}
+              </div>
+            ) : null}
             <Ledger rows={hero.ledger} delay={480} fx />
             {audience === "crypto" ? <CryptoEcosystemLinks onNavigate={enterApp} /> : null}
             <button
@@ -523,7 +556,7 @@ export default function Story() {
               className="story-perspective-link"
               onClick={() => setAudience(audience === "project" ? "crypto" : "project")}
             >
-              {audience === "project" ? "Explore the blockchain ecosystem" : "Return to the eco-property journey"}
+              {audience === "project" ? "Explore the X Layer ecosystem" : "Return to the eco-home journey"}
               <i aria-hidden>&rarr;</i>
             </button>
             <div className="story-cue" data-rv style={{ transitionDelay: "640ms" }}>
@@ -576,12 +609,22 @@ export default function Story() {
                     {end.rollout.label} &rarr;
                   </Link>
                 </p>
+                {/* the eco journey's only HOMES mention, by design the last
+                    word of the story (founder copy, verbatim) */}
+                {end.homes && (
+                  <p className="story-end-rollout" data-rv style={{ transitionDelay: "360ms" }}>
+                    {end.homes.text}{" "}
+                    <Link href={end.homes.href} onClick={enterApp(end.homes.href)}>
+                      {end.homes.label} &rarr;
+                    </Link>
+                  </p>
+                )}
                 <button
                   type="button"
                   className="story-perspective-link story-perspective-link-end"
                   onClick={() => setAudience(audience === "project" ? "crypto" : "project")}
                 >
-                  {audience === "project" ? "Explore the blockchain ecosystem" : "Return to the eco-property journey"}
+                  {audience === "project" ? "Explore the X Layer ecosystem" : "Return to the eco-home journey"}
                   <i aria-hidden>&rarr;</i>
                 </button>
               </div>
