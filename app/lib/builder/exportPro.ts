@@ -96,6 +96,7 @@ import {
   comfortReport,
   type ComfortReport,
 } from "./comfort";
+import { NOT_FOR_CONSTRUCTION } from "@/lib/stamp";
 import { fmtFt, fmtFtFrac, fmtG, pyRound, riseOver12, sqFt, wrap } from "./drawings/kit";
 import { EXPORT_DISCLAIMER, FEET_TO_METRES, exportFilename, type ExportArtifact } from "./exportSpec";
 import {
@@ -1271,7 +1272,7 @@ function drawNotes(
   if (dateISO) put(`ISSUED: ${dateISO}`);
   y -= lh * 0.5;
 
-  put("NOT FOR CONSTRUCTION.", TX.label);
+  put(`${NOT_FOR_CONSTRUCTION}.`, TX.label);
   for (const line of wrap(EXPORT_DISCLAIMER, 110)) put(line, TX.small);
   y -= lh * 0.5;
 

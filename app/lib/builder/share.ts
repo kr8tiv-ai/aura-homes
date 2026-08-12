@@ -734,23 +734,6 @@ export async function decodeSpec(token: string): Promise<HomeSpec | null> {
   return finish(json);
 }
 
-/**
- * Synchronous decode, for the uncompressed codec only.
- *
- * Useful where an async boundary is genuinely awkward (a reducer's initial
- * state, a test). It refuses a `z` token out loud rather than pretending the
- * link is broken — the link is fine, the caller picked the wrong door.
- */
-export function decodeSpecSync(token: string): HomeSpec | null {
-  const p = parseToken(token);
-  if (!p) return null;
-  if (p.codec === "z") {
-    console.error("[aura/share] this token is compressed — use the async decodeSpec()");
-    return null;
-  }
-  return finish(p.bytes);
-}
-
 /* ---------------------------------------------------------------------------
    COMPLETE BUILDER DOCUMENT LINKS
 
@@ -865,24 +848,13 @@ export function decodeDocumentSync(token: string): BuilderDocument | null {
    URLs
    --------------------------------------------------------------------------- */
 
-/**
- * A full share URL for a spec.
- *
- * THE TOKEN GOES IN THE FRAGMENT. A fragment is never transmitted to the
- * host, so a design shared with a friend does not also land in a web-server
- * access log, a CDN log, or a referrer header. On a static export nothing
- * server-side needs to read it anyway, so there is no cost to the privacy.
- *
- * `base` defaults to the current page with any existing query and fragment
- * stripped, so calling this twice never produces a URL with two tokens in it.
- */
-export async function specToShareUrl(spec: HomeSpec, base?: string): Promise<string> {
-  const token = await encodeSpec(spec);
-  const href = base ?? (typeof window === "undefined" ? "" : window.location.href);
-  const cut = href.replace(/[?#].*$/, "");
-  return `${cut}#${SHARE_PARAM}=${token}`;
-}
+/* THE TOKEN GOES IN THE FRAGMENT. A fragment is never transmitted to the
+   host, so a design shared with a friend does not also land in a web-server
+   access log, a CDN log, or a referrer header. On a static export nothing
+   server-side needs to read it anyway, so there is no cost to the privacy.
 
+   Writers for legacy HomeSpec (`A`) links are gone — every new link is a `D`
+   document link — but the READERS below accept both forever. */
 export async function documentToShareUrl(
   document: BuilderDocument,
   base?: string,
@@ -935,20 +907,10 @@ export async function documentFromString(source: string): Promise<BuilderDocumen
   return spec ? builderDocumentFromLegacySpec(spec) : null;
 }
 
+/** Checks the fragment first (where the share writers put the token) and the
+ *  query second, so a token pasted into `?h=` by hand still works. */
 export async function documentFromLocation(): Promise<BuilderDocument | null> {
   if (typeof window === "undefined") return null;
   const { hash, search } = window.location;
   return (await documentFromString(hash)) ?? (await documentFromString(search));
-}
-
-/**
- * Read the share token out of the current page, if there is one.
- *
- * Checks the fragment first (where `specToShareUrl` puts it) and the query
- * second, so a token pasted into `?h=` by hand still works.
- */
-export async function specFromLocation(): Promise<HomeSpec | null> {
-  if (typeof window === "undefined") return null;
-  const { hash, search } = window.location;
-  return (await specFromShareUrl(hash)) ?? (await specFromShareUrl(search));
 }

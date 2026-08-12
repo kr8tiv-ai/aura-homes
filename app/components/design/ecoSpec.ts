@@ -17,6 +17,7 @@
    the composed string and the dropped count, so nothing is silent. */
 
 import type { ClimateZone, EcoMaterial, HomeStyle } from "@/lib/designApi";
+import { formatFeetInches } from "@/lib/units";
 
 /** design-api/app/models.py — DesignRequest.notes max_length. */
 export const NOTES_MAX = 500;
@@ -193,17 +194,9 @@ export function composeNotes(
 
 /* ------------------------------------------------------------- formatting */
 
-/** Feet-and-inches, the way the drawing's dimension strings read: 34'-6". */
-export function feetInches(v: number): string {
-  const sign = v < 0 ? "-" : "";
-  const abs = Math.abs(v);
-  let whole = Math.floor(abs + 1e-9);
-  let inches = Math.round((abs - whole) * 12);
-  if (inches === 12) {
-    whole += 1;
-    inches = 0;
-  }
-  return `${sign}${whole}'-${inches}"`;
-}
+/** Feet-and-inches, the way the drawing's dimension strings read: 34'-6".
+ *  Re-exported from lib/units so this module's many importers keep their
+ *  path while the body lives in the one place all six formatters share. */
+export const feetInches = (v: number): string => formatFeetInches(v);
 
 export const sqft = (n: number): string => `${Math.round(n).toLocaleString("en-CA")} sq ft`;

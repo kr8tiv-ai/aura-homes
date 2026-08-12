@@ -45,6 +45,7 @@
 --------------------------------------------------------------------- */
 
 import type { FloorPlan } from "@/lib/designApi";
+import { formatFeetInches } from "@/lib/units";
 /* Read-only import. `envelopeFor` is the engine's own footprint chooser,
    and the "largest area that would fit" suggestion has to agree with the
    plan the engine will actually solve — including its rounding to
@@ -217,23 +218,12 @@ const EPS = 1e-9;
 // formatting
 // --------------------------------------------------------------------------
 //
-// Deliberately local rather than imported from `components/design/ecoSpec`:
-// `lib` must not depend on `components`, and the prose in a finding is where
-// the honesty lives, so it is written here beside the arithmetic that
-// produced it.
+// This copy existed because `lib` must not depend on `components`, where the
+// original formatter lived. `lib/units` satisfies that rule for everyone, so
+// the body now lives there and only the short local name remains.
 
 /** Feet-and-inches the way the drawing's dimension strings read: 34'-6". */
-function ft(v: number): string {
-  const sign = v < 0 ? "-" : "";
-  const abs = Math.abs(v);
-  let whole = Math.floor(abs + EPS);
-  let inches = Math.round((abs - whole) * 12);
-  if (inches === 12) {
-    whole += 1;
-    inches = 0;
-  }
-  return `${sign}${whole}'-${inches}"`;
-}
+const ft = (v: number): string => formatFeetInches(v);
 
 const sq = (n: number): string => `${Math.round(n).toLocaleString("en-CA")} sq ft`;
 

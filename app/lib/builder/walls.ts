@@ -1440,45 +1440,16 @@ export function partitionAcrossChain(
 
 export const PARTITIONS_VERSION = 1 as const;
 
-interface PartitionWire {
-  i: string;
-  v: string;
-  a: "x" | "z";
-  t: number;
-  f: number;
-  o: number;
-  k: number;
-  /** door as [centre, width], absent when there is none */
-  d?: [number, number];
-}
-
-export function partitionsToWire(list: readonly Partition[]): {
-  version: number;
-  partitions: PartitionWire[];
-} {
-  return {
-    version: PARTITIONS_VERSION,
-    partitions: list.map((p) => {
-      const wire: PartitionWire = {
-        i: p.id,
-        v: p.volumeId,
-        a: p.axis,
-        t: q(p.atFt),
-        f: q(p.fromFt),
-        o: q(p.toFt),
-        k: q(p.thicknessFt),
-      };
-      if (p.door) wire.d = [q(p.door.atFt), q(p.door.widthFt)];
-      return wire;
-    }),
-  };
-}
-
 const isObj = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
-/** The gate. Returns null rather than throwing, and rebuilds every field. */
+/** The gate — now a READER ONLY. Nothing writes this wire format any more:
+ *  the BuilderDocument codec (`lib/builder/document.ts`) carries partitions
+ *  as validated plain objects inside the one document payload. This decoder
+ *  stays so every `.aura.json` written in the era when partitions travelled
+ *  as their own `auraEditor` sidecar block still opens with its walls.
+ *  Returns null rather than throwing, and rebuilds every field. */
 export function partitionsFromWire(value: unknown): Partition[] | null {
   if (!isObj(value)) return null;
   if (value.version !== PARTITIONS_VERSION) return null;
@@ -1518,14 +1489,3 @@ export function partitionsFromWire(value: unknown): Partition[] | null {
   return out;
 }
 
-export function encodePartitions(list: readonly Partition[]): string {
-  return JSON.stringify(partitionsToWire(list));
-}
-
-export function decodePartitions(text: string): Partition[] | null {
-  try {
-    return partitionsFromWire(JSON.parse(text) as unknown);
-  } catch {
-    return null;
-  }
-}

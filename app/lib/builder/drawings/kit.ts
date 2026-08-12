@@ -25,7 +25,12 @@
    1/4" = 1'-0" one foot is 18 pt, exactly as in blueprint.ts.
 
    PURITY. No clock, no randomness, no network, no DOM, no Node APIs.
+   `lib/units` keeps that contract — it is the shared feet-and-inches body and
+   nothing else. The rounding rule stays THIS module's pyRound, passed in.
    =========================================================================== */
+
+import { REVIEW_SET_STAMP } from "@/lib/stamp";
+import { formatFeetInches } from "@/lib/units";
 
 /* ---------------------------------------------------------------- paper --- */
 
@@ -93,17 +98,7 @@ export const fmtG = (v: number): string => String(Number(v.toPrecision(6)));
 
 /** Feet-and-inches to the nearest inch, the way a drawing letters it: 12'-6".
  *  Byte-identical to `fmtFt` in `lib/design/blueprint.ts`. */
-export function fmtFt(v: number): string {
-  const sign = v < 0 ? "-" : "";
-  const abs = Math.abs(v);
-  let whole = Math.trunc(abs);
-  let inches = pyRound((abs - whole) * 12);
-  if (inches === 12) {
-    whole += 1;
-    inches = 0;
-  }
-  return `${sign}${whole}'-${inches}"`;
-}
+export const fmtFt = (v: number): string => formatFeetInches(v, pyRound);
 
 /** Feet-and-inches to the nearest 1/8", for a schedule where a rough opening
  *  is quoted in eighths and rounding it to the inch would lose the allowance
@@ -229,10 +224,7 @@ const SHEET_CSS = [
  * or designer does not "approve" somebody else's drawings — they review them,
  * take professional responsibility, and SEAL.
  */
-export const STAMP = [
-  "NOT FOR CONSTRUCTION — REVIEW SET.",
-  "A licensed professional completes, corrects and seals this set.",
-] as const;
+export const STAMP = REVIEW_SET_STAMP;
 
 /* ------------------------------------------------------------- the scales */
 

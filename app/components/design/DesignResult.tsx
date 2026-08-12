@@ -22,8 +22,12 @@ import { feetInches, sqft } from "@/components/design/ecoSpec";
 import ParcelFindings from "@/components/design/ParcelFindings";
 import type { ParcelReport } from "@/lib/design/parcel";
 import { artifactUrl, formatFdwr, type DesignResponse } from "@/lib/designApi";
+import { DESIGN_PACKAGE_STAMP } from "@/lib/stamp";
 
-export const STAMP = "REVIEW-READY DESIGN PACKAGE — NOT FOR CONSTRUCTION";
+/* Rule 1 above says the page quotes the sheet's stamp — so it IS the sheet's
+   stamp, imported, rather than a fifth copy that had already drifted by a
+   period before lib/stamp.ts existed. */
+export const STAMP = DESIGN_PACKAGE_STAMP[0];
 
 /* Module scope: <Counter> keeps `format` in its effect deps, so an inline
    arrow would restart every count on each parent render. */

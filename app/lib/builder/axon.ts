@@ -225,6 +225,7 @@
 
 import type * as THREE from "three";
 import type { HomeGeometry, Surface } from "@/lib/builder/geometry";
+import { REVIEW_SET_STAMP } from "@/lib/stamp";
 
 /* ===========================================================================
    1. THE VIEW
@@ -710,7 +711,7 @@ const CLASS_OF: Record<AxonEdgeKind, string> = {
  * so on the face of it is the difference between a drawing and a sales image.
  */
 export const AXON_STAMP = [
-  "NOT FOR CONSTRUCTION — REVIEW SET.",
+  REVIEW_SET_STAMP[0],
   "Axonometric. Not a measured drawing: take every dimension from the plan and elevations.",
 ] as const;
 

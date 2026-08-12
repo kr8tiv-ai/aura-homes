@@ -30,6 +30,8 @@
 --------------------------------------------------------------------- */
 
 import { formatFdwr, type DesignRequest, type FloorPlan, type PlacedRoom } from "@/lib/designApi";
+import { DESIGN_PACKAGE_STAMP } from "@/lib/stamp";
+import { formatFeetInches } from "@/lib/units";
 
 /* ------------------------------------------------------- what we are given */
 
@@ -113,15 +115,10 @@ const fmtG = (v: number): string => String(Number(v.toPrecision(6)));
 /** Feet-and-inches, the way a drawing labels it: 12'-6".
  *  Matches `feetInches()` in `components/design/ecoSpec.ts` except on an exact
  *  half-inch tie, where this one follows the Python. */
-function fmtFt(v: number): string {
-  let whole = Math.trunc(v);
-  let inches = pyRound((v - whole) * 12);
-  if (inches === 12) {
-    whole += 1;
-    inches = 0;
-  }
-  return `${whole}'-${inches}"`;
-}
+/* Delegates to lib/units with THIS module's pyRound, so a half-inch still
+   rounds to even and every golden byte holds. The delegation also closes a
+   real bug: this copy never handled a negative value (`-3'--6"`). */
+const fmtFt = (v: number): string => formatFeetInches(v, pyRound);
 
 const esc = (s: string): string =>
   s
@@ -191,10 +188,7 @@ const SHEET_CSS = [
  *  AI drawings do not exist, and the repo's honesty policy forbids implying
  *  otherwise. Kept as two lines so it cannot collide with the title-block
  *  metadata on a small sheet. */
-const STAMP = [
-  "REVIEW-READY DESIGN PACKAGE — NOT FOR CONSTRUCTION.",
-  "A licensed Alberta residential designer completes the permit set.",
-];
+const STAMP = DESIGN_PACKAGE_STAMP;
 
 /* ---------------------------------------------------------------- elements */
 

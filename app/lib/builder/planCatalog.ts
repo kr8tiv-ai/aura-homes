@@ -706,10 +706,6 @@ function findTemplate(id: string): PlanTemplate {
   return plan;
 }
 
-export function getPlanTemplate(id: string): PlanTemplate {
-  return findTemplate(id);
-}
-
 export function instantiatePlanTemplate(id: string): BuilderDocument {
   const source = findTemplate(id);
   const cloned = JSON.parse(JSON.stringify(source.spec)) as HomeSpec;

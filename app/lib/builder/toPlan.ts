@@ -68,6 +68,7 @@ import {
    so it is imported from the module that owns it rather than restated here —
    a second copy of 304.8 is a second thing that can drift. */
 import { MM_PER_FT } from "@/lib/design/layout";
+import { formatFeetInches } from "@/lib/units";
 import {
   analyseParcel,
   FACING_DEG,
@@ -259,22 +260,12 @@ const ROUNDING_TOLERANCE_FT = 0.5;
 // formatting
 // ---------------------------------------------------------------------------
 //
-// Local rather than imported, exactly as `lib/design/parcel.ts` keeps its own:
-// `lib` must not depend on `components`, and the prose in a note is where the
-// honesty lives, so it is written beside the arithmetic that produced it.
+// This copy existed because `lib` must not depend on `components`, where the
+// original formatter lived. `lib/units` satisfies that rule for everyone, so
+// the body now lives there and only the short local name remains.
 
 /** Feet and inches the way the drawing's dimension strings read: 34'-6". */
-function ft(v: number): string {
-  const sign = v < 0 ? "-" : "";
-  const abs = Math.abs(v);
-  let whole = Math.floor(abs + EPS);
-  let inches = Math.round((abs - whole) * 12);
-  if (inches === 12) {
-    whole += 1;
-    inches = 0;
-  }
-  return `${sign}${whole}'-${inches}"`;
-}
+const ft = (v: number): string => formatFeetInches(v);
 
 /** Thousands separator by regex, not `toLocaleString`: a figure in a quoted
  *  document must not drift with the viewer's ICU data. */

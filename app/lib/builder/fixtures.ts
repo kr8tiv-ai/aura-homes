@@ -55,6 +55,7 @@
 import * as THREE from "three";
 
 import type { HomeSpec, Volume, Wall } from "@/lib/builder/spec";
+import { formatFeetInchesWords } from "@/lib/units";
 import {
   ARRAY_SQ_FT_PER_KW,
   DECK_STEP_FT,
@@ -3127,18 +3128,10 @@ export function clearanceSources(res: FixtureResolution): { basis: ClearanceBasi
 
 /* ---------------------------------------------------------------- words */
 
-/** Feet as feet and inches, the way the drawing set says them. */
-export function feetInches(ft: number): string {
-  const sign = ft < 0 ? "-" : "";
-  const v = Math.abs(ft);
-  let feet = Math.floor(v + 1e-9);
-  let inches = Math.round((v - feet) * 12);
-  if (inches === 12) {
-    feet += 1;
-    inches = 0;
-  }
-  return inches === 0 ? `${sign}${feet} ft` : `${sign}${feet} ft ${inches} in`;
-}
+/** Feet as prose — `6 ft 6 in` — because these strings land in sentences a
+ *  clearance report speaks. Body shared via lib/units with the five
+ *  drawing-style formatters; only the words differ. */
+export const feetInches = (ft: number): string => formatFeetInchesWords(ft);
 
 /** A bearing as a compass word. North is 0, and the site frame puts it at −Z. */
 export function bearingWord(deg: number): string {
