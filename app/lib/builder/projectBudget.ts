@@ -3,6 +3,7 @@ import {
   validateBuilderDocument,
   type BuilderDocument,
 } from "./document";
+import { keccak256, stringToHex } from "viem";
 import { summarizeBuildingGraph } from "./graphGeometry";
 import { summarizeHome } from "./geometry";
 import {
@@ -46,6 +47,7 @@ export interface ProjectBudgetLine extends BudgetRange {
 export interface ProjectBudget {
   currency: "CAD";
   designHash: `0x${string}`;
+  budgetHash: `0x${string}`;
   areaSqFt: number;
   measures: {
     areaSqFt: number;
@@ -73,6 +75,39 @@ export interface ProjectBudget {
     midpointDeltaCad: number;
     state: "within" | "at-risk" | "over";
   };
+}
+
+export interface ProjectBudgetBasisReference {
+  designHash: `0x${string}`;
+  budgetHash: `0x${string}`;
+  region: string;
+  municipality: string;
+  scenario: ProjectBudgetScenario;
+  budgetCapCad: number | null;
+}
+
+export type ProjectBudgetBasisChangeField =
+  | "legacy"
+  | "design"
+  | "site"
+  | "utilities"
+  | "finish"
+  | "delivery"
+  | "shipping"
+  | "contingency"
+  | "region"
+  | "municipality"
+  | "budget-cap"
+  | "cost-model";
+
+export interface ProjectBudgetBasisChange {
+  field: ProjectBudgetBasisChangeField;
+  message: string;
+}
+
+export interface ProjectBudgetBasisDiagnostic {
+  state: "current" | "changed" | "legacy-unbound";
+  changes: ProjectBudgetBasisChange[];
 }
 
 interface ProjectBudgetInput {
@@ -146,6 +181,70 @@ export function defaultProjectBudgetScenario(): ProjectBudgetScenario {
     shippingDistanceKm: 0,
     contingencyPct: 12,
   };
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+function canonicalValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalValue);
+  if (!isRecord(value)) return value;
+  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalValue(value[key])]));
+}
+
+export function canonicalProjectBudgetJson(
+  value: ProjectBudget | Omit<ProjectBudget, "budgetHash">,
+): string {
+  const { budgetHash: _ignored, ...basis } = value as ProjectBudget;
+  return JSON.stringify(canonicalValue(basis));
+}
+
+export function hashProjectBudget(
+  value: ProjectBudget | Omit<ProjectBudget, "budgetHash">,
+): `0x${string}` {
+  return keccak256(stringToHex(canonicalProjectBudgetJson(value)));
+}
+
+export function projectBudgetBasisReference(budget: ProjectBudget): ProjectBudgetBasisReference {
+  return {
+    designHash: budget.designHash,
+    budgetHash: budget.budgetHash,
+    region: budget.region,
+    municipality: budget.municipality,
+    scenario: structuredClone(budget.scenario),
+    budgetCapCad: budget.cap?.capCad ?? null,
+  };
+}
+
+export function diagnoseProjectBudgetBasis(
+  reference: ProjectBudgetBasisReference | null,
+  current: ProjectBudget,
+): ProjectBudgetBasisDiagnostic {
+  if (reference === null) {
+    return {
+      state: "legacy-unbound",
+      changes: [{
+        field: "legacy",
+        message: "This legacy record predates canonical budget hashes; refresh it before treating the planning basis as current.",
+      }],
+    };
+  }
+  const changes: ProjectBudgetBasisChange[] = [];
+  const add = (field: ProjectBudgetBasisChangeField, message: string) => changes.push({ field, message });
+  if (reference.designHash !== current.designHash) add("design", "The durable home design changed.");
+  if (reference.scenario.site !== current.scenario.site) add("site", "The site condition changed.");
+  if (reference.scenario.utilities !== current.scenario.utilities) add("utilities", "The utility strategy changed.");
+  if (reference.scenario.finish !== current.scenario.finish) add("finish", "The finish level changed.");
+  if (reference.scenario.delivery !== current.scenario.delivery) add("delivery", "The delivery method changed.");
+  if (reference.scenario.shippingDistanceKm !== current.scenario.shippingDistanceKm) add("shipping", "The shipping distance changed.");
+  if (reference.scenario.contingencyPct !== current.scenario.contingencyPct) add("contingency", "The contingency changed.");
+  if (reference.region !== current.region) add("region", "The pricing region changed.");
+  if (reference.municipality !== current.municipality) add("municipality", "The municipality changed.");
+  if (reference.budgetCapCad !== (current.cap?.capCad ?? null)) add("budget-cap", "The working budget cap changed.");
+  if (reference.budgetHash !== current.budgetHash && changes.length === 0) {
+    add("cost-model", "The cost model, line items, or assumptions changed.");
+  }
+  return { state: reference.budgetHash === current.budgetHash ? "current" : "changed", changes };
 }
 
 function systemsFor(strategy: UtilityStrategy, areaSqFt: number) {
@@ -379,7 +478,7 @@ export function createProjectBudget(input: ProjectBudgetInput): ProjectBudget {
     state: (total.low > capCad ? "over" : total.high > capCad ? "at-risk" : "within") as "within" | "at-risk" | "over",
   };
 
-  return {
+  const budget: Omit<ProjectBudget, "budgetHash"> = {
     currency: "CAD",
     designHash: hashBuilderDocument(document),
     areaSqFt: Math.round(measures.areaSqFt * 10) / 10,
@@ -410,4 +509,5 @@ export function createProjectBudget(input: ProjectBudgetInput): ProjectBudget {
     ],
     cap,
   };
+  return { ...budget, budgetHash: hashProjectBudget(budget) };
 }

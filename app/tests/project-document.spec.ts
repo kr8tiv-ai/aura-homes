@@ -9,7 +9,10 @@ import {
   projectJourney,
   withProjectDesign,
   validateAuraProject,
+  type AuraProject,
 } from "@/lib/project/document";
+import * as projectDocument from "@/lib/project/document";
+import { createProjectBudget, defaultProjectBudgetScenario, type ProjectBudget } from "@/lib/builder/projectBudget";
 import {
   decryptAuraProjectFile,
   encryptAuraProjectFile,
@@ -30,6 +33,12 @@ test("a builder document becomes one durable find-land-and-build project", () =>
   });
 
   expect(project.version).toBe(AURA_PROJECT_VERSION);
+  expect(project.version).toBe(2);
+  expect((project as unknown as { purpose: string }).purpose).toBe("primary-home");
+  expect((project as unknown as { stepStates: Record<string, { status: string }> }).stepStates.design.status).toBe("not-started");
+  expect((project as unknown as { blockers: unknown[] }).blockers).toEqual([]);
+  expect((project as unknown as { budgetBasis: unknown }).budgetBasis).toBeNull();
+  expect((project as unknown as { recommendedNextAction: { stepId: string } }).recommendedNextAction.stepId).toBe("requirements");
   expect(project.design.document).toEqual(document);
   expect(project.design.documentHash).toBe(hashBuilderDocument(document));
   expect(project.requirements.location.region).toBe("Alberta");
@@ -96,10 +105,128 @@ test("journey progress recommends the first incomplete real-world decision", () 
     "operate",
   ]);
   expect(initial.next.id).toBe("requirements");
+  expect(initial.steps.find((step) => step.id === "design")?.complete).toBe(false);
 
   const ready = structuredClone(project);
   ready.requirements.completedAtISO = now.toISOString();
-  expect(projectJourney(ready).next.id).toBe("land");
+  expect(projectJourney(ready).next.id).toBe("requirements");
+
+  const setStepState = (projectDocument as unknown as {
+    withProjectStepState: (
+      project: typeof ready,
+      step: string,
+      status: string,
+      now: Date,
+    ) => typeof ready;
+  }).withProjectStepState;
+  expect(typeof setStepState).toBe("function");
+  const requirementsConfirmed = setStepState(ready, "requirements", "complete", now);
+  expect(projectJourney(requirementsConfirmed).next.id).toBe("design");
+  const designConfirmed = setStepState(requirementsConfirmed, "design", "complete", now);
+  expect(projectJourney(designConfirmed).next.id).toBe("land");
+  expect((designConfirmed as unknown as { stepStates: Record<string, { confirmedAtISO: string; basisHash: string }> }).stepStates.design).toMatchObject({
+    confirmedAtISO: now.toISOString(),
+    basisHash: project.design.documentHash,
+  });
+});
+
+test("blank intake and demonstration discovery never complete explicit journey steps", () => {
+  const project = createAuraProject({
+    id: "project-no-inference",
+    name: "No inferred progress",
+    journey: "find-land-build",
+    document: defaultBuilderDocument(),
+    now,
+  });
+  const value = structuredClone(project) as unknown as Record<string, any>;
+  value.requirements.completedAtISO = now.toISOString();
+  value.discovery.land.shortlist = ["demo-parcel"];
+  value.discovery.land.records = [{
+    format: "aura-discovery-record",
+    version: 1,
+    id: "record-demo-parcel",
+    subjectId: "demo-parcel",
+    access: "demonstration",
+    sourceLabel: "Demonstration only",
+    sourceUrl: null,
+    collectedAtISO: now.toISOString(),
+    expiresAtISO: null,
+    confidence: "unverified",
+    data: { demonstration: true },
+  }];
+  value.delivery.quotes = [{ id: "demo-quote" }];
+
+  const journey = projectJourney(value as never);
+  expect(journey.steps.find((step) => step.id === "requirements")?.complete).toBe(false);
+  expect(journey.steps.find((step) => step.id === "design")?.complete).toBe(false);
+  expect(journey.steps.find((step) => step.id === "land")?.complete).toBe(false);
+  expect(journey.steps.find((step) => step.id === "quotes")?.complete).toBe(false);
+});
+
+test("version one projects migrate without losing durable data or inventing completion", () => {
+  const current = createAuraProject({
+    id: "project-v1",
+    name: "Legacy foothills project",
+    journey: "find-land-build",
+    document: defaultBuilderDocument(),
+    now,
+  });
+  const legacy = structuredClone(current) as unknown as Record<string, any>;
+  legacy.version = 1;
+  delete legacy.purpose;
+  delete legacy.stepStates;
+  delete legacy.budgetBasis;
+  delete legacy.blockers;
+  delete legacy.recommendedNextAction;
+  legacy.requirements.completedAtISO = now.toISOString();
+  legacy.delivery.orderSnapshotIds = ["snapshot-kept"];
+  legacy.milestones = [{ id: "milestone-kept" }];
+
+  const checked = validateAuraProject(legacy);
+  expect(checked.ok).toBe(true);
+  if (!checked.ok) return;
+  expect(checked.project.version).toBe(2);
+  expect(checked.project.id).toBe(legacy.id);
+  expect(checked.project.delivery.orderSnapshotIds).toEqual(["snapshot-kept"]);
+  expect(checked.project.milestones).toEqual([{ id: "milestone-kept" }]);
+  expect((checked.project as unknown as { purpose: string }).purpose).toBe("primary-home");
+  expect(projectJourney(checked.project).steps.every((step) => !step.complete)).toBe(true);
+});
+
+test("a canonical budget basis is persisted against the current design", () => {
+  const project = createAuraProject({
+    id: "project-budget-basis",
+    name: "Budget basis",
+    journey: "find-land-build",
+    document: defaultBuilderDocument(),
+    now,
+  });
+  const budget = createProjectBudget({
+    document: project.design.document,
+    scenario: defaultProjectBudgetScenario(),
+    region: "Alberta",
+    municipality: "Foothills County",
+    budgetCapCad: 500_000,
+  });
+  const persist = (projectDocument as unknown as {
+    withProjectBudgetBasis: (value: AuraProject, basis: ProjectBudget, at: Date) => AuraProject;
+  }).withProjectBudgetBasis;
+  expect(typeof persist).toBe("function");
+  const saved = persist(project, budget, now) as unknown as {
+    budgetBasis: {
+      designHash: string;
+      budgetHash: string;
+      calculatedAtISO: string;
+      assumptions: string[];
+      scenario: unknown;
+    };
+  };
+  expect(saved.budgetBasis.designHash).toBe(project.design.documentHash);
+  expect(saved.budgetBasis.budgetHash).toMatch(/^0x[a-f0-9]{64}$/);
+  expect(saved.budgetBasis.calculatedAtISO).toBe(now.toISOString());
+  expect(saved.budgetBasis.assumptions).toEqual(budget.assumptions);
+  expect(saved.budgetBasis.scenario).toEqual(budget.scenario);
+  expect(validateAuraProject(saved).ok).toBe(true);
 });
 
 test("plain and encrypted Aura project files round-trip without information loss", async () => {

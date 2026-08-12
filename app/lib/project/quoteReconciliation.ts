@@ -1,7 +1,12 @@
-import type { ProjectBudget } from "../builder/projectBudget";
+import {
+  diagnoseProjectBudgetBasis,
+  type ProjectBudget,
+  type ProjectBudgetBasisChange,
+  type ProjectBudgetScenario,
+} from "../builder/projectBudget";
 
 export const PROJECT_QUOTE_FORMAT = "aura-project-quote" as const;
-export const PROJECT_QUOTE_VERSION = 1 as const;
+export const PROJECT_QUOTE_VERSION = 2 as const;
 
 export interface QuoteEvidence {
   name: string;
@@ -19,9 +24,8 @@ export interface ProjectQuoteLine {
   allowance: boolean;
 }
 
-export interface ProjectQuote {
+interface ProjectQuoteBase {
   format: typeof PROJECT_QUOTE_FORMAT;
-  version: typeof PROJECT_QUOTE_VERSION;
   id: string;
   vendorName: string;
   capturedAtISO: string;
@@ -34,9 +38,26 @@ export interface ProjectQuote {
   lines: ProjectQuoteLine[];
 }
 
+export interface LegacyProjectQuote extends ProjectQuoteBase {
+  version: 1;
+}
+
+export interface ProjectQuoteV2 extends ProjectQuoteBase {
+  version: typeof PROJECT_QUOTE_VERSION;
+  budgetHash: `0x${string}`;
+  budgetBasis: {
+    region: string;
+    municipality: string;
+    scenario: ProjectBudgetScenario;
+    budgetCapCad: number | null;
+  };
+}
+
+export type ProjectQuote = LegacyProjectQuote | ProjectQuoteV2;
+
 export type ProjectQuoteValidation =
   | { ok: true; quote: ProjectQuote }
-  | { ok: false; problem: string };
+  | { ok: false; problem: string; futureVersion?: number };
 
 export interface QuoteReconciliation {
   quote: ProjectQuote;
@@ -50,6 +71,9 @@ export interface QuoteReconciliation {
   allowances: ProjectQuoteLine[];
   stale: boolean;
   designChanged: boolean;
+  budgetChanged: boolean | null;
+  basisState: "current" | "changed" | "legacy-unbound";
+  basisChanges: ProjectBudgetBasisChange[];
 }
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
@@ -57,47 +81,48 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
 const isISO = (value: unknown): value is string =>
   typeof value === "string" && Number.isFinite(Date.parse(value));
 const SHA256_HEX = /^[a-f0-9]{64}$/i;
+const HASH_HEX = /^0x[a-f0-9]{64}$/i;
 
 export function validateProjectQuote(value: unknown): ProjectQuoteValidation {
   if (!isObject(value)) return { ok: false, problem: "Quote is not an object." };
-  if (value.format !== PROJECT_QUOTE_FORMAT || value.version !== PROJECT_QUOTE_VERSION)
-    return { ok: false, problem: "Quote format or version is not supported." };
+  if (value.format !== PROJECT_QUOTE_FORMAT) return { ok: false, problem: "Quote format is not supported." };
+  if (typeof value.version === "number" && value.version > PROJECT_QUOTE_VERSION) {
+    return { ok: false, problem: `This quote was captured by a newer version (v${value.version}).`, futureVersion: value.version };
+  }
+  if (value.version !== 1 && value.version !== PROJECT_QUOTE_VERSION) return { ok: false, problem: "Quote version is not supported." };
   if (typeof value.id !== "string" || !value.id.trim()) return { ok: false, problem: "Quote id is missing." };
   if (typeof value.vendorName !== "string" || !value.vendorName.trim()) return { ok: false, problem: "Vendor name is missing." };
   if (!isISO(value.capturedAtISO)) return { ok: false, problem: "Quote capture date is invalid." };
   if (value.validUntilISO !== null && !isISO(value.validUntilISO)) return { ok: false, problem: "Quote validity date is invalid." };
   if (value.currency !== "CAD") return { ok: false, problem: "Only CAD quotes are supported in the Alberta pilot." };
-  if (typeof value.designHash !== "string" || !/^0x[a-f0-9]{64}$/i.test(value.designHash))
-    return { ok: false, problem: "Quote design hash is invalid." };
-  if (typeof value.modelTotalMidCad !== "number" || !Number.isFinite(value.modelTotalMidCad) || value.modelTotalMidCad < 0)
-    return { ok: false, problem: "Quote budget basis is invalid." };
+  if (typeof value.designHash !== "string" || !HASH_HEX.test(value.designHash)) return { ok: false, problem: "Quote design hash is invalid." };
+  if (typeof value.modelTotalMidCad !== "number" || !Number.isFinite(value.modelTotalMidCad) || value.modelTotalMidCad < 0) return { ok: false, problem: "Quote budget basis is invalid." };
   if (typeof value.notes !== "string") return { ok: false, problem: "Quote notes are invalid." };
-  if (value.evidence !== null) {
-    if (!isObject(value.evidence)) return { ok: false, problem: "Quote evidence is invalid." };
-    if (
-      typeof value.evidence.name !== "string" ||
-      typeof value.evidence.mediaType !== "string" ||
-      typeof value.evidence.sizeBytes !== "number" ||
-      !Number.isFinite(value.evidence.sizeBytes) ||
-      value.evidence.sizeBytes < 0 ||
-      typeof value.evidence.sha256 !== "string" ||
-      !SHA256_HEX.test(value.evidence.sha256) ||
-      typeof value.evidence.dataUrl !== "string" ||
-      !value.evidence.dataUrl.startsWith("data:")
-    ) return { ok: false, problem: "Quote evidence metadata or SHA-256 checksum is invalid." };
-  }
+  if (value.evidence !== null && !validEvidence(value.evidence)) return { ok: false, problem: "Quote evidence metadata or SHA-256 checksum is invalid." };
   if (!Array.isArray(value.lines) || value.lines.length === 0) return { ok: false, problem: "Add at least one quote line." };
+
+  let budgetHash: `0x${string}` | null = null;
+  let budgetBasis: ProjectQuoteV2["budgetBasis"] | null = null;
+  if (value.version === PROJECT_QUOTE_VERSION) {
+    if (typeof value.budgetHash !== "string" || !HASH_HEX.test(value.budgetHash)) return { ok: false, problem: "Quote budget hash is invalid." };
+    if (!isObject(value.budgetBasis) || typeof value.budgetBasis.region !== "string" || typeof value.budgetBasis.municipality !== "string" || !validScenario(value.budgetBasis.scenario)) return { ok: false, problem: "Quote planning scenario is invalid." };
+    if (value.budgetBasis.budgetCapCad !== null && !(typeof value.budgetBasis.budgetCapCad === "number" && Number.isFinite(value.budgetBasis.budgetCapCad) && value.budgetBasis.budgetCapCad >= 0)) return { ok: false, problem: "Quote budget cap is invalid." };
+    budgetHash = value.budgetHash as `0x${string}`;
+    budgetBasis = {
+      region: value.budgetBasis.region,
+      municipality: value.budgetBasis.municipality,
+      scenario: structuredClone(value.budgetBasis.scenario) as ProjectBudgetScenario,
+      budgetCapCad: value.budgetBasis.budgetCapCad as number | null,
+    };
+  }
+
   const lineIds = new Set<string>();
   const lines: ProjectQuoteLine[] = [];
   for (const raw of value.lines) {
-    if (!isObject(raw) || typeof raw.id !== "string" || !raw.id.trim() || lineIds.has(raw.id))
-      return { ok: false, problem: "Quote line ids must be unique and non-empty." };
-    if (raw.budgetLineId !== null && typeof raw.budgetLineId !== "string")
-      return { ok: false, problem: "A quote line has an invalid Aura scope mapping." };
-    if (typeof raw.description !== "string" || !raw.description.trim())
-      return { ok: false, problem: "A quote line description is missing." };
-    if (typeof raw.amountCad !== "number" || !Number.isFinite(raw.amountCad) || raw.amountCad < 0)
-      return { ok: false, problem: "Quote line amounts must be positive CAD numbers." };
+    if (!isObject(raw) || typeof raw.id !== "string" || !raw.id.trim() || lineIds.has(raw.id)) return { ok: false, problem: "Quote line ids must be unique and non-empty." };
+    if (raw.budgetLineId !== null && typeof raw.budgetLineId !== "string") return { ok: false, problem: "A quote line has an invalid Aura scope mapping." };
+    if (typeof raw.description !== "string" || !raw.description.trim()) return { ok: false, problem: "A quote line description is missing." };
+    if (typeof raw.amountCad !== "number" || !Number.isFinite(raw.amountCad) || raw.amountCad < 0) return { ok: false, problem: "Quote line amounts must be positive CAD numbers." };
     if (typeof raw.allowance !== "boolean") return { ok: false, problem: "A quote allowance flag is invalid." };
     lineIds.add(raw.id);
     lines.push({
@@ -108,23 +133,23 @@ export function validateProjectQuote(value: unknown): ProjectQuoteValidation {
       allowance: raw.allowance,
     });
   }
-  return {
-    ok: true,
-    quote: {
-      format: PROJECT_QUOTE_FORMAT,
-      version: PROJECT_QUOTE_VERSION,
-      id: value.id.trim().slice(0, 96),
-      vendorName: value.vendorName.trim().slice(0, 160),
-      capturedAtISO: value.capturedAtISO,
-      validUntilISO: value.validUntilISO,
-      currency: "CAD",
-      designHash: value.designHash as `0x${string}`,
-      modelTotalMidCad: Math.round(value.modelTotalMidCad * 100) / 100,
-      evidence: value.evidence as QuoteEvidence | null,
-      notes: value.notes.trim().slice(0, 4_000),
-      lines,
-    },
+
+  const base: ProjectQuoteBase = {
+    format: PROJECT_QUOTE_FORMAT,
+    id: value.id.trim().slice(0, 96),
+    vendorName: value.vendorName.trim().slice(0, 160),
+    capturedAtISO: value.capturedAtISO,
+    validUntilISO: value.validUntilISO,
+    currency: "CAD",
+    designHash: value.designHash as `0x${string}`,
+    modelTotalMidCad: Math.round(value.modelTotalMidCad * 100) / 100,
+    evidence: value.evidence as QuoteEvidence | null,
+    notes: value.notes.trim().slice(0, 4_000),
+    lines,
   };
+  return value.version === 1
+    ? { ok: true, quote: { ...base, version: 1 } }
+    : { ok: true, quote: { ...base, version: PROJECT_QUOTE_VERSION, budgetHash: budgetHash!, budgetBasis: budgetBasis! } };
 }
 
 export function projectQuotesFromUnknown(values: readonly unknown[]): ProjectQuote[] {
@@ -142,6 +167,16 @@ export function reconcileProjectQuote(
   const checked = validateProjectQuote(value);
   if (!checked.ok) throw new Error(`Cannot reconcile this quote: ${checked.problem}`);
   const quote = checked.quote;
+  const diagnostic = quote.version === 1
+    ? diagnoseProjectBudgetBasis(null, budget)
+    : diagnoseProjectBudgetBasis({
+        designHash: quote.designHash,
+        budgetHash: quote.budgetHash,
+        region: quote.budgetBasis.region,
+        municipality: quote.budgetBasis.municipality,
+        scenario: quote.budgetBasis.scenario,
+        budgetCapCad: quote.budgetBasis.budgetCapCad,
+      }, budget);
   const knownBudgetIds = new Set(budget.lines.map((line) => line.id));
   const coveredBudgetLineIds = Array.from(new Set(
     quote.lines
@@ -150,9 +185,7 @@ export function reconcileProjectQuote(
   )).sort();
   const covered = new Set(coveredBudgetLineIds);
   const quotedTotalCad = Math.round(quote.lines.reduce((sum, line) => sum + line.amountCad, 0) * 100) / 100;
-  const modelCoveredMidCad = budget.lines
-    .filter((line) => covered.has(line.id))
-    .reduce((sum, line) => sum + line.mid, 0);
+  const modelCoveredMidCad = budget.lines.filter((line) => covered.has(line.id)).reduce((sum, line) => sum + line.mid, 0);
   const varianceCad = Math.round((quotedTotalCad - modelCoveredMidCad) * 100) / 100;
   return {
     quote,
@@ -166,6 +199,9 @@ export function reconcileProjectQuote(
     allowances: quote.lines.filter((line) => line.allowance),
     stale: quote.validUntilISO !== null && Date.parse(nowISO) > Date.parse(quote.validUntilISO),
     designChanged: quote.designHash !== budget.designHash,
+    budgetChanged: quote.version === 1 ? null : quote.budgetHash !== budget.budgetHash,
+    basisState: diagnostic.state,
+    basisChanges: diagnostic.changes,
   };
 }
 
@@ -181,4 +217,23 @@ export async function evidenceFromFile(file: File): Promise<QuoteEvidence> {
     reader.readAsDataURL(file);
   });
   return { name: file.name, mediaType: file.type || "application/octet-stream", sizeBytes: file.size, sha256, dataUrl };
+}
+
+function validEvidence(value: unknown): value is QuoteEvidence {
+  return isObject(value)
+    && typeof value.name === "string"
+    && typeof value.mediaType === "string"
+    && typeof value.sizeBytes === "number" && Number.isFinite(value.sizeBytes) && value.sizeBytes >= 0
+    && typeof value.sha256 === "string" && SHA256_HEX.test(value.sha256)
+    && typeof value.dataUrl === "string" && value.dataUrl.startsWith("data:");
+}
+
+function validScenario(value: unknown): value is ProjectBudgetScenario {
+  return isObject(value)
+    && ["unknown", "serviced-flat", "rural-flat", "sloped", "remote"].includes(String(value.site))
+    && ["serviced", "hybrid", "off-grid"].includes(String(value.utilities))
+    && ["essential", "standard", "elevated"].includes(String(value.finish))
+    && ["owner-builder", "hybrid", "full-service"].includes(String(value.delivery))
+    && typeof value.shippingDistanceKm === "number" && Number.isFinite(value.shippingDistanceKm) && value.shippingDistanceKm >= 0
+    && typeof value.contingencyPct === "number" && Number.isFinite(value.contingencyPct) && value.contingencyPct >= 0;
 }

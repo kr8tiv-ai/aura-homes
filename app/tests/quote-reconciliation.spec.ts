@@ -2,8 +2,11 @@ import { expect, test } from "playwright/test";
 import { defaultBuilderDocument } from "@/lib/builder/document";
 import { createProjectBudget, defaultProjectBudgetScenario } from "@/lib/builder/projectBudget";
 import {
+  PROJECT_QUOTE_FORMAT,
+  PROJECT_QUOTE_VERSION,
   reconcileProjectQuote,
   validateProjectQuote,
+  type LegacyProjectQuote,
   type ProjectQuote,
 } from "@/lib/project/quoteReconciliation";
 
@@ -15,7 +18,7 @@ const budget = createProjectBudget({
   budgetCapCad: 500_000,
 });
 
-function quote(change: Partial<ProjectQuote> = {}): ProjectQuote {
+function quote(change: Partial<LegacyProjectQuote> = {}): LegacyProjectQuote {
   return {
     format: "aura-project-quote",
     version: 1,
@@ -63,4 +66,45 @@ test("invalid quote evidence cannot enter a project", () => {
   expect(validateProjectQuote(quote()).ok).toBe(true);
   expect(validateProjectQuote({ ...quote(), lines: [{ ...quote().lines[0], amountCad: -1 }] }).ok).toBe(false);
   expect(validateProjectQuote({ ...quote(), evidence: { name: "quote.pdf", mediaType: "application/pdf", sizeBytes: 2, sha256: "not-a-hash", dataUrl: "data:application/pdf;base64,AA==" } }).ok).toBe(false);
+});
+
+test("version two quotes bind both hashes and explain changed planning inputs", () => {
+  expect(PROJECT_QUOTE_VERSION).toBe(2);
+  const latest = {
+    ...quote(),
+    format: PROJECT_QUOTE_FORMAT,
+    version: PROJECT_QUOTE_VERSION,
+    budgetHash: (budget as unknown as { budgetHash: string }).budgetHash,
+    budgetBasis: {
+      region: budget.region,
+      municipality: budget.municipality,
+      scenario: budget.scenario,
+      budgetCapCad: budget.cap?.capCad ?? null,
+    },
+  };
+  expect(validateProjectQuote(latest).ok).toBe(true);
+  const changedBudget = createProjectBudget({
+    document: defaultBuilderDocument(),
+    scenario: { ...defaultProjectBudgetScenario(), utilities: "off-grid", finish: "elevated", delivery: "full-service", contingencyPct: 20 },
+    region: "British Columbia",
+    municipality: "Nelson",
+    budgetCapCad: 600_000,
+  });
+  const result = reconcileProjectQuote(changedBudget, latest as never, "2026-08-12T00:00:00.000Z");
+  expect((result as unknown as { basisState: string }).basisState).toBe("changed");
+  expect((result as unknown as { basisChanges: Array<{ field: string }> }).basisChanges.map((change) => change.field)).toEqual(expect.arrayContaining([
+    "utilities", "finish", "delivery", "contingency", "region", "municipality", "budget-cap",
+  ]));
+});
+
+test("version one quotes remain readable and are identified as unbound to a canonical budget", () => {
+  const legacy = quote();
+  const checked = validateProjectQuote(legacy);
+  expect(checked.ok).toBe(true);
+  if (!checked.ok) return;
+  const result = reconcileProjectQuote(budget, checked.quote, "2026-08-12T00:00:00.000Z");
+  expect((result as unknown as { basisState: string }).basisState).toBe("legacy-unbound");
+  expect((result as unknown as { basisChanges: Array<{ field: string }> }).basisChanges).toEqual([
+    expect.objectContaining({ field: "legacy" }),
+  ]);
 });

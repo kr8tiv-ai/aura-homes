@@ -5,9 +5,8 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { LazyMotion, MotionConfig } from "motion/react";
 import * as m from "motion/react-m";
+import { APP_ROUTE_TRANSITION_SECONDS } from "@/lib/ui/motionPolicy";
 import CardFXLayer from "./CardFX";
-import Cursor from "./Cursor";
-import SmoothScroll from "./SmoothScroll";
 import ThemeToggle from "./ThemeToggle";
 import ProjectJourneySpine from "./project/ProjectJourneySpine";
 import SocialShareLinks from "./SocialShareLinks";
@@ -232,17 +231,8 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
   return (
     <LazyMotion features={loadDomAnimation} strict>
       <MotionConfig reducedMotion="user">
-        {/* Both are inert on touch and under prefers-reduced-motion, and
-            SmoothScroll no-ops on "/" where the camera rig owns scroll.
-
-            The pointer ring is OFF on the story route. On a document page a
-            ring that grows over a link is a nice touch; laid over the meadow
-            it is a 56px translucent disc parked on the composition — it reads
-            as a rendering artifact rather than a cursor, which is exactly how
-            it was reported. The scene now draws no circles of any kind: the
-            in-world hotspot markers are gone too. */}
-        {!isStory && <Cursor />}
-        <SmoothScroll />
+        {/* Practical routes keep native scrolling and the system cursor. The
+            landing story owns the only cinematic scroll treatment. */}
         {isStory ? (
           <>
             <StoryHeader />
@@ -251,7 +241,6 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
           </>
         ) : (
           <>
-            <CardFXLayer />
             <StandardHeader />
             <div className={pathname === "/build" ? "mx-auto max-w-[90rem] px-4 pt-4 sm:px-6" : "mx-auto max-w-5xl px-6 pt-4"}>
               <ProjectJourneySpine />
@@ -267,7 +256,10 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
                 key={pathname}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
+                transition={{
+                  duration: APP_ROUTE_TRANSITION_SECONDS,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
               >
                 {children}
               </m.div>

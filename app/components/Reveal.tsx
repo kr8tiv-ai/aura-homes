@@ -2,6 +2,10 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import * as m from "motion/react-m";
+import {
+  DOCUMENT_REVEAL_SECONDS,
+  DOCUMENT_STAGGER_SECONDS,
+} from "@/lib/ui/motionPolicy";
 
 /* ---------------------------------------------------------------------
    THE MOTION VOCABULARY for the document pages.
@@ -43,7 +47,7 @@ export function Reveal({
       initial={{ opacity: 0, y }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-60px" }}
-      transition={{ duration: 0.7, ease: EASE, delay }}
+      transition={{ duration: DOCUMENT_REVEAL_SECONDS, ease: EASE, delay }}
     >
       {children}
     </m.div>
@@ -55,7 +59,7 @@ export function Reveal({
 export function Stagger({
   children,
   className,
-  gap = 0.06,
+  gap = DOCUMENT_STAGGER_SECONDS,
 }: {
   children: ReactNode;
   className?: string;
@@ -88,7 +92,11 @@ export function StaggerItem({
       className={className}
       variants={{
         hidden: { opacity: 0, y },
-        show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: EASE } },
+        show: {
+          opacity: 1,
+          y: 0,
+          transition: { duration: DOCUMENT_REVEAL_SECONDS, ease: EASE },
+        },
       }}
     >
       {children}

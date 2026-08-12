@@ -6,6 +6,7 @@ import { hashBuilderDocument } from "@/lib/builder/document";
 import {
   createProjectBudget,
   defaultProjectBudgetScenario,
+  type ProjectBudget,
   type ProjectBudgetScenario,
 } from "@/lib/builder/projectBudget";
 
@@ -24,6 +25,7 @@ test("a project budget is bound to the exact durable design", () => {
   });
 
   expect(budget.designHash).toBe(hashBuilderDocument(document));
+  expect((budget as unknown as { budgetHash: string }).budgetHash).toMatch(/^0x[a-f0-9]{64}$/);
   expect(budget.areaSqFt).toBe(799);
   expect(budget.currency).toBe("CAD");
   expect(budget.lines.length).toBeGreaterThanOrEqual(12);
@@ -34,6 +36,16 @@ test("a project budget is bound to the exact durable design", () => {
   expect(budget.cap?.capCad).toBe(500_000);
   expect(budget.assumptions.join(" ")).toMatch(/Alberta|design/i);
   expect(budget.exclusions.join(" ")).toMatch(/land|tax/i);
+});
+
+test("the canonical budget hash changes with the complete planning basis", () => {
+  const document = defaultBuilderDocument();
+  const first = createProjectBudget({ document, scenario: scenario(), region: "Alberta", municipality: "Foothills County", budgetCapCad: 500_000 });
+  const repeated = createProjectBudget({ document, scenario: scenario(), region: "Alberta", municipality: "Foothills County", budgetCapCad: 500_000 });
+  const changed = createProjectBudget({ document, scenario: scenario({ shippingDistanceKm: 425 }), region: "Alberta", municipality: "Foothills County", budgetCapCad: 500_000 });
+  const hash = (value: ProjectBudget) => (value as unknown as { budgetHash: string }).budgetHash;
+  expect(hash(first)).toBe(hash(repeated));
+  expect(hash(changed)).not.toBe(hash(first));
 });
 
 test("edited geometry changes the range instead of reusing a reference fixture", () => {

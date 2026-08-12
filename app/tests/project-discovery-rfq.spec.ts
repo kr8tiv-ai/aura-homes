@@ -1,13 +1,14 @@
 import { expect, test } from "playwright/test";
 import { defaultBuilderDocument } from "@/lib/builder/document";
-import { createProjectBudget, defaultProjectBudgetScenario } from "@/lib/builder/projectBudget";
+import { createProjectBudget, defaultProjectBudgetScenario, type ProjectBudget } from "@/lib/builder/projectBudget";
 import { createAuraProject, projectJourney } from "@/lib/project/document";
 import {
   createDiscoveryRecord,
   setProjectShortlist,
   upsertProjectDiscoveryRecord,
 } from "@/lib/project/discoveryRecord";
-import { createProjectRfq, validateProjectRfq } from "@/lib/project/rfq";
+import { createProjectRfq, validateProjectRfq, type ProjectRfq } from "@/lib/project/rfq";
+import * as projectRfq from "@/lib/project/rfq";
 import type { ContractorProfile } from "@/lib/marketplace/discovery";
 
 const now = new Date("2026-08-12T12:00:00.000Z");
@@ -44,7 +45,7 @@ test("discovery records preserve provenance and project shortlists are determini
   const twice = setProjectShortlist(shortlisted, "contractors", contractor.id, true, now);
   expect(shortlisted.discovery.contractors.records).toEqual([record]);
   expect(twice.discovery.contractors.shortlist).toEqual([contractor.id]);
-  expect(projectJourney(twice).steps.find((step) => step.id === "team")?.complete).toBe(true);
+  expect(projectJourney(twice).steps.find((step) => step.id === "team")?.complete).toBe(false);
 });
 
 test("an RFQ binds scope, design, budget and shortlisted discovery subjects", () => {
@@ -68,6 +69,8 @@ test("an RFQ binds scope, design, budget and shortlisted discovery subjects", ()
     createdAtISO: now.toISOString(),
   });
   expect(rfq.designHash).toBe(value.design.documentHash);
+  expect(rfq.version).toBe(2);
+  expect((rfq as unknown as { budgetHash: string }).budgetHash).toBe((budget as unknown as { budgetHash: string }).budgetHash);
   expect(rfq.landSubjectIds).toEqual(["parcel-17"]);
   expect(rfq.contractorId).toBe(contractor.id);
   expect(rfq.budgetLines.some((line) => line.id === "shell")).toBe(true);
@@ -75,6 +78,51 @@ test("an RFQ binds scope, design, budget and shortlisted discovery subjects", ()
   expect(rfq.responseTemplate.join(" ")).toMatch(/price|schedule|exclusions/i);
   expect(rfq.canonicalHash).toMatch(/^0x[a-f0-9]{64}$/);
   expect(validateProjectRfq(rfq).ok).toBe(true);
+});
+
+test("RFQ basis diagnostics identify the planning inputs changed after preparation", () => {
+  const value = project();
+  const original = createProjectBudget({ document, scenario: defaultProjectBudgetScenario(), region: "Alberta", municipality: "Foothills County", budgetCapCad: 500_000 });
+  const rfq = createProjectRfq({ id: "rfq-basis", project: value, budget: original, scope: "whole-home", contractorId: null, responseDueISO: null, createdAtISO: now.toISOString() });
+  const current = createProjectBudget({
+    document,
+    scenario: { ...defaultProjectBudgetScenario(), site: "sloped", shippingDistanceKm: 425 },
+    region: "British Columbia",
+    municipality: "Nelson",
+    budgetCapCad: 600_000,
+  });
+  const diagnose = (projectRfq as unknown as {
+    diagnoseProjectRfqBasis: (value: ProjectRfq, budget: ProjectBudget) => { state: string; changes: Array<{ field: string }> };
+  }).diagnoseProjectRfqBasis;
+  expect(typeof diagnose).toBe("function");
+  const result = diagnose(rfq, current);
+  expect(result.state).toBe("changed");
+  expect(result.changes.map((change) => change.field)).toEqual(expect.arrayContaining([
+    "site", "shipping", "region", "municipality", "budget-cap",
+  ]));
+});
+
+test("version one RFQ packages remain readable as legacy unbound evidence", () => {
+  const value = project();
+  const budget = createProjectBudget({ document, scenario: defaultProjectBudgetScenario(), region: "Alberta", municipality: "", budgetCapCad: null });
+  const latest = createProjectRfq({ id: "rfq-legacy-source", project: value, budget, scope: "whole-home", contractorId: null, responseDueISO: null, createdAtISO: now.toISOString() });
+  const legacy = structuredClone(latest) as unknown as Record<string, unknown>;
+  legacy.version = 1;
+  delete legacy.budgetHash;
+  if (typeof legacy.budgetBasis === "object" && legacy.budgetBasis !== null) {
+    const basis = legacy.budgetBasis as Record<string, unknown>;
+    delete basis.region;
+    delete basis.municipality;
+    delete basis.scenario;
+    delete basis.budgetCapCad;
+  }
+  delete legacy.canonicalHash;
+  const hashLegacy = (projectRfq as unknown as { canonicalProjectRfqHash: (value: Record<string, unknown>) => string }).canonicalProjectRfqHash;
+  expect(typeof hashLegacy).toBe("function");
+  legacy.canonicalHash = hashLegacy(legacy);
+  const checked = validateProjectRfq(legacy);
+  expect(checked.ok).toBe(true);
+  if (checked.ok) expect(checked.rfq.version).toBe(1);
 });
 
 test("RFQs cannot silently use a different design or unknown scope", () => {
