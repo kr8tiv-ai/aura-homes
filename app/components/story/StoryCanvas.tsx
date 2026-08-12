@@ -7,6 +7,7 @@ import { useProgress } from "@react-three/drei";
 import {
   nextOpeningSceneStage,
   selectOpeningSceneQuality,
+  selectSceneQuality,
   type OpeningSceneStage,
   type SceneQuality,
 } from "@/lib/three/sceneQuality";
@@ -43,6 +44,21 @@ interface NavigatorWithMemory extends Navigator {
 function runtimeQuality(reduced: boolean): SceneQuality {
   const nav = navigator as NavigatorWithMemory;
   return selectOpeningSceneQuality({
+    width: window.innerWidth,
+    devicePixelRatio: window.devicePixelRatio || 1,
+    deviceMemoryGb: nav.deviceMemory,
+    hardwareConcurrency: nav.hardwareConcurrency,
+    reducedMotion: reduced,
+  });
+}
+
+/** The quality the hardware actually earns, with the opening's caps lifted.
+ *  Applied only after the last opening stage has painted a real frame — the
+ *  0.14 grass cap exists to protect the first paint, and holding it forever
+ *  was the bug that shipped a 14%-density meadow with dwarf flowers. */
+function runtimeFullQuality(reduced: boolean): SceneQuality {
+  const nav = navigator as NavigatorWithMemory;
+  return selectSceneQuality({
     width: window.innerWidth,
     devicePixelRatio: window.devicePixelRatio || 1,
     deviceMemoryGb: nav.deviceMemory,
@@ -100,6 +116,9 @@ export default function StoryCanvas({
   const [quality, setQuality] = useState<SceneQuality>(() => runtimeQuality(reduced));
   const [stage, setStage] = useState<OpeningSceneStage>("core");
   const [paintedStage, setPaintedStage] = useState<OpeningSceneStage | null>(null);
+  /** true once the LAST opening stage has painted — the moment the opening
+   *  caps have done their job and the meadow may grow to full density. */
+  const [settled, setSettled] = useState(false);
   const openingReadySent = useRef(false);
 
   const handleStagePainted = useCallback((painted: OpeningSceneStage) => {
@@ -109,6 +128,7 @@ export default function StoryCanvas({
       openingReadySent.current = true;
       onReady?.();
     }
+    if (painted === "meadow") setSettled(true);
   }, [onReady, onStagePainted]);
 
   /* useProgress is a global zustand store wired to THREE.DefaultLoadingManager
@@ -129,12 +149,40 @@ export default function StoryCanvas({
 
   useEffect(() => {
     const refreshQuality = () => {
-      setQuality(runtimeQuality(reduced));
+      setQuality(settled ? runtimeFullQuality(reduced) : runtimeQuality(reduced));
     };
     refreshQuality();
     window.addEventListener("resize", refreshQuality, { passive: true });
     return () => window.removeEventListener("resize", refreshQuality);
-  }, [reduced]);
+  }, [reduced, settled]);
+
+  /* The promotion. Once the meadow stage has painted at the opening scale,
+     lift the caps through the SAME idle boundary the stage machine uses —
+     rebuilding ~1M grass instances is exactly the task the opening split to
+     avoid, so it never lands inside a frame the visitor is watching. The
+     resize listener above re-derives from the settled selector afterwards. */
+  useEffect(() => {
+    if (!settled) return;
+    let idleHandle: number | null = null;
+    const idleWindow = window as unknown as {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    const timer = window.setTimeout(() => {
+      const promote = () => startTransition(() => setQuality(runtimeFullQuality(reduced)));
+      if (idleWindow.requestIdleCallback) {
+        idleHandle = idleWindow.requestIdleCallback(promote, { timeout: 2_000 });
+      } else {
+        window.requestAnimationFrame(promote);
+      }
+    }, 600);
+    return () => {
+      window.clearTimeout(timer);
+      if (idleHandle !== null && idleWindow.cancelIdleCallback) {
+        idleWindow.cancelIdleCallback(idleHandle);
+      }
+    };
+  }, [settled, reduced]);
 
   /* Progress only after the current stage has produced a real frame. Each
      addition is scheduled through an idle boundary, so model cloning,
