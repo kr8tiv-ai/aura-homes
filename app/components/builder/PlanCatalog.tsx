@@ -134,6 +134,11 @@ export default function PlanCatalog({ onChoose, currentName }: Props) {
       PLAN_TEMPLATES.map((plan) => ({ plan, estimate: estimatePlanTemplate(plan.id) })),
     [],
   );
+  /* Counted, never typed. The library is growing by provenance sweep, and a
+     sentence claiming "twelve" the day the thirteenth lands is exactly the
+     kind of small lie this site refuses to tell. */
+  const totalCount = entries.length;
+  const openCount = entries.filter(({ plan }) => plan.source.kind === "licensed-adaptation").length;
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return entries.filter(({ plan, estimate }) => {
@@ -156,13 +161,14 @@ export default function PlanCatalog({ onChoose, currentName }: Props) {
           <p className="aura-label text-aura-emerald">Prebuilt plan library</p>
           <h2 id="plan-library-heading">Start from a plan, then make it yours.</h2>
           <p>
-            Compare twelve editable eco-home concepts, including three carefully attributed open-source studies.
-            Every choice becomes a complete Aura project—3D, plan, autosave, exports and cost range included.
+            Compare {totalCount} editable eco-home concepts, including {openCount} carefully attributed
+            open-licence studies. Every choice becomes a complete Aura project—3D, plan, autosave,
+            exports and cost range included.
           </p>
         </div>
         <div className="plan-library__truth">
-          <span>12 editable concepts</span>
-          <span>3 licensed sources</span>
+          <span>{totalCount} editable concepts</span>
+          <span>{openCount} licensed sources</span>
           <span>Alberta cost ranges</span>
         </div>
       </div>

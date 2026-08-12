@@ -1,16 +1,24 @@
 import { expect, test } from "playwright/test";
 
+import { PLAN_TEMPLATES } from "@/lib/builder/planCatalog";
+
+/* The counts assert against the catalog itself rather than a number typed the
+   day the library held twelve — the library grows by provenance sweep, and
+   this spec's job is that the page COUNTS honestly, not that growth stopped. */
+const TOTAL = PLAN_TEMPLATES.length;
+const OPEN = PLAN_TEMPLATES.filter((plan) => plan.source.kind === "licensed-adaptation").length;
+
 test("the builder opens on a filterable, source-aware plan library", async ({ page }) => {
   test.setTimeout(90_000);
   await page.goto("/build");
 
   await expect(page.getByRole("heading", { name: "Start from a plan, then make it yours." })).toBeVisible({ timeout: 60_000 });
-  await expect(page.locator(".plan-card")).toHaveCount(12);
-  await expect(page.getByText("12 editable concepts", { exact: true })).toBeVisible();
-  await expect(page.getByText("3 licensed sources", { exact: true })).toBeVisible();
+  await expect(page.locator(".plan-card")).toHaveCount(TOTAL);
+  await expect(page.getByText(`${TOTAL} editable concepts`, { exact: true })).toBeVisible();
+  await expect(page.getByText(`${OPEN} licensed sources`, { exact: true })).toBeVisible();
 
   await page.getByLabel("Source").selectOption("open");
-  await expect(page.locator(".plan-card")).toHaveCount(3);
+  await expect(page.locator(".plan-card")).toHaveCount(OPEN);
   await expect(page.getByRole("button", { name: /Liber’Tiny Study/ })).toBeVisible();
 
   await page.getByLabel("Source").selectOption("all");

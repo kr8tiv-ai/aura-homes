@@ -27,7 +27,9 @@ test("a non-technical intake creates and restores one local project", async ({ p
   await expect(page).toHaveURL(/\/build/);
   await expect(page.getByText("Foothills family home", { exact: true })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Project journey" })).toBeVisible();
-  await expect(page.getByText("Next · Find suitable land", { exact: true })).toBeVisible();
+  // The intake completes the requirements step, and this journey's own copy is
+  // "Design first, then find parcels" — so the spine recommends design next.
+  await expect(page.getByText("Next · Shape your home", { exact: true })).toBeVisible();
 
   await page.reload();
   await expect(page.getByText("Foothills family home", { exact: true })).toBeVisible();
@@ -49,6 +51,35 @@ test("the editor defaults to Guided mode and keeps the precision workspace in Pr
   await page.getByRole("button", { name: "Commands" }).click();
   await expect(page.getByRole("dialog", { name: "Builder commands" })).toBeVisible();
   await expect(page.getByPlaceholder("Search tools and views")).toBeFocused();
+});
+
+test("?mode=pro is honoured — the promise the /design redirect makes", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto("/build?mode=pro");
+  await expect(page.getByRole("group", { name: "Editor mode" })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole("button", { name: "Pro", exact: true })).toHaveAttribute("aria-pressed", "true");
+  // Pro never opens on the plans tab, so an addressed arrival starts on Shape.
+  await expect(page.getByRole("tablist", { name: "Builder workspaces" })).toBeVisible();
+});
+
+test("guided mode walks: Back, a live count, Next by name, and graduation to Pro", async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto("/build?mode=guided");
+  await expect(page.getByRole("group", { name: "Editor mode" })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByText("Step 1 of 8", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Back" })).toBeDisabled();
+
+  await page.getByRole("button", { name: "Next · Shell" }).click();
+  await expect(page.getByText("Step 2 of 8", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(page.getByText("Step 1 of 8", { exact: true })).toBeVisible();
+
+  // Jump to the last step; the walk ends by graduating into Pro, same document.
+  await page.getByRole("navigation", { name: "Guided design steps" }).getByRole("button", { name: /Review/ }).click();
+  await expect(page.getByText("Step 8 of 8", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Continue in Pro" }).click();
+  await expect(page.getByRole("button", { name: "Pro", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("tablist", { name: "Builder workspaces" })).toBeVisible();
 });
 
 test("the project centre exposes local recovery and portable backups", async ({ page }) => {

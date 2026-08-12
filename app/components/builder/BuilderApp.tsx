@@ -504,6 +504,16 @@ type Workspace = "plans" | "shape" | "fixtures" | "comfort" | "drawings" | "expo
 type EditorMode = "guided" | "pro";
 type GuidedStep = "brief" | "shell" | "rooms" | "openings" | "site" | "performance" | "materials" | "review";
 
+/** The mode the URL asked for. `/design` redirects to `/build?mode=guided` and
+ *  promises that parameter works, so it is honoured here — read once at mount,
+ *  because this component is client-only (`ssr: false`) and the choice after
+ *  that belongs to the toggle, not the address bar. Anything that is not
+ *  exactly "pro" is guided: guided is the mode that cannot strand anybody. */
+function editorModeFromLocation(): EditorMode {
+  if (typeof window === "undefined") return "guided";
+  return new URLSearchParams(window.location.search).get("mode") === "pro" ? "pro" : "guided";
+}
+
 const GUIDED_STEPS: ReadonlyArray<{
   id: GuidedStep;
   label: string;
@@ -522,7 +532,7 @@ const GUIDED_STEPS: ReadonlyArray<{
 ];
 
 const WORKSPACES: ReadonlyArray<{ id: Workspace; label: string; hint: string }> = [
-  { id: "plans", label: "Plans", hint: "Twelve editable starts with source and cost evidence" },
+  { id: "plans", label: "Plans", hint: "Editable starts, each with source and cost evidence" },
   { id: "shape", label: "Shape", hint: "Volumes, roofs, openings, the deck and the sun" },
   {
     id: "fixtures",
@@ -601,9 +611,13 @@ export default function BuilderApp() {
   const graphMode = graphGeometry !== null;
 
   const [mode, setMode] = useState<ViewMode>("3d");
-  const [editorMode, setEditorMode] = useState<EditorMode>("guided");
+  const [editorMode, setEditorMode] = useState<EditorMode>(editorModeFromLocation);
   const [guidedStep, setGuidedStep] = useState<GuidedStep>("brief");
-  const [workspace, setWorkspace] = useState<Workspace>("plans");
+  /* Pro never opens on the plans tab (the toggle below enforces the same),
+     so a `?mode=pro` arrival starts on Shape rather than a tab Pro hides. */
+  const [workspace, setWorkspace] = useState<Workspace>(() =>
+    editorModeFromLocation() === "pro" ? "shape" : "plans",
+  );
   const [commandsOpen, setCommandsOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
   const [selectedVolumeId, setSelectedVolumeId] = useState<string | null>(null);
@@ -978,7 +992,11 @@ export default function BuilderApp() {
   const finishCount = countOverrides(overrides);
   const fixtureCount = fixtures.items.length;
   const durableDetailCount = partitionCount + finishCount + fixtureCount;
-  const activeGuidedStep = GUIDED_STEPS.find((step) => step.id === guidedStep) ?? GUIDED_STEPS[0];
+  const guidedIndex = Math.max(
+    0,
+    GUIDED_STEPS.findIndex((step) => step.id === guidedStep),
+  );
+  const activeGuidedStep = GUIDED_STEPS[guidedIndex];
   const commandWorkspaces = WORKSPACES.filter((item) =>
     `${item.label} ${item.hint}`.toLowerCase().includes(commandQuery.trim().toLowerCase()),
   );
@@ -1103,10 +1121,11 @@ export default function BuilderApp() {
                   key={step.id}
                   type="button"
                   aria-pressed={guidedStep === step.id}
+                  data-done={index < guidedIndex || undefined}
                   onClick={() => chooseGuidedStep(step)}
                   className="guided-step"
                 >
-                  <span aria-hidden>{String(index + 1).padStart(2, "0")}</span>
+                  <span aria-hidden>{index < guidedIndex ? "✓" : String(index + 1).padStart(2, "0")}</span>
                   {step.label}
                 </button>
               ))}
@@ -1114,6 +1133,40 @@ export default function BuilderApp() {
             <div className="guided-step-note" role="status">
               <span>{activeGuidedStep.label}</span>
               <p>{activeGuidedStep.hint}</p>
+            </div>
+            {/* One decision in view needs a way to take the NEXT one without
+                hunting the strip above — guided is a walk, so it gets legs.
+                The last step trades Next for graduation: the same document,
+                every precision workspace. */}
+            <div className="guided-step-flow">
+              <Button
+                disabled={guidedIndex <= 0}
+                onClick={() => chooseGuidedStep(GUIDED_STEPS[guidedIndex - 1])}
+              >
+                Back
+              </Button>
+              <span className="guided-step-flow__count">
+                Step {guidedIndex + 1} of {GUIDED_STEPS.length}
+              </span>
+              {guidedIndex < GUIDED_STEPS.length - 1 ? (
+                <Button
+                  tone="loud"
+                  onClick={() => chooseGuidedStep(GUIDED_STEPS[guidedIndex + 1])}
+                >
+                  Next · {GUIDED_STEPS[guidedIndex + 1].label}
+                </Button>
+              ) : (
+                <Button
+                  tone="loud"
+                  title="Same project, every precision workspace"
+                  onClick={() => {
+                    setEditorMode("pro");
+                    setWorkspace("export");
+                  }}
+                >
+                  Continue in Pro
+                </Button>
+              )}
             </div>
           </>
         ) : null}

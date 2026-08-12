@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { defaultBuilderDocument } from "@/lib/builder/document";
-import { createAuraProject, type ProjectJourney } from "@/lib/project/document";
+import { createAuraProject, withProjectStepState, type ProjectJourney } from "@/lib/project/document";
 import { useAuraProject } from "./ProjectContext";
 
 const JOURNEYS: Array<{ id: ProjectJourney; title: string; copy: string; detail: string }> = [
@@ -58,7 +58,7 @@ export default function ProjectIntake() {
       const initial = createAuraProject({ id: newProjectId(), name, journey, document: defaultBuilderDocument(), now });
       const max = budget.trim() ? Number(budget) : null;
       const people = household.trim() ? Number(household) : null;
-      const project = {
+      const filled = {
         ...initial,
         requirements: {
           ...initial.requirements,
@@ -69,6 +69,12 @@ export default function ProjectIntake() {
           completedAtISO: now.toISOString(),
         },
       };
+      /* The brief this form just collected IS the requirements step, so the
+         step is confirmed through the same API everything else uses — which
+         hashes the final requirements as the step's basis and moves the
+         recommended next action forward. Without this, the first thing a new
+         project tells its owner is "Next · Finish your brief". */
+      const project = withProjectStepState(filled, "requirements", "complete", now);
       await save(project);
       router.push(journey === "buy-finished-home" ? "/buy" : "/build");
     } catch (error) {

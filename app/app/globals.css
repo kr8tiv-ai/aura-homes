@@ -1163,6 +1163,28 @@ main p {
   color: var(--st-emerald-deep);
 }
 .guided-step-note p { font-size: 0.75rem; color: var(--st-ink-dim); }
+.guided-step[data-done="true"] {
+  border-color: rgb(var(--tone-emerald) / 0.45);
+}
+.guided-step[data-done="true"] > span {
+  color: var(--st-emerald-deep);
+}
+.guided-step-flow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  margin-top: 0.9rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgb(var(--tone-ink) / var(--hair-soft-alpha));
+}
+.guided-step-flow__count {
+  font-family: var(--st-mono-font);
+  font-size: 0.58rem;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+  color: var(--st-faint);
+}
 .builder-command-backdrop {
   position: fixed;
   inset: 0;
