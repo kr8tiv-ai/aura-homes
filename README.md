@@ -88,6 +88,7 @@ Aura uses explicit status language throughout the interface and this submission:
 | Local-first project intake, library, autosave, archive, duplicate, recovery | **Live** | Projects stay in IndexedDB unless the person exports them. No account or cloud sync. |
 | Plain and AES-256-GCM encrypted `.aura-project.json` bundles | **Live** | The passphrase is never recoverable by Aura; future file versions fail visibly without overwriting local work. |
 | Guided and Pro editor modes over one `BuilderDocument` | **Live** | Design intent only. It does not certify structure, energy, manufacturing, or permits. |
+| Twelve-plan editable starter library with Alberta material/system ranges | **Live** | Nine Aura originals plus three attributed open-source studies; source and licence notices travel inside the project. |
 | Polygon footprints, partitions, openings, rooms, roofs, and multi-storey graph intent | **Live / in build** | The graph editor is usable; some professional export paths still describe the legacy rectangular shell and say so in the UI. |
 | Drawings, JSON, DXF, IFC4, ifcJSON, glTF/OBJ and comfort handoff | **Live / in build** | Export scope varies by geometry mode. Outputs are review-ready, never construction-ready. |
 | Alberta budget ranges and quote snapshots | **Pilot** | Cost bands are explicit assumptions, not supplier offers or fixed manufacturing promises. |

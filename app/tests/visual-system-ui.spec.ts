@@ -113,7 +113,7 @@ test("the builder opens canvas-first with a persistent model and plan switch", a
   await expect(page.getByRole("heading", { name: "Shape the home. Keep every decision." })).toBeVisible();
   await expect(page.locator(".builder-viewport canvas")).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole("group", { name: "View" })).toBeVisible();
-  await expect(page.getByText("Design intent only—not structural", { exact: false })).toBeVisible();
+  await expect(page.getByText("Design intent only—not structural", { exact: false }).first()).toBeVisible();
 });
 
 test("mobile uses the safe scene tier and a complete menu without horizontal overflow", async ({ page }) => {

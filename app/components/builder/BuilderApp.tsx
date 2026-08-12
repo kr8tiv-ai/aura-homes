@@ -174,6 +174,7 @@ import ExportRow from "./ExportRow";
 import FixturePalette, { FixtureLayer, useFixtureGeometry } from "./FixturePalette";
 import GraphPlanEditor from "./GraphPlanEditor";
 import Plan2D from "./Plan2D";
+import PlanCatalog from "./PlanCatalog";
 import PlanSheet from "./PlanSheet";
 import ProjectLibrary from "./ProjectLibrary";
 import Readout from "./Readout";
@@ -498,7 +499,7 @@ const VIEW_MODES: ReadonlyArray<{ id: ViewMode; label: string; title: string }> 
    Six tabs under one always-visible model. See decision 6 in the header for
    why this is tabs rather than six more panels, and for which of them are
    hidden rather than unmounted. */
-type Workspace = "shape" | "fixtures" | "comfort" | "drawings" | "export" | "library";
+type Workspace = "plans" | "shape" | "fixtures" | "comfort" | "drawings" | "export" | "library";
 
 type EditorMode = "guided" | "pro";
 type GuidedStep = "brief" | "shell" | "rooms" | "openings" | "site" | "performance" | "materials" | "review";
@@ -510,7 +511,7 @@ const GUIDED_STEPS: ReadonlyArray<{
   view?: ViewMode;
   hint: string;
 }> = [
-  { id: "brief", label: "Brief", workspace: "shape", hint: "Confirm the size and intent of this home." },
+  { id: "brief", label: "Plans", workspace: "plans", hint: "Choose an editable concept or begin from Aura’s reference home." },
   { id: "shell", label: "Shell", workspace: "shape", view: "3d", hint: "Shape the massing, roof and exterior openings." },
   { id: "rooms", label: "Rooms", workspace: "shape", view: "2d", hint: "Arrange the plan and its exact room faces." },
   { id: "openings", label: "Openings", workspace: "shape", view: "2d", hint: "Place doors and windows with measured feedback." },
@@ -521,6 +522,7 @@ const GUIDED_STEPS: ReadonlyArray<{
 ];
 
 const WORKSPACES: ReadonlyArray<{ id: Workspace; label: string; hint: string }> = [
+  { id: "plans", label: "Plans", hint: "Twelve editable starts with source and cost evidence" },
   { id: "shape", label: "Shape", hint: "Volumes, roofs, openings, the deck and the sun" },
   {
     id: "fixtures",
@@ -601,7 +603,7 @@ export default function BuilderApp() {
   const [mode, setMode] = useState<ViewMode>("3d");
   const [editorMode, setEditorMode] = useState<EditorMode>("guided");
   const [guidedStep, setGuidedStep] = useState<GuidedStep>("brief");
-  const [workspace, setWorkspace] = useState<Workspace>("shape");
+  const [workspace, setWorkspace] = useState<Workspace>("plans");
   const [commandsOpen, setCommandsOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
   const [selectedVolumeId, setSelectedVolumeId] = useState<string | null>(null);
@@ -623,6 +625,7 @@ export default function BuilderApp() {
   const [quarantineNote, setQuarantineNote] = useState<string | null>(null);
   const [drawn, setDrawn] = useState<Drawn | null>(null);
   const [loadedFromLink, setLoadedFromLink] = useState(false);
+  const [planStatus, setPlanStatus] = useState<string | null>(null);
 
   const houseRef: MutableRefObject<THREE.Group | null> = useRef<THREE.Group | null>(null);
   /* A counter for history labels that must not collide. UI-only, never
@@ -986,12 +989,31 @@ export default function BuilderApp() {
     if (step.view) setMode(step.view);
   }, []);
 
+  const choosePlan = useCallback((document: BuilderDocument, plan: { title: string }) => {
+    dispatch({ type: "load", doc: document, label: `plan:${plan.title}` });
+    setSelectedVolumeId(null);
+    setSelectedOpeningId(null);
+    setSelectedFixtureId(null);
+    setPickedSurface(null);
+    setDrawn(null);
+    setMode("3d");
+    setGuidedStep("shell");
+    setWorkspace("shape");
+    setPlanStatus(`${plan.title} is open as a complete editable project. Undo restores the design you had before it.`);
+  }, []);
+
   return (
     <div className="space-y-6">
       {loadedFromLink ? (
         <p className="rounded-md border border-aura-teal px-4 py-3 text-xs leading-relaxed text-aura-text/75">
           This home was opened from a share link. Everything is editable, and undo puts the Aura
           reference build back.
+        </p>
+      ) : null}
+
+      {planStatus ? (
+        <p className="rounded-md border border-aura-emerald bg-aura-emerald/5 px-4 py-3 text-xs leading-relaxed text-aura-text/75" role="status">
+          {planStatus}
         </p>
       ) : null}
 
@@ -1054,7 +1076,17 @@ export default function BuilderApp() {
                 key={editor}
                 type="button"
                 aria-pressed={editorMode === editor}
-                onClick={() => setEditorMode(editor)}
+                onClick={() => {
+                  setEditorMode(editor);
+                  if (editor === "pro" && workspace === "plans") setWorkspace("shape");
+                  if (editor === "guided") {
+                    const step = GUIDED_STEPS.find((candidate) => candidate.id === guidedStep);
+                    if (step) {
+                      setWorkspace(step.workspace);
+                      if (step.view) setMode(step.view);
+                    }
+                  }
+                }}
                 className="builder-mode-toggle__button"
               >
                 {editor === "guided" ? "Guided" : "Pro"}
@@ -1086,6 +1118,10 @@ export default function BuilderApp() {
           </>
         ) : null}
       </section>
+
+      <Pane on={workspace === "plans"}>
+        <PlanCatalog onChoose={choosePlan} currentName={spec.name} />
+      </Pane>
 
       {/* --------------------------------------------------------- the toggle */}
       <div className="builder-view-switch rounded-2xl px-4 py-3 sm:px-5 sm:py-4">
@@ -1296,7 +1332,7 @@ export default function BuilderApp() {
 
       {/* ------------------------------------------------------ the workspaces */}
       {editorMode === "pro" ? <nav role="tablist" aria-label="Builder workspaces" className="rounded-xl border aura-hairline p-2">
-        <div className="grid gap-1.5 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid gap-1.5 sm:grid-cols-3 lg:grid-cols-7">
           {WORKSPACES.map((w) => {
             const on = w.id === workspace;
             const badge =

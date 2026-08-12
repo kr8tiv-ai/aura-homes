@@ -38,11 +38,12 @@ test("the editor defaults to Guided mode and keeps the precision workspace in Pr
   await expect(page.getByRole("group", { name: "Editor mode" })).toBeVisible({ timeout: 60_000 });
   await expect(page.getByRole("button", { name: "Guided" })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("navigation", { name: "Guided design steps" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Brief" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Plans" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Review" })).toBeVisible();
 
   await page.getByRole("button", { name: "Pro" }).click();
   await expect(page.getByRole("tablist", { name: "Builder workspaces" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Plans" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Shape" })).toBeVisible();
   await page.getByRole("button", { name: "Commands" }).click();
   await expect(page.getByRole("dialog", { name: "Builder commands" })).toBeVisible();

@@ -810,11 +810,253 @@ main p {
     0 24px 70px rgb(var(--tone-ink) / 0.09);
 }
 
+/* ---- editable prebuilt plan library ------------------------------- */
+.plan-library {
+  overflow: hidden;
+  border: 1px solid rgb(var(--tone-ink) / var(--hair-alpha));
+  border-radius: 1.15rem;
+  background: rgb(var(--tone-raised));
+  box-shadow: var(--shadow-2);
+}
+.plan-library__intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(14rem, 0.7fr);
+  gap: 2rem;
+  align-items: end;
+  padding: clamp(1.25rem, 3vw, 2.25rem);
+  border-bottom: 1px solid rgb(var(--tone-ink) / var(--hair-soft-alpha));
+  background:
+    radial-gradient(circle at 92% 8%, rgb(var(--tone-emerald) / 0.12), transparent 27rem),
+    linear-gradient(140deg, rgb(var(--tone-raised)), rgb(var(--tone-sunken) / 0.62));
+}
+.plan-library__intro h2 {
+  max-width: 16ch;
+  margin-top: 0.55rem;
+  font-size: clamp(1.65rem, 3vw, 2.65rem);
+  line-height: 1.02;
+  letter-spacing: -0.045em;
+}
+.plan-library__intro > div > p:last-child {
+  max-width: 46rem;
+  margin-top: 0.8rem;
+  color: var(--st-ink-dim);
+  font-size: 0.88rem;
+  line-height: 1.7;
+}
+.plan-library__truth {
+  display: grid;
+  gap: 0.45rem;
+  padding-left: 1.1rem;
+  border-left: 1px solid rgb(var(--tone-emerald) / 0.36);
+  font-family: var(--st-mono-font);
+  color: var(--st-ink-dim);
+  font-size: 0.58rem;
+  letter-spacing: 0.15em;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+.plan-library__filters {
+  display: grid;
+  grid-template-columns: minmax(14rem, 1.7fr) repeat(3, minmax(8rem, 0.72fr));
+  gap: 0.65rem;
+  padding: 0.85rem;
+  border-bottom: 1px solid rgb(var(--tone-ink) / var(--hair-soft-alpha));
+  background: rgb(var(--tone-sunken) / 0.52);
+}
+.plan-library__filters label { display: grid; gap: 0.35rem; }
+.plan-library__filters label > span {
+  padding-inline: 0.25rem;
+  font-family: var(--st-mono-font);
+  color: var(--st-faint);
+  font-size: 0.53rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+.plan-library__filters input,
+.plan-library__filters select {
+  width: 100%;
+  min-height: 2.8rem;
+  border: 1px solid rgb(var(--tone-ink) / 0.1);
+  border-radius: 0.62rem;
+  padding: 0 0.75rem;
+  background: rgb(var(--tone-raised));
+  color: var(--st-ink);
+  font-size: 0.74rem;
+}
+.plan-library__filters input:focus-visible,
+.plan-library__filters select:focus-visible {
+  outline: 2px solid var(--st-emerald-deep);
+  outline-offset: 2px;
+}
+.plan-library__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(20rem, 0.8fr);
+  align-items: start;
+}
+.plan-library__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  padding: 0.85rem;
+}
+.plan-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgb(var(--tone-ink) / 0.1);
+  border-radius: 0.85rem;
+  background: rgb(var(--tone-raised));
+  color: var(--st-ink);
+  text-align: left;
+  box-shadow: 0 1px 0 rgb(var(--tone-ink) / 0.03);
+  transition: border-color 150ms var(--ease-fluid-decel), box-shadow 150ms var(--ease-fluid-decel), background-color 150ms var(--ease-fluid-decel);
+}
+.plan-card:hover,
+.plan-card:focus-visible {
+  border-color: rgb(var(--tone-emerald) / 0.55);
+  box-shadow: var(--shadow-1);
+}
+.plan-card:focus-visible { outline: 2px solid var(--st-emerald-deep); outline-offset: 2px; }
+.plan-card[aria-pressed="true"] {
+  border-color: var(--st-emerald-deep);
+  background: rgb(var(--tone-emerald) / 0.045);
+  box-shadow: 0 0 0 1px rgb(var(--tone-emerald) / 0.1), var(--shadow-1);
+}
+.plan-card__visual {
+  position: relative;
+  height: 10.5rem;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 70% 22%, rgb(var(--tone-emerald) / 0.12), transparent 45%),
+    rgb(var(--tone-sunken));
+}
+.plan-source {
+  position: absolute;
+  top: 0.65rem;
+  left: 0.65rem;
+  border: 1px solid rgb(var(--tone-ink) / 0.13);
+  border-radius: 999px;
+  padding: 0.28rem 0.48rem;
+  background: rgb(var(--tone-raised) / 0.88);
+  color: var(--st-ink-dim);
+  font-family: var(--st-mono-font);
+  font-size: 0.49rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  backdrop-filter: blur(6px);
+}
+.plan-source--open { border-color: rgb(var(--tone-emerald) / 0.45); color: var(--st-emerald-deep); }
+.plan-diagram { width: 100%; height: 100%; padding: 1.2rem; color: var(--st-ink); }
+.plan-diagram__mass {
+  fill: rgb(var(--tone-raised) / 0.88);
+  stroke: currentColor;
+  stroke-width: 0.5;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0.5px 0.7px rgb(var(--tone-ink) / 0.12));
+}
+.plan-diagram__glass {
+  fill: none;
+  stroke: var(--st-emerald-deep);
+  stroke-width: 1.4;
+  vector-effect: non-scaling-stroke;
+}
+.plan-diagram__guide {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 0.24;
+  stroke-dasharray: 1 1.4;
+  stroke-opacity: 0.17;
+  vector-effect: non-scaling-stroke;
+}
+.plan-diagram__north { fill: var(--st-emerald-deep); }
+.plan-diagram__north text { font-family: var(--st-mono-font); font-size: 2.4px; letter-spacing: 0.04em; }
+.plan-diagram__label { fill: var(--st-emerald-deep); font-family: var(--st-mono-font); font-size: 3px; font-weight: 700; }
+.plan-card__copy { padding: 0.85rem; }
+.plan-card__copy > span {
+  display: block;
+  color: var(--st-emerald-deep);
+  font-family: var(--st-mono-font);
+  font-size: 0.51rem;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+.plan-card__copy > strong { display: block; margin-top: 0.35rem; font-size: 0.94rem; line-height: 1.2; }
+.plan-card__copy > p { min-height: 3.5rem; margin-top: 0.4rem; color: var(--st-ink-dim); font-size: 0.67rem; line-height: 1.55; }
+.plan-card__copy dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid rgb(var(--tone-ink) / var(--hair-soft-alpha));
+}
+.plan-card__copy dl > div { min-width: 0; }
+.plan-card__copy dt { color: var(--st-faint); font-family: var(--st-mono-font); font-size: 0.47rem; letter-spacing: 0.1em; text-transform: uppercase; }
+.plan-card__copy dd { overflow: hidden; margin-top: 0.2rem; color: var(--st-ink-dim); font-size: 0.58rem; text-overflow: ellipsis; white-space: nowrap; }
+.plan-preview {
+  position: sticky;
+  top: 5.4rem;
+  min-width: 0;
+  border-left: 1px solid rgb(var(--tone-ink) / var(--hair-soft-alpha));
+  background: rgb(var(--tone-sunken) / 0.38);
+}
+.plan-preview__drawing { position: relative; height: 18rem; border-bottom: 1px solid rgb(var(--tone-ink) / var(--hair-soft-alpha)); }
+.plan-preview__drawing > span {
+  position: absolute;
+  right: 0.8rem;
+  bottom: 0.75rem;
+  color: var(--st-faint);
+  font-family: var(--st-mono-font);
+  font-size: 0.5rem;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+.plan-diagram--large { padding: 2.3rem; }
+.plan-preview__content { padding: clamp(1rem, 2.4vw, 1.5rem); }
+.plan-preview__content h3 { margin-top: 0.45rem; font-size: 1.45rem; letter-spacing: -0.035em; }
+.plan-preview__best { margin-top: 0.45rem; color: var(--st-ink-dim); font-size: 0.73rem; line-height: 1.55; }
+.plan-preview__content ul { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.8rem; }
+.plan-preview__content li { border: 1px solid rgb(var(--tone-ink) / 0.11); border-radius: 999px; padding: 0.25rem 0.45rem; color: var(--st-ink-dim); font-size: 0.56rem; }
+.plan-preview__numbers { display: grid; gap: 0.55rem; margin-top: 1rem; padding-block: 0.85rem; border-block: 1px solid rgb(var(--tone-ink) / var(--hair-soft-alpha)); }
+.plan-preview__numbers div { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.plan-preview__numbers span { color: var(--st-faint); font-size: 0.62rem; }
+.plan-preview__numbers strong { text-align: right; font-family: var(--st-mono-font); font-size: 0.65rem; font-weight: 650; }
+.plan-preview__basis,
+.plan-preview__undo { margin-top: 0.7rem; color: var(--st-faint); font-size: 0.59rem; line-height: 1.55; }
+.plan-preview__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-top: 1rem; }
+.plan-preview__actions > a { color: var(--st-emerald-deep); font-size: 0.62rem; text-decoration: underline; text-decoration-color: rgb(var(--tone-emerald) / 0.3); text-underline-offset: 0.22em; }
+.plan-preview__source { margin-top: 1rem; border-top: 1px solid rgb(var(--tone-ink) / var(--hair-soft-alpha)); padding-top: 0.6rem; }
+.plan-preview__source summary { min-height: 2rem; cursor: pointer; color: var(--st-ink-dim); font-family: var(--st-mono-font); font-size: 0.54rem; letter-spacing: 0.11em; text-transform: uppercase; }
+.plan-preview__source p { margin-top: 0.5rem; color: var(--st-ink-dim); font-size: 0.58rem; line-height: 1.55; }
+.plan-preview__source a { color: var(--st-emerald-deep); text-decoration: underline; text-underline-offset: 0.2em; }
+.plan-library__empty { grid-column: 1 / -1; display: grid; place-items: center; min-height: 16rem; border: 1px dashed rgb(var(--tone-ink) / 0.18); border-radius: 0.8rem; color: var(--st-ink-dim); font-size: 0.76rem; }
+.plan-library__empty button { color: var(--st-emerald-deep); text-decoration: underline; }
+
+@media (max-width: 1020px) {
+  .plan-library__filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .plan-library__filters .plan-search { grid-column: 1 / -1; }
+  .plan-library__body { grid-template-columns: 1fr; }
+  .plan-preview { position: static; border-top: 1px solid rgb(var(--tone-ink) / var(--hair-soft-alpha)); border-left: 0; }
+}
+
 @media (max-width: 640px) {
   .builder-view-switch { top: 4.65rem; }
   .builder-mode-toggle { width: 100%; }
-  .guided-step-nav { margin-inline: -0.25rem; }
+  .guided-step-nav {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: 6.4rem;
+    margin-inline: -0.25rem;
+    padding-inline: 0.25rem;
+  }
   .guided-step-note { align-items: flex-start; flex-direction: column; gap: 0.35rem; }
+  .plan-library__intro { grid-template-columns: 1fr; gap: 1rem; }
+  .plan-library__truth { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.7rem; padding: 0.75rem 0 0; border-top: 1px solid rgb(var(--tone-emerald) / 0.25); border-left: 0; }
+  .plan-library__filters { grid-template-columns: 1fr 1fr; }
+  .plan-library__filters .plan-search,
+  .plan-library__filters label:last-child { grid-column: 1 / -1; }
+  .plan-library__grid { grid-template-columns: 1fr; }
+  .plan-card__visual { height: 11.5rem; }
+  .plan-preview__drawing { height: 15rem; }
 }
 
 /* ---- persistent project journey ----------------------------------- */
