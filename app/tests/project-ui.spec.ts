@@ -50,7 +50,15 @@ test("the editor defaults to Guided mode and keeps the precision workspace in Pr
   await expect(page.getByRole("tab", { name: "Shape" })).toBeVisible();
   await page.getByRole("button", { name: "Commands" }).click();
   await expect(page.getByRole("dialog", { name: "Builder commands" })).toBeVisible();
-  await expect(page.getByPlaceholder("Search tools and views")).toBeFocused();
+  const palette = page.getByPlaceholder(/Search tools/);
+  await expect(palette).toBeFocused();
+
+  // The salsita-inspired phrase layer: typed edit → previewed → one undo step.
+  await palette.fill("width 24");
+  await expect(page.getByRole("button", { name: /Apply · .*width → 24 ft/ })).toBeVisible();
+  await palette.press("Enter");
+  await expect(page.getByText(/✓ .*width → 24 ft/)).toBeVisible();
+  await expect(palette).toHaveValue("");
 });
 
 test("?mode=pro is honoured — the promise the /design redirect makes", async ({ page }) => {
@@ -66,18 +74,19 @@ test("guided mode walks: Back, a live count, Next by name, and graduation to Pro
   test.setTimeout(120_000);
   await page.goto("/build?mode=guided");
   await expect(page.getByRole("group", { name: "Editor mode" })).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByText("Step 1 of 8", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Back" })).toBeDisabled();
+  const flow = page.locator(".guided-step-flow");
+  await expect(flow.getByText("Step 1 of 8", { exact: true })).toBeVisible();
+  await expect(flow.getByRole("button", { name: "Back" })).toBeDisabled();
 
-  await page.getByRole("button", { name: "Next · Shell" }).click();
-  await expect(page.getByText("Step 2 of 8", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Back" }).click();
-  await expect(page.getByText("Step 1 of 8", { exact: true })).toBeVisible();
+  await flow.getByRole("button", { name: "Next · Shell" }).click();
+  await expect(flow.getByText("Step 2 of 8", { exact: true })).toBeVisible();
+  await flow.getByRole("button", { name: "Back" }).click();
+  await expect(flow.getByText("Step 1 of 8", { exact: true })).toBeVisible();
 
   // Jump to the last step; the walk ends by graduating into Pro, same document.
   await page.getByRole("navigation", { name: "Guided design steps" }).getByRole("button", { name: /Review/ }).click();
-  await expect(page.getByText("Step 8 of 8", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Continue in Pro" }).click();
+  await expect(flow.getByText("Step 8 of 8", { exact: true })).toBeVisible();
+  await flow.getByRole("button", { name: "Continue in Pro" }).click();
   await expect(page.getByRole("button", { name: "Pro", exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("tablist", { name: "Builder workspaces" })).toBeVisible();
 });

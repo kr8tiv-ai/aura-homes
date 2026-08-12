@@ -1226,6 +1226,33 @@ main p {
 .builder-command-results span { display: block; font-size: 0.8rem; font-weight: 750; }
 .builder-command-results small { display: block; margin-top: 0.2rem; color: var(--st-ink-dim); font-size: 0.66rem; }
 .builder-command-results p { padding: 1rem 0.75rem; color: var(--st-faint); font-size: 0.72rem; }
+.builder-command-results .builder-command-apply {
+  border: 1px solid rgb(var(--tone-emerald) / 0.5);
+  background: rgb(var(--tone-emerald) / 0.07);
+}
+.builder-command-results .builder-command-apply span { color: var(--st-emerald-deep); }
+.builder-command-results .builder-command-applied {
+  padding: 0.6rem 0.75rem;
+  color: var(--st-emerald-deep);
+  font-size: 0.74rem;
+}
+.builder-command-guide { margin-top: 0.75rem; border-top: 1px solid rgb(var(--tone-ink) / var(--hair-soft-alpha)); padding-top: 0.6rem; }
+.builder-command-guide > summary {
+  min-height: 2.4rem;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  font-family: var(--st-mono-font);
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--st-ink-dim);
+}
+.builder-command-guide[open] > summary,
+.builder-command-guide > summary:hover { color: var(--st-emerald-deep); }
+.builder-command-guide ul { display: grid; gap: 0.3rem; margin-top: 0.5rem; padding-left: 1rem; }
+.builder-command-guide li { color: var(--st-ink-dim); font-size: 0.72rem; list-style: "· "; }
+.builder-command-guide p { margin-top: 0.6rem; color: var(--st-faint); font-size: 0.68rem; line-height: 1.5; }
 
 .builder-view-switch {
   position: sticky;

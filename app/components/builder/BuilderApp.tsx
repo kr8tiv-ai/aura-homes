@@ -141,6 +141,7 @@ import { buildHome, disposeHome, type HomeGeometry } from "@/lib/builder/geometr
 import { buildGraphHome } from "@/lib/builder/graphGeometry";
 import type { HomeSpec } from "@/lib/builder/spec";
 import { documentFromLocation } from "@/lib/builder/share";
+import { PHRASE_GUIDE, applyPhrase } from "./phrases";
 import {
   buildSurfaceIndex,
   countOverrides,
@@ -620,6 +621,8 @@ export default function BuilderApp() {
   );
   const [commandsOpen, setCommandsOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
+  /** the last phrase's confirmation sentence — cleared the moment typing resumes */
+  const [phraseApplied, setPhraseApplied] = useState<string | null>(null);
   const [selectedVolumeId, setSelectedVolumeId] = useState<string | null>(null);
   const [selectedOpeningId, setSelectedOpeningId] = useState<string | null>(null);
   const [pickedSurface, setPickedSurface] = useState<SurfaceId | null>(null);
@@ -1000,6 +1003,26 @@ export default function BuilderApp() {
   const commandWorkspaces = WORKSPACES.filter((item) =>
     `${item.label} ${item.hint}`.toLowerCase().includes(commandQuery.trim().toLowerCase()),
   );
+
+  /* The salsita-inspired layer (see phrases.ts): the palette query is ALSO
+     tried as an edit phrase against the live spec. Deterministic parse, no
+     network, and only offered when it would actually change something. Held
+     off in graph mode, where HomeSpec is a recovery copy — offering to edit
+     the copy would be exactly the lie GraphPending exists to prevent. */
+  const phraseMatch = useMemo(
+    () => (graphGeometry ? null : applyPhrase(spec, activeVolumeId, commandQuery)),
+    [activeVolumeId, commandQuery, graphGeometry, spec],
+  );
+
+  const applyPhraseNow = useCallback(() => {
+    if (!phraseMatch) return;
+    gesture.current += 1;
+    edit(phraseMatch.spec, `phrase ${gesture.current}: ${phraseMatch.label}`);
+    setPhraseApplied(phraseMatch.say);
+    // The palette stays open with an empty query: applied, confirmed, ready
+    // for the next phrase — a conversation, not a dialog per sentence.
+    setCommandQuery("");
+  }, [edit, phraseMatch]);
 
   const chooseGuidedStep = useCallback((step: (typeof GUIDED_STEPS)[number]) => {
     setGuidedStep(step.id);
@@ -1700,10 +1723,28 @@ export default function BuilderApp() {
               autoFocus
               type="search"
               value={commandQuery}
-              onChange={(event) => setCommandQuery(event.target.value)}
-              placeholder="Search tools and views"
+              onChange={(event) => {
+                setCommandQuery(event.target.value);
+                setPhraseApplied(null);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && phraseMatch) {
+                  event.preventDefault();
+                  applyPhraseNow();
+                }
+              }}
+              placeholder="Search tools — or type an edit, like “width 24” or “a-frame roof”"
             />
             <div className="builder-command-results">
+              {phraseMatch ? (
+                <button type="button" className="builder-command-apply" onClick={applyPhraseNow}>
+                  <span>Apply · {phraseMatch.say}</span>
+                  <small>Enter applies it as one undoable edit</small>
+                </button>
+              ) : null}
+              {phraseApplied ? (
+                <p className="builder-command-applied" role="status">✓ {phraseApplied} — Ctrl Z takes it back.</p>
+              ) : null}
               {commandWorkspaces.map((item) => (
                 <button
                   type="button"
@@ -1714,8 +1755,22 @@ export default function BuilderApp() {
                   <small>{item.hint}</small>
                 </button>
               ))}
-              {commandWorkspaces.length === 0 ? <p>No matching builder tool.</p> : null}
+              {commandWorkspaces.length === 0 && !phraseMatch ? (
+                <p>No matching builder tool — and no edit phrase understood. The phrases this editor knows are listed below.</p>
+              ) : null}
             </div>
+            <details className="builder-command-guide">
+              <summary>Every phrase this editor understands</summary>
+              <ul>
+                {PHRASE_GUIDE.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+              <p>
+                Deterministic on purpose: a phrase is a typed slider, not an AI guess. The same
+                phrase against the same home always produces the same result, offline.
+              </p>
+            </details>
           </section>
         </div>
       ) : null}
