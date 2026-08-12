@@ -1,3 +1,5 @@
+import { statSync } from "node:fs";
+import { resolve } from "node:path";
 import { expect, test } from "playwright/test";
 
 test("the app header keeps the customer journey concise and moves tools into More", async ({ page }) => {
@@ -39,14 +41,21 @@ test("mobile uses the safe scene tier and a complete menu without horizontal ove
   expect(widths.scroll).toBe(widths.client);
 });
 
-test("the landing film serves a sharp desktop source without making mobile download it", async ({ page }) => {
+test("the landing film serves a sharp, hardware-decodable desktop source within its transfer budget", async ({ page }) => {
+  const desktopFilm = resolve(process.cwd(), "public/video/enter-desktop.mp4");
+  expect(statSync(desktopFilm).size).toBeLessThanOrEqual(3_750_000);
+
   await page.goto("/");
   const video = page.locator("video.story-gate-video");
   await expect(video).toBeVisible();
   await expect(video.locator('source[media="(min-width: 900px)"]')).toHaveAttribute(
     "src",
-    /enter-1920\.av1\.webm$/,
+    /enter-desktop\.mp4$/,
   );
-  await expect(video.locator('source[type="video\/mp4"]')).toHaveAttribute("src", /enter\.mp4$/);
+  await expect(video.locator('source[media="(min-width: 900px)"]')).toHaveAttribute("type", "video/mp4");
+  await expect(video.locator('source[type="video\/mp4"]:not([media])')).toHaveAttribute(
+    "src",
+    /enter\.mp4$/,
+  );
   await expect(video).toHaveAttribute("poster", /enter-poster\.avif$/);
 });

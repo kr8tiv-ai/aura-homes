@@ -105,11 +105,10 @@ export function EnterGate({
         <>
           <video
             className="story-gate-video"
-            /* the film IS the LCP element: a 24KB AVIF poster paints the
-               first frame immediately while preload="metadata" keeps the
-               stream from competing with fonts and the scene for the
-               wire (ELEVATION-BRIEF §4.3). autoplay still pulls the stream
-               the moment metadata is in; the poster covers the gap. */
+            /* The film is the LCP element: a 24KB AVIF poster paints the
+               first frame immediately while preload="metadata" limits
+               network contention. Both streams use hardware-decodable H.264
+               so playback cannot starve the Three.js handoff. */
             poster={withBase("/video/enter-poster.avif")}
             autoPlay
             muted
@@ -123,8 +122,8 @@ export function EnterGate({
             onError={() => setVideoOk(false)}
           >
             <source
-              src={withBase("/video/enter-1920.av1.webm")}
-              type={'video/webm; codecs="av01.0.08M.08"'}
+              src={withBase("/video/enter-desktop.mp4")}
+              type="video/mp4"
               media="(min-width: 900px)"
             />
             <source src={withBase("/video/enter.mp4")} type="video/mp4" />
