@@ -38,6 +38,8 @@ target/
 vendor/
 .cache/
 tmp/
+.playwright-cli/
+**/output/playwright/
 
 # ── GSD baseline (auto-generated) ──
 .mcp.json

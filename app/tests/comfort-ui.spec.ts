@@ -2,7 +2,8 @@ import { expect, test } from "playwright/test";
 
 test("comfort room rows can be selected from the keyboard", async ({ page }) => {
   await page.goto("/build");
-  await page.getByRole("button", { name: "Comfort" }).click();
+  await page.getByRole("button", { name: "Pro", exact: true }).click();
+  await page.getByRole("tab", { name: "Comfort" }).click();
 
   const rows = page.locator("tbody tr");
   await expect(rows.first()).toBeVisible();
@@ -18,7 +19,8 @@ test("comfort room rows can be selected from the keyboard", async ({ page }) => 
 
 test("durable comfort assumptions participate in builder undo", async ({ page }) => {
   await page.goto("/build");
-  await page.getByRole("button", { name: "Comfort" }).click();
+  await page.getByRole("button", { name: "Pro", exact: true }).click();
+  await page.getByRole("tab", { name: "Comfort" }).click();
 
   const winterTemperature = page.getByLabel("Winter indoor air temperature");
   await expect(winterTemperature).toHaveValue("21");
@@ -32,7 +34,8 @@ test("durable comfort assumptions participate in builder undo", async ({ page })
 test("builder design handoff reaches a hash-bound quote without losing the project", async ({ page }) => {
   test.setTimeout(90_000);
   await page.goto("/build");
-  await page.getByRole("button", { name: /^Export/ }).click();
+  await page.getByRole("button", { name: "Pro", exact: true }).click();
+  await page.getByRole("tab", { name: /^Export/ }).click();
   await page.getByRole("button", { name: "Continue to quote" }).click();
 
   await page.waitForURL(/\/concierge\?project=project-/, { timeout: 30_000 });

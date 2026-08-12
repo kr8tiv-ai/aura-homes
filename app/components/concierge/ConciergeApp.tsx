@@ -745,7 +745,7 @@ function DepositPanel(props: {
     realPath = (
       <div className="space-y-2">
         <p className="text-xs leading-relaxed text-aura-text/75">
-          Testnet funds needed — this wallet holds {fmtUsdcUnits(p.balance)} of native testnet USDC
+          Testnet funds needed — this wallet holds {fmtUsdcUnits(p.balance)} of the configured faucet-compatible test USDC
           and the deposit is {amount}. Nothing here fakes a balance: get testnet OKB for gas at the{" "}
           <a
             href={FAUCET_URL}

@@ -182,6 +182,7 @@ import SurfacePicker from "./SurfacePicker";
 import Viewport from "./Viewport";
 import { sunPosition } from "./sun";
 import { Button, Segmented } from "./ui";
+import { useAuraProject } from "@/components/project/ProjectContext";
 
 /* `exportSemantic.ts` is the ifcJSON writer, its reader, and a live round-trip
    checker. Nobody who never opens the export tab should download one byte of
@@ -499,6 +500,26 @@ const VIEW_MODES: ReadonlyArray<{ id: ViewMode; label: string; title: string }> 
    hidden rather than unmounted. */
 type Workspace = "shape" | "fixtures" | "comfort" | "drawings" | "export" | "library";
 
+type EditorMode = "guided" | "pro";
+type GuidedStep = "brief" | "shell" | "rooms" | "openings" | "site" | "performance" | "materials" | "review";
+
+const GUIDED_STEPS: ReadonlyArray<{
+  id: GuidedStep;
+  label: string;
+  workspace: Workspace;
+  view?: ViewMode;
+  hint: string;
+}> = [
+  { id: "brief", label: "Brief", workspace: "shape", hint: "Confirm the size and intent of this home." },
+  { id: "shell", label: "Shell", workspace: "shape", view: "3d", hint: "Shape the massing, roof and exterior openings." },
+  { id: "rooms", label: "Rooms", workspace: "shape", view: "2d", hint: "Arrange the plan and its exact room faces." },
+  { id: "openings", label: "Openings", workspace: "shape", view: "2d", hint: "Place doors and windows with measured feedback." },
+  { id: "site", label: "Site", workspace: "shape", view: "3d", hint: "Check orientation, sun and terrain assumptions." },
+  { id: "performance", label: "Performance", workspace: "comfort", hint: "State comfort targets and review limitations." },
+  { id: "materials", label: "Materials", workspace: "shape", view: "3d", hint: "Assign a tactile, buildable finish palette." },
+  { id: "review", label: "Review", workspace: "export", hint: "Review, quote and hand the design off." },
+];
+
 const WORKSPACES: ReadonlyArray<{ id: Workspace; label: string; hint: string }> = [
   { id: "shape", label: "Shape", hint: "Volumes, roofs, openings, the deck and the sun" },
   {
@@ -565,6 +586,7 @@ function singleFixtureEdit(a: FixtureSet, b: FixtureSet): string | null {
 /* =========================================================================== */
 
 export default function BuilderApp() {
+  const { project: auraProject, ready: projectReady, syncDesign } = useAuraProject();
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
   const {
     spec,
@@ -577,7 +599,11 @@ export default function BuilderApp() {
   const graphMode = graphGeometry !== null;
 
   const [mode, setMode] = useState<ViewMode>("3d");
+  const [editorMode, setEditorMode] = useState<EditorMode>("guided");
+  const [guidedStep, setGuidedStep] = useState<GuidedStep>("brief");
   const [workspace, setWorkspace] = useState<Workspace>("shape");
+  const [commandsOpen, setCommandsOpen] = useState(false);
+  const [commandQuery, setCommandQuery] = useState("");
   const [selectedVolumeId, setSelectedVolumeId] = useState<string | null>(null);
   const [selectedOpeningId, setSelectedOpeningId] = useState<string | null>(null);
   const [pickedSurface, setPickedSurface] = useState<SurfaceId | null>(null);
@@ -602,6 +628,21 @@ export default function BuilderApp() {
   /* A counter for history labels that must not collide. UI-only, never
      persisted, so nothing about the geometry or the export depends on it. */
   const gesture = useRef(0);
+  const hydratedProjectId = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!projectReady || !auraProject || hydratedProjectId.current === auraProject.id) return;
+    hydratedProjectId.current = auraProject.id;
+    dispatch({ type: "load", doc: auraProject.design.document, label: "project:open" });
+  }, [auraProject, projectReady]);
+
+  useEffect(() => {
+    if (!auraProject || hydratedProjectId.current !== auraProject.id) return;
+    const timer = window.setTimeout(() => {
+      void syncDesign(state.doc);
+    }, 650);
+    return () => window.clearTimeout(timer);
+  }, [auraProject, state.doc, syncDesign]);
 
   const edit = useCallback((next: HomeSpec, label: string) => {
     dispatch({ type: "edit", spec: next, label });
@@ -881,6 +922,19 @@ export default function BuilderApp() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  useEffect(() => {
+    const onCommandKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setCommandsOpen((open) => !open);
+      } else if (event.key === "Escape") {
+        setCommandsOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onCommandKey);
+    return () => window.removeEventListener("keydown", onCommandKey);
+  }, []);
+
   /* ---- the drawing */
   const stale = drawn !== null && drawn.document !== state.doc;
   const generate = useCallback(() => {
@@ -921,6 +975,16 @@ export default function BuilderApp() {
   const finishCount = countOverrides(overrides);
   const fixtureCount = fixtures.items.length;
   const durableDetailCount = partitionCount + finishCount + fixtureCount;
+  const activeGuidedStep = GUIDED_STEPS.find((step) => step.id === guidedStep) ?? GUIDED_STEPS[0];
+  const commandWorkspaces = WORKSPACES.filter((item) =>
+    `${item.label} ${item.hint}`.toLowerCase().includes(commandQuery.trim().toLowerCase()),
+  );
+
+  const chooseGuidedStep = useCallback((step: (typeof GUIDED_STEPS)[number]) => {
+    setGuidedStep(step.id);
+    setWorkspace(step.workspace);
+    if (step.view) setMode(step.view);
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -974,6 +1038,54 @@ export default function BuilderApp() {
           ) : null}
         </section>
       ) : null}
+
+      <section className="builder-mode-shell" aria-labelledby="editor-mode-heading">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p id="editor-mode-heading" className="aura-label text-aura-emerald">Editor mode</p>
+            <p className="mt-2 max-w-xl text-sm leading-relaxed text-aura-text/65">
+              Guided keeps one decision in view. Pro exposes every precision workspace. Both edit
+              the same project document and produce the same canonical design hash.
+            </p>
+          </div>
+          <div role="group" aria-label="Editor mode" className="builder-mode-toggle">
+            {(["guided", "pro"] as const).map((editor) => (
+              <button
+                key={editor}
+                type="button"
+                aria-pressed={editorMode === editor}
+                onClick={() => setEditorMode(editor)}
+                className="builder-mode-toggle__button"
+              >
+                {editor === "guided" ? "Guided" : "Pro"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {editorMode === "guided" ? (
+          <>
+            <nav aria-label="Guided design steps" className="guided-step-nav">
+              {GUIDED_STEPS.map((step, index) => (
+                <button
+                  key={step.id}
+                  type="button"
+                  aria-pressed={guidedStep === step.id}
+                  onClick={() => chooseGuidedStep(step)}
+                  className="guided-step"
+                >
+                  <span aria-hidden>{String(index + 1).padStart(2, "0")}</span>
+                  {step.label}
+                </button>
+              ))}
+            </nav>
+            <div className="guided-step-note" role="status">
+              <span>{activeGuidedStep.label}</span>
+              <p>{activeGuidedStep.hint}</p>
+            </div>
+          </>
+        ) : null}
+      </section>
 
       {/* --------------------------------------------------------- the toggle */}
       <div className="builder-view-switch rounded-2xl px-4 py-3 sm:px-5 sm:py-4">
@@ -1071,7 +1183,7 @@ export default function BuilderApp() {
             <p className="aura-label text-aura-violet">
               {clashes.length} clearance clash{clashes.length === 1 ? "" : "es"} in this home
             </p>
-            <Button tone="danger" onClick={() => setWorkspace("fixtures")}>
+            <Button tone="danger" onClick={() => { setEditorMode("pro"); setWorkspace("fixtures"); }}>
               Open the fixtures
             </Button>
           </div>
@@ -1164,6 +1276,9 @@ export default function BuilderApp() {
           <Button onClick={() => dispatch({ type: "redo" })} disabled={!canRedo}>
             Redo
           </Button>
+          <Button onClick={() => setCommandsOpen(true)} title="Search tools and views · Ctrl+K">
+            Commands
+          </Button>
           <Button
             onClick={() =>
               dispatch({
@@ -1180,7 +1295,7 @@ export default function BuilderApp() {
       </div>
 
       {/* ------------------------------------------------------ the workspaces */}
-      <nav aria-label="Builder workspaces" className="rounded-xl border aura-hairline p-2">
+      {editorMode === "pro" ? <nav role="tablist" aria-label="Builder workspaces" className="rounded-xl border aura-hairline p-2">
         <div className="grid gap-1.5 sm:grid-cols-3 lg:grid-cols-6">
           {WORKSPACES.map((w) => {
             const on = w.id === workspace;
@@ -1192,8 +1307,10 @@ export default function BuilderApp() {
               <button
                 key={w.id}
                 type="button"
+                role="tab"
                 onClick={() => setWorkspace(w.id)}
                 aria-pressed={on}
+                aria-selected={on}
                 data-cursor="Select"
                 className={`rounded-md border px-3 py-2.5 text-left transition-colors ${
                   on
@@ -1218,7 +1335,7 @@ export default function BuilderApp() {
             );
           })}
         </div>
-      </nav>
+      </nav> : null}
 
       {/* ============================================================== SHAPE */}
       <Pane on={workspace === "shape"}>
@@ -1473,6 +1590,46 @@ export default function BuilderApp() {
           HomeSpec-only records remain readable and are migrated without overwriting their source.
         </p>
       </Pane>
+
+      {commandsOpen ? (
+        <div className="builder-command-backdrop" onMouseDown={() => setCommandsOpen(false)}>
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="builder-command-heading"
+            className="builder-command-dialog"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="builder-command-heading">
+              <div>
+                <p className="aura-label">Ctrl K</p>
+                <h2 id="builder-command-heading">Builder commands</h2>
+              </div>
+              <button type="button" onClick={() => setCommandsOpen(false)} aria-label="Close commands">Close</button>
+            </div>
+            <input
+              autoFocus
+              type="search"
+              value={commandQuery}
+              onChange={(event) => setCommandQuery(event.target.value)}
+              placeholder="Search tools and views"
+            />
+            <div className="builder-command-results">
+              {commandWorkspaces.map((item) => (
+                <button
+                  type="button"
+                  key={item.id}
+                  onClick={() => { setEditorMode("pro"); setWorkspace(item.id); setCommandsOpen(false); }}
+                >
+                  <span>{item.label}</span>
+                  <small>{item.hint}</small>
+                </button>
+              ))}
+              {commandWorkspaces.length === 0 ? <p>No matching builder tool.</p> : null}
+            </div>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }

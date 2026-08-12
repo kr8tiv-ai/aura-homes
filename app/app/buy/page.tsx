@@ -20,28 +20,27 @@ import { GrowBar, Reveal } from "@/components/Reveal";
 import BuyDirectory from "@/components/buy/BuyDirectory";
 
 export const metadata = {
-  title: "Buy an eco home with crypto — Aura Homes",
+  title: "Choose a finished eco home — Aura Homes",
   description:
-    "Seven evidence-backed provider records, thirteen leads refuted, and a guarded route from native USDC on X Layer to assets a seller may accept. Aura facilitates; it does not sell.",
+    "Compare evidence-backed eco-home makers, delivery regions, quote readiness and cash or crypto payment paths. Aura facilitates; it does not sell.",
 };
 
 export default function BuyPage() {
   return (
     <div className="py-16">
       <Reveal y={10}>
-        <p className="aura-label mb-4">The other path — buy, don&rsquo;t build</p>
+        <p className="aura-label mb-4">The other path · choose, don&rsquo;t start from scratch</p>
       </Reveal>
       <RevealWords
-        text="Buy an eco home with crypto"
+        text="Choose a finished eco home"
         className="max-w-3xl font-display text-[2.35rem] font-medium leading-[1.08] tracking-[-0.025em]"
       />
       <Reveal delay={0.08} y={12} className="mt-4">
         <p className="max-w-2xl text-[0.95rem] leading-[1.65] text-aura-text/75">
-          You hold crypto. Somewhere out there a company will take it for a building. This page is
-          the evidence record: live acceptance where it exists, announcements and stale claims
-          labelled as such, where each product is actually available, and what must be proven
-          before native USDC on X Layer can reach the seller. Also the thirteen leads that looked
-          right and were not, because a directory that only publishes its wins is an advertisement.
+          Compare what a maker offers, where it delivers, how current the evidence is, what still
+          needs a quote, and whether payment can happen in cash or through an optional crypto path.
+          This pilot is an evidence record, not a storefront: stale claims stay labelled, regional
+          gaps stay visible, and refuted leads remain in the record.
         </p>
       </Reveal>
 

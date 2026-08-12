@@ -9,6 +9,8 @@ import CardFXLayer from "./CardFX";
 import Cursor from "./Cursor";
 import SmoothScroll from "./SmoothScroll";
 import ThemeToggle from "./ThemeToggle";
+import ProjectJourneySpine from "./project/ProjectJourneySpine";
+import SocialShareLinks from "./SocialShareLinks";
 
 /* Async feature load: the domAnimation bundle becomes its own chunk and
    never blocks first paint. `strict` makes any accidental use of the full
@@ -18,20 +20,23 @@ import ThemeToggle from "./ThemeToggle";
 const loadDomAnimation = () => import("./motion-features").then((mod) => mod.default);
 
 const JOURNEY_NAV = [
-  { href: "/build", label: "Design a home" },
-  { href: "/land", label: "Find land" },
-  { href: "/contractors", label: "Build team" },
-  { href: "/buy", label: "Buy a home" },
-  { href: "/concierge", label: "Ask Aura" },
+  { href: "/start", label: "Start a project" },
+  { href: "/buy", label: "Explore homes" },
+  { href: "/overview", label: "How Aura works" },
 ] as const;
 
 const UTILITY_NAV = [
-  { href: "/overview", label: "Overview" },
-  { href: "/design", label: "Questionnaire" },
-  { href: "/budget", label: "Budget" },
-  { href: "/escrow", label: "Escrow" },
+  { href: "/projects", label: "My projects" },
+  { href: "/build", label: "Builder" },
+  { href: "/land", label: "Find land" },
+  { href: "/contractors", label: "Contractors" },
+  { href: "/concierge", label: "Ask Aura" },
+  { href: "/budget", label: "Budget and quotes" },
+  { href: "/escrow", label: "Testnet escrow" },
+  { href: "/homes", label: "HOMES ledger" },
+  { href: "/dashboard", label: "Project record" },
+  { href: "/design", label: "Design questionnaire" },
   { href: "/faq", label: "FAQ" },
-  { href: "/dashboard", label: "Dashboard" },
 ] as const;
 
 const ALL_NAV = [...JOURNEY_NAV, ...UTILITY_NAV] as const;
@@ -97,7 +102,7 @@ function StoryHeader() {
           Aura <em>Homes</em>
         </Link>
         <div className="story-chrome-actions">
-          <nav className="story-chrome-nav" aria-label="Customer journey">
+          <nav className="story-chrome-nav" aria-label="Primary">
             {JOURNEY_NAV.map((item) => (
               <Link key={item.href} href={item.href}>
                 {item.label}
@@ -161,7 +166,7 @@ function StandardHeader() {
             Aura <span>Homes</span>
           </Link>
           <div className="site-header-actions">
-            <nav className="site-journey-nav" aria-label="Customer journey">
+            <nav className="site-journey-nav" aria-label="Primary">
               {JOURNEY_NAV.map((item) => (
                 <Link
                   key={item.href}
@@ -192,7 +197,7 @@ function StandardHeader() {
       <div id="site-mobile-menu" className={`site-nav-sheet${open ? " is-open" : ""}`} hidden={!open}>
         <div>
           <p className="site-nav-sheet-label">Your route</p>
-          <nav aria-label="Customer journey">
+          <nav aria-label="Primary">
             {JOURNEY_NAV.map((item, index) => (
               <Link key={item.href} href={item.href} onClick={() => setOpen(false)}>
                 <span className="story-sheet-n">{String(index + 1).padStart(2, "0")}</span>
@@ -250,6 +255,9 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
           <>
             <CardFXLayer />
             <StandardHeader />
+            <div className={pathname === "/build" ? "mx-auto max-w-[90rem] px-4 pt-4 sm:px-6" : "mx-auto max-w-5xl px-6 pt-4"}>
+              <ProjectJourneySpine />
+            </div>
             <main
               id="main"
               className={pathname === "/build" ? "mx-auto max-w-[90rem] px-4 sm:px-6" : "mx-auto max-w-5xl px-6"}
@@ -271,6 +279,7 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
                 <p className="text-xs uppercase tracking-label text-aura-text/70">
                   A KR8TIV AI product &middot; Open source (MIT)
                 </p>
+                <SocialShareLinks compact />
                 {/* THE BOUNDARY, stated once and in plain words. Aura is rails
                     and guidance; it is not the seller, the builder, or a party
                     to anyone's contract, and it takes no custody of funds. A

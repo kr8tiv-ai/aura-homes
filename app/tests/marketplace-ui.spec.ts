@@ -16,7 +16,8 @@ test("land discovery states the feed boundary and never overflows on mobile", as
 
 test("the builder hands exact durable geometry to land matching", async ({ page }) => {
   await page.goto("/build");
-  await page.getByRole("button", { name: /^Export / }).click();
+  await page.getByRole("button", { name: "Pro", exact: true }).click();
+  await page.getByRole("tab", { name: /^Export / }).click();
   await page.getByRole("button", { name: "Find land for this design" }).click();
   await expect(page).toHaveURL(/\/land\?project=project-/);
   await expect(page.getByText(/Builder snapshot 0x/)).toBeVisible();
@@ -49,6 +50,6 @@ test("the global buy guide filters evidence and blocks an unconnected ChangeNOW 
   await expect(page.getByText("The conversion quote is missing or expired.")).toBeVisible();
   await expect(page.getByRole("button", { name: /send|swap|pay/i })).toHaveCount(0);
   await page.getByRole("link", { name: "Walk through with Aura" }).click();
-  await expect(page).toHaveURL(/\/concierge\?ask=/);
+  await expect(page).toHaveURL(/\/concierge\/?\?ask=/);
   await expect(page.getByText(/For a third-party manufacturer purchase, I guide rather than transact/)).toBeVisible();
 });
