@@ -23,7 +23,12 @@ this document can be checked rather than believed.*
    grant from the hackathon and I just do my best and we see what happens."**
 
 Point 6 is the operative one and it reorders everything else: **the grant is
-the decidable prize, the token is not.** Token mechanics are now out of the
+the decidable prize, the token is not.** *(Superseded Aug 12, 2026: the
+founder subsequently defined the HOMES token in full — fund split, top-200
+staking, decentralized trust, launchpad — and put it on the site's crypto
+journey, always labelled planned. See docs/ROADMAP.md Arc 3 for the current
+record; this document remains the Aug 10 snapshot.)* Token mechanics were, at
+the time of this snapshot, out of the
 product and off the website.
 
 ---

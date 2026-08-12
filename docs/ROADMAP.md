@@ -71,15 +71,39 @@ The full agent: watches land listings and flags underpriced suitable parcels; ne
 
 ---
 
-## Arc 3 — the HOMES token (announced now, defined later)
+## Arc 3 — the HOMES ecosystem (defined by the founder, Aug 12, 2026)
 
-A token named **HOMES** will launch on X Layer as part of this phased rollout. That is the whole announcement, deliberately.
+*This section was rewritten Aug 12, 2026 to match the founder's stated design,
+which supersedes the earlier "announced now, defined later" posture. The prior
+text said "the working direction remains burn-on-usage app credit, invisible
+to users" — that direction is retired.*
 
-- **Utility is TBD, on purpose.** It will be decided later and announced as a rollout phase of its own — not retrofitted into Arc 1 or Arc 2.
-- **The hackathon ships no token.** That decision is unchanged: judges in 2026 discount bolt-on tokens, and the securities analysis has not moved.
-- **The working direction remains burn-on-usage app credit, invisible to users** — per [TOKEN-RESEARCH.md](TOKEN-RESEARCH.md), with five candidate architectures already designed and scored in [TOKEN-DESIGNS.md](TOKEN-DESIGNS.md). Launch cost on X Layer is pennies (≈ $0.013 measured, Aug 9, 2026), so the decision is purely legal and strategic, never technical.
-- **Canadian securities counsel per CSA SN 46-308 comes before any launch or liquidity event.** Substance over form: a token sold to raise funds is presumptively a security, and no utility label changes that.
-- Pair assumption: HOMES/native-USDC on X Layer — see [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) #8; the founder's "paired with SpaceX" dictation still awaits confirmation.
+**HOMES is a planned X Layer token with a defined shape, presented on the
+site's crypto journey and always labelled planned — Today / Next / Future —
+never live.** The founder's design, as given:
+
+- **The fund:** 60% of trading and platform fees route to a transparent
+  property fund that acquires and operates real eco homes; remaining fees
+  split marketing / ops / dev / upkeep (10% each). Later revisions added 5%
+  burns and 5% compounding liquidity.
+- **Supply:** 30% team (12-month cliff, 36-month linear), 10% marketing, 10%
+  exchange listings, 20% protocol-owned liquidity, 30% public market.
+- **Holder mechanics:** a staking mechanism when the first property goes
+  live; the top 200 staked addresses paid pro rata in X Layer USDC from
+  rental profits, with receipts published. Wind-down clause: if the project
+  cannot raise enough, purchase-allocated fees divide pro rata to the top 50
+  holders.
+- **The structure:** a decentralized property trust holding the homes; the
+  long-term story is a user-owned Airbnb for eco stays, and eventually an
+  RWA launchpad where owners fund their own eco-stay projects.
+- **Presentation rules (founder):** no securities talk; the eco journey
+  mentions HOMES only once, at the end, with a link; the crypto journey
+  carries the full story. The live pages honestly render zeros — "Planned ·
+  no token contract" — until something is real.
+- Pair intention: HOMES paired with the SpaceX token on X Layer, launched at
+  a low valuation with founder-owned locked liquidity; mechanics in the
+  Codex-thread record and [TOKEN-RESEARCH.md](TOKEN-RESEARCH.md) /
+  [TOKEN-DESIGNS.md](TOKEN-DESIGNS.md) remain the technical reference.
 
 ---
 
