@@ -1,6 +1,13 @@
 # Aura Homes Full-System Graph v1.1
 
-> **Status: PROPOSED — founder approval required.**
+> **Status: APPROVED — founder-approved August 13, 2026.**
+>
+> Approval binds the canonical proposed Graph v1.1 Git-blob SHA-256
+> `897147D8F5C3FBF065423A64601509B4B3C6FA9DFA1AA114BD32FA0A047144FD`
+> at commit `06dffcd5e72b3f0bb46ea2b23605268391fa32d4`. Its checked-out Windows-file
+> SHA-256 was `17D137A87B1D544F7D393B35BB807F03F51F5BF315D808C0C8BAA7F08AF9BE85`.
+> The separate approval record is
+> `docs/plans/approvals/2026-08-13-aura-full-system-graph-v1.1.md`.
 >
 > **Implementation freeze:** no node after the committed R0 snapshot may start,
 > push, deploy, spend money, contact a provider, change DNS, or activate value
@@ -37,7 +44,9 @@ approved conversationally on August 13, 2026. Before a hash-bound approval recor
 or execution-authority update was created, Matt requested a pilot-geography
 revision. That approval is therefore superseded. Graph v1.1 returns to
 `PROPOSED`; implementation and the recurring orchestrator remain frozen/audit-
-only until v1.1 receives its own approval.
+only until v1.1 receives its own approval. Matt approved Graph v1.1 in the
+project thread on August 13, 2026 with the instruction “go”; the approval record
+below binds that instruction to the reviewed proposed graph hash.
 
 The first pilot location is intentionally undecided between **Edmonton, Alberta**
 and **Costa Rica**. The selected jurisdiction changes authoritative sources and
