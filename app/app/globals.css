@@ -1291,7 +1291,11 @@ main p {
 
 /* ---- editable prebuilt plan library ------------------------------- */
 .plan-library {
-  overflow: hidden;
+  /* clip, NOT hidden: overflow-hidden makes this box the sticky containing
+     scroller and the preview aside silently never sticks — click a card
+     mid-grid and the panel that answered is three screens up. clip keeps
+     the rounded-corner clipping without creating a scroll container. */
+  overflow: clip;
   border: 1px solid rgb(var(--tone-ink) / var(--hair-alpha));
   border-radius: 1.15rem;
   background: rgb(var(--tone-raised));
@@ -1449,6 +1453,43 @@ main p {
 .plan-diagram__north { fill: var(--st-emerald-deep); }
 .plan-diagram__north text { font-family: var(--st-mono-font); font-size: 2.4px; letter-spacing: 0.04em; }
 .plan-diagram__label { fill: var(--st-emerald-deep); font-family: var(--st-mono-font); font-size: 3px; font-weight: 700; }
+.plan-diagram__roof {
+  stroke: currentColor;
+  stroke-width: 0.55;
+  stroke-opacity: 0.45;
+  stroke-dasharray: 1.6 1.1;
+  vector-effect: non-scaling-stroke;
+}
+.plan-diagram__window {
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-opacity: 0.55;
+  vector-effect: non-scaling-stroke;
+}
+.plan-diagram__door-gap {
+  stroke: rgb(var(--tone-raised));
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.plan-diagram__door-swing {
+  stroke: currentColor;
+  stroke-width: 0.35;
+  stroke-opacity: 0.5;
+  vector-effect: non-scaling-stroke;
+}
+.plan-diagram__dims {
+  fill: var(--st-ink-dim);
+  font-family: var(--st-mono-font);
+  font-size: 2.6px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.plan-preview__axon {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+}
 .plan-card__copy { padding: 0.85rem; }
 .plan-card__copy > span {
   display: block;

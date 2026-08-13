@@ -9,10 +9,10 @@ import {
 import { totalFloorAreaSqFt } from "@/lib/builder/spec";
 
 test("the plan library is substantial, deterministic and contains licensed open work", () => {
-  expect(PLAN_TEMPLATES.length).toBeGreaterThanOrEqual(20);
+  expect(PLAN_TEMPLATES.length).toBeGreaterThanOrEqual(25);
   expect(new Set(PLAN_TEMPLATES.map((plan) => plan.id)).size).toBe(PLAN_TEMPLATES.length);
   expect(PLAN_TEMPLATES.filter((plan) => plan.source.kind === "licensed-adaptation").length).toBeGreaterThanOrEqual(3);
-  expect(PLAN_TEMPLATES.filter((plan) => plan.source.kind === "public-domain-adaptation").length).toBeGreaterThanOrEqual(6);
+  expect(PLAN_TEMPLATES.filter((plan) => plan.source.kind === "public-domain-adaptation").length).toBeGreaterThanOrEqual(8);
 
   for (const plan of PLAN_TEMPLATES) {
     expect(plan.title.trim().length).toBeGreaterThan(0);
@@ -77,4 +77,34 @@ test("every plan carries a transparent Alberta materials-and-systems range", () 
 test("unknown plan identifiers fail instead of silently loading the reference home", () => {
   expect(() => instantiatePlanTemplate("not-a-plan")).toThrow(/Unknown Aura plan template/);
   expect(() => estimatePlanTemplate("not-a-plan")).toThrow(/Unknown Aura plan template/);
+});
+
+test("openings sit inside their walls, and the Nordic set escapes the default elevation", () => {
+  for (const plan of PLAN_TEMPLATES) {
+    for (const volume of plan.spec.volumes) {
+      const seen = new Set<string>();
+      for (const opening of volume.openings) {
+        expect(seen.has(opening.id)).toBe(false);
+        seen.add(opening.id);
+        const run = opening.wall === "n" || opening.wall === "s" ? volume.widthFt : volume.depthFt;
+        expect(opening.offsetFt).toBeGreaterThanOrEqual(0);
+        expect(opening.offsetFt + opening.widthFt).toBeLessThanOrEqual(run);
+        expect(opening.sillFt + opening.heightFt).toBeLessThanOrEqual(volume.wallHeightFt * volume.storeys + 0.01);
+      }
+    }
+  }
+
+  // The default helper mints ids `<id>-glass/-door/-east/-west`. The three
+  // Nordic plans exist to be ABOUT their openings — if they ever regress to
+  // the default pattern, the catalog loses the variety they were authored
+  // for, and this fails.
+  const defaultIds = (volumeId: string) =>
+    new Set([`${volumeId}-glass`, `${volumeId}-door`, `${volumeId}-east`, `${volumeId}-west`]);
+  for (const id of ["fjell-cube", "lys-lantern", "bastu-pavilion"]) {
+    const plan = PLAN_TEMPLATES.find((candidate) => candidate.id === id);
+    expect(plan).toBeDefined();
+    const first = plan!.spec.volumes[0];
+    const defaults = defaultIds(first.id);
+    expect(first.openings.some((opening) => !defaults.has(opening.id))).toBe(true);
+  }
 });

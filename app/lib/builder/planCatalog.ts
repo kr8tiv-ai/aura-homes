@@ -129,6 +129,12 @@ interface VolumeInput {
   roof?: RoofForm;
   pitch?: number;
   glass?: boolean;
+  /** Hand-authored openings replace the default pattern entirely. The
+   *  default gave every plan the same south glazing + door + two side
+   *  windows — fine for a first library, but twenty identical elevations is
+   *  how a catalog stops reading as choice. Plans that are ABOUT their
+   *  openings (the Nordic lantern walls especially) author them here. */
+  openings?: Opening[];
 }
 
 function volume(input: VolumeInput): Volume {
@@ -139,7 +145,7 @@ function volume(input: VolumeInput): Volume {
   const glassOffset = Math.max(0.6, width * 0.08);
   const doorOffset = Math.max(glassOffset + glassWidth + 0.5, width - 3.8);
   const sideWindowOffset = Math.max(1, depth / 2 - 2);
-  const openings: Opening[] = [
+  const openings: Opening[] = input.openings ?? [
     opening(`${id}-glass`, "s", input.glass === false ? "window" : "glazing-wall", glassWidth, input.glass === false ? 4 : 8, glassOffset, input.glass === false ? 3 : 0),
     opening(`${id}-door`, "s", "door", Math.min(3, width * 0.28), 6.8, Math.min(doorOffset, width - 3.1)),
     opening(`${id}-east`, "e", "window", Math.min(4, depth * 0.35), 4, sideWindowOffset),
@@ -681,6 +687,182 @@ export const PLAN_TEMPLATES: readonly PlanTemplate[] = [
     volumes: [volume({ width: 44, depth: 16, roof: "shed", pitch: 14 })],
     deck: { width: 22, depth: 9 },
     notes: "Aura-authored SIP longhouse concept. Panel layout, point loads at openings and the long-wall wind case are the engineer’s first three questions — bring them early.",
+  }),
+  /* ------------------------------------------------------------------------
+     The Nordic square set — the founder's ask by name: "Nordic models …
+     polycarbonate glosses … a little bit more square." No cleared source
+     exists for the style (PLAN-LIBRARY-SOURCES § 6), so these three are
+     Aura originals, and they are the first plans to AUTHOR their openings:
+     lantern glazing bands, clerestories and corner entries instead of the
+     library's default elevation. The polycarbonate is stated intent — the
+     cost engine prices these glazing areas on its current basis, and the
+     translucent material itself arrives with the render tier. */
+  original({
+    id: "fjell-cube",
+    title: "Fjell Cube",
+    kicker: "400 sq ft · square lantern",
+    summary: "A 20 × 20 flat-roofed cube with two full-height glazing bands — the square Nordic lantern, sized as a first building.",
+    bestFor: "A design-forward studio, guest cube or backcountry stay",
+    bedrooms: 0,
+    bathrooms: 1,
+    sleeping: "Studio / sleeping loft intent (loft not modelled)",
+    storeys: 1,
+    tags: ["under 400 sq ft", "nordic square", "polycarbonate intent"],
+    features: ["True square plan", "Two lantern walls", "Parapet flat roof"],
+    volumes: [
+      volume({
+        width: 20,
+        depth: 20,
+        roof: "flat",
+        height: 12,
+        openings: [
+          opening("glass-s", "s", "glazing-wall", 14, 11, 3),
+          opening("glass-e", "e", "glazing-wall", 10, 11, 4),
+          opening("door-w", "w", "door", 3, 6.8, 2),
+          opening("win-n", "n", "window", 4, 4, 13, 4.5),
+        ],
+      }),
+    ],
+    deck: { width: 14, depth: 8 },
+    notes: "Aura-authored Nordic square concept. The two glazing bands are drawn as glazing walls and priced as such; the polycarbonate skin is design intent until the render material lands. Parapet drainage needs real detailing.",
+  }),
+  original({
+    id: "lys-lantern",
+    title: "Lys Lantern",
+    kicker: "676 sq ft · clerestory square",
+    summary: "A 26 × 26 near-flat square that lights itself twice: a south glazing wall for the view, north clerestories for even day-light.",
+    bestFor: "A two-bedroom home that reads as a pavilion, not a box",
+    bedrooms: 2,
+    bathrooms: 1.5,
+    sleeping: "Two enclosed bedrooms",
+    storeys: 1,
+    tags: ["400–800 sq ft", "nordic square", "polycarbonate intent"],
+    features: ["Clerestory north light", "18 ft glazing wall", "Square services core"],
+    volumes: [
+      volume({
+        width: 26,
+        depth: 26,
+        roof: "flat",
+        pitch: 2,
+        height: 11,
+        openings: [
+          opening("glass-s", "s", "glazing-wall", 18, 10.5, 4),
+          opening("cler-n1", "n", "window", 6, 2.5, 3, 7.5),
+          opening("cler-n2", "n", "window", 6, 2.5, 17, 7.5),
+          opening("door-e", "e", "door", 3, 6.8, 3),
+          opening("win-e", "e", "window", 5, 4, 12),
+          opening("win-w", "w", "window", 5, 4, 12),
+        ],
+      }),
+    ],
+    deck: { width: 20, depth: 9 },
+    notes: "Aura-authored Nordic square concept. Clerestory heights assume the 11 ft wall; a professional confirms glazing ratios against NBC 9.36 before this becomes a permit set.",
+  }),
+  original({
+    id: "bastu-pavilion",
+    title: "Bastu Pavilion",
+    kicker: "720 sq ft · house + sauna",
+    summary: "A glazed shed-roof main square with a small flat-roofed sauna wing across a shared deck — the Nordic pair, drawn honestly.",
+    bestFor: "An eco stay whose second building IS the amenity",
+    bedrooms: 1,
+    bathrooms: 1,
+    sleeping: "One enclosed bedroom",
+    storeys: 1,
+    tags: ["400–800 sq ft", "nordic square", "sauna wing"],
+    features: ["Two-building court", "Corner glazing bands", "Sauna-ready wing"],
+    material: "timber_frame",
+    volumes: [
+      volume({
+        id: "house",
+        name: "Main pavilion",
+        width: 24,
+        depth: 24,
+        roof: "shed",
+        pitch: 6,
+        height: 11.5,
+        openings: [
+          opening("glass-s", "s", "glazing-wall", 16, 10, 4),
+          opening("glass-w", "w", "glazing-wall", 9, 10, 6),
+          opening("door-e", "e", "door", 3, 6.8, 3),
+          opening("win-n", "n", "window", 4, 4, 16, 4),
+        ],
+      }),
+      volume({
+        id: "sauna",
+        name: "Sauna wing",
+        width: 12,
+        depth: 12,
+        x: 20,
+        z: 4,
+        roof: "flat",
+        height: 9,
+        openings: [
+          opening("door-s", "s", "door", 2.6, 6.8, 2),
+          opening("win-w", "w", "window", 2, 2, 5, 4.5),
+        ],
+      }),
+    ],
+    deck: { width: 18, depth: 9, hotTub: true },
+    notes: "Aura-authored Nordic pair. The sauna wing needs its own ventilation, stove clearances and occupancy review; the shared deck's structure spans two foundations and is the engineer's first question.",
+  }),
+  publicDomain({
+    id: "lakeview-a-frame",
+    title: "Lakeview A-Frame",
+    kicker: "528 sq ft · USDA 5964 (1963)",
+    summary: "The original lakeside A-frame — the 22 × 24 ft federal plan every modern A-frame quietly imitates, with its loft in the source sheets.",
+    bestFor: "The classic weekend cabin, from the plan that started the shape",
+    bedrooms: 1,
+    bathrooms: 1,
+    sleeping: "Main floor + loft (loft not modelled)",
+    storeys: 1,
+    tags: ["400–800 sq ft", "a-frame", "public domain"],
+    features: ["Published 22 × 24 envelope", "The 1963 original", "Three-sheet source set"],
+    source: {
+      kind: "public-domain-adaptation",
+      name: "USDA Cooperative Farm Building Plan Exchange",
+      url: "https://www.ag.ndsu.edu/aben-plans/5964.pdf",
+      license: "US Government work (17 USC 105); USDA Misc. Pub. 981 (Nov 1964, plans 5964/5965) carries the National Agricultural Library scan's statement \"not in copyright\"",
+      licenseUrl: "https://www.usa.gov/government-works",
+      attribution: "Based on A-Frame Cabin, Plan Exchange No. 5964 (22 × 24 ft with loft, double 2 × 6 rafters at 4 ft), United States Department of Agriculture; sheets served by NDSU Extension.",
+      changes: "Aura kept the published 22 × 24 ft footprint and roof form, glazed the south gable end, and left the loft unmodelled in the legacy shell; the three-sheet structural set is not reproduced.",
+      shareAlike: false,
+      relationship: "dimensional-adaptation",
+    },
+    volumes: [volume({ width: 22, depth: 24, roof: "a-frame", pitch: 55, height: 8 })],
+    deck: { width: 14, depth: 8 },
+    slope: "gentle",
+    notes: "The 1963 sheets remain the authority for the original. The A-frame thrust path and the loft's egress are professional questions before anything is built.",
+  }),
+  publicDomain({
+    id: "wilson-court",
+    title: "Wilson Court",
+    kicker: "892 sq ft · bungalow court",
+    summary: "An L of two modest bars around a sheltered court — the California bungalow-court idea from Wilson's 1910 book, re-authored as a cold-climate eco home.",
+    bestFor: "Courtyard living where the outdoor room is the point",
+    bedrooms: 2,
+    bathrooms: 1,
+    sleeping: "Two enclosed bedrooms",
+    storeys: 1,
+    tags: ["800–1,200 sq ft", "courtyard", "public domain"],
+    features: ["Sheltered court", "Two ordinary spans", "Period-honest lineage"],
+    source: {
+      kind: "public-domain-adaptation",
+      name: "The Bungalow Book, Henry L. Wilson",
+      url: "https://archive.org/details/TheBungalowBookAShortSketchOfTheEvolutionOfTheBungalowFromIts",
+      license: "Public Domain Mark 1.0 (Internet Archive designation; pre-1931 US publication, c. 1910)",
+      licenseUrl: "https://creativecommons.org/publicdomain/mark/1.0/",
+      attribution: "Programme informed by the courtyard bungalow designs in The Bungalow Book (c. 1910) by Henry L. Wilson, the Los Angeles plan-book publisher who popularized the type.",
+      changes: "Aura took the courtyard-court PROGRAMME — two low bars holding an outdoor room — and authored a new two-volume envelope for a cold climate; no period drawing is traced and no 1910 assembly survives into this concept.",
+      shareAlike: false,
+      relationship: "system-informed-study",
+    },
+    material: "timber_frame",
+    volumes: [
+      volume({ id: "living", name: "Living bar", width: 18, depth: 34, roof: "gable", pitch: 26 }),
+      volume({ id: "sleeping", name: "Sleeping bar", width: 14, depth: 20, x: 16, z: 7, rotation: 90, glass: false }),
+    ],
+    deck: { width: 16, depth: 12 },
+    notes: "Wilson sold plans by mail a century before the internet; the lineage is the point. The court's wind exposure and snow-drift behaviour are site questions a professional answers.",
   }),
   original({
     id: "lightframe-pavilion",

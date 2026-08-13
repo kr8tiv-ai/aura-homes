@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import {
   PLAN_TEMPLATES,
@@ -9,6 +9,7 @@ import {
   type PlanTemplate,
 } from "@/lib/builder/planCatalog";
 import type { BuilderDocument } from "@/lib/builder/document";
+import { PlanAxonPreview, PlanDiagram } from "./PlanDiagram";
 import { Button } from "./ui";
 
 type SizeFilter = "all" | "micro" | "compact" | "home";
@@ -39,88 +40,9 @@ function bedroomsOf(count: number): Exclude<BedroomFilter, "all"> {
   return "two-plus";
 }
 
-interface Point {
-  x: number;
-  y: number;
-}
-
-function corners(plan: PlanTemplate): Point[] {
-  const out: Point[] = [];
-  for (const volume of plan.spec.volumes) {
-    const radians = (volume.rotationDeg * Math.PI) / 180;
-    const c = Math.cos(radians);
-    const s = Math.sin(radians);
-    for (const [localX, localY] of [
-      [-volume.widthFt / 2, -volume.depthFt / 2],
-      [volume.widthFt / 2, -volume.depthFt / 2],
-      [volume.widthFt / 2, volume.depthFt / 2],
-      [-volume.widthFt / 2, volume.depthFt / 2],
-    ] as const) {
-      out.push({
-        x: volume.x + localX * c - localY * s,
-        y: volume.z + localX * s + localY * c,
-      });
-    }
-  }
-  return out;
-}
-
-function PlanDiagram({ plan, large = false }: { plan: PlanTemplate; large?: boolean }) {
-  const points = corners(plan);
-  const minX = Math.min(...points.map((point) => point.x));
-  const maxX = Math.max(...points.map((point) => point.x));
-  const minY = Math.min(...points.map((point) => point.y));
-  const maxY = Math.max(...points.map((point) => point.y));
-  const width = Math.max(1, maxX - minX);
-  const height = Math.max(1, maxY - minY);
-  const pad = Math.max(width, height) * 0.16;
-  const pattern = `plan-grid-${plan.id}`;
-
-  return (
-    <svg
-      viewBox={`${minX - pad} ${minY - pad} ${width + pad * 2} ${height + pad * 2}`}
-      role="img"
-      aria-label={`${plan.title} concept footprint`}
-      className={large ? "plan-diagram plan-diagram--large" : "plan-diagram"}
-    >
-      <defs>
-        <pattern id={pattern} width="2" height="2" patternUnits="userSpaceOnUse">
-          <path d="M 2 0 L 0 0 0 2" fill="none" stroke="currentColor" strokeOpacity="0.08" strokeWidth="0.12" />
-        </pattern>
-      </defs>
-      <rect x={minX - pad} y={minY - pad} width={width + pad * 2} height={height + pad * 2} fill={`url(#${pattern})`} />
-      {plan.spec.volumes.map((volume, index) => (
-        <g key={volume.id} transform={`translate(${volume.x} ${volume.z}) rotate(${volume.rotationDeg})`}>
-          <rect
-            x={-volume.widthFt / 2}
-            y={-volume.depthFt / 2}
-            width={volume.widthFt}
-            height={volume.depthFt}
-            rx="0.35"
-            className="plan-diagram__mass"
-          />
-          <path
-            d={`M ${-volume.widthFt * 0.32} ${volume.depthFt / 2} H ${volume.widthFt * 0.08}`}
-            className="plan-diagram__glass"
-          />
-          <path
-            d={`M ${-volume.widthFt / 2} 0 H ${volume.widthFt / 2} M 0 ${-volume.depthFt / 2} V ${volume.depthFt / 2}`}
-            className="plan-diagram__guide"
-          />
-          {large ? (
-            <text x="0" y="0" textAnchor="middle" dominantBaseline="central" className="plan-diagram__label">
-              {index + 1}
-            </text>
-          ) : null}
-        </g>
-      ))}
-      <g transform={`translate(${minX - pad * 0.55} ${minY - pad * 0.3})`} className="plan-diagram__north">
-        <path d="M 0 3 L 1.4 0 L 2.8 3 Z" />
-        <text x="1.4" y="5.2" textAnchor="middle">N</text>
-      </g>
-    </svg>
-  );
-}
+/* The diagram lives in its own module now — shared scale, drawn roofs, real
+   openings — because the old one here rendered all twenty plans nearly
+   identically. See PlanDiagram.tsx's header for the three rules. */
 
 export default function PlanCatalog({ onChoose, currentName }: Props) {
   const [query, setQuery] = useState("");
@@ -128,6 +50,20 @@ export default function PlanCatalog({ onChoose, currentName }: Props) {
   const [bedrooms, setBedrooms] = useState<BedroomFilter>("all");
   const [source, setSource] = useState<SourceFilter>("all");
   const [selectedId, setSelectedId] = useState(PLAN_TEMPLATES[0].id);
+  const previewRef = useRef<HTMLElement | null>(null);
+
+  /* Below 1020px the preview stacks under all the cards, so a click near the
+     top of the grid used to change something two screens away — the literal
+     "clicking doesn't seem to change anything" report. Selecting now walks
+     the preview into view at those widths; at desktop widths the sticky
+     aside is already beside the click and scrolling would be noise. */
+  const choose = useCallback((id: string) => {
+    setSelectedId(id);
+    if (typeof window === "undefined") return;
+    if (!window.matchMedia("(max-width: 1020px)").matches) return;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    previewRef.current?.scrollIntoView({ block: "start", behavior: reduced ? "auto" : "smooth" });
+  }, []);
 
   const entries = useMemo(
     () =>
@@ -155,7 +91,7 @@ export default function PlanCatalog({ onChoose, currentName }: Props) {
   const selected = visible.find(({ plan }) => plan.id === selectedId) ?? visible[0] ?? entries[0];
 
   return (
-    <section className="plan-library" aria-labelledby="plan-library-heading">
+    <section className="plan-library" aria-labelledby="plan-library-heading" data-selected-plan={selected.plan.id}>
       <div className="plan-library__intro">
         <div>
           <p className="aura-label text-aura-emerald">Prebuilt plan library</p>
@@ -212,7 +148,7 @@ export default function PlanCatalog({ onChoose, currentName }: Props) {
       </div>
 
       <div className="plan-library__body">
-        <div className="plan-library__grid" aria-live="polite">
+        <div className="plan-library__grid">
           {visible.map(({ plan, estimate }) => {
             const active = selected.plan.id === plan.id;
             return (
@@ -220,7 +156,7 @@ export default function PlanCatalog({ onChoose, currentName }: Props) {
                 type="button"
                 key={plan.id}
                 aria-pressed={active}
-                onClick={() => setSelectedId(plan.id)}
+                onClick={() => choose(plan.id)}
                 className="plan-card"
               >
                 <div className="plan-card__visual">
@@ -256,9 +192,19 @@ export default function PlanCatalog({ onChoose, currentName }: Props) {
           ) : null}
         </div>
 
-        <aside className="plan-preview" aria-label={`${selected.plan.title} plan preview`}>
+        <aside
+          ref={previewRef}
+          className="plan-preview"
+          aria-label={`${selected.plan.title} plan preview`}
+          /* aria-live sits HERE, not on the grid: the announcement worth
+             making is "the preview now shows X", spoken from the place that
+             changed. */
+          aria-live="polite"
+        >
           <div className="plan-preview__drawing">
-            <PlanDiagram plan={selected.plan} large />
+            {/* a real hidden-line axonometric from the plan's own model — the
+                click finally shows massing, roof and storeys, not a rectangle */}
+            <PlanAxonPreview plan={selected.plan} />
             <span>{selected.plan.spec.volumes.length} shell{selected.plan.spec.volumes.length === 1 ? "" : "s"}</span>
           </div>
           <div className="plan-preview__content">

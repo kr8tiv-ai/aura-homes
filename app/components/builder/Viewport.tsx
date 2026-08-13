@@ -666,6 +666,36 @@ function Scene({
 
 /* ------------------------------------------------------------- the canvas */
 
+/** Applies the framing whenever a WHOLE document arrives (plan chosen,
+ *  project opened, link imported). Lives inside the Canvas because the
+ *  `camera` prop is mount-only and the demand frameloop needs the poke.
+ *  `saveState()` is the important line: it re-bases the "Frame the home"
+ *  button so reset() restores the NEW home's framing, not the first one's. */
+function ReframeOnLoad({
+  epoch,
+  initial,
+  controls,
+}: {
+  epoch: number;
+  initial: { distance: number; height: number; target: [number, number, number] };
+  controls: MutableRefObject<ElementRef<typeof OrbitControls> | null>;
+}) {
+  const { camera, invalidate } = useThree();
+  useEffect(() => {
+    camera.position.set(initial.distance * 0.72, initial.height, initial.distance);
+    const orbit = controls.current;
+    if (orbit) {
+      orbit.target.set(...initial.target);
+      orbit.update();
+      orbit.saveState();
+    }
+    invalidate();
+    // `initial` changes identity exactly when `epoch` does; both listed so a
+    // future refactor of either cannot silently detach the reframe.
+  }, [camera, controls, epoch, initial, invalidate]);
+  return null;
+}
+
 export default function Viewport({
   home,
   sun,
@@ -673,6 +703,7 @@ export default function Viewport({
   selectedId,
   onSelect,
   houseRef,
+  loadEpoch = 0,
   surfaces = null,
   comfort = null,
   houseChildren = null,
@@ -683,6 +714,9 @@ export default function Viewport({
   selectedId: string | null;
   onSelect: (id: string) => void;
   houseRef: MutableRefObject<THREE.Group | null>;
+  /** bumped by BuilderApp only when a whole document loads — the one signal
+   *  the camera reframes on. Edits and undo never move it. */
+  loadEpoch?: number;
   /** omit for the plain viewport; pass it to make surfaces pickable */
   surfaces?: ViewportSurfaces | null;
   /** omit — or pass `null` — for no heatmap, which is the default state */
@@ -711,11 +745,12 @@ export default function Viewport({
     };
   }, []);
 
-  /* The camera is framed once, from the FIRST model it is given, and the orbit
-     TARGET is fixed with it. Re-deriving either on every edit would yank the
-     view out from under somebody nudging a slider — and a `target` prop that
-     changes also silently undoes a pan, which reads as the app fighting you.
-     "Frame the home" is a button instead, and it restores exactly this. */
+  /* The camera is framed per LOADED DOCUMENT, and the orbit TARGET is fixed
+     with it. Re-deriving on every edit would yank the view out from under
+     somebody nudging a slider — so the deps are the load epoch, never the
+     home: choosing a plan or opening a project reframes to fit the new
+     massing, while every slider drag inside a document leaves the camera
+     exactly where it was. "Frame the home" restores this framing. */
   const initial = useMemo(() => {
     const b = home.summary.boundsWithRoof;
     const span = Math.max(30, b.widthFt, b.depthFt, home.summary.maxRidgeHeightFt * 1.6);
@@ -724,14 +759,17 @@ export default function Viewport({
       height: span * 0.85,
       target: [0, Math.max(6, home.summary.maxRidgeHeightFt * 0.4), 0] as [number, number, number],
     };
+    // `home` deliberately unlisted: the epoch names the moments a reframe is
+    // wanted, and the closure reads the home THAT load delivered.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadEpoch]);
 
   const frame = () => controls.current?.reset();
 
   return (
     <div
       data-builder-quality={quality.tier}
+      data-load-epoch={loadEpoch}
       className="builder-viewport relative overflow-hidden rounded-2xl bg-aura-sunken"
     >
       <div className="aspect-[16/10] min-h-[22rem] w-full lg:aspect-[16/9] lg:min-h-[34rem]">
@@ -781,6 +819,7 @@ export default function Viewport({
               `preserveDrawingBuffer: false` means the back buffer is only
               readable in the same synchronous turn as the draw. */}
           <ThumbnailProbe />
+          <ReframeOnLoad epoch={loadEpoch} initial={initial} controls={controls} />
           <OrbitControls
             ref={controls}
             makeDefault

@@ -91,6 +91,22 @@ test("guided mode walks: Back, a live count, Next by name, and graduation to Pro
   await expect(page.getByRole("tablist", { name: "Builder workspaces" })).toBeVisible();
 });
 
+test("the camera reframes per loaded document and never per edit", async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto("/build");
+  const viewport = page.locator(".builder-viewport");
+  await expect(viewport).toHaveAttribute("data-load-epoch", "0", { timeout: 60_000 });
+
+  await page.getByRole("button", { name: /Fjell Cube/ }).click();
+  await page.getByRole("button", { name: "Use Fjell Cube" }).click();
+  await expect(viewport).toHaveAttribute("data-load-epoch", "1");
+
+  // An ordinary edit must NOT move the epoch — that is the anti-yank
+  // guarantee: sliders and fields never reframe the camera.
+  await page.getByRole("textbox", { name: "Name", exact: true }).fill("Epoch hold");
+  await expect(viewport).toHaveAttribute("data-load-epoch", "1");
+});
+
 test("the project centre exposes local recovery and portable backups", async ({ page }) => {
   await page.goto("/start");
   await page.getByLabel("Project name").fill("Recovery test home");

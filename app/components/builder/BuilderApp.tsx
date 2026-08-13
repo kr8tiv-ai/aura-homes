@@ -224,6 +224,12 @@ interface EditorState {
   future: EditorDoc[];
   /** the label of the last edit, for coalescing — never persisted */
   label: string | null;
+  /** Counts WHOLE-DOCUMENT arrivals — plan chosen, project opened, share
+   *  link imported — and nothing else. The camera reframes on this and only
+   *  this, which is what keeps a slider drag from yanking the view (the
+   *  guarantee the old empty-deps camera memo protected) while a newly
+   *  loaded home finally gets framed as itself. View state, never persisted. */
+  loadEpoch: number;
 }
 
 type Action =
@@ -356,6 +362,7 @@ function commit(state: EditorState, doc: EditorDoc, label: string): EditorState 
     past: coalesce ? state.past : [...state.past, state.doc].slice(-HISTORY_MAX),
     future: [],
     label,
+    loadEpoch: state.loadEpoch,
   };
 }
 
@@ -426,13 +433,16 @@ function reducer(state: EditorState, action: Action): EditorState {
       // A house off a link or off somebody's disk is untrusted in exactly the
       // same way, so what arrived with it is reconciled against it before it
       // is allowed to become the document.
-      return commit(
+      const committed = commit(
         state,
         action.doc.geometry.kind === "building-graph"
           ? action.doc
           : withSpec(action.doc, action.doc.spec),
         action.label,
       );
+      // A load that changed nothing still framed nothing new — the epoch
+      // moves only when the document actually became a different one.
+      return committed === state ? state : { ...committed, loadEpoch: state.loadEpoch + 1 };
     }
     case "undo": {
       const previous = state.past[state.past.length - 1];
@@ -443,6 +453,7 @@ function reducer(state: EditorState, action: Action): EditorState {
         future: [state.doc, ...state.future].slice(0, HISTORY_MAX),
         // cleared, so the next edit always opens a fresh step
         label: null,
+        loadEpoch: state.loadEpoch,
       };
     }
     case "redo": {
@@ -453,6 +464,7 @@ function reducer(state: EditorState, action: Action): EditorState {
         past: [...state.past, state.doc].slice(-HISTORY_MAX),
         future: state.future.slice(1),
         label: null,
+        loadEpoch: state.loadEpoch,
       };
     }
     default:
@@ -482,6 +494,7 @@ const initialState = (): EditorState => ({
   past: [],
   future: [],
   label: null,
+  loadEpoch: 0,
 });
 
 type ViewMode = "3d" | "2d";
@@ -1239,6 +1252,7 @@ export default function BuilderApp() {
           selectedId={graphGeometry?.graph.storeys[0]?.id ?? activeVolumeId}
           onSelect={selectVolume}
           houseRef={houseRef}
+          loadEpoch={state.loadEpoch}
           surfaces={
             graphMode
               ? null
