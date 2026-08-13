@@ -1,0 +1,52 @@
+{
+  "node": "R05",
+  "graphVersion": "1.1",
+  "graphBlobSha256": "897147D8F5C3FBF065423A64601509B4B3C6FA9DFA1AA114BD32FA0A047144FD",
+  "approvalCommit": "7d6028667b2ae061df9504eb3a52df091f138207",
+  "job": "Serve a visibly sharper responsive entrance film while preserving poster-first LCP, fast transition, and composed fallbacks.",
+  "inputs": {
+    "sourceAssets": ["app/public/video/enter-1920.av1.webm", "app/public/video/enter-desktop.mp4", "app/public/video/enter.mp4", "app/public/video/enter-poster.avif"],
+    "deliveryContract": "poster first; high-resolution bytes only when useful"
+  },
+  "outputs": {
+    "schema": "ResponsiveLandingFilmV1",
+    "required": [
+      "AV1/WebM preferred source where supported",
+      "responsive desktop and mobile MP4 fallbacks",
+      "measured dimensions/bitrate/quality manifest",
+      "poster remains immediate LCP candidate",
+      "reduced-motion, load-error, timeout, and WebGL fallbacks remain composed"
+    ]
+  },
+  "dependsOn": ["R00", "G00"],
+  "rejectionGates": [
+    "video becomes the blocking LCP resource",
+    "source order forces larger bytes on unsupported or small devices",
+    "sharpness increases total mobile transfer without a visual need",
+    "gate can strand the user on media failure",
+    "entry transition or focus containment regresses"
+  ],
+  "work": {
+    "owner": "unassigned",
+    "writeSet": [
+      "app/components/story/StoryChrome.tsx",
+      "app/components/story/Story.tsx",
+      "app/public/video/**",
+      "app/scripts/video-proof.mjs",
+      "app/tests/landing-film.spec.ts",
+      "app/tests/visual-system-ui.spec.ts"
+    ]
+  },
+  "verify": {
+    "owner": "fresh-context verifier",
+    "commands": [
+      "npx playwright test tests/landing-film.spec.ts tests/visual-system-ui.spec.ts --workers=1",
+      "node scripts/video-proof.mjs",
+      "npx tsc --noEmit"
+    ],
+    "anchors": ["network request matrix", "media metadata", "poster paint", "entry focus", "reduced-motion fallback"]
+  },
+  "repairLimit": 1,
+  "sideEffect": "local",
+  "status": "ready"
+}

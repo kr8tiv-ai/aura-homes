@@ -1,0 +1,57 @@
+{
+  "node": "R01",
+  "graphVersion": "1.1",
+  "graphBlobSha256": "897147D8F5C3FBF065423A64601509B4B3C6FA9DFA1AA114BD32FA0A047144FD",
+  "approvalCommit": "7d6028667b2ae061df9504eb3a52df091f138207",
+  "job": "Verify and finish the append-only static release pipeline without publishing.",
+  "inputs": {
+    "baselineCommit": "525c888",
+    "productionBranch": "origin/gh-pages",
+    "retentionPolicy": "newest five releases or 30 days, whichever retains more"
+  },
+  "outputs": {
+    "schema": "R01VerificationV1",
+    "required": [
+      "two-phase assets-before-html staging",
+      "old-and-new HTML asset closure",
+      "CNAME and .nojekyll preservation",
+      "one-time chunk recovery and composed fallback",
+      "production rehearsal report with no remote writes"
+    ]
+  },
+  "dependsOn": ["R00", "G00"],
+  "rejectionGates": [
+    "approval record does not match the canonical graph blob",
+    "working tree contains an unowned write-set conflict",
+    "staged release would delete a referenced asset",
+    "release tooling can publish HTML before required assets"
+  ],
+  "work": {
+    "owner": "unassigned",
+    "writeSet": [
+      "app/scripts/static-release.mjs",
+      "app/scripts/static-release.test.mjs",
+      "app/scripts/chunk-recovery.test.mjs",
+      "app/scripts/README.md",
+      "app/lib/chunkRecovery.mjs",
+      "app/next.config.mjs",
+      "app/app/layout.tsx",
+      "app/package.json"
+    ]
+  },
+  "verify": {
+    "owner": "fresh-context verifier",
+    "commands": [
+      "npm run test:release",
+      "npx tsc --noEmit",
+      "npm test",
+      "npm run build:gh-pages",
+      "node scripts/static-release.mjs stage-assets --dry-run",
+      "node scripts/static-release.mjs verify"
+    ],
+    "anchors": ["archived production HTML", "new export HTML", "retained asset manifest"]
+  },
+  "repairLimit": 1,
+  "sideEffect": "local",
+  "status": "ready"
+}

@@ -1,0 +1,50 @@
+{
+  "node": "R04",
+  "graphVersion": "1.1",
+  "graphBlobSha256": "897147D8F5C3FBF065423A64601509B4B3C6FA9DFA1AA114BD32FA0A047144FD",
+  "approvalCommit": "7d6028667b2ae061df9504eb3a52df091f138207",
+  "job": "Back up, integrate, push, publish append-only, and smoke-test the R0 release.",
+  "inputs": {
+    "requiredNodeEvidence": ["R01VerificationV1", "R02VerificationV1", "ProgressiveMeadowV1", "ResponsiveLandingFilmV1"],
+    "authorIdentity": "Matt-Aurora-Ventures <lucidbloks@gmail.com>"
+  },
+  "outputs": {
+    "schema": "R04ReleaseReceiptV1",
+    "required": [
+      "dated source and production backups",
+      "remote main commit",
+      "remote gh-pages commit",
+      "append-only release manifest",
+      "desktop/mobile production smoke report",
+      "old-HTML hydration compatibility report",
+      "rollback coordinates"
+    ]
+  },
+  "dependsOn": ["R01", "R02", "R03", "R05", "G00"],
+  "rejectionGates": [
+    "any dependency is not independently verified",
+    "working tree is dirty or remote main cannot be reconciled safely",
+    "backup or rollback coordinates are missing",
+    "asset closure, performance, accessibility, or golden path fails",
+    "commit identity differs from Matt's required identity"
+  ],
+  "work": {
+    "owner": "root release owner only",
+    "writeSet": ["remote:origin/main", "remote:origin/gh-pages", "production:https://aurahomes.fun"],
+    "prohibitedDelegation": ["commit", "push", "deploy", "DNS mutation", "VPS mutation"]
+  },
+  "verify": {
+    "owner": "fresh-context verifier plus root production smoke",
+    "commands": [
+      "npm run test:release",
+      "npx tsc --noEmit",
+      "npm test",
+      "npm run build:gh-pages",
+      "production desktop/mobile/browser smoke suite"
+    ],
+    "anchors": ["Git refs", "release manifest", "HTTP 200 asset crawl", "live model interaction", "live meadow and film"]
+  },
+  "repairLimit": 1,
+  "sideEffect": "remote-write",
+  "status": "blocked"
+}

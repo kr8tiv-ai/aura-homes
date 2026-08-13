@@ -1,0 +1,51 @@
+{
+  "node": "R02",
+  "graphVersion": "1.1",
+  "graphBlobSha256": "897147D8F5C3FBF065423A64601509B4B3C6FA9DFA1AA114BD32FA0A047144FD",
+  "approvalCommit": "7d6028667b2ae061df9504eb3a52df091f138207",
+  "job": "Prove that plan preview and commit change visible 2D/3D geometry, camera bounds, durable origin, and canonical hash.",
+  "inputs": {
+    "baselineCommit": "525c888",
+    "catalogContract": "PlanCatalog entries with BuilderDocument source and PlanOrigin",
+    "interactionContract": "preview is non-destructive; Use this design is one undoable commit"
+  },
+  "outputs": {
+    "schema": "R02VerificationV1",
+    "required": [
+      "three distinct plans render distinct fixed-camera geometry",
+      "commit changes design hash and preserves plan origin/cost/licence",
+      "refresh restores the committed design",
+      "undo restores the prior project",
+      "keyboard, pointer, and touch paths are equivalent"
+    ]
+  },
+  "dependsOn": ["R00", "G00"],
+  "rejectionGates": [
+    "preview mutates the active BuilderDocument",
+    "load failure overwrites the active design",
+    "test asserts only loadEpoch/text instead of geometry bounds or pixels",
+    "plan provenance is lost after commit"
+  ],
+  "work": {
+    "owner": "unassigned",
+    "writeSet": [
+      "app/components/builder/BuilderApp.tsx",
+      "app/components/builder/PlanCatalog.tsx",
+      "app/components/builder/PlanModelPreview.tsx",
+      "app/tests/plan-catalog-ui.spec.ts",
+      "app/tests/plan-selection-visual.spec.ts",
+      "app/tests/plan-catalog.spec.ts"
+    ]
+  },
+  "verify": {
+    "owner": "fresh-context verifier",
+    "commands": [
+      "npx playwright test tests/plan-catalog-ui.spec.ts tests/plan-selection-visual.spec.ts --workers=1",
+      "npx tsc --noEmit"
+    ],
+    "anchors": ["fixed camera screenshots", "geometry bounding boxes", "canonical design hashes", "IndexedDB reload"]
+  },
+  "repairLimit": 1,
+  "sideEffect": "local",
+  "status": "ready"
+}

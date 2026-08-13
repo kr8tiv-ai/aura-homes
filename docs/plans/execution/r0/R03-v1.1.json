@@ -1,0 +1,66 @@
+{
+  "node": "R03",
+  "graphVersion": "1.1",
+  "graphBlobSha256": "897147D8F5C3FBF065423A64601509B4B3C6FA9DFA1AA114BD32FA0A047144FD",
+  "approvalCommit": "7d6028667b2ae061df9504eb3a52df091f138207",
+  "job": "Replace synchronous whole-meadow promotion with progressive worker-built near, mid, and far vegetation while increasing visible grass and flowers.",
+  "inputs": {
+    "baselineMeadow": "SceneDetail grass/flora system at approval commit",
+    "sparkleSpeed": 0.0625,
+    "qualityContract": "R03 quality contract in Graph v1.1"
+  },
+  "outputs": {
+    "schema": "ProgressiveMeadowV1",
+    "required": [
+      "deterministic transferable tile pages built outside React render",
+      "near hero grass and flower clusters available for first composed frame",
+      "mid clumps/cards and far meadow surface promoted incrementally",
+      "long-task/frame governor freezes at last healthy tier",
+      "rich static reduced-motion, low-power, and WebGL fallback",
+      "coverage and performance evidence"
+    ]
+  },
+  "dependsOn": ["R00", "G00"],
+  "rejectionGates": [
+    "implementation restores a synchronous global million-instance rebuild",
+    "React render or useMemo constructs the complete promoted meadow",
+    "promotion continues after a task over 50 ms or frame budget failure",
+    "mobile starts automatic expensive 3D",
+    "flowers disappear from near or mid fixed-camera regions",
+    "sparkle speed differs from 0.0625"
+  ],
+  "work": {
+    "owner": "unassigned",
+    "writeSet": [
+      "app/components/story/StoryCanvas.tsx",
+      "app/components/story/Scene.tsx",
+      "app/components/story/SceneDetail.tsx",
+      "app/components/story/flora.ts",
+      "app/lib/three/sceneQuality.ts",
+      "app/lib/three/meadow/**",
+      "app/workers/meadow.worker.ts",
+      "app/tests/meadow-progressive.spec.ts",
+      "app/tests/scene-quality.spec.ts",
+      "app/tests/story-quality.spec.ts",
+      "app/scripts/meadow-proof.mjs"
+    ]
+  },
+  "verify": {
+    "owner": "fresh-context verifier",
+    "commands": [
+      "npx playwright test tests/meadow-progressive.spec.ts tests/story-quality.spec.ts --workers=1",
+      "node scripts/meadow-proof.mjs",
+      "npx tsc --noEmit"
+    ],
+    "anchors": [
+      "fixed-camera vegetation masks",
+      "worker chunk timing",
+      "PerformanceObserver long tasks",
+      "p95 active frame duration",
+      "settled frameloop state"
+    ]
+  },
+  "repairLimit": 1,
+  "sideEffect": "local",
+  "status": "ready"
+}
