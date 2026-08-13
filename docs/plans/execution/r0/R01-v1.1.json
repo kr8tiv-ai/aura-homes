@@ -45,13 +45,24 @@
       "npm run test:release",
       "npx tsc --noEmit",
       "npm test",
-      "npm run build:gh-pages",
-      "node scripts/static-release.mjs stage-assets --dry-run",
-      "node scripts/static-release.mjs verify"
+      "$env:GH_PAGES='1'; $env:AURA_RELEASE_ID='<commit>'; npm run build",
+      "npm run release:stage-assets -- --export ./out --site <gh-pages-worktree> --release-id <commit>",
+      "npm run release:publish-html -- --export ./out --site <gh-pages-worktree> --release-id <commit>",
+      "npm run release:verify -- --export ./out --site <gh-pages-worktree>"
     ],
     "anchors": ["archived production HTML", "new export HTML", "retained asset manifest"]
   },
   "repairLimit": 1,
   "sideEffect": "local",
-  "status": "ready"
+  "evidence": {
+    "verifiedAt": "2026-08-13T23:00:00Z",
+    "verdict": "pass",
+    "focusedTests": "18/18",
+    "applicationTests": "141/141",
+    "staticPages": "24/24",
+    "preservedPublishedPayloadChanges": 0,
+    "currentAndArchivedAssetClosure": "pass",
+    "rehearsalRoot": "C:/Users/lucid/Desktop/Kin/aura-r01-v2-verify-20260813-163834"
+  },
+  "status": "verified"
 }

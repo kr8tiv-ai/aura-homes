@@ -3,6 +3,7 @@
 import { access, copyFile, mkdir, readFile, readdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import { createChunkRecoveryScript } from "../lib/chunkRecovery.mjs";
 
 function parseArgs(argv) {
   const [command, ...rest] = argv;
@@ -32,7 +33,7 @@ async function copyAssetsOnly(source, destination, relative = "") {
       await copyAssetsOnly(source, destination, child);
       continue;
     }
-    if (path.extname(entry.name).toLowerCase() === ".html") continue;
+    if (isApplicationPayload(entry.name)) continue;
     if (relative === "" && (entry.name === "CNAME" || entry.name === ".nojekyll")) continue;
     const target = path.join(destination, child);
     await mkdir(path.dirname(target), { recursive: true });
@@ -40,11 +41,29 @@ async function copyAssetsOnly(source, destination, relative = "") {
   }
 }
 
-async function copyHtmlOnly(source, destination) {
-  for (const relative of await listHtmlFiles(source)) {
+function isApplicationPayload(fileName) {
+  const extension = path.extname(fileName).toLowerCase();
+  return extension === ".html" || extension === ".txt";
+}
+
+function injectChunkRecovery(html, releaseId) {
+  if (/\bid=["']aura-chunk-recovery["']/i.test(html)) return html;
+  const source = createChunkRecoveryScript(releaseId).replaceAll("</script", "<\\/script");
+  const script = `<script id="aura-chunk-recovery">${source}</script>`;
+  if (/<\/head\s*>/i.test(html)) return html.replace(/<\/head\s*>/i, `${script}</head>`);
+  return `${script}${html}`;
+}
+
+async function copyApplicationPayloads(source, destination, releaseId) {
+  for (const relative of await listApplicationPayloadFiles(source)) {
     const target = path.join(destination, relative);
     await mkdir(path.dirname(target), { recursive: true });
-    await copyFile(path.join(source, relative), target);
+    if (relative.toLowerCase().endsWith(".html")) {
+      const html = await readFile(path.join(source, relative), "utf8");
+      await writeFile(target, injectChunkRecovery(html, releaseId));
+    } else {
+      await copyFile(path.join(source, relative), target);
+    }
   }
 }
 
@@ -60,6 +79,16 @@ async function listHtmlFiles(root, relative = "", files = []) {
   return files;
 }
 
+async function listApplicationPayloadFiles(root, relative = "", files = []) {
+  const entries = await readdir(path.join(root, relative), { withFileTypes: true });
+  for (const entry of entries) {
+    const child = path.join(relative, entry.name);
+    if (entry.isDirectory()) await listApplicationPayloadFiles(root, child, files);
+    else if (isApplicationPayload(entry.name)) files.push(child);
+  }
+  return files;
+}
+
 async function listAssetFiles(root, relative = "", files = []) {
   const entries = await readdir(path.join(root, relative), { withFileTypes: true });
   for (const entry of entries) {
@@ -67,7 +96,7 @@ async function listAssetFiles(root, relative = "", files = []) {
     if (entry.isDirectory()) {
       if (relative === "" && entry.name === ".aura-release-manifests") continue;
       await listAssetFiles(root, child, files);
-    } else if (!entry.name.toLowerCase().endsWith(".html") && child !== "CNAME" && child !== ".nojekyll") {
+    } else if (!isApplicationPayload(entry.name) && child !== "CNAME" && child !== ".nojekyll") {
       files.push(child.replaceAll("\\", "/"));
     }
   }
@@ -99,11 +128,22 @@ function extractHtmlAssetPaths(html, htmlPath) {
   return [...new Set(references.map((item) => localAssetPath(item, htmlPath)).filter(Boolean))];
 }
 
+function extractPayloadAssetPaths(payload, payloadPath) {
+  const assets = new Set();
+  if (payloadPath.toLowerCase().endsWith(".html")) {
+    for (const asset of extractHtmlAssetPaths(payload, payloadPath)) assets.add(asset);
+  }
+  for (const match of payload.matchAll(/(?:^|["'=(])\/?(_next\/static\/[A-Za-z0-9._~!$&'()*+,;=:@%\/-]+)/g)) {
+    assets.add(match[1]);
+  }
+  return [...assets];
+}
+
 async function collectHtmlAssetPaths(htmlRoot) {
   const assets = new Set();
-  for (const htmlPath of await listHtmlFiles(htmlRoot)) {
-    const html = await readFile(path.join(htmlRoot, htmlPath), "utf8");
-    for (const assetPath of extractHtmlAssetPaths(html, htmlPath)) assets.add(assetPath);
+  for (const payloadPath of await listApplicationPayloadFiles(htmlRoot)) {
+    const payload = await readFile(path.join(htmlRoot, payloadPath), "utf8");
+    for (const assetPath of extractPayloadAssetPaths(payload, payloadPath)) assets.add(assetPath);
   }
   return [...assets].sort();
 }
@@ -271,19 +311,34 @@ async function pruneAssets(options) {
 
 async function verifyHtmlAssets(htmlRoot, assetRoot) {
   const missing = [];
-  for (const htmlPath of await listHtmlFiles(htmlRoot)) {
-    const html = await readFile(path.join(htmlRoot, htmlPath), "utf8");
-    for (const assetPath of extractHtmlAssetPaths(html, htmlPath)) {
+  for (const payloadPath of await listApplicationPayloadFiles(htmlRoot)) {
+    const payload = await readFile(path.join(htmlRoot, payloadPath), "utf8");
+    for (const assetPath of extractPayloadAssetPaths(payload, payloadPath)) {
       try {
         await access(path.join(assetRoot, ...assetPath.split("/")));
       } catch {
-        missing.push(`${htmlPath.replaceAll("\\", "/")} -> /${assetPath}`);
+        missing.push(`${payloadPath.replaceAll("\\", "/")} -> /${assetPath}`);
       }
     }
   }
   if (missing.length) {
-    throw new Error(`Missing emitted HTML assets:\n${missing.join("\n")}`);
+    throw new Error(`Missing emitted application assets:\n${missing.join("\n")}`);
   }
+}
+
+async function verifyRelease(options) {
+  if (!options.export || !options.site) throw new Error("verify requires --export and --site");
+  const exportRoot = path.resolve(options.export);
+  const siteRoot = path.resolve(options.site);
+  await verifyHtmlAssets(siteRoot, siteRoot);
+  await verifyHtmlAssets(exportRoot, siteRoot);
+  await verifyRetainedReleaseAssets(siteRoot, new Date(options.now ?? Date.now()));
+  const result = {
+    sitePayloads: (await listApplicationPayloadFiles(siteRoot)).length,
+    exportPayloads: (await listApplicationPayloadFiles(exportRoot)).length,
+    referencedAssets: (await collectHtmlAssetPaths(exportRoot)).length,
+  };
+  process.stdout.write(`${JSON.stringify(result)}\n`);
 }
 
 async function stageAssets(options) {
@@ -317,7 +372,7 @@ async function publishHtml(options) {
   await verifyHtmlAssets(siteRoot, siteRoot);
   await verifyHtmlAssets(exportRoot, siteRoot);
   await verifyRetainedReleaseAssets(siteRoot, new Date(now));
-  await copyHtmlOnly(exportRoot, siteRoot);
+  await copyApplicationPayloads(exportRoot, siteRoot, releaseId);
   await preserveDomainFiles(exportRoot, siteRoot);
   await verifyHtmlAssets(siteRoot, siteRoot);
   await verifyRetainedReleaseAssets(siteRoot, new Date(now));
@@ -336,6 +391,10 @@ async function main() {
   }
   if (command === "prune-assets") {
     await pruneAssets(options);
+    return;
+  }
+  if (command === "verify") {
+    await verifyRelease(options);
     return;
   }
   throw new Error(`Unknown command: ${command ?? "(missing)"}`);

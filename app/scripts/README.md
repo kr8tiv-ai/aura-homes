@@ -142,19 +142,26 @@ $env:GH_PAGES = "1"
 $env:AURA_RELEASE_ID = $releaseId
 npm run build
 
-# Phase 1: add assets and manifests, but leave every published HTML file alone.
+# Phase 1: add immutable assets and manifests, but leave every published
+# HTML file and Next route `.txt` payload alone.
 npm run release:stage-assets -- --export ./out --site C:/path/to/gh-pages --release-id $releaseId
 
 # Review, commit, and push the asset-only change. Wait until its new asset URLs
 # return 200 from production before continuing.
 
-# Phase 2: re-check current, retained, and next HTML references, then overlay HTML.
+# Phase 2: re-check current, retained, and next application references, then
+# overlay HTML and its matching Next route `.txt` payloads in the same commit.
 npm run release:publish-html -- --export ./out --site C:/path/to/gh-pages --release-id $releaseId
+
+# Final local closure check for current, next and retained application payloads.
+npm run release:verify -- --export ./out --site C:/path/to/gh-pages
 
 # Review, commit, and push the HTML change.
 ```
 
-Each manifest records the asset paths used by that release's emitted HTML.
+Each manifest records the asset paths used by that release's emitted HTML and
+Next route payloads. `publish-html` also injects the inline chunk-recovery guard
+into redirect-only HTML that Next emits without the root layout.
 Staging fails if current HTML, next HTML, or any retained release points at a
 missing local asset. Existing `CNAME` always wins and `.nojekyll` is always
 present. `next.config.mjs` uses the checked-out commit as both the Next build ID

@@ -62,6 +62,54 @@ test("stage-assets keeps the currently published HTML and its hashed chunks whil
   assert.equal(await readFile(path.join(site, ".nojekyll"), "utf8"), "");
 });
 
+test("stage-assets keeps current Next route payloads until the application cutover", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "aura-static-release-payload-"));
+  const site = path.join(root, "site");
+  const next = path.join(root, "next");
+  const oldPayload = '1:["/_next/static/chunks/old.js"]';
+  const nextPayload = '1:["/_next/static/chunks/next.js"]';
+  await put(site, "build/index.html", '<script src="/_next/static/chunks/old.js"></script>');
+  await put(site, "build/index.txt", oldPayload);
+  await put(site, "_next/static/chunks/old.js", "old");
+  await put(next, "build/index.html", '<script src="/_next/static/chunks/next.js"></script>');
+  await put(next, "build/index.txt", nextPayload);
+  await put(next, "_next/static/chunks/next.js", "next");
+  const common = [
+    "--export", next,
+    "--site", site,
+    "--release-id", "payload-test",
+    "--now", "2026-08-13T12:00:00.000Z",
+  ];
+
+  const stage = runRelease(["stage-assets", ...common]);
+  assert.equal(stage.status, 0, `${stage.stdout}\n${stage.stderr}`);
+  assert.equal(await readFile(path.join(site, "build/index.txt"), "utf8"), oldPayload);
+
+  const publish = runRelease(["publish-html", ...common]);
+  assert.equal(publish.status, 0, `${publish.stdout}\n${publish.stderr}`);
+  assert.equal(await readFile(path.join(site, "build/index.txt"), "utf8"), nextPayload);
+});
+
+test("stage-assets validates chunk references that exist only in Next route payloads", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "aura-static-release-payload-missing-"));
+  const site = path.join(root, "site");
+  const next = path.join(root, "next");
+  await put(site, "index.html", '<script src="/_next/static/chunks/old.js"></script>');
+  await put(site, "_next/static/chunks/old.js", "old");
+  await put(next, "index.html", "<html><head></head></html>");
+  await put(next, "index.txt", '1:["/_next/static/chunks/payload-only-missing.js"]');
+
+  const result = runRelease([
+    "stage-assets",
+    "--export", next,
+    "--site", site,
+    "--release-id", "payload-missing",
+  ]);
+
+  assert.equal(result.status, 1, `${result.stdout}\n${result.stderr}`);
+  assert.match(result.stderr, /index\.txt -> \/_next\/static\/chunks\/payload-only-missing\.js/);
+});
+
 test("stage-assets rejects an emitted HTML file whose hashed asset is absent", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "aura-static-release-missing-"));
   const site = path.join(root, "site");
@@ -118,7 +166,9 @@ test("publish-html overlays the next HTML only after old and new assets are comp
   const publish = runRelease(["publish-html", ...common]);
 
   assert.equal(publish.status, 0, `${publish.stdout}\n${publish.stderr}`);
-  assert.equal(await readFile(path.join(site, "build/index.html"), "utf8"), nextHtml);
+  const publishedHtml = await readFile(path.join(site, "build/index.html"), "utf8");
+  assert.match(publishedHtml, /id="aura-chunk-recovery"/);
+  assert.ok(publishedHtml.endsWith(nextHtml));
   assert.equal(await readFile(path.join(site, "CNAME"), "utf8"), "aurahomes.fun\n");
   assert.equal(await readFile(path.join(site, ".nojekyll"), "utf8"), "");
   assert.equal(await readFile(path.join(site, "_next/static/chunks/old.js"), "utf8"), "old runtime");
@@ -127,6 +177,26 @@ test("publish-html overlays the next HTML only after old and new assets are comp
   );
   assert.equal(manifest.phase, "published");
   assert.equal(manifest.publishedAt, "2026-08-13T12:00:00.000Z");
+});
+
+test("publish-html injects the recovery guard into redirect-only HTML", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "aura-static-release-redirect-"));
+  const site = path.join(root, "site");
+  const next = path.join(root, "next");
+  await put(site, "index.html", "<html><head></head><body>old</body></html>");
+  await put(next, "index.html", "<html><head></head><body>new</body></html>");
+  await put(next, "concierge/index.html", '<html><head><meta http-equiv="refresh" content="0;url=/dashboard/"></head></html>');
+  const common = ["--export", next, "--site", site, "--release-id", "redirect-guard"];
+
+  assert.equal(runRelease(["stage-assets", ...common]).status, 0);
+  const publish = runRelease(["publish-html", ...common]);
+  assert.equal(publish.status, 0, `${publish.stdout}\n${publish.stderr}`);
+
+  for (const relative of ["index.html", "concierge/index.html"]) {
+    const html = await readFile(path.join(site, ...relative.split("/")), "utf8");
+    assert.match(html, /id="aura-chunk-recovery"/);
+    assert.match(html, /redirect-guard/);
+  }
 });
 
 test("stage-assets archives current and next HTML asset references in release manifests", async () => {
@@ -361,7 +431,30 @@ test("package scripts expose the tested two-phase release workflow", async () =>
   );
   assert.equal(packageJson.scripts["release:stage-assets"], "node scripts/static-release.mjs stage-assets");
   assert.equal(packageJson.scripts["release:publish-html"], "node scripts/static-release.mjs publish-html");
+  assert.equal(packageJson.scripts["release:verify"], "node scripts/static-release.mjs verify");
   assert.equal(packageJson.scripts["release:prune-assets"], "node scripts/static-release.mjs prune-assets");
+});
+
+test("verify checks current, next, and retained application payload references", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "aura-static-release-verify-"));
+  const site = path.join(root, "site");
+  const next = path.join(root, "next");
+  await put(site, "index.html", '<script src="/_next/static/chunks/old.js"></script>');
+  await put(site, "index.txt", '1:["/_next/static/chunks/old.js"]');
+  await put(site, "_next/static/chunks/old.js", "old");
+  await put(next, "index.html", '<script src="/_next/static/chunks/next.js"></script>');
+  await put(next, "index.txt", '1:["/_next/static/chunks/next.js"]');
+  await put(next, "_next/static/chunks/next.js", "next");
+  const common = ["--export", next, "--site", site, "--release-id", "verify-test"];
+  assert.equal(runRelease(["stage-assets", ...common]).status, 0);
+
+  const result = runRelease(["verify", "--export", next, "--site", site]);
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    sitePayloads: 2,
+    exportPayloads: 2,
+    referencedAssets: 1,
+  });
 });
 
 test("publish-html leaves current HTML untouched if a retained chunk disappears after staging", async () => {
