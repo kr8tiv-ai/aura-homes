@@ -1,5 +1,50 @@
 # Roadmap
 
+> [!IMPORTANT]
+> **Current release framing — August 12, 2026.** The older escrow-led roadmap
+> below is retained as product history, not as the active plan. Aura's ordinary
+> journey is Requirements → Design → Land or Delivery → Team → Costs →
+> Handoff. Escrow and refunds are isolated in `/labs/xlayer-proof`; they are not
+> the product or the core hackathon demo. `docs/SUBMISSION.md` is the canonical
+> demo script and `docs/MAINNET-DECISION-BRIEF.md` records the mainnet hold.
+
+## Active three-arc plan
+
+### Now — stabilize the project workspace
+
+- One local-first `AuraProject` with explicit, user-confirmed journey states.
+- Guided and Pro editing over the same durable `BuilderDocument`.
+- A 25-concept, provenance-labelled plan library. Design intent only; ranges
+  disclose when steel or polycarbonate is represented by a planning proxy.
+- Demonstration land-fit and contractor-evidence tools that cannot satisfy real
+  project progress or claim a live listing, permit decision, or vetted provider.
+- Alberta-first scenario budgets, hash-bound quotes, and professional handoff.
+- An optional X Layer testnet proof lab, clearly separated from purchasing.
+
+### Next — locality data and project guidance
+
+- Rights-safe manufacturer research and permissioned listing adapters.
+- Compliant land adapters that distinguish sale offers from parcel context.
+- Authority-verifiable contractor case files and dated supplier leads.
+- Regional cost factors only where a sourced local basis exists.
+- A bounded project concierge that proposes typed actions for user confirmation.
+- A hardened Hostinger VPS API only after session, quota, retention, artifact,
+  logging, and spend controls are implemented.
+
+### Future — HOMES, only behind real gates
+
+- HOMES remains planned with no connected ledger source: no token, trust, property,
+  staking, payout, sale, exchange listing, or launchpad is live.
+- The legal vehicle, participant rights, eligibility, accounting, custody,
+  liquidity, wind-down policy, and security model must be decided and reviewed
+  before any value-bearing deployment.
+- The current registry is testnet provenance only and must not be deployed to
+  mainnet unchanged.
+
+---
+
+## Archived roadmap — August 10 snapshot
+
 *The rollout is a designed three-arc story, settled by the founder Aug 10, 2026: ship the hackathon MVP, grow it into the Locality Hub, and announce the HOMES token now while deliberately defining it later. Every earlier verified line item survives below, reorganized under the arc it serves — nothing was deleted, only re-homed.*
 
 > **On numbering:** [PHASED-ROADMAP.md](PHASED-ROADMAP.md) remains the founder's commercial roadmap — its Phase 1 is the USDC buy flow, Phase 2 adds land and customization, Phase 3 is increasing automation — and its § Mapping table reconciles those phases against this file's earlier engineering numbering (Phase 0 = the 12-day sprint, Phase 1 = proof, and so on). The three arcs below are now the primary framing of this file: Arc 1 contains the founder's Phase 1 and the old engineering Phase 0; Arc 2 contains the founder's Phases 2–3 and the old engineering Phases 1–3; Arc 3 is the token, previously a Phase 2 line item. When someone says "Phase 1" without qualifying it, they almost always mean the founder's Phase 1 — the USDC buy flow, which lives inside Arc 1.
@@ -29,7 +74,7 @@ The escrow and registry contracts, the land-filter agent, and the live 3D site a
 
 | Days | Ship |
 |---|---|
-| 1–2 | Contracts tested + deployed to testnet 1952 · faucet OKB claimed daily from day one · @AuraHomesAI X account live, first build-in-public post |
+| 1–2 | Contracts tested + deployed to testnet 1952 · faucet OKB claimed daily from day one · @AuraHomes_fun X account live, first build-in-public post |
 | 3–5 | Pipeline demo: LAND filter (district minimums, aquifer, grid distance) → questionnaire → AI design brief → 3-home SIP catalog with 3D massing → live Alberta budget |
 | 6–8 | Escrow UI on testnet: fund → approve → release with visible 10% holdback → holdback timer · AuraBuildRegistry mint per build · x402/OKX-APP metered fee on the design endpoint |
 | 9–10 | Polish to premium · hosted deploy · 90-second demo video, every figure captured live |

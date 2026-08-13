@@ -2,6 +2,7 @@ import {
   hashBuilderDocument,
   validateBuilderDocument,
   type BuilderDocument,
+  type BuilderPlanCostBasis,
 } from "./document";
 import { keccak256, stringToHex } from "viem";
 import { summarizeBuildingGraph } from "./graphGeometry";
@@ -58,6 +59,8 @@ export interface ProjectBudget {
   scenario: ProjectBudgetScenario;
   region: string;
   municipality: string;
+  /** Present only when this design began from a catalog plan. */
+  designCostBasis?: BuilderPlanCostBasis;
   lines: ProjectBudgetLine[];
   subtotal: BudgetRange;
   contingency: BudgetRange;
@@ -346,6 +349,7 @@ export function createProjectBudget(input: ProjectBudgetInput): ProjectBudget {
   const checked = validateBuilderDocument(input.document);
   if (!checked.ok) throw new Error(`Cannot budget an invalid builder document: ${checked.problem}`);
   const document = checked.document;
+  const designCostBasis = document.planOrigin?.costBasis;
   const rawScenario = input.scenario;
   const scenario: ProjectBudgetScenario = {
     site: rawScenario.site,
@@ -465,6 +469,11 @@ export function createProjectBudget(input: ProjectBudgetInput): ProjectBudget {
   } else {
     reasons.push("Rates use the Alberta planning model and still require current supplier quotes.");
   }
+  if (designCostBasis?.status === "proxy") {
+    confidenceScore -= 14;
+    gaps.push(`${designCostBasis.label}: ${designCostBasis.note}`);
+    reasons.push("The selected plan uses a proxy shell cost basis until project-specific supplier quotes replace it.");
+  }
   confidenceScore = Math.max(20, Math.min(95, confidenceScore));
   const confidenceLabel: ProjectBudget["confidence"]["label"] =
     confidenceScore >= 80 ? "High" : confidenceScore >= 58 ? "Medium" : "Low";
@@ -491,6 +500,7 @@ export function createProjectBudget(input: ProjectBudgetInput): ProjectBudget {
     scenario,
     region: input.region.trim() || "Alberta",
     municipality: input.municipality.trim(),
+    ...(designCostBasis ? { designCostBasis } : {}),
     lines,
     subtotal,
     contingency,
@@ -501,6 +511,9 @@ export function createProjectBudget(input: ProjectBudgetInput): ProjectBudget {
       `The range is tied to design ${hashBuilderDocument(document).slice(0, 10)} and ${Math.round(measures.areaSqFt).toLocaleString("en-CA")} sq ft of modelled floor area.`,
       `${input.region.trim() || "Alberta"} is the pricing region; supplier and trade quotes supersede these allowances.`,
       `${scenario.finish.replace("-", " ")} finish, ${scenario.delivery.replace("-", " ")} delivery and ${scenario.contingencyPct}% contingency are selected.`,
+      ...(designCostBasis
+        ? [`${document.planOrigin?.templateTitle ?? "The selected plan"} uses the ${designCostBasis.label}: ${designCostBasis.note}`]
+        : []),
     ],
     exclusions: [
       "Land purchase price, financing costs and property taxes are excluded.",

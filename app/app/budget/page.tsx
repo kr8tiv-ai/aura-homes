@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuraProject } from "@/components/project/ProjectContext";
 import QuoteWorkbench from "@/components/project/QuoteWorkbench";
 import { defaultBuilderDocument } from "@/lib/builder/document";
@@ -15,6 +15,7 @@ import {
   type SiteCondition,
   type UtilityStrategy,
 } from "@/lib/builder/projectBudget";
+import { withProjectBudgetScenario } from "@/lib/project/document";
 
 const cad = (value: number) =>
   new Intl.NumberFormat("en-CA", {
@@ -44,9 +45,25 @@ function LineStatus({ line }: { line: ProjectBudgetLine }) {
 }
 
 export default function BudgetPage() {
-  const { project, ready } = useAuraProject();
+  const { project, ready, update } = useAuraProject();
   const [scenario, setScenario] = useState<ProjectBudgetScenario>(defaultProjectBudgetScenario);
   const [filter, setFilter] = useState<Filter>("all");
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveProblem, setSaveProblem] = useState<string | null>(null);
+  const scenarioRef = useRef(scenario);
+  const saveQueue = useRef<Promise<void>>(Promise.resolve());
+  const saveRevision = useRef(0);
+
+  useEffect(() => {
+    if (!ready) return;
+    const restored = project?.budgetBasis?.scenario ?? defaultProjectBudgetScenario();
+    scenarioRef.current = restored;
+    setScenario(restored);
+    setSaveState(project?.budgetBasis ? "saved" : "idle");
+    setSaveProblem(null);
+    saveRevision.current += 1;
+  }, [project?.id, ready]);
+
   const document = project?.design.document ?? defaultBuilderDocument();
   const region = project?.requirements.location.region ?? "Alberta";
   const municipality = project?.requirements.location.municipality ?? "";
@@ -63,7 +80,31 @@ export default function BudgetPage() {
   });
 
   function select<K extends keyof ProjectBudgetScenario>(key: K, value: ProjectBudgetScenario[K]) {
-    setScenario((current) => ({ ...current, [key]: value }));
+    const next = { ...scenarioRef.current, [key]: value };
+    scenarioRef.current = next;
+    setScenario(next);
+    if (!project) return;
+
+    const projectId = project.id;
+    const revision = ++saveRevision.current;
+    setSaveState("saving");
+    setSaveProblem(null);
+    const write = saveQueue.current
+      .catch(() => undefined)
+      .then(() => update((current) => current.id === projectId
+        ? withProjectBudgetScenario(current, next, new Date())
+        : current));
+    saveQueue.current = write.then(() => undefined, () => undefined);
+    void write.then(
+      () => {
+        if (revision === saveRevision.current) setSaveState("saved");
+      },
+      (error) => {
+        if (revision !== saveRevision.current) return;
+        setSaveState("error");
+        setSaveProblem(error instanceof Error ? error.message : String(error));
+      },
+    );
   }
 
   return (
@@ -105,7 +146,15 @@ export default function BudgetPage() {
         <div className="budget-controls aura-panel">
           <div className="budget-section-head">
             <div><span>01</span><h2>Shape the scenario</h2></div>
-            <p>Planning range — not a quote</p>
+            <p>{project
+              ? saveState === "saving"
+                ? "Saving scenario…"
+                : saveState === "saved"
+                  ? "Saved to this project"
+                  : saveState === "error"
+                    ? "Scenario not saved"
+                    : "Choose a scenario"
+              : "Planning range — not a quote"}</p>
           </div>
           <div className="budget-control-grid">
             <label>Site condition
@@ -148,6 +197,7 @@ export default function BudgetPage() {
               </div>
             </label>
           </div>
+          {saveProblem ? <p className="quote-problem" role="alert">{saveProblem}</p> : null}
         </div>
 
         <aside className="budget-readiness aura-panel">

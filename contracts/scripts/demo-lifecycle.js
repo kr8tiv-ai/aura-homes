@@ -13,7 +13,8 @@
 //   npm run demo:lifecycle:testnet                                 X Layer testnet (1952)
 //
 // Local mode deploys MockUSDC, mints the build budget to the homeowner, and
-// time-travels past the lien period. Live mode uses the chain's native USDC
+// time-travels past the lien period. Live mode uses the chain's configured
+// six-decimal settlement token
 // and the PRIVATE_KEY signer as homeowner; builder and arbiter default to
 // wallets derived deterministically from PRIVATE_KEY (override with
 // BUILDER_KEY / ARBITER_KEY) and are topped up with gas automatically.
@@ -29,6 +30,7 @@ const fs = require("fs");
 const path = require("path");
 const { ethers, network } = require("hardhat");
 const { XLAYER_USDC } = require("./network-config");
+const { assertDeploymentAllowed } = require("./deployment-policy");
 
 // ---------------------------------------------------------------- config
 
@@ -162,6 +164,7 @@ function fileHashOr(candidates, fallbackLabel) {
 
 async function main() {
   const chainId = Number((await ethers.provider.getNetwork()).chainId); // read live, per doctrine
+  assertDeploymentAllowed(chainId);
   const isLocal = network.name === "hardhat" || network.name === "localhost" || chainId === 31337;
   const scale = BigInt(process.env.DEMO_SCALE || "1");
   if (scale < 1n) throw new Error("DEMO_SCALE must be a positive integer");
@@ -169,7 +172,7 @@ async function main() {
 
   banner([
     "AURA HOMES — ESCROW LIFECYCLE DEMO",
-    "Milestone escrow in native USDC on X Layer, with Alberta's statutory",
+    "Milestone-contract experiment on X Layer, using the configured settlement token and Alberta's statutory",
     "10% construction holdback modeled on-chain.",
   ]);
 
@@ -189,7 +192,7 @@ async function main() {
     arbiter = process.env.ARBITER_KEY ? new ethers.Wallet(process.env.ARBITER_KEY, ethers.provider) : derive(":aura-demo-arbiter-v1");
   }
   line("network", `${network.name} (chainId ${chainId}, read live from the RPC)`);
-  line("mode", isLocal ? "local simulation — MockUSDC, time travel enabled" : "LIVE network — native USDC, real time only");
+  line("mode", isLocal ? "local simulation — MockUSDC, time travel enabled" : "LIVE network — configured settlement token, real time only");
   if (scale !== 1n) line("demo scale", `amounts divided by ${scale} (DEMO_SCALE)`);
   line("homeowner (payer)", homeowner.address);
   line("builder (payee)", builder.address);
@@ -219,9 +222,9 @@ async function main() {
     note(`${fmt(totalUnits)} USDC minted to the homeowner — the full build budget`);
   } else {
     const usdcAddr = process.env.USDC ?? XLAYER_USDC[chainId];
-    if (!usdcAddr) throw new Error(`no native USDC known for chainId ${chainId} — set USDC env var`);
+    if (!usdcAddr) throw new Error(`no settlement token known for chainId ${chainId} — set USDC env var`);
     usdc = await ethers.getContractAt("MockUSDC", usdcAddr); // ERC20 surface only; mint is never called on live networks
-    line("native USDC", usdcAddr);
+    line("settlement token", usdcAddr);
     // Gas for the two supporting actors, then an honest funds check.
     for (const [who, label] of [[builder, "builder"], [arbiter, "arbiter"]]) {
       const bal = await ethers.provider.getBalance(who.address);
@@ -234,7 +237,7 @@ async function main() {
     if (have < needed) {
       throw new Error(
         `homeowner holds ${fmt(have)} USDC but the demo funds ${fmt(needed)} — ` +
-          `top up native USDC at ${await usdc.getAddress()} or set DEMO_SCALE to shrink amounts`
+          `top up the configured settlement token at ${await usdc.getAddress()} or set DEMO_SCALE to shrink amounts`
       );
     }
   }

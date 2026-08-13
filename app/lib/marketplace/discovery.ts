@@ -403,6 +403,12 @@ export function contractorEvidenceScore(profile: ContractorProfile, now: Date): 
   const nowMs = now.getTime();
   const contributions = (Object.keys(CONTRACTOR_WEIGHTS) as ContractorEvidenceKind[]).map((kind) => {
     const evidence = profile.evidence.find((item) => item.kind === kind);
+    const sourceBacked = profile.demonstration || Boolean(
+      evidence?.sourceUrl
+      && /^https?:\/\//i.test(evidence.sourceUrl)
+      && evidence.checkedAtISO
+      && (kind !== "wcb-clearance" && kind !== "liability-insurance" || evidence.expiresAtISO),
+    );
     const expiredByDate =
       !!evidence?.expiresAtISO &&
       Number.isFinite(Date.parse(evidence.expiresAtISO)) &&
@@ -413,9 +419,9 @@ export function contractorEvidenceScore(profile: ContractorProfile, now: Date): 
         ? "negative"
         : evidence.status === "expired" || expiredByDate
           ? "expired"
-          : evidence.status === "confirmed"
+          : evidence.status === "confirmed" && sourceBacked
             ? "confirmed"
-            : evidence.status === "self-declared"
+            : evidence.status === "self-declared" || evidence.status === "confirmed"
               ? "partial"
               : "missing";
     const possiblePoints = CONTRACTOR_WEIGHTS[kind];

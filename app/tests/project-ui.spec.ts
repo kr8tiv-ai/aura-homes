@@ -18,21 +18,48 @@ test("a non-technical intake creates and restores one local project", async ({ p
   await page.goto("/start");
   await expect(page.getByRole("heading", { name: "Start with the life you want to live." })).toBeVisible();
   await page.getByRole("button", { name: "Find land + build" }).click();
+  await page.getByLabel("Project purpose").selectOption("eco-stay");
   await page.getByLabel("Project name").fill("Foothills family home");
   await page.getByLabel("Municipality or region").fill("Foothills County");
   await page.getByLabel("Maximum working budget").fill("550000");
   await page.getByLabel("People in the home").fill("3");
+  await page.getByRole("textbox", { name: "Target timeline", exact: true }).fill("Move in within 18 months");
+  await page.getByLabel("Confirm this starting brief").check();
   await page.getByRole("button", { name: "Create my project" }).click();
 
   await expect(page).toHaveURL(/\/build/);
   await expect(page.getByText("Foothills family home", { exact: true })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Project journey" })).toBeVisible();
-  // The intake completes the requirements step, and this journey's own copy is
-  // "Design first, then find parcels" — so the spine recommends design next.
+  // Explicit confirmation completes the requirements step, so the spine can
+  // safely recommend design next without inferring completion from filled fields.
   await expect(page.getByText("Next · Shape your home", { exact: true })).toBeVisible();
 
   await page.reload();
   await expect(page.getByText("Foothills family home", { exact: true })).toBeVisible();
+});
+
+test("brief confirmation stays locked until the current intake essentials are present", async ({ page }) => {
+  await page.goto("/start");
+  const confirmation = page.getByLabel("Confirm this starting brief");
+  const createProject = page.getByRole("button", { name: "Create my project" });
+  const guidance = page.getByText(/To confirm this brief, choose a purpose and add a municipality, a positive working budget, household size, and target timeline/);
+
+  await expect(confirmation).toBeDisabled();
+  await expect(createProject).toBeDisabled();
+  await expect(page.getByText("Choose a project purpose to save this brief. Every other field can stay in progress.")).toBeVisible();
+  await expect(guidance).toBeVisible();
+  await expect(confirmation).toHaveAttribute("aria-describedby", "project-intake-confirm-help");
+
+  await page.getByLabel("Municipality or region").fill("Foothills County");
+  await page.getByLabel("Maximum working budget").fill("0");
+  await page.getByRole("textbox", { name: "Target timeline", exact: true }).fill("Move in within 18 months");
+  await expect(confirmation).toBeDisabled();
+
+  await page.getByLabel("Maximum working budget").fill("550000");
+  await expect(confirmation).toBeDisabled();
+  await page.getByLabel("Project purpose").selectOption("primary-home");
+  await expect(confirmation).toBeEnabled();
+  await expect(createProject).toBeEnabled();
 });
 
 test("the editor defaults to Guided mode and keeps the precision workspace in Pro", async ({ page }) => {
@@ -44,7 +71,7 @@ test("the editor defaults to Guided mode and keeps the precision workspace in Pr
   await expect(page.getByRole("button", { name: "Plans" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Review" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Pro" }).click();
+  await page.getByRole("button", { name: "Pro", exact: true }).click();
   await expect(page.getByRole("tablist", { name: "Builder workspaces" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Plans" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Shape" })).toBeVisible();
@@ -109,6 +136,7 @@ test("the camera reframes per loaded document and never per edit", async ({ page
 
 test("the project centre exposes local recovery and portable backups", async ({ page }) => {
   await page.goto("/start");
+  await page.getByLabel("Project purpose").selectOption("primary-home");
   await page.getByLabel("Project name").fill("Recovery test home");
   await page.getByRole("button", { name: "Create my project" }).click();
   await page.goto("/projects");

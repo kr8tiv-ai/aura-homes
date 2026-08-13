@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, startTransition, useCallback, useEffect, useRef, useState } from "react";
+import { Component, Suspense, startTransition, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useProgress } from "@react-three/drei";
@@ -13,6 +13,25 @@ import {
 } from "@/lib/three/sceneQuality";
 import { probeWebGL } from "@/lib/three/webgl";
 import Scene from "./Scene";
+
+class SceneErrorBoundary extends Component<
+  { children: ReactNode; onUnavailable?: () => void },
+  { failed: boolean }
+> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch() {
+    this.props.onUnavailable?.();
+  }
+
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
 
 /* ---------------------------------------------------------------------
    WEBGL PROBE — run on render, not in an effect, and hand the context back.
@@ -95,6 +114,7 @@ export default function StoryCanvas({
   progressRef,
   reduced,
   night = false,
+  allowFullQuality = false,
   onReady,
   onUnavailable,
   onStagePainted,
@@ -103,6 +123,8 @@ export default function StoryCanvas({
   progressRef: React.MutableRefObject<number>;
   reduced: boolean;
   night?: boolean;
+  /** The DOM handoff has completed its Ready hold, fade, and unmount. */
+  allowFullQuality?: boolean;
   onReady?: () => void;
   onUnavailable?: () => void;
   /** Reports each progressive stage's first committed frame up to the DOM
@@ -119,6 +141,7 @@ export default function StoryCanvas({
   /** true once the LAST opening stage has painted — the moment the opening
    *  caps have done their job and the meadow may grow to full density. */
   const [settled, setSettled] = useState(false);
+  const fullQualityPromoted = useRef(false);
   const openingReadySent = useRef(false);
 
   const handleStagePainted = useCallback((painted: OpeningSceneStage) => {
@@ -134,10 +157,14 @@ export default function StoryCanvas({
   /* useProgress is a global zustand store wired to THREE.DefaultLoadingManager
      at module scope; Scene.tsx preloads the GLBs at module scope, so it is
      already counting by the time this component first renders. */
-  const { loaded: fetchLoaded, total: fetchTotal } = useProgress();
+  const { errors: fetchErrors, loaded: fetchLoaded, total: fetchTotal } = useProgress();
   useEffect(() => {
     onFetch?.(fetchLoaded, fetchTotal);
   }, [onFetch, fetchLoaded, fetchTotal]);
+
+  useEffect(() => {
+    if (fetchErrors.length > 0) onUnavailable?.();
+  }, [fetchErrors, onUnavailable]);
 
   useEffect(() => {
     if (webgl === null) setWebgl(probeWebGL() ?? false);
@@ -149,27 +176,30 @@ export default function StoryCanvas({
 
   useEffect(() => {
     const refreshQuality = () => {
-      setQuality(settled ? runtimeFullQuality(reduced) : runtimeQuality(reduced));
+      setQuality(fullQualityPromoted.current ? runtimeFullQuality(reduced) : runtimeQuality(reduced));
     };
     refreshQuality();
     window.addEventListener("resize", refreshQuality, { passive: true });
     return () => window.removeEventListener("resize", refreshQuality);
-  }, [reduced, settled]);
+  }, [reduced]);
 
-  /* The promotion. Once the meadow stage has painted at the opening scale,
-     lift the caps through the SAME idle boundary the stage machine uses —
-     rebuilding ~1M grass instances is exactly the task the opening split to
-     avoid, so it never lands inside a frame the visitor is watching. The
-     resize listener above re-derives from the settled selector afterwards. */
+  /* The promotion. Once the meadow stage has painted at the opening scale
+     AND the DOM loader has completed its Ready hold/fade, lift the caps
+     through the SAME idle boundary the stage machine uses. Rebuilding ~1M
+     grass instances is exactly the task the opening split to avoid, so it
+     cannot starve the loader's teardown or land inside its final frame. */
   useEffect(() => {
-    if (!settled) return;
+    if (!settled || !allowFullQuality || fullQualityPromoted.current) return;
     let idleHandle: number | null = null;
     const idleWindow = window as unknown as {
       requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
       cancelIdleCallback?: (handle: number) => void;
     };
     const timer = window.setTimeout(() => {
-      const promote = () => startTransition(() => setQuality(runtimeFullQuality(reduced)));
+      const promote = () => {
+        fullQualityPromoted.current = true;
+        startTransition(() => setQuality(runtimeFullQuality(reduced)));
+      };
       if (idleWindow.requestIdleCallback) {
         idleHandle = idleWindow.requestIdleCallback(promote, { timeout: 2_000 });
       } else {
@@ -182,7 +212,7 @@ export default function StoryCanvas({
         idleWindow.cancelIdleCallback(idleHandle);
       }
     };
-  }, [settled, reduced]);
+  }, [settled, allowFullQuality, reduced]);
 
   /* Progress only after the current stage has produced a real frame. Each
      addition is scheduled through an idle boundary, so model cloning,
@@ -228,6 +258,7 @@ export default function StoryCanvas({
         data-scene-phase={stage}
         className="story-scene-root"
       >
+        <SceneErrorBoundary onUnavailable={onUnavailable}>
         <Canvas
           shadows={quality.softShadows}
           dpr={[1, quality.maxDpr]}
@@ -266,6 +297,7 @@ export default function StoryCanvas({
           <SceneFrameSignal key={stage} stage={stage} onPainted={handleStagePainted} />
         </Suspense>
         </Canvas>
+        </SceneErrorBoundary>
       </div>
     </>
   );

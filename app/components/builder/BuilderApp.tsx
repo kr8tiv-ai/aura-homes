@@ -1053,7 +1053,7 @@ export default function BuilderApp() {
     setMode("3d");
     setGuidedStep("shell");
     setWorkspace("shape");
-    setPlanStatus(`${plan.title} is open as a complete editable project. Undo restores the design you had before it.`);
+    setPlanStatus(`${plan.title} is open as an editable concept. Its source limits and planning basis stay attached; local professionals must complete the build documents. Undo restores the design you had before it.`);
   }, []);
 
   return (

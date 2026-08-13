@@ -63,6 +63,13 @@ export default function QuoteWorkbench({ budget }: { budget: ProjectBudget }) {
       validUntilISO: validUntil ? new Date(`${validUntil}T23:59:59`).toISOString() : null,
       currency: "CAD",
       designHash: budget.designHash,
+      budgetHash: budget.budgetHash,
+      budgetBasis: {
+        region: budget.region,
+        municipality: budget.municipality,
+        scenario: budget.scenario,
+        budgetCapCad: budget.cap?.capCad ?? null,
+      },
       modelTotalMidCad: budget.total.mid,
       evidence,
       notes,
@@ -123,9 +130,16 @@ export default function QuoteWorkbench({ budget }: { budget: ProjectBudget }) {
               <div className="quote-result-head"><div><span>{result.stale ? "Expired quote" : "Captured quote"}</span><h3>{result.quote.vendorName}</h3></div><strong>{cad(result.quotedTotalCad)}</strong></div>
               <div className="quote-result-flags">
                 {result.designChanged ? <span className="is-risk">Design changed after quote</span> : <span>Matches current design</span>}
+                {result.basisState === "changed" ? <span className="is-risk">Planning basis changed after quote</span> : null}
+                {result.basisState === "legacy-unbound" ? <span className="is-risk">Legacy quote · budget basis unbound</span> : null}
                 {result.unmappedLines.length ? <span className="is-risk">{result.unmappedLines.length} unmapped</span> : null}
                 {result.allowances.length ? <span>{result.allowances.length} allowance{result.allowances.length === 1 ? "" : "s"}</span> : null}
               </div>
+              {result.basisChanges.length ? (
+                <ul className="quote-basis-changes" aria-label="Planning changes since this quote">
+                  {result.basisChanges.map((change) => <li key={`${change.field}:${change.message}`}>{change.message}</li>)}
+                </ul>
+              ) : null}
               <dl>
                 <div><dt>Aura midpoint for covered scopes</dt><dd>{cad(result.modelCoveredMidCad)}</dd></div>
                 <div><dt>Variance</dt><dd>{result.varianceCad >= 0 ? "+" : ""}{cad(result.varianceCad)}{result.variancePct !== null ? ` · ${result.variancePct}%` : ""}</dd></div>

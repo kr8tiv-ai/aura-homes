@@ -11,6 +11,7 @@ import {
   allocateHomesFees,
   allocateHomesTradingFees,
   plannedHomesSnapshot,
+  reconcileHomesFeeLedger,
 } from "@/lib/homes/fund";
 
 export const metadata = {
@@ -19,11 +20,16 @@ export const metadata = {
 };
 
 const snapshot = plannedHomesSnapshot();
-const serviceAllocation = allocateHomesFees(snapshot.fees.totalUsdc);
-const tradingAllocation = allocateHomesTradingFees(snapshot.fees.totalUsdc);
+const feeLedger = reconcileHomesFeeLedger(snapshot);
+const serviceAllocation = allocateHomesFees(feeLedger.serviceUsdc);
+const tradingAllocation = allocateHomesTradingFees(feeLedger.tradingUsdc);
 
 function usdc(value: bigint): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(Number(value) / 1_000_000);
+  const negative = value < BigInt(0);
+  const absolute = negative ? -value : value;
+  const units = absolute / BigInt(1_000_000);
+  const cents = (absolute % BigInt(1_000_000)) / BigInt(10_000);
+  return `${negative ? "-" : ""}$${new Intl.NumberFormat("en-US").format(units)}.${cents.toString().padStart(2, "0")}`;
 }
 
 const serviceAllocationRows = [
@@ -70,8 +76,20 @@ export default function HomesPage() {
         </aside>
       </header>
 
-      <section className="homes-metrics" aria-label="HOMES verified totals">
-        <article><span>Total recognized fees</span><strong>{usdc(snapshot.fees.totalUsdc)}</strong><small>No receipt hash</small></article>
+      {/* The plain-language band, before any ledger: this page is dense by
+          design (it is a ledger), so the one-breath version comes first for
+          the person who just wants to know what HOMES is. */}
+      <section className="homes-section" aria-label="HOMES in plain words">
+        <p className="max-w-3xl text-base leading-relaxed text-aura-text/85">
+          In plain words: HOMES is a <strong>planned</strong> token — not live, nothing to buy
+          today. The idea is a user-owned network of eco stays, like an Airbnb its guests and
+          hosts own, funded by a transparent property trust. Every zero below is declared, and
+          every claim keeps its Today / Next / Future label until something is real.
+        </p>
+      </section>
+
+      <section className="homes-metrics" aria-label="HOMES declared zero state">
+        <article><span>Total recognized fees</span><strong>{usdc(feeLedger.totalUsdc)}</strong><small>Not connected to a fee data source</small></article>
         <article><span>Property fund balance</span><strong>{usdc(snapshot.propertyFund.balanceUsdc)}</strong><small>Dedicated fund vault not deployed</small></article>
         <article><span>First-property target</span><strong>{usdc(HOMES_FIRST_PROPERTY_TARGET_USDC).replace(".00", "")}</strong><small>Alberta or Costa Rica · not selected</small></article>
         <article><span>Eligible stakers</span><strong>{snapshot.holders.eligibleCount} / 200</strong><small>Top 200 · snapshot block not set</small></article>

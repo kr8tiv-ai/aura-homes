@@ -65,14 +65,16 @@ export const HERO: Hero = {
   n: "00",
   label: "Eco Homes, Tiny Homes, Unique Stays",
   heading: "Design your eco home. Find land that fits. Plan every step to build it.",
-  sub: "Start with a proven plan or shape your own. See likely costs, land constraints, and next steps before you commit.",
+  sub: "Start with a curated plan study or shape your own. See likely costs, land constraints, and next steps before you commit.",
   cue: "Scroll",
   ledger: [
     { k: "In", v: "Household, site, budget" },
     { k: "Out", v: "A portable project you own" },
   ],
   actions: [
-    { href: "/design", label: "Design my home" },
+    /* href only — the label is the founder's; /design is a redirect page and
+       the primary door should not cost an extra hop. */
+    { href: "/build?mode=guided", label: "Design my home" },
     { href: "/land", label: "Find land" },
   ],
 };
@@ -85,7 +87,7 @@ export const BEATS: Beat[] = [
     n: "01",
     label: "Home",
     heading: "Start with a home that fits your life.",
-    body: "Begin from a proven plan or shape your own. Rooms, light, storage, and footprint follow how you actually live, and every choice lands in one design-intent record a licensed professional can review, engineer, and complete.",
+    body: "Begin from a curated concept or shape your own. Rooms, light, storage, and footprint follow how you actually live, and every choice lands in one design-intent record a licensed professional can review, engineer, and complete.",
     side: "right",
     accent: "emerald",
     ledger: [
@@ -164,11 +166,11 @@ export const END: End = {
   season: "BuildX AI Season 2026",
   /* The app is the destination: one primary door, the stages as side doors. */
   cta: { href: "/start", label: "Start a private project" },
-  /* One line of rollout honesty — the same arcs as /overview and docs/ROADMAP.md. */
+  /* One line of rollout honesty — the same arcs as /roadmap and docs/ROADMAP.md. */
   rollout: {
     text: "Now: the project workspace. Next: a locality marketplace. Later: a responsibly structured RWA launchpad for owner-led eco homes and unique stays.",
-    href: "/overview",
-    label: "See the rollout",
+    href: "/roadmap",
+    label: "See the roadmap",
   },
   /* HOMES appears here and ONLY here on the eco side (founder, verbatim). */
   homes: {
@@ -177,9 +179,9 @@ export const END: End = {
     label: "Learn about $HOMES on X Layer",
   },
   links: [
-    { href: "/overview", label: "Overview" },
+    { href: "/roadmap", label: "Roadmap" },
     { href: "/land", label: "Land" },
-    { href: "/design", label: "Design" },
+    { href: "/build", label: "Design" },
     { href: "/budget", label: "Budget" },
     { href: "/buy", label: "Payments" },
     { href: "/homes", label: "HOMES" },
@@ -310,7 +312,7 @@ export const CRYPTO_END: End = {
     { href: "/faq#x-layer", label: "OKX + X Layer FAQ" },
     { href: "/build", label: "Design a home" },
     { href: "/buy", label: "Choose a home" },
-    { href: "/overview", label: "Product overview" },
+    { href: "/roadmap", label: "Roadmap" },
   ],
   creditsUrl: "https://github.com/kr8tiv-ai/aura-homes/blob/main/docs/CREDITS.md",
 };
@@ -323,7 +325,7 @@ export const CRYPTO_BUILD_CTA = { href: "/start", label: "Design or source a hom
    together; there is no hidden or default selection. */
 export const GATE = {
   titleLines: ["Design your eco home.", "Find land that fits.", "Plan every step to build it."],
-  sub: "Start with a proven plan or shape your own. See likely costs, land constraints, and next steps before you commit.",
+  sub: "Start with a curated plan study or shape your own. See likely costs, land constraints, and next steps before you commit.",
   paths: {
     project: {
       title: "Build an eco home",

@@ -1,5 +1,13 @@
 # Gap Analysis — what we say vs what we have
 
+> [!CAUTION]
+> **Archived audit snapshot (August 10, 2026).** The facts and line references
+> below describe that day's repository and live site. They are not current
+> status. Testnet contracts are now deployed, HTTPS is live, the project X
+> account is `@AuraHomes_fun`, and the escrow-led product framing was retired.
+> Use [`ROADMAP.md`](ROADMAP.md), [`SUBMISSION.md`](SUBMISSION.md), and a fresh
+> repository/test run for current truth.
+
 *Written 2026-08-10 by a fresh-context gap analyst. Every "exists" claim below was verified by execution this pass — `npx hardhat test`, `npm run demo`, `npm run brain`, `npm run memory`, `npm run mcp:smoke`, live RPC reads against chain 1952, live HTTPS checks against aurahomes.fun, and source reads of `app/`, `agent/`, and `contracts/`. Nothing was accepted from docs. Measured against the promise surface a visitor actually sees: the live site, `app/components/story/copy.ts`, README.md, and the grand design in `docs/research/ROADMAP-LONG-FORM.md`.*
 
 ---
@@ -90,7 +98,7 @@ Every capability claim the product makes to a visitor. **Label** is what the sur
 
 **Audit #6's top-5 marching order — 0 of 5 landed.** (1) Concierge: no code, docs-only grep hits. (2) Escrow v2 refund window: not in the contract, still 10 tests not 16. (3) Three-home catalog: no code. (4) Digest email adapter: no code. (5) Escrow pre-audit package: no doc (grep for threat-model/invariant hits only roadmap prose). Git log since Audit #6 shows design/FX passes on the story site (`e760390`, `0d50735`, `e0b21b5`, `a1bddc7`, `63f0a18`).
 
-**Human gates unchanged:** faucet unclaimed (nonce 0, five audits running), @AuraHomesAI uncreated per Audit #5's live 404 check.
+**Historical human gates at the time:** faucet unclaimed and the project X account uncreated. Both statements are superseded by the current-state notice above.
 
 ---
 
@@ -148,7 +156,7 @@ graph LR
 
   subgraph HUMAN["Human-gated (Matt)"]
     H1{{"H1 Faucet OKB claim — captcha<br/>(fallback: buy OKB, mainnet-first)"}}
-    H2{{"H2 Create @AuraHomesAI<br/>avatar + bio + post 1"}}
+    H2{{"H2 Create @AuraHomes_fun<br/>avatar + bio + post 1"}}
     H3{{"H3 Posts 2–4<br/>refusal · holdback tx · video"}}
     H6{{"H6 Mainnet OKB<br/>small purchase"}}
     H4{{"H4 SUBMIT Google Form"}}
@@ -326,7 +334,7 @@ Long-pole truth carried from the roadmap: FINTRAC's 8–16 weeks starts the firs
 
 | Date | Ship | Gate / note |
 |---|---|---|
-| **Aug 10** (D1) | **[Matt]** faucet claim · **[Matt]** @AuraHomesAI + post 1 · C1 escrow v2 written + tests · U6 copy honesty pass (P3/P11/P19) | Faucet is the whole critical path; U6 has zero deps — do it today |
+| **Aug 10** (D1) | **[Matt]** faucet claim · **[Matt]** @AuraHomes_fun + post 1 · C1 escrow v2 written + tests · U6 copy honesty pass (P3/P11/P19) | Faucet is the whole critical path; U6 has zero deps — do it today |
 | Aug 11 (D2) | C2 testnet deploy + OKLink verify + addresses recorded | If the captcha slipped again: **[Matt]** buys OKB, mainnet-first |
 | Aug 12 (D3) | A1 concierge reducer + order object, offline-deterministic | — |
 | Aug 13 (D4) | U1 /concierge UI · U2 land gate binds BUY · **[Matt]** post 2 (the refusal) | — |
@@ -350,7 +358,7 @@ Only these cannot be done by an agent; everything else in Graph A is AI-executab
 | Item | Why gated | When | Fallback |
 |---|---|---|---|
 | Faucet OKB claim | GeeTest captcha (policy: captchas are human steps) | **Today** — blocked five audits running | **[Matt]** buys a small amount of OKB and bridges; mainnet-first deploy is rule-legal |
-| Create @AuraHomesAI + keep it active | Account creation + phone verification; judges weigh an *active* account | **Today** — cost of delay compounds daily | None |
+| Create @AuraHomes_fun + keep it active | Account creation + phone verification; judges weigh an *active* account | **Today** — cost of delay compounds daily | None |
 | Build-in-public posts 2–4 + submission tweet | Same account | Aug 13 / 15 / 18 / 20 | None |
 | Mainnet OKB | Real money purchase | Aug 19 | Skip — mainnet is post-deadline-legal |
 | Google Form submission | Founder's identity | Aug 20 | None |

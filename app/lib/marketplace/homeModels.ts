@@ -100,6 +100,7 @@ export interface FinishedHomeModel {
   maker: string;
   makerCountry: string;
   makerUrl: string;
+  marketStatus: "current-maker-model" | "announced-concept";
   visual: {
     kind: "aura-illustrative";
     variant: "steel-kit" | "folding-modular" | "printed-earth";
@@ -177,54 +178,17 @@ function quoteRequiredPrice(note: string): FinishedHomeModel["price"] {
  *  never drift from the record they cite. Only records that genuinely
  *  describe a finished home a person could order become models. */
 export function buildFinishedHomeModels(): FinishedHomeModel[] {
-  const armstrong = legacyByName("Armstrong Steel");
   const boxabl = legacyByName("BOXABL");
   const libwork = legacyByName("Lib Work Co., Ltd. (TSE: 1431)");
 
   return [
-    {
-      id: manufacturerSubjectId(armstrong),
-      model: "Residential steel building system",
-      maker: "Armstrong Steel",
-      makerCountry: armstrong.country,
-      makerUrl: armstrong.url,
-      visual: {
-        kind: "aura-illustrative",
-        variant: "steel-kit",
-        label: "Aura illustrative visual — not a product photo",
-      },
-      sizeSqFt: { value: null, note: NOT_IN_RECORD },
-      bedrooms: { value: null, note: NOT_IN_RECORD },
-      constructionType: "kit",
-      customization:
-        "Pre-engineered to order — the maker's live site lists residential steel homes and barndominiums as a current category; spans, bays and layouts are specified per building.",
-      price: quoteRequiredPrice(
-        "No starting price is published; the maker offers a quote-request form only. What a quote includes and excludes is defined by the written quote itself.",
-      ),
-      delivery: { confirmed: ["united-states"], askMaker: ["canada"] },
-      certifications: [],
-      sources: sourcesFor(armstrong),
-      paymentResearch: {
-        cashCard:
-          "The maker's current site names no payment methods; mechanics are negotiated on a quote call.",
-        crypto:
-          "A February 2014 page names BTC and DOGE; the current site repeats none of it. USDC is not named anywhere in the record.",
-      },
-      unresolved: [
-        "Canadian delivery, duty and CSA/Alberta code compliance are open questions — no Canadian delivery statement was found.",
-        "Third-party review sites carry a 1.0/5 rating with repeated reports of non-delivery after deposit.",
-        "Current payment methods are unnamed on the live site.",
-      ],
-      caveat: armstrong.caveat,
-      quotedClaim: armstrong.quote,
-      legacyProviderName: armstrong.name,
-    },
     {
       id: manufacturerSubjectId(boxabl),
       model: "Casita foldable factory-built unit",
       maker: "BOXABL",
       makerCountry: boxabl.country,
       makerUrl: boxabl.url,
+      marketStatus: "current-maker-model",
       visual: {
         kind: "aura-illustrative",
         variant: "folding-modular",
@@ -261,6 +225,7 @@ export function buildFinishedHomeModels(): FinishedHomeModel[] {
       maker: "Lib Work Co., Ltd.",
       makerCountry: libwork.country,
       makerUrl: libwork.url,
+      marketStatus: "announced-concept",
       visual: {
         kind: "aura-illustrative",
         variant: "printed-earth",

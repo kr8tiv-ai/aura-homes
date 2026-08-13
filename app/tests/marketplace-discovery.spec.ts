@@ -189,4 +189,15 @@ test("contractor score is an explainable evidence score with mandatory gates", (
   );
   expect(expiredLicence.readiness).toBe("not-ready");
   expect(expiredLicence.score).toBeLessThan(scored.score);
+
+  const unbackedOwnerChecks = contractorEvidenceScore(
+    {
+      ...contractor,
+      demonstration: false,
+      evidence: contractor.evidence.map((item) => ({ ...item, sourceUrl: null })),
+    },
+    new Date("2026-08-11T12:00:00.000Z"),
+  );
+  expect(unbackedOwnerChecks.readiness).toBe("manual-review");
+  expect(unbackedOwnerChecks.blockers).toContain("Active Alberta residential builder licence is not confirmed.");
 });

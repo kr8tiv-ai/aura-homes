@@ -492,6 +492,36 @@ export interface SiteSummary {
   glazedAreaSqFt: number;
 }
 
+export interface HomeCameraFrame {
+  distance: number;
+  height: number;
+  position: [number, number, number];
+  target: [number, number, number];
+}
+
+/**
+ * Stable editor framing derived from the loaded home's actual world bounds.
+ * Keeping this pure lets the viewport re-use the same frame for initial load
+ * and "Frame the home" without snapping ordinary edits back to world origin.
+ */
+export function cameraFrameForSummary(summary: SiteSummary): HomeCameraFrame {
+  const bounds = summary.boundsWithRoof;
+  const span = Math.max(30, bounds.widthFt, bounds.depthFt, summary.maxRidgeHeightFt * 1.6);
+  const distance = span * 1.9;
+  const height = span * 0.85;
+  const target: [number, number, number] = [
+    (bounds.minX + bounds.maxX) / 2,
+    Math.max(6, summary.maxRidgeHeightFt * 0.4),
+    (bounds.minZ + bounds.maxZ) / 2,
+  ];
+  return {
+    distance,
+    height,
+    position: [target[0] + distance * 0.72, height, target[2] + distance],
+    target,
+  };
+}
+
 function boundsOf(polys: readonly Poly2[]): PlanBounds {
   let minX = Infinity;
   let maxX = -Infinity;

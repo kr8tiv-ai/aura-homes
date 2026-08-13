@@ -1,5 +1,13 @@
 # Aura Homes — Feasibility Study
 
+> [!CAUTION]
+> **Archived research snapshot (August 9, 2026).** Preserve this document for
+> provenance, but do not use its product, financing, provider, TVL, fee, or
+> deployment claims as current guidance. Aura no longer positions escrow as
+> its primary product. External finance education now lives on
+> `/how-crypto-works` with dated official links; assets, rates, eligibility,
+> custody, liquidation, and fees must be rechecked at the time of use.
+
 **AI-designed, off-grid, SIP-built eco homes in Alberta, funded end-to-end in USDC on X Layer.**
 Prepared August 9, 2026 · A KR8TIV AI product · Research basis: 11-domain deep sweep (~300 sources), OKX BuildX AI Season hackathon intelligence, live Alberta market data.
 
@@ -120,7 +128,7 @@ Prefab manufacturing (partner: Alberta SIP plants; Honomobo exists in Edmonton a
 
 ## 9. The 12-day sprint (Aug 9 → Aug 21)
 
-- **D1–2**: contracts final + tested; deploy to testnet 1952; claim faucet OKB daily from day one; create @AuraHomesAI X account (canonical handle per [SUBMISSION.md](SUBMISSION.md); fallbacks @AuraHomesHQ / @BuildAuraHomes); first build-in-public post tagging progress.
+- **D1–2**: contracts final + tested; deploy to testnet 1952; claim faucet OKB daily from day one; create @AuraHomes_fun X account (canonical handle per [SUBMISSION.md](SUBMISSION.md); fallbacks @AuraHomesHQ / @BuildAuraHomes); first build-in-public post tagging progress.
 - **D3–5**: app pipeline demo — questionnaire → design brief (Claude) → 3-home catalog with 3D massing → live budget from cost-model.json.
 - **D6–8**: escrow UI wired to testnet (fund → milestone approve → release with 10% holdback visibly retained → holdback timer); AuraBuildRegistry NFT minted per build; OKX APP/x402 usage-fee demo on the design endpoint.
 - **D9–10**: polish to Tesla-grade; hosted deploy; 90-second demo video (every figure captured live).

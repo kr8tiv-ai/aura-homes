@@ -9,6 +9,7 @@ import {
   type ProjectBudget,
   type ProjectBudgetScenario,
 } from "@/lib/builder/projectBudget";
+import { instantiatePlanTemplate } from "@/lib/builder/planCatalog";
 
 function scenario(change: Partial<ProjectBudgetScenario> = {}): ProjectBudgetScenario {
   return { ...defaultProjectBudgetScenario(), ...change };
@@ -46,6 +47,39 @@ test("the canonical budget hash changes with the complete planning basis", () =>
   const hash = (value: ProjectBudget) => (value as unknown as { budgetHash: string }).budgetHash;
   expect(hash(first)).toBe(hash(repeated));
   expect(hash(changed)).not.toBe(hash(first));
+});
+
+test("a proxy plan basis remains visible and bound into design and budget hashes", () => {
+  const proxyDocument = instantiatePlanTemplate("lightframe-pavilion");
+  const proxyBudget = createProjectBudget({
+    document: proxyDocument,
+    scenario: scenario(),
+    region: "Alberta",
+    municipality: "Foothills County",
+    budgetCapCad: 500_000,
+  });
+
+  expect(proxyBudget.designCostBasis).toEqual(proxyDocument.planOrigin?.costBasis);
+  expect(proxyBudget.designCostBasis?.status).toBe("proxy");
+  expect(proxyBudget.gaps.join(" ")).toMatch(/steel frame|polycarbonate|supplier quote/i);
+  expect(proxyBudget.confidence.reasons.join(" ")).toMatch(/proxy/i);
+
+  const revisedDocument = structuredClone(proxyDocument);
+  revisedDocument.planOrigin!.costBasis = {
+    status: "modelled",
+    label: "Verified steel package basis",
+    note: "A project-specific steel and polycarbonate package is now represented.",
+  };
+  const revisedBudget = createProjectBudget({
+    document: revisedDocument,
+    scenario: scenario(),
+    region: "Alberta",
+    municipality: "Foothills County",
+    budgetCapCad: 500_000,
+  });
+
+  expect(revisedBudget.designHash).not.toBe(proxyBudget.designHash);
+  expect(revisedBudget.budgetHash).not.toBe(proxyBudget.budgetHash);
 });
 
 test("edited geometry changes the range instead of reusing a reference fixture", () => {

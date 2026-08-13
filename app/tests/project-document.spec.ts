@@ -22,12 +22,23 @@ import {
 
 const now = new Date("2026-08-11T12:00:00.000Z");
 
+test("a new project refuses to invent an undecided purpose", () => {
+  expect(() => createAuraProject({
+    id: "project-purpose-required",
+    name: "Purpose still undecided",
+    journey: "find-land-build",
+    document: defaultBuilderDocument(),
+    now,
+  } as Parameters<typeof createAuraProject>[0])).toThrow("purpose");
+});
+
 test("a builder document becomes one durable find-land-and-build project", () => {
   const document = defaultBuilderDocument();
   const project = createAuraProject({
     id: "project-alberta-1",
     name: "Foothills home",
     journey: "find-land-build",
+    purpose: "primary-home",
     document,
     now,
   });
@@ -52,6 +63,7 @@ test("project identity is canonical and refuses a changed embedded design", () =
     id: "project-hash",
     name: "Hash home",
     journey: "build-on-owned-land",
+    purpose: "primary-home",
     document: defaultBuilderDocument(),
     now,
   });
@@ -71,6 +83,7 @@ test("future project versions fail visibly without being interpreted", () => {
     id: "project-future",
     name: "Future home",
     journey: "buy-finished-home",
+    purpose: "primary-home",
     document: defaultBuilderDocument(),
     now,
   });
@@ -89,6 +102,7 @@ test("journey progress recommends the first incomplete real-world decision", () 
     id: "project-progress",
     name: "Journey home",
     journey: "find-land-build",
+    purpose: "primary-home",
     document: defaultBuilderDocument(),
     now,
   });
@@ -135,6 +149,7 @@ test("blank intake and demonstration discovery never complete explicit journey s
     id: "project-no-inference",
     name: "No inferred progress",
     journey: "find-land-build",
+    purpose: "primary-home",
     document: defaultBuilderDocument(),
     now,
   });
@@ -168,6 +183,7 @@ test("version one projects migrate without losing durable data or inventing comp
     id: "project-v1",
     name: "Legacy foothills project",
     journey: "find-land-build",
+    purpose: "primary-home",
     document: defaultBuilderDocument(),
     now,
   });
@@ -198,6 +214,7 @@ test("a canonical budget basis is persisted against the current design", () => {
     id: "project-budget-basis",
     name: "Budget basis",
     journey: "find-land-build",
+    purpose: "primary-home",
     document: defaultBuilderDocument(),
     now,
   });
@@ -229,11 +246,50 @@ test("a canonical budget basis is persisted against the current design", () => {
   expect(validateAuraProject(saved).ok).toBe(true);
 });
 
+test("a selected budget scenario survives canonical project reload", () => {
+  const project = createAuraProject({
+    id: "project-scenario-reload",
+    name: "Persistent cost scenario",
+    journey: "find-land-build",
+    purpose: "primary-home",
+    document: defaultBuilderDocument(),
+    now,
+  });
+  const persistScenario = (projectDocument as unknown as {
+    withProjectBudgetScenario?: (
+      value: AuraProject,
+      scenario: ReturnType<typeof defaultProjectBudgetScenario>,
+      at: Date,
+    ) => AuraProject;
+  }).withProjectBudgetScenario;
+  expect(typeof persistScenario).toBe("function");
+  if (!persistScenario) return;
+
+  const scenario = {
+    ...defaultProjectBudgetScenario(),
+    site: "sloped" as const,
+    utilities: "off-grid" as const,
+    finish: "elevated" as const,
+    delivery: "full-service" as const,
+    shippingDistanceKm: 425,
+    contingencyPct: 20,
+  };
+  const saved = persistScenario(project, scenario, new Date("2026-08-12T14:00:00.000Z"));
+  const reloaded = validateAuraProject(JSON.parse(canonicalAuraProjectJson(saved)));
+
+  expect(reloaded.ok).toBe(true);
+  if (!reloaded.ok) return;
+  expect(reloaded.project.budgetBasis?.scenario).toEqual(scenario);
+  expect(reloaded.project.budgetBasis?.budgetHash).toMatch(/^0x[a-f0-9]{64}$/);
+  expect(reloaded.project.budgetBasis?.calculatedAtISO).toBe("2026-08-12T14:00:00.000Z");
+});
+
 test("plain and encrypted Aura project files round-trip without information loss", async () => {
   const project = createAuraProject({
     id: "project-file",
     name: "Portable home",
     journey: "find-land-build",
+    purpose: "primary-home",
     document: defaultBuilderDocument(),
     now,
   });
@@ -256,6 +312,7 @@ test("a builder edit replaces only the durable project design", () => {
     id: "project-design-sync",
     name: "Foothills build",
     journey: "find-land-build",
+    purpose: "primary-home",
     document: defaultBuilderDocument(),
     now,
   });

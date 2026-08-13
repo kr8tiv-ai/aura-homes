@@ -1656,7 +1656,7 @@ export const auraBuildRegistryAbi = [
   }
 ] as const;
 
-/** Minimal ERC-20 slice for native USDC (approve/allowance/balance). */
+/** Minimal ERC-20 slice for the configured six-decimal settlement token. */
 export const erc20Abi = [
   { type: "function", name: "approve", stateMutability: "nonpayable", inputs: [{ name: "spender", type: "address" }, { name: "value", type: "uint256" }], outputs: [{ type: "bool" }] },
   { type: "function", name: "allowance", stateMutability: "view", inputs: [{ name: "owner", type: "address" }, { name: "spender", type: "address" }], outputs: [{ type: "uint256" }] },

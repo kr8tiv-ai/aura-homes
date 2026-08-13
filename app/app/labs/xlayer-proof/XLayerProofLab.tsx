@@ -15,9 +15,9 @@
 
 import { useMemo } from "react";
 import { useAccount, useChainId, useConnect, useDisconnect, useSwitchChain } from "wagmi";
-import Link from "next/link";
 import { budgetToMilestones, designBriefToBudget, questionnaireToDesignBrief } from "@agent/pipeline";
 import LiveEscrowCard from "@/components/chain/LiveEscrowCard";
+import CryptoFinancingPanel from "@/components/CryptoFinancingPanel";
 import { BASE_QUESTIONNAIRE, COST_MODEL } from "@/lib/concierge";
 import { CHAIN_ID, FAUCET_URL, USDC_TESTNET, shortAddr } from "@/lib/contracts";
 import { fmtSeconds, fmtUsdcUnits, useEscrowLive, useOnchainMilestones, useUsdcState } from "@/lib/hooks";
@@ -68,11 +68,11 @@ export default function XLayerProofLab() {
         />
         <Reveal className="mt-4" delay={0.12} y={12}>
           <p className="max-w-xl text-[0.95rem] leading-[1.65] text-aura-text/75">
-            A lab demonstration, not a product feature: a milestone contract deployed on X Layer
-            testnet shows how a build&rsquo;s lifecycle — funding, approvals, releases, holdbacks —
-            can leave public receipts anyone can verify. Every number in the live panel is read
-            directly from the chain. Testnet only; nothing here holds real money, and Aura is not
-            offering an escrow service.
+            A lab demonstration, not a product feature: experimental contracts are deployed on X
+            Layer testnet, but this public instance currently has zero milestones and zero home
+            records. The live panel reads that empty state directly from the chain. Creation
+            receipts prove deployment only; nothing here holds real money, proves physical work,
+            or offers an escrow service.
           </p>
         </Reveal>
       </div>
@@ -92,7 +92,7 @@ export default function XLayerProofLab() {
                 <p className="font-mono">{shortAddr(address)}</p>
                 {rightChain ? (
                   <p>
-                    Connected to X Layer testnet ({CHAIN_ID}). Native testnet USDC balance:{" "}
+                    Connected to X Layer testnet ({CHAIN_ID}). Faucet-compatible test-token balance:{" "}
                     <span className="font-mono">{fmtUsdcUnits(usdc.balance)}</span>
                   </p>
                 ) : (
@@ -146,12 +146,9 @@ export default function XLayerProofLab() {
               <div className="mt-3 space-y-3">
                 <p className="text-xs leading-relaxed text-aura-text/75">
                   No wallet needed to verify anything — the live panel reads the chain without one.
-                  Connect to check your testnet USDC and, if you are the demo contract&rsquo;s
-                  homeowner, run the deposit flow in the{" "}
-                  <Link href="/concierge" data-cursor="Open" className="text-aura-emerald underline">
-                    concierge
-                  </Link>
-                  .
+                  Connect to check your testnet USDC. This page remains read-only for ordinary
+                  visitors; the historical transaction walkthrough is not part of Aura&rsquo;s
+                  customer journey.
                 </p>
                 {connectors.map((connector) => (
                   <button
@@ -172,26 +169,6 @@ export default function XLayerProofLab() {
           </div>
         </StaggerItem>
       </Stagger>
-
-      {/* ------------------------------------------------ the demo flow CTA */}
-      <Reveal className="mt-6" y={16}>
-        <div className="aura-panel aura-panel-lift flex flex-wrap items-center justify-between gap-4 p-6">
-          <div>
-            <p className="text-sm font-semibold">The end-to-end demo lives in the concierge</p>
-            <p className="mt-1 max-w-xl text-xs leading-relaxed text-aura-text/75">
-              Home, parcel, land gate, quote, reservation deposit, refund window — end to end,
-              against this testnet contract.
-            </p>
-          </div>
-          <Link
-            href="/concierge"
-            data-cursor="Open"
-            className="rounded-full bg-aura-ink px-5 py-2.5 font-mono text-xs font-medium uppercase tracking-label text-aura-paper transition-opacity hover:opacity-85"
-          >
-            Open the concierge
-          </Link>
-        </div>
-      </Reveal>
 
       {/* ------------------------------------------- on-chain milestones */}
       <div className="mt-16">
@@ -323,8 +300,9 @@ export default function XLayerProofLab() {
             <p className="text-sm font-semibold">Card checkout</p>
             <p className="mt-2 text-xs leading-relaxed text-aura-text/75">
               Honest status: the on-ramp integration (MoonPay/Transak-class partner) is pending —
-              card checkout is not live yet. When it lands, a Visa or Mastercard payment settles as
-              native USDC into this build&rsquo;s milestone vault with prices shown in CAD throughout.
+              card checkout is not live yet. No card partner, production settlement asset, or
+              milestone-payment flow has been approved. The token used by this lab is a
+              faucet-compatible test token with no monetary value.
             </p>
             <button
               disabled
@@ -339,77 +317,16 @@ export default function XLayerProofLab() {
         </Reveal>
       </div>
 
-      {/* Financing — teach the crypto-backed options honestly */}
+      {/* Financing — the shared education panel; it also renders on
+          /how-crypto-works, the indexed page, so this lab is no longer its
+          only (noindex) home. */}
       <div className="mt-16">
-        <Reveal y={16}>
-          <p className="aura-label mb-4">Financing</p>
-          <h2 className="font-display text-[1.45rem] font-medium tracking-[-0.015em]">Borrowing against crypto, honestly</h2>
-          <p className="mt-2 max-w-xl text-xs leading-relaxed text-aura-text/75">
-            If you hold crypto and would rather borrow against it than sell it, these are the
-            real options today — including the one that does not exist yet.
-          </p>
-        </Reveal>
-        <Stagger className="mt-6 grid gap-6 md:grid-cols-3">
-          <StaggerItem className="h-full">
-            <a
-              href="https://app.aave.com/"
-              target="_blank"
-              rel="noreferrer"
-              data-cursor="Visit"
-              className="aura-panel block h-full p-6 transition-colors hover:border-aura-emerald"
-            >
-              <p className="text-sm font-semibold">Aave V3 on X Layer</p>
-              <p className="mt-2 text-xs leading-relaxed text-aura-text/75">
-                Borrow USDC against crypto collateral on the same chain the demo contract lives on.
-                Live now, roughly $85M TVL on X Layer; variable rates, liquidation risk is real.
-              </p>
-              <p className="mt-3 text-[10px] uppercase tracking-label text-aura-emerald">Live · DeFi</p>
-            </a>
-          </StaggerItem>
-          <StaggerItem className="h-full">
-            <a
-              href="https://ledn.io/"
-              target="_blank"
-              rel="noreferrer"
-              data-cursor="Visit"
-              className="aura-panel block h-full p-6 transition-colors hover:border-aura-emerald"
-            >
-              <p className="text-sm font-semibold">Ledn</p>
-              <p className="mt-2 text-xs leading-relaxed text-aura-text/75">
-                Toronto-based lender. BTC-collateral loans disbursed in USDC or CAD — a
-                Canadian company, custodial, with published proof-of-reserves.
-              </p>
-              <p className="mt-3 text-[10px] uppercase tracking-label text-aura-teal">Live · CeFi · Canada</p>
-            </a>
-          </StaggerItem>
-          <StaggerItem className="h-full">
-            <a
-              href="https://www.wealthsimple.com/"
-              target="_blank"
-              rel="noreferrer"
-              data-cursor="Visit"
-              className="aura-panel block h-full p-6 transition-colors hover:border-aura-emerald"
-            >
-              <p className="text-sm font-semibold">Wealthsimple</p>
-              <p className="mt-2 text-xs leading-relaxed text-aura-text/75">
-                No crypto-backed loans today — its line of credit is securities-only. We
-                integrate the day they ship crypto collateral; until then it is the 0%-fee
-                USDC on-ramp, nothing more.
-              </p>
-              <p className="mt-3 text-[10px] uppercase tracking-label text-aura-violet">Not yet — verified Aug 2026</p>
-            </a>
-          </StaggerItem>
-        </Stagger>
-        <Reveal className="mt-4" y={10}>
-          <p className="text-[10px] uppercase tracking-label text-aura-text/65">
-            Educational, not financial advice.
-          </p>
-        </Reveal>
+        <CryptoFinancingPanel />
       </div>
 
       <Reveal className="mt-10 text-xs text-aura-text/65" y={10}>
         <p className="aura-label mb-2">Settlement asset</p>
-        <p className="font-mono">Native USDC — {USDC_TESTNET} (chain {CHAIN_ID})</p>
+        <p className="font-mono">Faucet-compatible test token — {USDC_TESTNET} (chain {CHAIN_ID}) · no monetary value</p>
       </Reveal>
     </div>
   );

@@ -1,11 +1,11 @@
-import ConciergeApp from "@/components/concierge/ConciergeApp";
+import { redirect } from "next/navigation";
 
 export const metadata = {
-  title: "Concierge — the buy flow | Aura Homes",
-  description:
-    "Prepare a home, parcel, cost basis and optional X Layer testnet action. Aura explains and prepares; the user confirms every real-world and wallet decision.",
+  title: "Project guidance | Aura Homes",
+  description: "Compatibility route to Aura's local project overview.",
+  robots: { index: false },
 };
 
 export default function ConciergePage() {
-  return <ConciergeApp />;
+  redirect("/dashboard");
 }

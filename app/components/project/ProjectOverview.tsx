@@ -83,7 +83,7 @@ function stepRoute(stepId: JourneyStepId, journey: AuraProject["journey"]): stri
     case "land": return "/land";
     case "team": return journey === "buy-finished-home" ? "/buy" : "/contractors";
     case "quotes": return "/budget";
-    case "funding": return "/concierge";
+    case "funding": return "/budget";
     default: return null; // build and operate are tracked on this page
   }
 }

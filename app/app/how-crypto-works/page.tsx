@@ -1,4 +1,5 @@
 import Link from "next/link";
+import CryptoFinancingPanel from "@/components/CryptoFinancingPanel";
 import RevealWords from "@/components/RevealWords";
 import { Reveal, Stagger, StaggerItem, GrowBar } from "@/components/Reveal";
 
@@ -53,7 +54,7 @@ const sections: Array<{
     name: "USDC",
     status: null,
     paras: [
-      "USDC is a stablecoin: a token built to hold the value of one US dollar, issued by Circle and redeemable one-for-one. Where most crypto prices swing, a stablecoin is designed not to.",
+      "USDC is a stablecoin issued by Circle and designed to track the value of one US dollar. Direct redemption and account access depend on Circle's terms, eligibility, and supported jurisdictions.",
       "That stability is the entire reason Aura plans around USDC. A build budget cannot ride a coin that moves ten percent in a weekend — money set aside for a foundation has to still be foundation money when the crew arrives.",
     ],
   },
@@ -71,7 +72,7 @@ const sections: Array<{
     name: "X Layer and OKX",
     status: null,
     paras: [
-      "X Layer is an EVM-compatible Layer 2 blockchain in the OKX ecosystem — a network that settles transactions quickly and cheaply while inheriting security from Ethereum-style tooling. OKX is the exchange and developer ecosystem behind it.",
+      "X Layer is an EVM-compatible Layer 2 blockchain in the OKX ecosystem. EVM compatibility lets developers use familiar Ethereum tools; it does not, by itself, establish the network's security model. OKX publishes the network architecture and operating details.",
       "Aura's contract work runs on the X Layer testnet today: a rehearsal network whose tokens have no monetary value. Nothing Aura has deployed touches real money, and participation in the OKX developer program is not an OKX endorsement.",
     ],
     link: { href: "/faq#x-layer", label: "The FAQ's X Layer and OKX questions" },
@@ -81,8 +82,8 @@ const sections: Array<{
     name: "Public receipts and document hashes",
     status: TODAY,
     paras: [
-      "A hash is a fingerprint of a file: feed a document through a standard formula and out comes a short string that changes completely if even one character of the document changes. Publish that fingerprint on a public chain and anyone, forever, can check that the copy in their hands matches the one that existed at that moment.",
-      "This is the mechanism Aura demonstrates on testnet: project milestones and document fingerprints written where no one — including Aura — can quietly rewrite them. The lab page reads a live testnet contract and shows exactly what such receipts look like.",
+      "A hash is a fingerprint of a file: feed a document through a standard formula and out comes a short string that changes completely if even one character changes. A published chain commitment can later be compared with the same file while both the chain record and file remain available.",
+      "Aura's experimental contracts can record milestone events and design or budget hashes. The current public testnet instance has zero milestones and zero home records; its creation receipts prove that bytecode was deployed, not that a project was funded or physical work occurred.",
     ],
     link: { href: "/labs/xlayer-proof", label: "See the proof-of-lifecycle lab (testnet)" },
   },
@@ -101,7 +102,7 @@ const sections: Array<{
     status: NEXT,
     paras: [
       "HOMES is a planned X Layer token and public property ledger. The proposed model routes a share of recognized platform fees toward a first eco-property, with every balance and rule published on-chain.",
-      "Today: no HOMES contract, sale, listing, fund balance, staking position, or payout exists. The ledger page shows verified zeroes instead of preview revenue, and the FAQ holds the proposed numbers — fee splits, supply, payout design — as separate questions rather than promises.",
+      "Today: no HOMES contract, sale, listing, fund balance, staking position, or payout exists. The ledger page shows a declared zero state with no connected data source, and the FAQ holds the proposed numbers — fee splits, supply, payout design — as separate questions rather than promises.",
     ],
     link: { href: "/faq#homes-token", label: "The FAQ's HOMES questions" },
   },
@@ -197,6 +198,14 @@ export default function HowCryptoWorksPage() {
             </StaggerItem>
           ))}
         </Stagger>
+      </div>
+
+      {/* The financing education, restored to an INDEXED page: this panel's
+          only home became the noindex proof lab when /escrow was retired,
+          which silently reopened VISION requirement 3. Shared component —
+          the lab still renders it too. */}
+      <div className="mt-16">
+        <CryptoFinancingPanel />
       </div>
 
       <Reveal y={10}>

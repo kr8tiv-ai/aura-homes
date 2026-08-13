@@ -7,7 +7,7 @@ import { createManufacturerInquiry, validateManufacturerInquiry } from "@/lib/pr
 
 test("a manufacturer inquiry binds the evidence, destination and current project design", () => {
   const provider = PROVIDERS.find((item) => item.name === "BOXABL")!;
-  const project = createAuraProject({ id: "buy-project", name: "Finished home search", journey: "buy-finished-home", document: defaultBuilderDocument(), now: new Date("2026-08-12T00:00:00Z") });
+  const project = createAuraProject({ id: "buy-project", name: "Finished home search", journey: "buy-finished-home", purpose: "primary-home", document: defaultBuilderDocument(), now: new Date("2026-08-12T00:00:00Z") });
   const readiness = providerPurchaseReadiness(provider, { targetRegion: "canada", product: "modular-home" });
   const inquiry = createManufacturerInquiry({ id: "inquiry-1", project, provider, readiness, targetRegion: "canada", product: "modular-home", createdAtISO: "2026-08-12T12:00:00Z" });
   expect(inquiry.designHash).toBe(project.design.documentHash);
@@ -21,7 +21,7 @@ test("a manufacturer inquiry binds the evidence, destination and current project
 
 test("a changed inquiry cannot retain its canonical hash", () => {
   const provider = PROVIDERS[0];
-  const project = createAuraProject({ id: "buy-project", name: "Finished home search", journey: "buy-finished-home", document: defaultBuilderDocument(), now: new Date("2026-08-12T00:00:00Z") });
+  const project = createAuraProject({ id: "buy-project", name: "Finished home search", journey: "buy-finished-home", purpose: "primary-home", document: defaultBuilderDocument(), now: new Date("2026-08-12T00:00:00Z") });
   const readiness = providerPurchaseReadiness(provider, { targetRegion: "any", product: "any" });
   const inquiry = createManufacturerInquiry({ id: "inquiry-2", project, provider, readiness, targetRegion: "any", product: "any", createdAtISO: "2026-08-12T12:00:00Z" });
   expect(validateManufacturerInquiry({ ...inquiry, providerName: "Changed" }).ok).toBe(false);
@@ -29,7 +29,7 @@ test("a changed inquiry cannot retain its canonical hash", () => {
 
 test("an unsupported destination cannot enter a manufacturer inquiry at runtime", () => {
   const provider = PROVIDERS[0];
-  const project = createAuraProject({ id: "buy-project", name: "Finished home search", journey: "buy-finished-home", document: defaultBuilderDocument(), now: new Date("2026-08-12T00:00:00Z") });
+  const project = createAuraProject({ id: "buy-project", name: "Finished home search", journey: "buy-finished-home", purpose: "primary-home", document: defaultBuilderDocument(), now: new Date("2026-08-12T00:00:00Z") });
   const readiness = providerPurchaseReadiness(provider, { targetRegion: "any", product: "any" });
   expect(() => createManufacturerInquiry({
     id: "inquiry-invalid-destination",

@@ -2,7 +2,7 @@
 //
 // Env vars:
 //   PRIVATE_KEY  deployer key (via hardhat.config.js) — required on live networks
-//   USDC         USDC address; defaults to native USDC per chain, or MockUSDC locally
+//   USDC         settlement-token address; defaults to the configured token per chain, or MockUSDC locally
 //   HOMEOWNER / BUILDER / ARBITER   escrow roles; default to the deployer (dev only)
 //   HOLDBACK_BPS / HOLDBACK_PERIOD  pass 0 or omit for defaults (10%, 60 days)
 //   REFUND_WINDOW                   reservation-deposit cooling-off window in seconds;
@@ -10,10 +10,17 @@
 
 const { ethers, network } = require("hardhat");
 const { XLAYER_USDC } = require("./network-config");
+const {
+  assertConnectedChainMatchesConfig,
+  assertDeploymentAllowed,
+} = require("./deployment-policy");
 
 async function main() {
+  const configuredChainId = network.config.chainId;
+  const connectedNetwork = await ethers.provider.getNetwork();
+  const chainId = assertConnectedChainMatchesConfig(configuredChainId, connectedNetwork.chainId);
+  assertDeploymentAllowed(chainId);
   const [deployer] = await ethers.getSigners();
-  const chainId = network.config.chainId ?? 31337;
   console.log(`network: ${network.name} (chainId ${chainId})`);
   console.log(`deployer: ${deployer.address}`);
 

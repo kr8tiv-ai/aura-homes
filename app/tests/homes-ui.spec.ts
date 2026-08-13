@@ -1,6 +1,6 @@
 import { expect, test } from "playwright/test";
 
-test("HOMES dashboard shows verified zeroes, allocation rules, and planned eligibility", async ({ page }) => {
+test("HOMES dashboard shows a declared disconnected zero state, allocation rules, and planned eligibility", async ({ page }) => {
   await page.goto("/homes");
   await expect(page.getByRole("heading", { name: "HOMES on X Layer" })).toBeVisible();
   await expect(page.getByText("Planned · no token contract", { exact: true })).toBeVisible();
@@ -18,12 +18,23 @@ test("HOMES dashboard shows verified zeroes, allocation rules, and planned eligi
   await expect(page.getByText("top 50 eligible community holders", { exact: false })).toBeVisible();
 });
 
-test("the scroll story includes a later HOMES beat without claiming a live launch", async ({ page }) => {
+/* Renegotiated Aug 12: the founder's two-journey rewrite replaced the old
+   "One home can prove a wider model." beat by DESIGN — the eco journey now
+   mentions HOMES exactly once, at the very end, as the long-term framing.
+   This pins that contract instead of the retired copy. */
+test("the eco journey mentions HOMES once, at the end, never as live", async ({ page }) => {
+  test.setTimeout(120_000);
   await page.goto("/");
-  await expect(page.getByText("One home can prove a wider model.", { exact: true })).toBeAttached();
+  const paths = page.locator(".story-gate-paths");
+  await expect(paths).toBeVisible({ timeout: 30_000 });
+  await paths.locator("button").first().click();
+
+  // The sentence shares its <p> with the link, so exact-match can never hit;
+  // substring + the link's accessible name pin the same contract.
   await expect(
-    page.locator('a.story-cta[href="/homes"], a.story-cta[href="/homes/"]', { hasText: "Open the HOMES ledger" }),
-  ).toBeAttached();
+    page.getByText("a user-owned Airbnb for eco stays", { exact: false }).first(),
+  ).toBeAttached({ timeout: 60_000 });
+  await expect(page.getByRole("link", { name: /Learn about \$HOMES on X Layer/ })).toBeAttached();
 });
 
 test("the FAQ explains the HOMES funding and payout proposal", async ({ page }) => {

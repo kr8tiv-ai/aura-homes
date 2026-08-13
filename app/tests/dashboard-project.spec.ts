@@ -45,9 +45,10 @@ function walkModuleGraph(entry: string): Set<string> {
 
 test("the dashboard module graph never imports the fixture module", () => {
   const entry = join(APP_ROOT, "app", "dashboard", "page.tsx");
+  // This was the removed preview-data module. Its absence is intentional, so
+  // the graph assertion must not require the deleted file to exist first.
   const forbidden = join(APP_ROOT, "lib", "fixtures.ts");
   expect(existsSync(entry)).toBe(true);
-  expect(existsSync(forbidden)).toBe(true);
 
   const graph = walkModuleGraph(entry);
   expect(graph.size).toBeGreaterThan(2); // the walker actually walked
@@ -76,6 +77,7 @@ test("without a project the dashboard invites into /start instead of mocking one
 test("a real project renders stored facts, honest zeros, and THE next action", async ({ page }) => {
   await page.goto("/start");
   await page.getByRole("button", { name: "Find land + build" }).click();
+  await page.getByLabel("Project purpose").selectOption("primary-home");
   await page.getByLabel("Project name").fill("Dashboard record home");
   await page.getByLabel("Municipality or region").fill("Foothills County");
   await page.getByLabel("Maximum working budget").fill("550000");
@@ -91,12 +93,13 @@ test("a real project renders stored facts, honest zeros, and THE next action", a
   await expect(page.getByText("Recommended next step")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Complete your project brief" })).toBeVisible();
 
-  // Journey steps come from stepStates only: the filled brief and the default
-  // design do NOT advance anything — both render exactly as "Not started".
-  const requirementsStep = page.locator("div.rounded-lg").filter({ hasText: "Requirements" });
-  await expect(requirementsStep).toContainText("Not started");
+  // Journey steps come from stepStates only: creating a partial brief records
+  // work in progress, but does not confirm completion or advance the journey.
+  const journey = page.getByRole("region", { name: "Journey" });
+  const requirementsStep = journey.getByText("Requirements", { exact: true }).locator("..");
+  await expect(requirementsStep).toContainText("In progress");
   await expect(requirementsStep).toContainText("Next");
-  const designStep = page.locator("div.rounded-lg").filter({ hasText: /^02/ });
+  const designStep = journey.getByText("Design", { exact: true }).locator("..");
   await expect(designStep).toContainText("Design");
   await expect(designStep).toContainText("Not started");
 
@@ -122,6 +125,7 @@ test("a real project renders stored facts, honest zeros, and THE next action", a
 
 test("a blocked journey step renders with its typed reason", async ({ page }) => {
   await page.goto("/start");
+  await page.getByLabel("Project purpose").selectOption("primary-home");
   await page.getByLabel("Project name").fill("Blocked step home");
   await page.getByRole("button", { name: "Create my project" }).click();
   await expect(page).toHaveURL(/\/build/);

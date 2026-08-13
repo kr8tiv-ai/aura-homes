@@ -1,6 +1,12 @@
 # The Long Roadmap — from X Layer to the property, the supplies, and the keys
 
-*Written August 10, 2026. This is the canonical long-form rollout plan for Aura Homes: the full grand design, phased, with every honest dependency published next to the thing it blocks. [ROADMAP.md](../ROADMAP.md) keeps the three-arc summary the founder settled on; [PHASED-ROADMAP.md](../PHASED-ROADMAP.md) keeps the commercial framing; the site's `/overview` page summarizes this file. Where the three disagree on sequencing detail, this file is the one that was written with the dependency graph in front of it — and § 2 reconciles the numbering so nobody has to guess.*
+> [!CAUTION]
+> **Archived dependency study (August 10, 2026).** Its escrow-led commercial
+> sequence and `/overview` references are superseded. Keep it as research;
+> use [`../ROADMAP.md`](../ROADMAP.md) for the active plan and
+> [`../SUBMISSION.md`](../SUBMISSION.md) for the canonical demo.
+
+*Written August 10, 2026. This is an archived dependency study, not the current rollout plan. Use [ROADMAP.md](../ROADMAP.md) for the active sequence and [SUBMISSION.md](../SUBMISSION.md) for the current demo. The remaining text is retained only to explain earlier decisions.*
 
 **The sentence this roadmap has to earn:** a person with a card and no crypto ends up living in an off-grid eco home they chose, on land they own, built by trades they can name, paid for through rails they never had to understand — and every limitation was published before they hit the button.
 
@@ -21,7 +27,7 @@ Each phase carries the same six fields, deliberately:
 
 Three standing rules from the house voice apply to every line below: ranges carry their basis, unbuilt things are written in future tense with a status label, and a limitation is published next to the feature it limits rather than at the bottom of the page.
 
-**One structural rule that decides most of the sequencing:** *nothing that touches other people's money moves to mainnet before the legal spine in Phase 1 exists.* Phase 0 is a testnet demo with a mainnet contract deploy for the judges — no third-party funds, no custody, no partner obligations. That is not timidity, it is the difference between a hackathon entry and an unregistered money services business.
+**Superseded Phase 0 rule:** the August 10 draft proposed a no-funds mainnet deployment for judges. That action is now on hold. The current registry is testnet provenance only; see [MAINNET-DECISION-BRIEF.md](../MAINNET-DECISION-BRIEF.md).
 
 ---
 
@@ -223,21 +229,15 @@ Each criterion needs one artifact a judge can check in under a minute. This tabl
 | Growth potential | The Alberta playbook plus the data-pack architecture | A new province is a data problem: `data/<province>/`. The playbook is the artifact no other team will have. |
 | Contribution to the ecosystem | MIT from the first commit, open supplier directory, MCP server, published research | The repo is the contribution, and the research that contradicted our own assumptions is published rather than buried. |
 
-## 0.5 The demo narrative — 90 seconds, shot by shot
+## 0.5 The demo narrative — superseded
 
-Every figure captured live. Nothing re-recorded from fixtures. If a number on screen cannot be reproduced by a judge, it does not go on screen.
-
-| Time | Shot | The line |
-|---|---|---|
-| 0–8s | Paper ground, the mark, one sentence over the hero | "From dollars on X Layer to the keys of an off-grid eco home." |
-| 8–22s | Concierge: "I want an off-grid home, about 800 square feet, on this parcel." | The agent asks where before what. |
-| 22–34s | **The refusal.** Verdict card renders REJECT with the citation. | "This district requires 1,076 square feet. Your design is 800. This check is free here. Finding out after you buy the land costs you the land." |
-| 34–46s | Switch to the passing parcel. Home + live budget, LOW/MID/HIGH, per-line basis. | "Priced line by line from Alberta suppliers, with no middlemen and every basis published." |
-| 46–66s | **BUY.** Approve, fund the deposit in native USDC, OKLink tx on screen, registry status flips. | "Reservation deposit, settled in seconds, for a fraction of a cent." |
-| 66–80s | Release milestone 1: builder paid 90%, the 10% holdback visibly retained with its timer. Then the refund window, shown as a countdown. | "Alberta's statutory construction holdback, enforced by the contract. And a cooling-off window the buyer controls alone." |
-| 80–90s | Repo URL, MIT, the roadmap line | "The software that would otherwise exist in five years, built in the open, starting in Alberta." |
-
-Filming rules: one take per shot, no speed ramps over transactions, the OKLink page shown at full resolution for at least two seconds, CAD and USDC on screen together, and the words *simulated* or *fixture* rendered on screen for anything that is either.
+*(Superseded Aug 12, 2026: this shot list required a completing on-chain
+purchase and an escrow-led framing the founder retired. The canonical,
+filmable 90-second script lives in [../SUBMISSION.md](../SUBMISSION.md)
+§ "The 90-second demo script" — one script, one home. The filming rules
+worth keeping travelled with it: every figure captured live, nothing
+re-recorded from fixtures, and the words "simulated" or "fixture" rendered
+on screen for anything that is either.)*
 
 ## 0.6 Day plan, Aug 10–21
 
@@ -245,7 +245,7 @@ Human-gated items are marked **[Matt]** and cannot be delegated. Everything else
 
 | Date | Ship | Gate |
 |---|---|---|
-| Aug 10 (D1) | **[Matt]** faucet claim · **[Matt]** create @AuraHomesAI, avatar, bio, post 1 · escrow v2 written | Faucet is the whole critical path |
+| Aug 10 (D1) | **[Matt]** faucet claim · **[Matt]** create @AuraHomes_fun, avatar, bio, post 1 · escrow v2 written | Faucet is the whole critical path |
 | Aug 11 | Escrow v2 tests green · testnet deploy · addresses in DEPLOYMENTS.md · registry-enum doc fix | Deploy is the gate for everything downstream |
 | Aug 12 | Concierge reducer + order object, offline-deterministic | — |
 | Aug 13 | `/concierge` UI, land gate binding the BUY control · post 2 (the refusal) | — |

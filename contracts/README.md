@@ -2,20 +2,28 @@
 
 Hardhat project for the Aura Homes on-chain layer on X Layer.
 
+> [!WARNING]
+> **X Layer mainnet deployment is blocked.** The current registry has the
+> production blockers documented in
+> [`docs/MAINNET-DECISION-BRIEF.md`](../docs/MAINNET-DECISION-BRIEF.md), including
+> spoofable callback authorization and unconstrained lifecycle changes.
+> The deploy and lifecycle scripts hard-stop chain `196`. These contracts are an isolated
+> testnet experiment, not a production registry or escrow service.
+
 ## Contracts
 
-- **AuraBuildEscrow.sol** — milestone escrow for one home build, settled in native USDC.
+- **AuraBuildEscrow.sol** — testnet milestone-contract experiment for one home build, settled in a configured six-decimal token.
   Roles: homeowner (payer), builder (payee), arbiter (tie-breaker). Releases need 2-of-3
   approval. Every release retains a statutory holdback (default 10%, configurable in basis
   points) that only matures after a holdback period (default 60 days) — modeling Alberta's
   Prompt Payment and Construction Lien Act. Cancellation also needs 2-of-3 and refunds all
   funded-but-unreleased milestones — and any outstanding reservation deposit — to the
   homeowner.
-- **AuraBuildRegistry.sol** — ERC-721 build registry (the RWA anchor). Each token stores
+- **AuraBuildRegistry.sol** — testnet-only ERC-721 build-record experiment. Each token stores
   designHash, budgetHash, escrow address, and status. The status enum is the canonical
   lifecycle vocabulary: **Designed (0) → Funded (1) → UnderConstruction (2) → Complete (3)**
-  — docs and UI must use these exact names. Mint/update restricted to the linked escrow's
-  homeowner or an approved registrar.
+  — docs and UI must use these exact names. Its current mint/update restriction trusts a
+  caller-supplied escrow callback and is not safe authorization for mainnet; see the warning above.
 - **test/MockUSDC.sol** — 6-decimal test token, tests only.
 
 ## Reservation deposit (escrow v2)

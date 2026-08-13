@@ -88,7 +88,7 @@ Aura uses explicit status language throughout the interface and this submission:
 | Local-first project intake, library, autosave, archive, duplicate, recovery | **Live** | Projects stay in IndexedDB unless the person exports them. No account or cloud sync. |
 | Plain and AES-256-GCM encrypted `.aura-project.json` bundles | **Live** | The passphrase is never recoverable by Aura; future file versions fail visibly without overwriting local work. |
 | Guided and Pro editor modes over one `BuilderDocument` | **Live** | Design intent only. It does not certify structure, energy, manufacturing, or permits. |
-| Twelve-plan editable starter library with Alberta material/system ranges | **Live** | Nine Aura originals plus three attributed open-source studies; source and licence notices travel inside the project. |
+| Twenty-five-plan editable library with Alberta material/system ranges | **Live** | Aura originals (including the Nordic square set), three attributed open-source studies, and eight USDA/public-domain adaptations; source and licence notices travel inside every project. |
 | Polygon footprints, partitions, openings, rooms, roofs, and multi-storey graph intent | **Live / in build** | The graph editor is usable; some professional export paths still describe the legacy rectangular shell and say so in the UI. |
 | Drawings, JSON, DXF, IFC4, ifcJSON, glTF/OBJ and comfort handoff | **Live / in build** | Export scope varies by geometry mode. Outputs are review-ready, never construction-ready. |
 | Alberta budget ranges and quote snapshots | **Pilot** | Cost bands are explicit assumptions, not supplier offers or fixed manufacturing promises. |
@@ -356,13 +356,15 @@ Never commit private keys. Testnet deployment instructions and provenance are in
 
 | Read | Purpose |
 | --- | --- |
-| [`AURA_HOMES_MASTER_BRIEF.md`](AURA_HOMES_MASTER_BRIEF.md) | Product goal and submission north star |
+| [`docs/SUBMISSION.md`](docs/SUBMISSION.md) | Current submission narrative, demo path, and evidence |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Active Now / Next / Future delivery sequence |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System boundaries and data flow |
 | [`docs/DEPLOYMENTS.md`](docs/DEPLOYMENTS.md) | Current and retired X Layer proof |
 | [`docs/HOMES-TOKEN-CONCEPT.md`](docs/HOMES-TOKEN-CONCEPT.md) | Planned trust, allocations, zero-state ledger and launchpad boundaries |
 | [`docs/GAP-ANALYSIS.md`](docs/GAP-ANALYSIS.md) | What still blocks an end-to-end service |
-| [`docs/PHASED-ROADMAP.md`](docs/PHASED-ROADMAP.md) | Integrity-first delivery order |
-| [`docs/GRAPH-ENGINEERING.md`](docs/GRAPH-ENGINEERING.md) | Geometry and deterministic output invariants |
+| [`AURA_HOMES_MASTER_BRIEF.md`](AURA_HOMES_MASTER_BRIEF.md) | Archived August 9 handoff; historical context only |
+| [`docs/PHASED-ROADMAP.md`](docs/PHASED-ROADMAP.md) | Archived escrow-led commercial hypothesis |
+| [`docs/GRAPH-ENGINEERING.md`](docs/GRAPH-ENGINEERING.md) | How this repo is built: the AI-agent orchestration doctrine — node contracts, fresh-context verification, frozen anchors |
 | [`docs/ALBERTA-PLAYBOOK.md`](docs/ALBERTA-PLAYBOOK.md) | Alberta pilot facts and handoff rules |
 | [`docs/AI-BRAIN.md`](docs/AI-BRAIN.md) | Bounded agent model and MCP tools |
 | [`docs/BRAND.md`](docs/BRAND.md) | Paper, ink, emerald and “crypto is plumbing” system |

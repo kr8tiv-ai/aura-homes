@@ -78,6 +78,24 @@ export interface BuilderQuarantine {
   entries: QuarantineEntry[];
 }
 
+/**
+ * The cost-model truth attached when a person starts from a catalog plan.
+ * It is optional so existing v2 documents remain byte-for-byte canonical;
+ * once present it travels with the design into save, share, budget and quote
+ * hashes instead of being rediscovered from a mutable catalog entry.
+ */
+export interface BuilderPlanCostBasis {
+  status: "modelled" | "proxy";
+  label: string;
+  note: string;
+}
+
+export interface BuilderPlanOrigin {
+  templateId: string;
+  templateTitle: string;
+  costBasis: BuilderPlanCostBasis;
+}
+
 export interface BuilderDocument {
   format: typeof BUILDER_DOCUMENT_FORMAT;
   version: typeof BUILDER_DOCUMENT_VERSION;
@@ -88,6 +106,7 @@ export interface BuilderDocument {
   fixtures: FixtureSet;
   comfort: ComfortSettings;
   quarantine: BuilderQuarantine;
+  planOrigin?: BuilderPlanOrigin;
 }
 
 export type BuilderDocumentMigration =
@@ -120,6 +139,43 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
 
 const isFiniteNumber = (value: unknown): value is number =>
   typeof value === "number" && Number.isFinite(value);
+
+function validatePlanOrigin(raw: unknown):
+  | { ok: true; planOrigin?: BuilderPlanOrigin }
+  | { ok: false; problem: string } {
+  if (raw === undefined) return { ok: true };
+  if (!isObject(raw)) return { ok: false, problem: "planOrigin is not an object" };
+  if (typeof raw.templateId !== "string" || raw.templateId.trim().length === 0) {
+    return { ok: false, problem: "planOrigin.templateId must be a non-empty string" };
+  }
+  if (typeof raw.templateTitle !== "string" || raw.templateTitle.trim().length === 0) {
+    return { ok: false, problem: "planOrigin.templateTitle must be a non-empty string" };
+  }
+  if (!isObject(raw.costBasis)) {
+    return { ok: false, problem: "planOrigin.costBasis is not an object" };
+  }
+  if (raw.costBasis.status !== "modelled" && raw.costBasis.status !== "proxy") {
+    return { ok: false, problem: "planOrigin.costBasis.status is not supported" };
+  }
+  if (typeof raw.costBasis.label !== "string" || raw.costBasis.label.trim().length === 0) {
+    return { ok: false, problem: "planOrigin.costBasis.label must be a non-empty string" };
+  }
+  if (typeof raw.costBasis.note !== "string" || raw.costBasis.note.trim().length === 0) {
+    return { ok: false, problem: "planOrigin.costBasis.note must be a non-empty string" };
+  }
+  return {
+    ok: true,
+    planOrigin: {
+      templateId: raw.templateId,
+      templateTitle: raw.templateTitle,
+      costBasis: {
+        status: raw.costBasis.status,
+        label: raw.costBasis.label,
+        note: raw.costBasis.note,
+      },
+    },
+  };
+}
 
 function cloneComfortTarget(raw: unknown, path: string): { ok: true; target: ComfortTarget } | { ok: false; problem: string } {
   if (!isObject(raw)) return { ok: false, problem: `${path} is not an object` };
@@ -395,6 +451,8 @@ function assembleDocument(
   if (!comfort.ok) return comfort;
   const quarantine = validateQuarantine(source.quarantine);
   if (!quarantine.ok) return quarantine;
+  const planOrigin = validatePlanOrigin(source.planOrigin);
+  if (!planOrigin.ok) return planOrigin;
 
   return {
     ok: true,
@@ -409,6 +467,7 @@ function assembleDocument(
       fixtures: fixtures.fixtures,
       comfort: comfort.settings,
       quarantine: quarantine.quarantine,
+      ...(planOrigin.planOrigin ? { planOrigin: planOrigin.planOrigin } : {}),
     },
   };
 }

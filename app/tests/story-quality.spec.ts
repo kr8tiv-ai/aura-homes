@@ -1,15 +1,10 @@
 import { expect, test } from "playwright/test";
 
-/* The opening's 0.14 grass cap exists to protect the first paint — and a
-   regression shipped it as the FOREVER state, a 14%-density meadow with
-   dwarf flowers. This spec pins the promotion contract at the only level
-   that can catch the missing wiring: the live DOM. The scene root carries
-   data-scene-phase (the stage machine) and data-scene-quality (the tier);
-   after the last stage paints, the tier must leave the opening's balanced
-   cap on hardware that earns full. Chromium headless reports 8 GB device
-   memory and the host's cores at 1280 px wide, which selects the full tier. */
+/* Automatic full-quality promotion is deliberately disabled. Coarse memory
+   and core hints do not prove enough main-thread headroom for the million-
+   instance meadow; the opening-safe tier remains composed after handoff. */
 
-test("the meadow's opening quality cap is lifted after the last stage paints", async ({ page }) => {
+test("the automatic landing keeps its opening-safe quality budget after meadow", async ({ page }) => {
   test.setTimeout(180_000);
   await page.goto("/");
 
@@ -33,17 +28,9 @@ test("the meadow's opening quality cap is lifted after the last stage paints", a
   // The stage machine must walk to its final stage...
   await expect(root).toHaveAttribute("data-scene-phase", "meadow", { timeout: 120_000 });
 
-  // ...and the tier must then be PROMOTED past the opening cap. Before the
-  // fix this stayed "balanced" forever, which is exactly what this asserts
-  // against. (If this run's hardware genuinely selects balanced at full
-  // selection too, the assertion would be vacuous — so the inputs are also
-  // checked to prove the environment earns full.)
-  const earnsFull = await page.evaluate(() => {
-    const nav = navigator as Navigator & { deviceMemory?: number };
-    return window.innerWidth >= 1100
-      && (nav.deviceMemory ?? 0) >= 8
-      && (nav.hardwareConcurrency ?? 0) >= 8;
-  });
-  test.skip(!earnsFull, "this environment cannot select the full tier, so promotion is unobservable");
-  await expect(root).toHaveAttribute("data-scene-quality", "full", { timeout: 30_000 });
+  // ...and the automatic journey must remain on its known-safe tier. Richer
+  // density belongs behind a measured or explicit quality control.
+  await expect(root).toHaveAttribute("data-scene-quality", "balanced", { timeout: 30_000 });
+  await page.waitForTimeout(3_000);
+  await expect(root).toHaveAttribute("data-scene-quality", "balanced");
 });

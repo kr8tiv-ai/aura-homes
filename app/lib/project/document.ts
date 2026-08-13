@@ -7,6 +7,8 @@ import {
   type BuilderDocument,
 } from "../builder/document";
 import {
+  createProjectBudget,
+  defaultProjectBudgetScenario,
   hashProjectBudget,
   projectBudgetBasisReference,
   type BudgetRange,
@@ -136,10 +138,13 @@ export function createAuraProject(input: {
   id: string;
   name: string;
   journey: ProjectJourney;
-  purpose?: ProjectPurpose;
+  purpose: ProjectPurpose;
   document: BuilderDocument;
   now: Date;
 }): AuraProject {
+  if (!PROJECT_PURPOSES.has(input.purpose)) {
+    throw new Error("Choose a project purpose before creating this project.");
+  }
   const checked = validateBuilderDocument(input.document);
   if (!checked.ok) throw new Error(`Cannot start a project from this design: ${checked.problem}`);
   const id = cleanId(input.id);
@@ -159,7 +164,7 @@ export function createAuraProject(input: {
     id,
     name,
     journey: input.journey,
-    purpose: input.purpose ?? "primary-home",
+    purpose: input.purpose,
     createdAtISO: atISO,
     updatedAtISO: atISO,
     archivedAtISO: null,
@@ -306,6 +311,38 @@ export function withProjectBudgetBasis(
     updatedAtISO: now.toISOString(),
     budgetBasis,
   };
+}
+
+/** Build the budget that every project surface should use. An explicit
+ * scenario supports an in-progress budget edit; otherwise the last saved
+ * project basis wins, with defaults reserved for projects that have never
+ * established a cost scenario. */
+export function projectBudgetForProject(
+  project: AuraProject,
+  scenario?: ProjectBudgetScenario,
+): ProjectBudget {
+  const checked = validateAuraProject(project);
+  if (!checked.ok) throw new Error(`Cannot budget this project: ${checked.problem}`);
+  const current = checked.project;
+  return createProjectBudget({
+    document: current.design.document,
+    scenario: scenario ?? current.budgetBasis?.scenario ?? defaultProjectBudgetScenario(),
+    region: current.requirements.location.region,
+    municipality: current.requirements.location.municipality,
+    budgetCapCad: current.requirements.budgetCad.max,
+  });
+}
+
+/** Persist one selected scenario as the project's canonical, dated cost
+ * basis. Browser components call this inside `ProjectContext.update`, so the
+ * same validated record survives reload and feeds dashboard, RFQ and quote
+ * work. */
+export function withProjectBudgetScenario(
+  project: AuraProject,
+  scenario: ProjectBudgetScenario,
+  now: Date,
+): AuraProject {
+  return withProjectBudgetBasis(project, projectBudgetForProject(project, scenario), now);
 }
 
 export function projectJourney(project: AuraProject): {

@@ -17,23 +17,23 @@ const faqs = [
   },
   {
     q: "Do I need an architect?",
-    a: "No. Alberta's Architects Act exempts 1–4 unit dwellings of any size; a residential designer ($1,200–$2,700) finishes the AI's review-ready package into the permit set, and truss engineering arrives stamped from the truss plant.",
+    a: "Requirements vary by project and jurisdiction. Aura produces design intent, not a permit set. A residential designer, architect, engineer, energy advisor, or other qualified professional may be required to review and complete the work; confirm the team with the local authority before relying on a drawing.",
   },
   {
     q: "Can the AWG supply my water?",
-    a: "In summer, yes — every Aura home ships the atmospheric water module as the honestly-labeled summer producer, roughly 10–20 L a day from June to September. Outdoor winter output is zero litres (physics: condenser cutoff near 15°C and 30% humidity), so a buried cistern or a drilled well carries the winter, always.",
+    a: "An atmospheric water generator can be modelled as a summer-only option in Aura's Alberta reference concept, but it is not a dependable year-round source. Aura does not sell or ship an AWG. A qualified local designer must size and approve the actual water system; winter planning should rely on a confirmed well, cistern, or municipal supply.",
   },
   {
     q: "What does it cost, honestly?",
-    a: "$199,100 / $301,280 / $443,900 — LOW, MID, and HIGH, ex-land, in CAD, computed line by line from the open Alberta cost model. Land adds $75,000–$350,000. A conventional builder delivers the same home at $450,000–$650,000 ex-land.",
+    a: "The current 800 sq ft Alberta reference scenario computes to $199,100 / $301,280 / $443,900 CAD at LOW / MID / HIGH, excluding land. That is a dated planning model, not a supplier or contractor quote. Your design, parcel, utilities, delivery method, permits, tax, professional services, and contingency can change it materially.",
   },
   {
     q: "Can I sell the house afterward?",
-    a: "The honest catch: the $750 warranty opt-out places a title caveat blocking sale for 10 years. If resale flexibility matters, take the $95 owner-builder path with a home warranty instead. The app makes you choose eyes-open.",
+    a: "Possibly, but resale, warranty, disclosure, title, financing, and occupancy rules depend on the project and jurisdiction. Aura does not determine resale eligibility or place anything on title. Confirm the intended owner-builder or warranty path with the applicable authority and qualified legal professionals before construction.",
   },
   {
     q: "Is it open source?",
-    a: "Yes — MIT, end to end, from the first commit. The repo publishes the whole truth, including what does not work yet.",
+    a: "Aura's software is MIT-licensed. Individual plan studies retain the open-source or public-domain terms listed with each plan, including attribution and ShareAlike where applicable. The repository publishes those boundaries and what does not work yet.",
     link: { href: REPO, label: "Star the repo on GitHub" },
   },
   {
@@ -51,7 +51,7 @@ const faqs = [
   {
     id: "homes-token",
     q: "What is the HOMES token?",
-    a: "HOMES is a planned X Layer token and public property ledger. The proposed model routes 60 percent of recognized platform and venue fees to a first-property fund, targeting 200,000 USDC before an Alberta or Costa Rica acquisition. No HOMES contract, sale, listing, fund balance, property, staking position, or payout exists today; the dashboard shows those verified zeroes instead of preview revenue.",
+    a: "HOMES is a planned X Layer token and public property ledger. The proposed model routes 60 percent of recognized platform and venue fees to a first-property fund, targeting 200,000 USDC before an Alberta or Costa Rica acquisition. No HOMES contract, sale, listing, fund balance, property, staking position, or payout exists today; the dashboard shows a declared zero state and says that no data source is connected.",
     link: { href: "/homes", label: "Open the HOMES ledger" },
   },
   {
@@ -146,7 +146,7 @@ function withCountingFigures(text: string): ReactNode[] {
 export const metadata = {
   title: "FAQ — Aura Homes",
   description:
-    "Plain answers: the card-first onboarding design, no architect needed, honest costs, the AWG winter truth, resale rules, and how Aura makes money.",
+    "Plain answers about professional review, planning costs, water systems, resale questions, X Layer, and how Aura makes money.",
 };
 
 export default function FaqPage() {

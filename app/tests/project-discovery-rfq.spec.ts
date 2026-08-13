@@ -1,7 +1,8 @@
 import { expect, test } from "playwright/test";
 import { defaultBuilderDocument } from "@/lib/builder/document";
 import { createProjectBudget, defaultProjectBudgetScenario, type ProjectBudget } from "@/lib/builder/projectBudget";
-import { createAuraProject, projectJourney } from "@/lib/project/document";
+import { createAuraProject, projectJourney, type AuraProject } from "@/lib/project/document";
+import * as projectDocument from "@/lib/project/document";
 import {
   createDiscoveryRecord,
   setProjectShortlist,
@@ -25,7 +26,7 @@ const contractor: ContractorProfile = {
 };
 
 function project() {
-  return createAuraProject({ id: "project-rfq", name: "Foothills home", journey: "find-land-build", document, now });
+  return createAuraProject({ id: "project-rfq", name: "Foothills home", journey: "find-land-build", purpose: "primary-home", document, now });
 }
 
 test("discovery records preserve provenance and project shortlists are deterministic", () => {
@@ -78,6 +79,57 @@ test("an RFQ binds scope, design, budget and shortlisted discovery subjects", ()
   expect(rfq.responseTemplate.join(" ")).toMatch(/price|schedule|exclusions/i);
   expect(rfq.canonicalHash).toMatch(/^0x[a-f0-9]{64}$/);
   expect(validateProjectRfq(rfq).ok).toBe(true);
+});
+
+test("an RFQ uses the project's persisted current budget scenario", () => {
+  const scenario = {
+    ...defaultProjectBudgetScenario(),
+    site: "remote" as const,
+    utilities: "off-grid" as const,
+    finish: "elevated" as const,
+    delivery: "full-service" as const,
+    shippingDistanceKm: 680,
+    contingencyPct: 24,
+  };
+  const source = createAuraProject({
+    id: "project-rfq-persisted",
+    name: "Persisted RFQ basis",
+    journey: "find-land-build",
+    purpose: "primary-home",
+    document,
+    now,
+  });
+  const selectedBudget = createProjectBudget({
+    document: source.design.document,
+    scenario,
+    region: source.requirements.location.region,
+    municipality: source.requirements.location.municipality,
+    budgetCapCad: source.requirements.budgetCad.max,
+  });
+  const persist = (projectDocument as unknown as {
+    withProjectBudgetBasis: (value: AuraProject, budget: ProjectBudget, at: Date) => AuraProject;
+  }).withProjectBudgetBasis;
+  const currentBudget = (projectDocument as unknown as {
+    projectBudgetForProject?: (value: AuraProject) => ProjectBudget;
+  }).projectBudgetForProject;
+  expect(typeof currentBudget).toBe("function");
+  if (!currentBudget) return;
+
+  const saved = persist(source, selectedBudget, now);
+  const budget = currentBudget(saved);
+  const rfq = createProjectRfq({
+    id: "rfq-persisted-basis",
+    project: saved,
+    budget,
+    scope: "whole-home",
+    contractorId: null,
+    responseDueISO: null,
+    createdAtISO: now.toISOString(),
+  });
+
+  expect(budget.budgetHash).toBe(saved.budgetBasis?.budgetHash);
+  expect(rfq.budgetBasis.scenario).toEqual(scenario);
+  expect(rfq.budgetHash).toBe(saved.budgetBasis?.budgetHash);
 });
 
 test("RFQ basis diagnostics identify the planning inputs changed after preparation", () => {

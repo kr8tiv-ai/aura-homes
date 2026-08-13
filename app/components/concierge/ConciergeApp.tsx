@@ -433,7 +433,7 @@ export default function ConciergeApp() {
           <h1 className="font-display text-[2.35rem] font-medium leading-[1.08] tracking-[-0.025em]">Concierge</h1>
           <p className="mt-4 max-w-xl text-[0.95rem] leading-[1.65] text-aura-text/75">
             Pick a home, pick a parcel, get quoted to the dollar, and place a reservation deposit
-            in native USDC — with a refusal, citation included, when the bylaw says no.
+            in the configured faucet-compatible test token — with a refusal, citation included, when the bylaw says no.
           </p>
         </Reveal>
         <Reveal delay={0.12} y={10}>
@@ -792,7 +792,7 @@ function DepositPanel(props: {
       <Reveal y={10}>
         <p className="aura-label">Reservation deposit — {amount}</p>
         <p className="mt-2 text-xs leading-relaxed text-aura-text/70">
-          Two signatures on the real contract: approve native USDC, then placeDeposit(). The
+          Two signatures on the testnet contract: approve the configured test token, then placeDeposit(). The
           refund window opens the moment the deposit lands, and the chain enforces it.
         </p>
       </Reveal>

@@ -61,7 +61,7 @@ export const XLAYER_TESTNET = {
 
 ### What this deployment proves — and what it does not
 
-The contracts prove that Aura's reservation deposit, refund window, milestone funding, multi-party release, holdback, and design/budget registry model can execute on X Layer testnet. The browser verifies the selected network, allowance, transaction receipt events, and stored hashes.
+The deployed bytecode and automated tests show that Aura's reservation-deposit, refund-window, milestone, holdback, and registry mechanics can execute in a test environment. The public instance is empty: it has no deposit, funded milestone, or home record. Creation receipts prove deployment, not a funded lifecycle or physical work.
 
 This is development wiring, not a live construction escrow:
 

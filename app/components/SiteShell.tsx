@@ -42,6 +42,7 @@ const JOURNEY_NAV = [
 const UTILITY_NAV = [
   { href: "/land", label: "Land fit pilot" },
   { href: "/contractors", label: "Check a contractor" },
+  { href: "/roadmap", label: "Roadmap" },
   { href: "/faq", label: "FAQ" },
   { href: "/about", label: "About" },
 ] as const;
@@ -164,7 +165,7 @@ function StoryHeader() {
         <div className="story-sheet-tools">
           <ThemeToggle />
         </div>
-        <p className="story-sheet-foot">A KR8TIV AI product · Open source (MIT)</p>
+        <p className="story-sheet-foot">A KR8TIV AI product · MIT software · Plan studies keep their listed licences</p>
       </div>
     </>
   );
@@ -244,7 +245,7 @@ function StandardHeader() {
         </div>
         <div>
           <ThemeToggle />
-          <p className="story-sheet-foot">A KR8TIV AI product · Open source (MIT)</p>
+              <p className="story-sheet-foot">A KR8TIV AI product · MIT software · Plan studies keep their listed licences</p>
         </div>
       </div>
     </>
@@ -300,7 +301,7 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
             <footer className="mt-24 border-t aura-hairline">
               <div className="mx-auto max-w-5xl px-6 py-8">
                 <p className="text-xs uppercase tracking-label text-aura-text/70">
-                  A KR8TIV AI product &middot; Open source (MIT)
+                  A KR8TIV AI product &middot; MIT software &middot; Plan studies keep their listed licences
                 </p>
                 <SocialShareLinks compact />
                 {/* THE BOUNDARY, stated once and in plain words. Aura is rails

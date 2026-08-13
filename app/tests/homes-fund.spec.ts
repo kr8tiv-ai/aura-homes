@@ -11,6 +11,7 @@ import {
   eligibleHomesHolders,
   homesWindDownPayouts,
   homesProfitPayouts,
+  reconcileHomesFeeLedger,
   plannedHomesSnapshot,
 } from "@/lib/homes/fund";
 
@@ -57,6 +58,7 @@ test("eligibility is a deterministic top-200 stake snapshot", () => {
   const holders = Array.from({ length: 205 }, (_, index) => ({
     address: `0x${String(index).padStart(40, "0")}` as `0x${string}`,
     staked: BigInt((index + 1) * 100),
+    classification: "community" as const,
   }));
   const eligible = eligibleHomesHolders(holders);
 
@@ -67,8 +69,8 @@ test("eligibility is a deterministic top-200 stake snapshot", () => {
 
 test("only 60 percent of net property profit is distributed pro rata", () => {
   const result = homesProfitPayouts(BigInt(1_000_000), [
-    { address: `0x${"1".repeat(40)}` as `0x${string}`, staked: BigInt(3) },
-    { address: `0x${"2".repeat(40)}` as `0x${string}`, staked: BigInt(1) },
+    { address: `0x${"1".repeat(40)}` as `0x${string}`, staked: BigInt(3), classification: "community" },
+    { address: `0x${"2".repeat(40)}` as `0x${string}`, staked: BigInt(1), classification: "community" },
   ]);
 
   expect(result.communityPool).toBe(BigInt(600_000));
@@ -76,18 +78,54 @@ test("only 60 percent of net property profit is distributed pro rata", () => {
   expect(result.payouts.map((payout) => payout.amount)).toEqual([BigInt(450_000), BigInt(150_000)]);
 });
 
-test("the public dashboard starts at verified zero rather than preview revenue", () => {
+test("the public dashboard starts at a declared, disconnected zero state", () => {
   const snapshot = plannedHomesSnapshot();
   expect(snapshot.status).toBe("planned");
   expect(snapshot.fees.totalUsdc).toBe(BigInt(0));
   expect(snapshot.propertyFund.balanceUsdc).toBe(BigInt(0));
-  expect(snapshot.propertyFund.tradingFeeBalanceUsdc).toBe(BigInt(0));
-  expect(snapshot.propertyFund.serviceFeeBalanceUsdc).toBe(BigInt(0));
+  expect(snapshot.fees.tradingUsdc).toBe(BigInt(0));
+  expect(snapshot.fees.serviceUsdc).toBe(BigInt(0));
   expect(snapshot.chain.tokenAddress).toBeNull();
   expect(snapshot.chain.stakingAddress).toBeNull();
   expect(snapshot.properties).toEqual([]);
   expect(snapshot.windDown.status).toBe("not-configured");
   expect(snapshot.windDown.distributableUsdc).toBe(BigInt(0));
+});
+
+test("fee ledgers reconcile source receipts without double allocating trading and service revenue", () => {
+  const base = plannedHomesSnapshot();
+  const snapshot = {
+    ...base,
+    fees: {
+      ...base.fees,
+      totalUsdc: BigInt(5_000_000),
+      tradingUsdc: BigInt(3_000_000),
+      serviceUsdc: BigInt(2_000_000),
+      sources: base.fees.sources.map((source, index) => ({
+        ...source,
+        recognizedUsdc: index === 0 ? BigInt(3_000_000) : index === 1 ? BigInt(2_000_000) : BigInt(0),
+      })),
+    },
+  };
+
+  expect(reconcileHomesFeeLedger(snapshot)).toEqual({
+    tradingUsdc: BigInt(3_000_000),
+    serviceUsdc: BigInt(2_000_000),
+    totalUsdc: BigInt(5_000_000),
+  });
+  expect(() => reconcileHomesFeeLedger({
+    ...snapshot,
+    fees: { ...snapshot.fees, totalUsdc: BigInt(6_000_000) },
+  })).toThrow(/does not reconcile/i);
+});
+
+test("unclassified addresses fail closed instead of entering holder distributions", () => {
+  const eligible = eligibleHomesHolders([
+    { address: `0x${"a".repeat(40)}` as `0x${string}`, staked: BigInt(10) },
+    { address: `0x${"b".repeat(40)}` as `0x${string}`, staked: BigInt(5), classification: "community" },
+  ]);
+
+  expect(eligible.map((holder) => holder.address)).toEqual([`0x${"b".repeat(40)}`]);
 });
 
 test("a cancelled property program distributes its unspent purchase fund to the top 50 eligible holders", () => {

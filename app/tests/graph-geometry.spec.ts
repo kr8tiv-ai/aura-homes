@@ -10,6 +10,8 @@ import {
   disposeGraphHome,
   summarizeBuildingGraph,
 } from "@/lib/builder/graphGeometry";
+import * as legacyGeometry from "@/lib/builder/geometry";
+import { PLAN_TEMPLATES } from "@/lib/builder/planCatalog";
 
 test("a planar graph drives one 3D scene and exact area summary", () => {
   const made = singleStoreyGraphFromPolygon(
@@ -94,4 +96,28 @@ test("openings are holes in graph walls with stable glass and door parts", () =>
   expect(parts.some((part) => part.id.includes("roof") && part.surface === "roof")).toBe(true);
   expect(home.summary.maxRidgeHeightFt).toBeGreaterThan(9.5);
   disposeGraphHome(home);
+});
+
+test("camera framing targets the actual centre of an offset multi-volume home", () => {
+  const frameForSummary = (legacyGeometry as typeof legacyGeometry & {
+    cameraFrameForSummary?: (summary: legacyGeometry.SiteSummary) => {
+      distance: number;
+      position: [number, number, number];
+      target: [number, number, number];
+    };
+  }).cameraFrameForSummary;
+  expect(typeof frameForSummary).toBe("function");
+  if (!frameForSummary) return;
+
+  const plan = PLAN_TEMPLATES.find((candidate) => candidate.id === "beltsville-farmhouse");
+  expect(plan).toBeDefined();
+  if (!plan) return;
+  const summary = legacyGeometry.summarizeHome(plan.spec);
+  const frame = frameForSummary(summary);
+
+  expect(frame.target[0]).toBeCloseTo((summary.boundsWithRoof.minX + summary.boundsWithRoof.maxX) / 2, 6);
+  expect(frame.target[2]).toBeCloseTo((summary.boundsWithRoof.minZ + summary.boundsWithRoof.maxZ) / 2, 6);
+  expect(frame.target[0]).not.toBe(0);
+  expect(frame.position[0] - frame.target[0]).toBeCloseTo(frame.distance * 0.72, 6);
+  expect(frame.position[2] - frame.target[2]).toBeCloseTo(frame.distance, 6);
 });

@@ -27,7 +27,7 @@ const TRADE_LABELS: Record<Trade, string> = {
   interiors: "Interiors",
 };
 const READINESS_LABEL = {
-  "shortlist-ready": "Evidence-ready",
+  "shortlist-ready": "Source package complete",
   "manual-review": "Evidence incomplete",
   "not-ready": "Evidence expired / negative",
 } as const;
@@ -51,10 +51,15 @@ export default function ContractorDirectory() {
   const [caseTrade, setCaseTrade] = useState<Trade>("whole-home-builder");
   const [website, setWebsite] = useState("");
   const [registryChecked, setRegistryChecked] = useState(false);
+  const [registrySource, setRegistrySource] = useState("");
   const [wcbChecked, setWcbChecked] = useState(false);
+  const [wcbSource, setWcbSource] = useState("");
   const [insuranceChecked, setInsuranceChecked] = useState(false);
+  const [insuranceSource, setInsuranceSource] = useState("");
   const [projectsChecked, setProjectsChecked] = useState(false);
+  const [projectsSource, setProjectsSource] = useState("");
   const [reviewsChecked, setReviewsChecked] = useState(false);
+  const [reviewsSource, setReviewsSource] = useState("");
   const [wcbExpiry, setWcbExpiry] = useState("");
   const [insuranceExpiry, setInsuranceExpiry] = useState("");
   const [problem, setProblem] = useState<string | null>(null);
@@ -78,13 +83,24 @@ export default function ContractorDirectory() {
     event.preventDefault();
     if (!project) { setProblem("Start a project before adding a contractor case file."); return; }
     setProblem(null);
+    const hasHttpSource = (value: string) => /^https?:\/\/[^\s]+$/i.test(value.trim());
+    const missingEvidence: string[] = [];
+    if (registryChecked && !hasHttpSource(registrySource)) missingEvidence.push("the exact registry result URL");
+    if (wcbChecked && (!hasHttpSource(wcbSource) || !wcbExpiry)) missingEvidence.push("the WCB evidence URL and expiry");
+    if (insuranceChecked && (!hasHttpSource(insuranceSource) || !insuranceExpiry)) missingEvidence.push("the insurance evidence URL and expiry");
+    if (projectsChecked && !hasHttpSource(projectsSource)) missingEvidence.push("the comparable-work evidence URL");
+    if (reviewsChecked && !hasHttpSource(reviewsSource)) missingEvidence.push("the independent-review source URL");
+    if (missingEvidence.length > 0) {
+      setProblem(`Add ${missingEvidence.join(", ")} before recording those checks.`);
+      return;
+    }
     const checkedAtISO = new Date().toISOString();
     const evidence: ContractorEvidence[] = [];
-    if (registryChecked) evidence.push({ kind: "alberta-builder-registry", status: "confirmed", label: "Project owner matched the exact legal name in the Alberta builder registry", sourceUrl: REGISTRY, checkedAtISO, expiresAtISO: null });
-    if (wcbChecked) evidence.push({ kind: "wcb-clearance", status: "confirmed", label: "Project owner recorded a current WCB clearance", sourceUrl: WCB, checkedAtISO, expiresAtISO: wcbExpiry ? new Date(`${wcbExpiry}T23:59:59`).toISOString() : null });
-    if (insuranceChecked) evidence.push({ kind: "liability-insurance", status: "confirmed", label: "Project owner recorded a liability insurance certificate", sourceUrl: null, checkedAtISO, expiresAtISO: insuranceExpiry ? new Date(`${insuranceExpiry}T23:59:59`).toISOString() : null });
-    if (projectsChecked) evidence.push({ kind: "comparable-projects", status: "confirmed", label: "Project owner recorded comparable work and references", sourceUrl: null, checkedAtISO, expiresAtISO: null });
-    if (reviewsChecked) evidence.push({ kind: "independent-reviews", status: "self-declared", label: "Independent review sources recorded for follow-up", sourceUrl: null, checkedAtISO, expiresAtISO: null });
+    if (registryChecked) evidence.push({ kind: "alberta-builder-registry", status: "confirmed", label: "Project owner matched the exact legal name in the Alberta builder registry", sourceUrl: registrySource.trim(), checkedAtISO, expiresAtISO: null });
+    if (wcbChecked) evidence.push({ kind: "wcb-clearance", status: "confirmed", label: "Project owner recorded a current WCB clearance", sourceUrl: wcbSource.trim(), checkedAtISO, expiresAtISO: new Date(`${wcbExpiry}T23:59:59`).toISOString() });
+    if (insuranceChecked) evidence.push({ kind: "liability-insurance", status: "confirmed", label: "Project owner recorded a liability insurance certificate", sourceUrl: insuranceSource.trim(), checkedAtISO, expiresAtISO: new Date(`${insuranceExpiry}T23:59:59`).toISOString() });
+    if (projectsChecked) evidence.push({ kind: "comparable-projects", status: "confirmed", label: "Project owner recorded comparable work and references", sourceUrl: projectsSource.trim(), checkedAtISO, expiresAtISO: null });
+    if (reviewsChecked) evidence.push({ kind: "independent-reviews", status: "self-declared", label: "Independent review sources recorded for follow-up", sourceUrl: reviewsSource.trim(), checkedAtISO, expiresAtISO: null });
     const subjectId = caseId();
     const profile: ContractorProfile = {
       id: subjectId,
@@ -110,7 +126,7 @@ export default function ContractorDirectory() {
       });
       await update((current) => upsertProjectDiscoveryRecord(current, "contractors", record, new Date()));
       setAdding(false); setCaseLegalName(""); setDisplayName(""); setWebsite("");
-      setRegistryChecked(false); setWcbChecked(false); setInsuranceChecked(false); setProjectsChecked(false); setReviewsChecked(false); setWcbExpiry(""); setInsuranceExpiry("");
+      setRegistryChecked(false); setRegistrySource(""); setWcbChecked(false); setWcbSource(""); setInsuranceChecked(false); setInsuranceSource(""); setProjectsChecked(false); setProjectsSource(""); setReviewsChecked(false); setReviewsSource(""); setWcbExpiry(""); setInsuranceExpiry("");
     } catch (error) { setProblem(error instanceof Error ? error.message : String(error)); }
   }
 
@@ -163,12 +179,17 @@ export default function ContractorDirectory() {
           </div>
           <fieldset><legend>Evidence you personally checked</legend><p>These checks are saved as owner-supplied evidence, never as an Aura endorsement.</p><div className="contractor-evidence-checks">
             <label><input type="checkbox" checked={registryChecked} onChange={(event) => setRegistryChecked(event.target.checked)} />Exact legal name appears in the Alberta builder registry</label>
+            <label>Exact registry result URL<input type="url" value={registrySource} onChange={(event) => setRegistrySource(event.target.value)} placeholder="https://…/exact-result" disabled={!registryChecked} /></label>
             <label><input type="checkbox" checked={wcbChecked} onChange={(event) => setWcbChecked(event.target.checked)} />Current WCB clearance recorded</label>
+            <label>WCB evidence URL<input type="url" value={wcbSource} onChange={(event) => setWcbSource(event.target.value)} placeholder="https://…/clearance" disabled={!wcbChecked} /></label>
             <label>WCB expiry<input type="date" value={wcbExpiry} onChange={(event) => setWcbExpiry(event.target.value)} disabled={!wcbChecked} /></label>
             <label><input type="checkbox" checked={insuranceChecked} onChange={(event) => setInsuranceChecked(event.target.checked)} />Liability insurance certificate recorded</label>
+            <label>Insurance evidence URL<input type="url" value={insuranceSource} onChange={(event) => setInsuranceSource(event.target.value)} placeholder="https://…/certificate" disabled={!insuranceChecked} /></label>
             <label>Insurance expiry<input type="date" value={insuranceExpiry} onChange={(event) => setInsuranceExpiry(event.target.value)} disabled={!insuranceChecked} /></label>
             <label><input type="checkbox" checked={projectsChecked} onChange={(event) => setProjectsChecked(event.target.checked)} />Comparable projects and references recorded</label>
+            <label>Comparable work evidence URL<input type="url" value={projectsSource} onChange={(event) => setProjectsSource(event.target.value)} placeholder="https://…/projects" disabled={!projectsChecked} /></label>
             <label><input type="checkbox" checked={reviewsChecked} onChange={(event) => setReviewsChecked(event.target.checked)} />Independent review sources recorded</label>
+            <label>Independent review source URL<input type="url" value={reviewsSource} onChange={(event) => setReviewsSource(event.target.value)} placeholder="https://…/reviews" disabled={!reviewsChecked} /></label>
           </div></fieldset>
           <button type="submit">Save case file</button>
         </form>

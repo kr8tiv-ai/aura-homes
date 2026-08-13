@@ -343,8 +343,8 @@ export default function LandPage() {
                 >
                   {!project ? "Start a project to save" : shortlisted.has(result.listing.id) ? "Saved to project" : "Save demo comparison"}
                 </button>
-                <Link href={`/concierge?parcel=${result.listing.id}`} className="rounded-md border aura-hairline px-4 py-2 text-xs font-medium uppercase tracking-label transition-colors hover:border-aura-emerald hover:text-aura-emerald">
-                  Test in concierge
+                <Link href="/budget" className="rounded-md border aura-hairline px-4 py-2 text-xs font-medium uppercase tracking-label transition-colors hover:border-aura-emerald hover:text-aura-emerald">
+                  Test the cost scenario
                 </Link>
                 <Link href="/contractors" className="text-xs text-aura-emerald underline underline-offset-4">
                   Find the build team

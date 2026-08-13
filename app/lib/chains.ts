@@ -24,7 +24,11 @@ export const xLayerTestnet = defineChain({
   // Faucet: https://web3.okx.com/xlayer/faucet
 });
 
-/** Native USDC (6 decimals) per chain — never the bridged USDC.e. */
+/**
+ * Six-decimal settlement-token addresses used by Aura's chain experiments.
+ * Mainnet is configured for native USDC. Testnet uses the faucet-compatible,
+ * valueless test token documented in docs/DEPLOYMENTS.md; it is not Circle USDC.
+ */
 export const USDC_ADDRESS: Record<number, `0x${string}`> = {
   [xLayer.id]: "0xB6CEceAB302E2E4948951eE7843FC24E92933061",
   [xLayerTestnet.id]: "0xcB8BF24c6cE16Ad21D707c9505421a17f2bec79D",

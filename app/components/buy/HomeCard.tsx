@@ -1,6 +1,6 @@
 "use client";
 
-/* One finished home, one card, the approved hierarchy and nothing else:
+/* One researched maker model or concept, one card, the approved hierarchy:
    1 visual · 2 model + maker · 3 price state · 4 delivery state ·
    5 size + bedrooms · 6 actions. Everything longer-form — sources with
    dates, payment research, unresolved questions, the caveat — lives in
@@ -69,6 +69,9 @@ export default function HomeCard({
         {/* 2 · model + maker identity */}
         <div data-slot="home-identity" className="flex flex-wrap items-start justify-between gap-3">
           <div>
+            <p className="mb-1 font-mono text-[0.58rem] uppercase tracking-label text-aura-emerald">
+              {home.marketStatus === "current-maker-model" ? "Current maker model" : "Announced concept · shipping unverified"}
+            </p>
             <h3 className="font-display text-[1.1rem] font-medium leading-snug tracking-[-0.01em]">
               {home.model}
             </h3>

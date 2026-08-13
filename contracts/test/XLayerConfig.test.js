@@ -25,4 +25,30 @@ describe("X Layer network configuration", function () {
       expect(source, relativePath).not.to.include(retired);
     }
   });
+
+  it("hard-stops the current contracts before any X Layer mainnet deployment", function () {
+    const {
+      assertConnectedChainMatchesConfig,
+      assertDeploymentAllowed,
+    } = require("../scripts/deployment-policy");
+    const deploySource = fs.readFileSync(path.resolve(__dirname, "..", "scripts", "deploy.js"), "utf8");
+    const lifecycleSource = fs.readFileSync(path.resolve(__dirname, "..", "scripts", "demo-lifecycle.js"), "utf8");
+
+    expect(() => assertDeploymentAllowed(196)).to.throw(
+      "X Layer mainnet deployment is blocked",
+    );
+    expect(() => assertDeploymentAllowed(1952)).not.to.throw();
+    expect(() => assertDeploymentAllowed(31337)).not.to.throw();
+    expect(() => assertConnectedChainMatchesConfig(1952, 196)).to.throw(
+      "Configured chain ID 1952 does not match connected RPC chain ID 196",
+    );
+    expect(() => assertConnectedChainMatchesConfig(1952, 1952)).not.to.throw();
+    expect(() => assertConnectedChainMatchesConfig(undefined, 31337)).not.to.throw();
+    expect(deploySource).to.include("await ethers.provider.getNetwork()");
+    expect(deploySource).to.include(
+      "assertConnectedChainMatchesConfig(configuredChainId, connectedNetwork.chainId)",
+    );
+    expect(deploySource).to.include("assertDeploymentAllowed(chainId)");
+    expect(lifecycleSource).to.include("assertDeploymentAllowed(chainId)");
+  });
 });

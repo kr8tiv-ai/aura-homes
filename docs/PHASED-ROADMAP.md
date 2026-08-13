@@ -1,5 +1,12 @@
 # Aura Homes — Phased Roadmap
 
+> [!CAUTION]
+> **Archived commercial hypothesis (August 9, 2026).** The deposit/escrow-led
+> wedge below was retired by the founder and is not the current product plan.
+> Aura does not currently sell homes, accept reservation deposits, or operate
+> a USDC checkout. Use [`ROADMAP.md`](ROADMAP.md) for the active sequence and
+> [`SUBMISSION.md`](SUBMISSION.md) for the one canonical demo.
+
 **Purpose:** turn the A-to-Z vision into a sequence where each phase is a *complete, working, sellable thing* rather than a slice of an unfinished thing.
 
 **Written** August 9, 2026, to the founder's three-phase framing:
@@ -103,7 +110,11 @@ That sentence is the product strategy, the compliance answer, and the best line 
 
 > "This is the only place on the internet where you can talk to an AI about the eco home you want, be told it *can't* legally go on the land you picked — and then, on land where it can, buy it. In dollars, settled in seconds, for a fraction of a cent, with the province's construction holdback law enforced by the contract."
 
-90 seconds: hero one-liner → chatbot → parcel rejection → home + live budget → **BUY in USDC, real tx** → registry flips → milestone release with holdback retained → refund window → repo URL + MIT.
+*(Superseded Aug 12, 2026: this script required a completing on-chain
+purchase no route performs, and the escrow-led framing was retired by the
+founder. The canonical, filmable 90-second script lives in
+[SUBMISSION.md](SUBMISSION.md) § "The 90-second demo script" — one script,
+one home.)*
 
 ### What's needed
 
@@ -115,7 +126,7 @@ That sentence is the product strategy, the compliance answer, and the best line 
 | Three catalog homes with priced line items + source links | Cost model exists; needs catalog framing |
 | Chatbot wired to the order object | New, but thin — it drives existing state |
 | Parcel fixtures + suitability rules | `lib/parcels.ts` and the land page exist |
-| @AuraHomesAI, build-in-public posts, form, submission tweet | **Matt-only** |
+| @AuraHomes_fun, build-in-public posts, form, submission tweet | **Matt-only** |
 | 90-second video against the live site | After the buy flow lands |
 
 ### The honesty constraint

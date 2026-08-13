@@ -23,7 +23,7 @@ test("social previews and share actions use the new branded Aura card", async ({
 test("the landing offers both journeys together over one scene, with the founder's entrance copy", async ({ page }) => {
   await page.goto("/");
   const gate = page.getByRole("dialog", { name: "Choose an Aura Homes journey" });
-  await expect(gate.getByText("Start with a proven plan or shape your own. See likely costs, land constraints, and next steps before you commit.", { exact: true })).toBeVisible();
+  await expect(gate.getByText("Start with a curated plan study or shape your own. See likely costs, land constraints, and next steps before you commit.", { exact: true })).toBeVisible();
   /* Both doors visible together — no hidden selection. Copy verbatim. */
   await expect(gate.getByRole("button", { name: /Build an eco home/ })).toBeVisible();
   await expect(gate.getByRole("button", { name: /Explore the X Layer ecosystem/ })).toBeVisible();
@@ -31,9 +31,11 @@ test("the landing offers both journeys together over one scene, with the founder
   await expect(gate.getByText("Launch an eco stay, follow HOMES, and see the future launchpad.", { exact: true })).toBeVisible();
   await expect(gate.getByRole("button", { name: "Forest sound on" })).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("video.story-gate-video")).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Story controls" })).toHaveCount(0);
 
   await gate.getByRole("button", { name: /Explore the X Layer ecosystem/ }).click();
   await expect(page.locator('[data-story-audience="crypto"]')).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Story controls" })).toBeVisible();
   await expect(page.getByText("Start with a real project.", { exact: true })).toBeAttached();
   await expect(page.getByText("Pay in USDC where it is supported.", { exact: true })).toBeAttached();
   await expect(page.getByRole("button", { name: "Switch to the eco-home journey" })).toBeVisible();
@@ -48,6 +50,29 @@ test("the landing offers both journeys together over one scene, with the founder
   await expect(page.getByRole("button", { name: "04 Team" })).toBeAttached();
   await expect(page.getByRole("button", { name: "06 Payments" })).toBeAttached();
   await expect(page.getByRole("button", { name: /Escrow/ })).toHaveCount(0);
+});
+
+test("the entrance gate owns focus until a journey is chosen, then restores it to the story", async ({ page }) => {
+  await page.goto("/");
+
+  const gate = page.getByRole("dialog", { name: "Choose an Aura Homes journey" });
+  const projectJourney = gate.getByRole("button", { name: /Build an eco home/ });
+  const lastGateLink = gate.getByRole("link", { name: "X Layer testnet" });
+  const storyHeader = page.locator(".story-chrome");
+
+  await expect(projectJourney).toBeFocused();
+  await expect(storyHeader).toHaveAttribute("inert", "");
+
+  await lastGateLink.focus();
+  await page.keyboard.press("Tab");
+  await expect(projectJourney).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(lastGateLink).toBeFocused();
+
+  await projectJourney.click();
+  await expect(gate).toHaveCount(0);
+  await expect(storyHeader).not.toHaveAttribute("inert", "");
+  await expect(page.getByRole("button", { name: "Switch to the X Layer ecosystem" })).toBeFocused();
 });
 
 test("the 3D loading readout is prominent, centred, staged, and alive through the whole handoff", async ({ page }, testInfo) => {
@@ -77,7 +102,8 @@ test("the 3D loading readout is prominent, centred, staged, and alive through th
   }
   /* Real stage names and a ticking elapsed clock — the "visibly not dead"
      contract. The clock must advance even while a stage holds. */
-  await expect(loader.locator(".aura-loader-label")).toHaveText(/^(Film|Canvas|Core|Landscape|Meadow|Ready)$/);
+  await expect(loader.locator(".aura-loader-label")).toHaveText(/^(Preparing scene|Canvas|Core|Landscape|Meadow|Ready)$/);
+  await expect(loader.locator(".aura-loader-pct")).toHaveText(/^Stage [1-5] of 5$/);
   await expect(loader.locator(".aura-loader-time")).toHaveText(/^\d+\.\ds$/);
   const t1 = await loader.locator(".aura-loader-time").textContent();
   await expect(loader.locator(".aura-loader-time")).not.toHaveText(t1 ?? "", { timeout: 2_000 });
@@ -87,9 +113,16 @@ test("the 3D loading readout is prominent, centred, staged, and alive through th
      painted, exactly when the progressive stages began to stagger. It now
      holds through them and only leaves after the meadow's first real frame. */
   await expect(loader).toBeVisible();
-  await expect(page.locator(".story-scene-root")).toHaveAttribute("data-scene-quality", "balanced");
-  await expect(page.locator(".story-scene-root")).toHaveAttribute("data-scene-phase", "meadow", { timeout: 60_000 });
-  await expect(loader).toHaveCount(0, { timeout: 20_000 });
+  const scene = page.locator(".story-scene-root");
+  await expect(scene).toHaveAttribute("data-scene-quality", "balanced");
+  await expect(scene).toHaveAttribute("data-scene-phase", "meadow", { timeout: 60_000 });
+  /* Full-density meadow construction is intentionally much heavier than the
+     opening tier. The status card must finish its honest Ready hold and fade
+     before that promotion is even authorized, otherwise the construction
+     task can starve the fade timer and strand the card over a ready scene. */
+  await expect(loader.getByText("Ready", { exact: true })).toBeVisible({ timeout: 60_000 });
+  await expect(loader).toHaveCount(0, { timeout: 3_000 });
+  await expect(scene).toHaveAttribute("data-scene-quality", "balanced");
 });
 
 test("the landing returns to its composed still when WebGL is unavailable", async ({ page }) => {
@@ -112,6 +145,18 @@ test("the landing returns to its composed still when WebGL is unavailable", asyn
   await expect(page.locator(".aura-loader")).toHaveCount(0, { timeout: 3_000 });
   await expect(page.locator(".story-static-scene")).not.toHaveClass(/is-hidden/);
   await expect(page.locator(".story-scene-root canvas")).toHaveCount(0);
+});
+
+test("a failed scene asset returns to the composed still instead of stranding the loader", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.route("**/*.glb", (route) => route.abort("failed"));
+  await page.goto("/");
+  await page.getByRole("dialog", { name: "Choose an Aura Homes journey" })
+    .getByRole("button", { name: /Build an eco home/ })
+    .click();
+
+  await expect(page.locator(".story-static-scene")).not.toHaveClass(/is-hidden/, { timeout: 60_000 });
+  await expect(page.locator(".aura-loader")).toHaveCount(0, { timeout: 60_000 });
 });
 
 test("the app header keeps the customer journey concise and moves tools into More", async ({ page }) => {
@@ -159,8 +204,9 @@ test("mobile uses the safe scene tier and a complete menu without horizontal ove
   expect(landingWidths.scroll).toBe(landingWidths.client);
   await page.goto("/how-it-works");
   await page.getByRole("button", { name: "Menu" }).click();
-  await expect(page.getByRole("link", { name: "Land fit pilot" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Check a contractor" })).toBeVisible();
+  const tools = page.getByRole("navigation", { name: "Aura tools", exact: true });
+  await expect(tools.getByRole("link", { name: "Land fit pilot", exact: true })).toBeVisible();
+  await expect(tools.getByRole("link", { name: "Check a contractor", exact: true })).toBeVisible();
 
   const widths = await page.evaluate(() => ({
     scroll: document.documentElement.scrollWidth,

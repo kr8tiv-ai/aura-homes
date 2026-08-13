@@ -168,6 +168,7 @@ export default function Story() {
   const router = useRouter();
 
   const [entered, setEntered] = useState(false);
+  const storyEntryFocusRef = useRef<HTMLButtonElement | null>(null);
   const [audience, setAudience] = useState<StoryAudience>("project");
   const { hero, beats, end, buildCta } = STORY_COPY[audience];
   /* ONE switch, one world. The HUD's NIGHT button no longer only darkens the
@@ -194,8 +195,13 @@ export default function Story() {
   const [canvasMount, setCanvasMount] = useState(false);
   const [canvasReady, setCanvasReady] = useState(false);
   const [canvasUnavailable, setCanvasUnavailable] = useState(false);
+  const [loaderDismissed, setLoaderDismissed] = useState(false);
   const handleCanvasReady = useCallback(() => setCanvasReady(true), []);
-  const handleCanvasUnavailable = useCallback(() => setCanvasUnavailable(true), []);
+  const handleCanvasUnavailable = useCallback(() => {
+    setCanvasUnavailable(true);
+    setCanvasReady(false);
+  }, []);
+  const handleLoaderDismissed = useCallback(() => setLoaderDismissed(true), []);
   const bootCanvas = useCallback(() => setCanvasBoot(true), []);
 
   /* The central loader's real signals, reported up from inside the 3D chunk:
@@ -206,6 +212,15 @@ export default function Story() {
   const [fetchState, setFetchState] = useState<LoaderFetchState>({ loaded: 0, total: 0 });
   const handleStagePainted = useCallback((stage: OpeningSceneStage) => setPaintedStage(stage), []);
   const handleFetch = useCallback((loaded: number, total: number) => setFetchState({ loaded, total }), []);
+
+  /* A slow network may hold a real stage; a dead asset must not hold the
+     entire story forever. After 45 seconds without a complete meadow, stop
+     the expensive path and return to the authored still. */
+  useEffect(() => {
+    if (!canvasMount || canvasUnavailable || paintedStage === "meadow") return;
+    const timeout = window.setTimeout(handleCanvasUnavailable, 45_000);
+    return () => window.clearTimeout(timeout);
+  }, [canvasMount, canvasUnavailable, handleCanvasUnavailable, paintedStage]);
 
   /* Paint the DOM handoff before mounting Three.js. Two animation frames
      guarantee the centred status card reaches the compositor before scene
@@ -262,6 +277,7 @@ export default function Story() {
     (selectedAudience: StoryAudience, withSound: boolean) => {
       setAudience(selectedAudience);
       setEntered(true);
+      setLoaderDismissed(false);
       const webgl = probeWebGL();
       if (webgl === false) setCanvasUnavailable(true);
       else setCanvasBoot(true);
@@ -276,6 +292,26 @@ export default function Story() {
     if (entered) return;
     document.documentElement.classList.add("story-gated");
     return () => document.documentElement.classList.remove("story-gated");
+  }, [entered]);
+
+  /* The modal gate owns the keyboard while it is open. Header navigation is
+     a sibling outside Story, so make that chrome explicitly inert as well as
+     the story controls below. Once the chosen journey replaces the gate,
+     focus moves to the first persistent story control. */
+  useEffect(() => {
+    const backgroundChrome = Array.from(document.querySelectorAll<HTMLElement>(
+      ".story-chrome, .story-sheet",
+    ));
+    for (const element of backgroundChrome) element.inert = !entered;
+    return () => {
+      for (const element of backgroundChrome) element.inert = false;
+    };
+  }, [entered]);
+
+  useEffect(() => {
+    if (!entered) return;
+    const frameId = window.requestAnimationFrame(() => storyEntryFocusRef.current?.focus());
+    return () => window.cancelAnimationFrame(frameId);
   }, [entered]);
 
   /* Story -> app: dip to the app's paper ground, then route. The scene
@@ -421,12 +457,17 @@ export default function Story() {
         canvasLive={canvasMount}
         fetched={fetchState}
         painted={paintedStage}
+        onDismissed={handleLoaderDismissed}
       />
-      {reduced === false && canvasMount && (
+      {reduced === false && canvasMount && !canvasUnavailable && (
         <StoryCanvas
           progressRef={progressRef}
           reduced={reduced}
           night={night}
+          /* The million-instance full meadow caused a measured long task on
+             integrated GPUs. Keep automatic entry on the composed opening
+             tier; a future explicit quality control may opt in. */
+          allowFullQuality={false}
           onReady={handleCanvasReady}
           onUnavailable={handleCanvasUnavailable}
           onStagePainted={handleStagePainted}
@@ -438,17 +479,20 @@ export default function Story() {
 
       {audio.element}
       <EnterGate onEnter={handleEnter} entered={entered} onVideoFallback={bootCanvas} />
-      <StoryHUD
-        night={night}
-        onNight={flipNight}
-        sound={audio.on}
-        onSound={audio.toggle}
-        audience={audience}
-        onAudience={setAudience}
-      />
+      {entered ? (
+        <StoryHUD
+          night={night}
+          onNight={flipNight}
+          sound={audio.on}
+          onSound={audio.toggle}
+          audience={audience}
+          onAudience={setAudience}
+          initialFocusRef={storyEntryFocusRef}
+        />
+      ) : null}
 
       {/* progress rail */}
-      <nav className={railClass} aria-label="Story progress">
+      <nav className={railClass} aria-label="Story progress" inert={!entered ? true : undefined}>
         {beats.map((b, i) => (
           <button
             key={b.id}
@@ -470,7 +514,7 @@ export default function Story() {
       </nav>
 
       {/* ---- the pinned copy stage: paper pages laid over the world ---- */}
-      <div className="story-stage">
+      <div className="story-stage" inert={!entered ? true : undefined}>
         {beats.map((b, i) => (
           <article
             key={b.id}
@@ -518,7 +562,7 @@ export default function Story() {
         ))}
       </div>
 
-      <div className="story-flow" id="main">
+      <div className="story-flow" id="main" inert={!entered ? true : undefined}>
         {/* hero — a paper column against the world, not a scrim blob */}
         <section
           ref={(el) => {

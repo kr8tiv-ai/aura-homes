@@ -2,7 +2,8 @@ import { expect, test } from "playwright/test";
 
 /* The approved global navigation and its compatibility contract:
    · Five entries: Explore homes · Design a home · How it works ·
-     My projects · More (Land fit pilot, Check a contractor, FAQ, About).
+     My projects · More (Land fit pilot, Check a contractor, Roadmap, FAQ,
+     About — Roadmap added Aug 12 with the /roadmap page).
    · Legacy routes redirect CLIENT-SIDE (static export — no server 301s).
    · The journey spine is workspace chrome: absent without a project, and
      its Funding step routes to /budget, never the legacy concierge. */
@@ -20,9 +21,10 @@ test("the primary navigation carries the five approved entries", async ({ page }
   const more = page.getByRole("navigation", { name: "More Aura tools" });
   await expect(more.getByRole("link", { name: "Land fit pilot" })).toBeVisible();
   await expect(more.getByRole("link", { name: "Check a contractor" })).toBeVisible();
+  await expect(more.getByRole("link", { name: "Roadmap" })).toBeVisible();
   await expect(more.getByRole("link", { name: "FAQ" })).toBeVisible();
   await expect(more.getByRole("link", { name: "About" })).toBeVisible();
-  await expect(more.getByRole("link")).toHaveCount(4);
+  await expect(more.getByRole("link")).toHaveCount(5);
 
   // HOMES and onchain records left the ordinary utility menu on purpose.
   await expect(more.getByRole("link", { name: /HOMES/ })).toHaveCount(0);
@@ -78,6 +80,7 @@ test("the journey spine stays out of pages without an active project", async ({ 
 
 test("with an active project the spine appears and Funding routes to /budget", async ({ page }) => {
   await page.goto("/start");
+  await page.getByLabel("Project purpose").selectOption("primary-home");
   await page.getByLabel("Project name").fill("Navigation check home");
   await page.getByRole("button", { name: "Create my project" }).click();
   await expect(page).toHaveURL(/\/build/);

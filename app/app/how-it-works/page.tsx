@@ -17,13 +17,13 @@ const stages = [
   {
     n: "01",
     name: "Design",
-    body: "Answer plain questions about the home you want, or open the full editor and shape it yourself. Aura draws a dimensioned, review-ready concept — real geometry with real code checks, stamped NOT FOR CONSTRUCTION because a licensed professional finishes it into a permit set.",
+    body: "Answer plain questions about the home you want, or open the full editor and shape it yourself. Aura draws dimensioned, review-ready design intent with deterministic geometry checks. Those checks catch conflicts in the model; they are not building-code or permit checks. The package is stamped NOT FOR CONSTRUCTION because a licensed professional must review and complete it.",
     link: { href: "/build", label: "Design a home" },
   },
   {
     n: "02",
     name: "Land",
-    body: "Measure that design against real parcel facts — setbacks, orientation, slope, height — in the land fit pilot. A fit score is a screening result that tells you what to check next; it is never a permit opinion or a reason to buy.",
+    body: "In today’s land fit pilot, compare that design with clearly labelled demonstration or user-supplied parcel facts — setbacks, orientation, slope and height. A fit score is a screening result that tells you what to check next; it is never a live listing, permit opinion or reason to buy.",
     link: { href: "/land", label: "Open the land fit pilot" },
   },
   {
@@ -35,7 +35,7 @@ const stages = [
   {
     n: "04",
     name: "Team",
-    body: "Check a contractor the way a diligent friend would: registry, WCB, insurance, licence and project history, with every source kept reopenable. Aura never marks anyone as vetted — it shows you what was checked and, just as loudly, what was not.",
+    body: "Record the checks you perform for a contractor — registry, WCB, insurance, licence and project history — and keep supporting evidence with the project. Aura does not perform those checks for you or mark anyone as vetted; it shows what you recorded and, just as loudly, what is missing.",
     link: { href: "/contractors", label: "Check a contractor" },
   },
   {

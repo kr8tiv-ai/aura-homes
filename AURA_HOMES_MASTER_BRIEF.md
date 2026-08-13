@@ -1,8 +1,22 @@
-# AURA HOMES — MASTER BRIEF
+# AURA HOMES — ARCHIVED MASTER HANDOFF
 
-**Consolidation and handoff document. Written 2026-08-09 by the Opus 5 session, for absorption by the Fable 5 build session, which is the single source of truth from here.**
+> [!CAUTION]
+> **Historical snapshot, not the current plan.** This handoff was written on August 9, 2026. Product direction, deployments, branches, handles, and open gaps changed after that date. Do not use any statement below as current truth unless a canonical source listed in the ledger confirms it.
 
-> **Read this first, then `git pull`.** Everything the Opus 5 session did is already pushed to `main` and `gh-pages`. This file exists so that session can be retired with zero loss. It is a *handoff*, not a plan — where it records something as done, the evidence is named; where it records something as not done, it says so plainly.
+## Current-state ledger — August 12, 2026
+
+| Surface | Current truth | Canonical source |
+|---|---|---|
+| Product | Aura is a local-first eco-home project workspace. The ordinary journey is design, land-fit pilot, team evidence, costs, quotes, and handoff. Reservation deposits, escrow, and refunds are not part of the ordinary product. | [`docs/ROADMAP.md`](docs/ROADMAP.md), [`docs/SUBMISSION.md`](docs/SUBMISSION.md) |
+| Plans | The catalog contains 25 editable design starts with source and licence metadata. They are not construction drawings or permit sets. | `app/lib/builder/planCatalog.ts` |
+| Land and team | Land records and default contractor records are demonstration data. Aura does not provide a live Multiple Listing Service feed, a permit decision, or an Aura-vetted contractor marketplace. | `/land`, `/contractors` |
+| Buying | `/buy` is a research and quote-request catalog. It is not a checkout, and no manufacturer is purchasable until a real quote and payment destination exist. | `/buy` |
+| X Layer | Escrow and registry contracts are deployed on X Layer testnet 1952 only and appear in a labelled, optional proof lab. Nothing is deployed on mainnet 196. The current registry is not approved for mainnet. | [`docs/DEPLOYMENTS.md`](docs/DEPLOYMENTS.md), [`docs/MAINNET-DECISION-BRIEF.md`](docs/MAINNET-DECISION-BRIEF.md) |
+| HOMES | HOMES is a planned concept. No token, trust, property, staking position, distribution, sale, or launchpad is live. The legal vehicle and participant rights remain undecided. | [`docs/HOMES-TOKEN-CONCEPT.md`](docs/HOMES-TOKEN-CONCEPT.md), `/homes` |
+| Public identity | The site is live over HTTPS at `aurahomes.fun`. The project X account is `@AuraHomes_fun`. | [`docs/SUBMISSION.md`](docs/SUBMISSION.md) |
+| Repository state | Never copy commit IDs or worktree status from this archive. Read the current repository with `git status`, `git rev-parse HEAD`, and `git fetch`. | Git |
+
+The remaining document is retained for historical and forensic context. Its escrow-led product plan, purchase claims, deployment gaps, branch hashes, and session ownership statements are superseded.
 
 ---
 
@@ -19,11 +33,11 @@
 
 ---
 
-## 1. THE VISION — what Aura Homes is
+## 1. ARCHIVED VISION — superseded product framing
 
-*Reconstructed from the founder's own words in the Fable session. `docs/VISION.md` is canonical; this is the compressed version so nothing is lost in a context reset.*
+*Reconstructed from the founder's words in the August 9 session. `docs/VISION.md` was treated as canonical at that time. Use the current-state ledger now.*
 
-**One click to design a home. Then an agent that babysits the entire build, A to Z, until the keys are in your hand — with every payment flowing in USDC on X Layer.**
+> **Historical vision statement:** One click to design a home, followed by end-to-end build coordination and optional USDC payments. This is not a statement of current capability.
 
 Building an eco home today means being your own general contractor across twenty industries that don't talk to each other. Every gap between them costs money and kills dreams. A conventional builder delivers the reference home at **$450,000–$650,000 ex-land**; the same home, owner-built with the same materials and the same licensed trades, computes to **$199,100 / $301,280 / $443,900** (LOW/MID/HIGH). That difference is mostly margin stacked on coordination — and coordination is software's job. **Aura Homes is the orchestration layer that was missing. It is never the general contractor.**
 
@@ -36,7 +50,7 @@ Building an eco home today means being your own general contractor across twenty
 5. **DIY or hire** — decided *per work package*, not per project, with both the legal answer and the economic one.
 6. **Contractors** — if not DIY, find a top-rated contractor for **every part** of the build, from a research sweep run once engineering completes.
 7. **Orchestrate everything in between** — exterior and outdoor, interior design, furniture, the wood-fired hot tub, solar, greywater, and everything between.
-8. **Fund** — milestone escrow in native USDC on X Layer, 2-of-3 release, Alberta's statutory 10% holdback enforced in contract state.
+8. **Fund (retired product direction)** — this snapshot proposed milestone escrow in native USDC. Escrow now exists only as a labelled X Layer testnet proof lab and is not an Aura service.
 9. **Build to possession** — permits, ordering against real lead times, inventory, trade coordination, draw releases, finishing, final inspection, **completion to spec**.
 
 ### Eco-first, and specific about it
@@ -47,15 +61,15 @@ Building an eco home today means being your own general contractor across twenty
 - **SIP panels.** Continuous insulation, airtight by construction, 2–3 person erection. Honest lead time **12–20 weeks** — no platform magic shortens a panel plant's queue.
 - Solar + LiFePO4 + auto-start generator (not optional in an Alberta January) + WETT-inspected wood stove. Ecoflo-class septic with subsurface-drip greywater. Wood-fired hot tub and deck as a **costed first-class line item**, not an afterthought.
 
-### Money rails
+### Archived money-rails direction
 
-Settlement configuration must be explicit: X Layer mainnet native USDC is `0xB6CEceAB302E2E4948951eE7843FC24E92933061`; the current testnet demo uses faucet-compatible 6-decimal test USDC `0xcB8BF24c6cE16Ad21D707c9505421a17f2bec79D`. The retired `0xDec90…b9B3` deployment is provenance only. **Never infer token identity from a symbol, and never substitute USDC.e.** X Layer mainnet is **196**, testnet is **1952**; verify `eth_chainId` and the configured asset before every transaction. Two doors in remain the product direction: **card-first** (an authorized on-ramp sells the settlement asset in-flow) and **bring-your-own** (a supported wallet and reviewed bridge route). Alberta land closing stays at the licensed fiat/trust boundary, with the required bookkeeping exported.
+This snapshot proposed card-first and bring-your-own crypto payment paths. No production payment path is live. Contract addresses and chain configuration must come from current deployment records, never from this archive or a token symbol.
 
 ### Never un-learn these
 
 Recorded in `docs/AI-HANDOFF.md`. Do not "helpfully" reintroduce any of them:
 
-- Wealthsimple has **no** crypto-backed loans (securities collateral only, re-verified Aug 2026). Aave V3 on X Layer and Ledn are the real answers.
+- External financing products are not Aura recommendations. Eligibility, permitted purpose, assets, rates, fees, liquidation, and custody vary by provider, jurisdiction, and date. Use the dated official links on `/how-crypto-works`.
 - OKX's exchange **left Canada in June 2023** — hence card-first.
 - **"Permit-ready AI drawings" do not exist anywhere.** Say **review-ready design package**.
 - **District**, not county, bylaws set minimum dwelling size. Lac Ste. Anne: Agricultural 592 sqft, Country Residential 1,076 sqft — the same 800 sqft house is permittable on one parcel and not on another minutes away.
@@ -70,15 +84,15 @@ Recorded in `docs/AI-HANDOFF.md`. Do not "helpfully" reintroduce any of them:
 
 ---
 
-## 1A. THE PHASED ROADMAP — the shared plan
+## 1A. ARCHIVED PHASED ROADMAP — superseded
 
 *Set by the founder, 2026-08-09. Full version with market evidence, named partner candidates and the legal analysis: **[docs/PHASED-ROADMAP.md](docs/PHASED-ROADMAP.md)** (written by the Fable session), backed by [docs/research/RETAIL-PARTNERS-USDC.md](docs/research/RETAIL-PARTNERS-USDC.md) and [docs/research/MARKET-AND-USDC-FEASIBILITY.md](docs/research/MARKET-AND-USDC-FEASIBILITY.md).*
 
-> **SEQUENCING RULE — the live-site fix comes first.** Deploy, mobile layout, and the grass/trees/mountains work take priority over every phase below. The phases get built once **aurahomes.fun is presentable**. After that, the immediate build targets are the **Phase-1 chatbot and the USDC purchase flow**.
+> **Historical sequencing only.** The current release does not target a USDC checkout or escrow product. Follow the current-state ledger and `docs/ROADMAP.md`.
 
-### Phase 1 — buy an eco home with USDC *(hackathon MVP)*
+### Archived Phase 1 — retired USDC purchase concept
 
-A user can **purchase one of these eco homes with USDC**. Three things make it real:
+This was a proposed flow. Aura does not currently sell homes or process USDC purchases. The following bullets are retained as historical research, not current capabilities or commitments:
 
 - **A real retailer/seller who accepts USDC.** Not a mock. The research session is hunting named candidates — the shortlist lives in `docs/research/RETAIL-PARTNERS-USDC.md`. Two findings that de-risk it: **BOXABL already accepts crypto for home sales** (Casita, ~375 sqft, ~$49.5K), and the industry's first real payment is already a **reservation deposit** (Nestron takes $1,000 online today, via Stripe) — so Aura's Phase 1 buy button is that exact fee, settled in USDC and wrapped in escrow. The seller never has to hold crypto: an approved gateway auto-converts to fiat, the Dubai/DAMAC model.
 - **A chatbot we program.** We author the instructions and the flows; it ships as a **live, interactive assistant** that guides the user through the whole process end to end — budget, climate, off-grid systems, what is actually included, lead times — and **it is the interface to the buy flow, not a sidebar.** The order it produces is the order that gets funded.
@@ -86,21 +100,21 @@ A user can **purchase one of these eco homes with USDC**. Three things make it r
 
 The AI has to be load-bearing, not garnish: the constraint check runs **before the buy button unlocks**, and **the buy button must be able to say NO** — the district-minimum kill (592 vs 1,076 sqft) is the most memorable moment in the demo.
 
-### Phase 2 — buy the property too, and customize
+### Archived Phase 2 — property purchase concept
 
 - **Buy the land**, paid via **X Layer / OKX** using bridges and on-ramps.
 - The user can **buy or customize** the home/property — **either through a retailer or through an AI app.**
 - The legal split that makes it work, and the best line in the pitch: **the home is *goods*, settleable in USDC essentially today; the land is *a deed* in a government registry.** So the land deposit is escrowed on-chain, the closing is executed by a lawyer in fiat (Alberta lawyers cannot hold crypto in trust), and the on-chain record updates on title confirmation.
 
-### Phase 3 — increasingly automated
+### Archived Phase 3 — automation concept
 
 Toward the **full one-click, A-to-Z design and build orchestration** described in §1 — the platform carrying design → land → budget → contractors → permits → ordering → draws → possession, with the human in the loop only where the law requires it.
 
-**Note on numbering:** `docs/ROADMAP.md` uses a *different*, engineering-timeline numbering (its Phase 0 is the 12-day sprint). The two are mapped against each other in `PHASED-ROADMAP.md`. Unqualified, "Phase 1" means the founder's Phase 1 — the USDC buy flow.
+**Historical numbering only:** do not use the phrase "Phase 1" from this archive to direct current work. Follow `docs/ROADMAP.md` and `docs/SUBMISSION.md`.
 
 ---
 
-## 2. STATE OF THE REPO — what is on GitHub right now
+## 2. ARCHIVED REPOSITORY STATE — August 9 snapshot only
 
 | Branch | HEAD | What |
 |---|---|---|
@@ -178,7 +192,7 @@ The bridge to the hot tub strobed. **Two independent bugs stacked:**
 
 ---
 
-## 4. GAP ANALYSIS — what Matt asked for that is still not done
+## 4. ARCHIVED GAP ANALYSIS — do not use as the current backlog
 
 *Full version with step-by-step continuation: `outputs/AURA-HOMES-GAP-ANALYSIS.md`.*
 
@@ -186,19 +200,19 @@ The bridge to the hot tub strobed. **Two independent bugs stacked:**
 
 | # | Gap | Action |
 |---|---|---|
-| **G1** | **Testnet contracts not deployed.** Deployer `0x831Fb0C6f8A96dE7c7253bF76C98a780d6E0f260` at nonce 0, 0 OKB. | **MATT:** claim the OKB faucet (captcha-gated, 0.2 OKB/day — claim daily). Then `npm run deploy:testnet` on chain 1952, verify `eth_chainId` first. |
-| **G2** | **No `@AuraHomesAI` account, no KYC, no Google Form submission.** | **MATT:** create the handle, KYC, submit — after G1 and a working demo link. |
-| **G3** | **HTTPS on aurahomes.fun has no certificate.** Pages API reports `https_certificate: null`; re-asserting the domain returns *"The certificate does not exist yet."* HTTP works; **judges will hit https**. | **MATT (20 s):** Settings → Pages → clear the custom domain, save, re-enter `aurahomes.fun`, save. Not done here because remove/re-add briefly detaches a site that had just been fixed. |
+| **G1 (resolved)** | X Layer testnet contracts are deployed. | Read current addresses and verification from `docs/DEPLOYMENTS.md`. Do not treat them as a production escrow service. |
+| **G2 (partly resolved)** | `@AuraHomes_fun` exists. KYC and form submission remain founder actions. | Use `docs/SUBMISSION.md`. |
+| **G3 (resolved)** | `https://aurahomes.fun` is live. | Recheck the live site before submission. |
 
 ### Product gaps
 
 | # | Gap | Continuation |
 |---|---|---|
-| **G4** | **90-second demo video** — script exists in `docs/SUBMISSION.md`. | Blocked on G1 + G3. Capture real figures only: the scroll journey, a real design brief, the LOW/MID/HIGH table matching `cost-model.json` on screen, the **Lac Ste. Anne district-minimum REJECT** (the scripted wow moment), then the escrow lifecycle showing the 10 % holdback and the `HoldbackNotMatured()` revert. |
+| **G4** | **90-second demo video** — the canonical script exists in `docs/SUBMISSION.md`. | Capture the real project journey. Keep the escrow contract outside the core demo and identify it only as an optional testnet lab. |
 | **G5** | **NotebookLM mining** — was in flight in the Fable session. Notebook *"Aura: Global Solutions for Luxury Homes and Stealth AI"*, **74 sources (68 selected)**. Capture file at `…\0b0dbb42-…\scratchpad\notebooklm-capture.md`. **There is no NotebookLM MCP** — the registry returned zero results; Chrome automation is the only route. Gotcha: `Runtime.evaluate` times out at 45 s on that tab; batch 10-second waits. | Land the findings as `docs/research/NOTEBOOKLM-FINDINGS.md`. **Act on the permit findings specifically** — see G6. |
 | **G6** | **Alberta permit traps not in the playbook or cost model.** Surfaced by the NotebookLM run: (a) **both Development AND Building Permits must be secured before factory fabrication may legally begin**, even under CSA A277 — critical for a SIP/modular product; (b) permit fees are assessed on **Prevailing Market Value of factory + site work combined**, not site prep; (c) bundling a detached garage can delay occupancy of the house; (d) the farm-building exemption covers Building Permits but **never** Development Permits or setbacks. | Add to `docs/ALBERTA-PLAYBOOK.md`; add a permit-fee line to `data/alberta/cost-model.json` and re-reconcile `totalsRule`. Already written into the README §12. |
 | **G7** | **Blender MCP installed but never run against the Aura GLBs.** Zero `mcp__blender__*` calls in the Fable session. The six GLBs ship as downloaded — **604 KB raw, no compression at all**. | Run a poly-budget audit, then the meshopt + KTX2 compression pass from §3. Free payload win. Append the result to `docs/research/BLENDER-MCP.md` so ledger item 19 is genuinely done. |
-| **G8** | **In-app financing panel missing.** Documentation side is done; `grep app/` finds no Aave/Ledn/financing surface. | Add to `/budget` and `/dashboard`, rendering the entries already in `data/alberta/suppliers.json`. Respect the Wealthsimple correction. |
+| **G8 (resolved differently)** | `/how-crypto-works` contains a dated external-research panel. | It links to official provider material with jurisdiction, purpose, fee, liquidation, and custody caveats. It is not an Aura financing product or provider recommendation. |
 | **G9** | ~~**780 vs 800 sqft contradiction**~~ — **RESOLVED by the Fable session mid-handoff**: `app/components/story/Story.tsx` now reads "800 sq ft", matching `cost-model.json` and the README. | Verify it ships on the next deploy. |
 | **G10** | Audit #4 / pre-commit sweep; `CREDITS.md` covers every file in `app/public/models/`; `pipeline.ts` `DEFAULT_COST_MODEL` comment still cites the retired $185K/$290K/$465K. | Append `## Audit #4` **below** the "Next audit" line in `docs/AUDIT-LOG.md`. Never edit prior audits. |
 | **G11** | Founder decisions open (`docs/OPEN-QUESTIONS.md`). **Q8 matters most:** the dictation said the token was *"paired with SpaceX"*; the whole of `TOKEN-DESIGNS.md` assumes that meant **paired with USDC**. | **MATT** confirms. |

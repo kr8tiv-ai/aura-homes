@@ -6,7 +6,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /// @title AuraBuildEscrow
-/// @notice Milestone escrow for a single eco-home build, settled in native USDC on X Layer.
+/// @notice Testnet milestone experiment for one eco-home build, settled in a configured six-decimal ERC-20.
 ///         Releases require 2-of-3 approval (homeowner + builder, or the arbiter breaking a tie).
 ///         A statutory holdback (default 10%) is retained from every release and only becomes
 ///         releasable after a holdback period (default 60 days) — modeling Alberta's Prompt

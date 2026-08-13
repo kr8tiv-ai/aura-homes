@@ -42,6 +42,7 @@ test("contractor evidence filters and legal-name verification stay explicit", as
 
 test("project land and contractor choices become a hash-bound RFQ", async ({ page }) => {
   await page.goto("/start");
+  await page.getByLabel("Project purpose").selectOption("primary-home");
   await page.getByLabel("Project name").fill("RFQ field house");
   await page.getByRole("button", { name: "Create my project" }).click();
   await page.goto("/land");
@@ -54,9 +55,15 @@ test("project land and contractor choices become a hash-bound RFQ", async ({ pag
   await page.getByLabel("Exact legal name", { exact: true }).fill("Prairie Field Build Ltd.");
   await page.getByLabel("Service region").fill("Foothills County");
   await page.getByLabel("Exact legal name appears in the Alberta builder registry").check();
+  await page.getByLabel("Exact registry result URL").fill("https://residentialprotection.alberta.ca/public-registry/Builder/example");
   await page.getByLabel("Current WCB clearance recorded").check();
+  await page.getByLabel("WCB evidence URL").fill("https://www.wcb.ab.ca/clearance/example");
+  await page.getByLabel("WCB expiry").fill("2027-01-01");
   await page.getByLabel("Liability insurance certificate recorded").check();
+  await page.getByLabel("Insurance evidence URL").fill("https://example.test/insurance-certificate");
+  await page.getByLabel("Insurance expiry").fill("2027-01-01");
   await page.getByLabel("Comparable projects and references recorded").check();
+  await page.getByLabel("Comparable work evidence URL").fill("https://example.test/comparable-projects");
   await page.getByRole("button", { name: "Save case file" }).click();
   await expect(page.getByText("User-supplied project case file")).toBeVisible();
   await page.getByRole("button", { name: "Add to project shortlist" }).click();
@@ -72,25 +79,25 @@ test("project land and contractor choices become a hash-bound RFQ", async ({ pag
 
 test("the buy catalog renders the honest card hierarchy with no ranking and no routing detail", async ({ page }) => {
   await page.goto("/buy");
-  await expect(page.getByRole("heading", { name: "Choose a finished eco home" })).toBeVisible();
-  await expect(page.locator("[data-slot='home-identity']")).toHaveCount(3);
-  await expect(page.getByText("Reliable pricing not found — request a quote.")).toHaveCount(3);
-  await expect(page.getByText("Aura illustrative visual — not a product photo")).toHaveCount(3);
+  await expect(page.getByRole("heading", { name: "Explore eco-home models and concepts" })).toBeVisible();
+  await expect(page.locator("[data-slot='home-identity']")).toHaveCount(2);
+  await expect(page.getByText("Reliable pricing not found — request a quote.")).toHaveCount(2);
+  await expect(page.getByText("Aura illustrative visual — not a product photo")).toHaveCount(2);
   const visibleText = await page.locator("body").innerText();
   expect(visibleText).not.toMatch(/readiness|\/100|purchase evidence|ChangeNOW/i);
 
   await page.getByRole("combobox", { name: "Destination", exact: true }).selectOption("japan");
   await expect(page.locator("[data-slot='home-identity']")).toHaveCount(1);
-  await expect(page.getByText("Lib Earth House model B")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Lib Earth House model B", exact: true })).toBeVisible();
   await page.getByRole("combobox", { name: "Destination", exact: true }).selectOption("any");
 
-  // compare fills to its cap of three
+  // The current research catalog has two defensible entries; the compare
+  // mechanism still retains its three-item cap for later permissioned data.
   await page.getByRole("button", { name: "Compare", exact: true }).first().click();
   await page.getByRole("button", { name: "Compare", exact: true }).first().click();
-  await page.getByRole("button", { name: "Compare", exact: true }).first().click();
-  await expect(page.getByRole("heading", { name: "3 of 3 homes" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "2 of 3 homes" })).toBeVisible();
   await page.getByRole("button", { name: "Clear comparison" }).click();
-  await expect(page.getByRole("heading", { name: "3 of 3 homes" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "2 of 3 homes" })).toHaveCount(0);
 
   // the "published price" filter has nothing to show, and says so honestly
   await page.getByRole("combobox", { name: "Price", exact: true }).selectOption("published");
@@ -100,6 +107,7 @@ test("the buy catalog renders the honest card hierarchy with no ranking and no r
 test("a finished-home project saves a home, requests a quote, and gates payment on a real quote", async ({ page }) => {
   await page.goto("/start");
   await page.getByRole("button", { name: "Buy a finished home" }).click();
+  await page.getByLabel("Project purpose").selectOption("primary-home");
   await page.getByLabel("Project name").fill("Finished cabin search");
   await page.getByRole("button", { name: "Create my project" }).click();
   await expect(page).toHaveURL(/\/buy/);

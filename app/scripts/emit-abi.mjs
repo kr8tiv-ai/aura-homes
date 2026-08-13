@@ -21,7 +21,7 @@ const header = `// Contract ABIs — REGENERATED from the compiled hardhat artif
 
 `;
 
-const erc20 = `/** Minimal ERC-20 slice for native USDC (approve/allowance/balance). */
+const erc20 = `/** Minimal ERC-20 slice for the configured six-decimal settlement token. */
 export const erc20Abi = [
   { type: "function", name: "approve", stateMutability: "nonpayable", inputs: [{ name: "spender", type: "address" }, { name: "value", type: "uint256" }], outputs: [{ type: "bool" }] },
   { type: "function", name: "allowance", stateMutability: "view", inputs: [{ name: "owner", type: "address" }, { name: "spender", type: "address" }], outputs: [{ type: "uint256" }] },

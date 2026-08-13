@@ -9,7 +9,7 @@ import {
 } from "@/lib/builder/orderSnapshot";
 import { Button, Panel } from "./ui";
 
-type Destination = "quote" | "concierge" | "land";
+type Destination = "quote" | "project" | "land";
 
 export default function BuilderOrderHandoff({ document }: { document: BuilderDocument }) {
   const [busy, setBusy] = useState<Destination | null>(null);
@@ -25,7 +25,9 @@ export default function BuilderOrderHandoff({ document }: { document: BuilderDoc
       window.location.assign(
         destination === "land"
           ? `${base}/land?project=${encodeURIComponent(snapshot.projectId)}`
-          : `${base}/concierge?project=${encodeURIComponent(snapshot.projectId)}&intent=${destination}`,
+          : destination === "quote"
+            ? `${base}/budget?project=${encodeURIComponent(snapshot.projectId)}`
+            : `${base}/dashboard?project=${encodeURIComponent(snapshot.projectId)}`,
       );
     } catch (cause) {
       setError(
@@ -48,8 +50,8 @@ export default function BuilderOrderHandoff({ document }: { document: BuilderDoc
         >
           {busy === "quote" ? "Saving handoff…" : "Continue to quote"}
         </Button>
-        <Button disabled={busy !== null} onClick={() => void continueWith("concierge")}>
-          {busy === "concierge" ? "Saving handoff…" : "Take this design to concierge"}
+        <Button disabled={busy !== null} onClick={() => void continueWith("project")}>
+          {busy === "project" ? "Saving handoff…" : "Review the whole project"}
         </Button>
         <Button disabled={busy !== null} onClick={() => void continueWith("land")}>
           {busy === "land" ? "Saving handoff…" : "Find land for this design"}
@@ -58,7 +60,8 @@ export default function BuilderOrderHandoff({ document }: { document: BuilderDoc
       <p className="mt-3 max-w-3xl text-xs leading-relaxed text-aura-text/60">
         Quotes are time-limited Alberta estimates from the open cost model. Land, site conditions,
         supplier pricing, engineering, permits and GST remain explicit assumptions or exclusions;
-        the district land gate still runs before any deposit action.
+        land suitability, payment choice, and every real-world commitment remain separate,
+        confirmed decisions.
       </p>
       {error ? (
         <p

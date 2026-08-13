@@ -56,6 +56,7 @@ import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
 import { ContactShadows, Environment, Lightformer, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import {
+  cameraFrameForSummary,
   GRADE_Y_FT,
   type HomeGeometry,
   type Part,
@@ -677,12 +678,17 @@ function ReframeOnLoad({
   controls,
 }: {
   epoch: number;
-  initial: { distance: number; height: number; target: [number, number, number] };
+  initial: {
+    distance: number;
+    height: number;
+    position: [number, number, number];
+    target: [number, number, number];
+  };
   controls: MutableRefObject<ElementRef<typeof OrbitControls> | null>;
 }) {
   const { camera, invalidate } = useThree();
   useEffect(() => {
-    camera.position.set(initial.distance * 0.72, initial.height, initial.distance);
+    camera.position.set(...initial.position);
     const orbit = controls.current;
     if (orbit) {
       orbit.target.set(...initial.target);
@@ -752,13 +758,7 @@ export default function Viewport({
      massing, while every slider drag inside a document leaves the camera
      exactly where it was. "Frame the home" restores this framing. */
   const initial = useMemo(() => {
-    const b = home.summary.boundsWithRoof;
-    const span = Math.max(30, b.widthFt, b.depthFt, home.summary.maxRidgeHeightFt * 1.6);
-    return {
-      distance: span * 1.9,
-      height: span * 0.85,
-      target: [0, Math.max(6, home.summary.maxRidgeHeightFt * 0.4), 0] as [number, number, number],
-    };
+    return cameraFrameForSummary(home.summary);
     // `home` deliberately unlisted: the epoch names the moments a reframe is
     // wanted, and the closure reads the home THAT load delivered.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -770,6 +770,8 @@ export default function Viewport({
     <div
       data-builder-quality={quality.tier}
       data-load-epoch={loadEpoch}
+      data-frame-target-x={initial.target[0].toFixed(3)}
+      data-frame-target-z={initial.target[2].toFixed(3)}
       className="builder-viewport relative overflow-hidden rounded-2xl bg-aura-sunken"
     >
       <div className="aspect-[16/10] min-h-[22rem] w-full lg:aspect-[16/9] lg:min-h-[34rem]">
@@ -782,7 +784,7 @@ export default function Viewport({
             fov: 38,
             near: 1,
             far: 3000,
-            position: [initial.distance * 0.72, initial.height, initial.distance],
+            position: initial.position,
           }}
           gl={{ antialias: true, powerPreference: "high-performance" }}
           onCreated={({ gl }) => {

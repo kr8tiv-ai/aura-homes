@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useAuraProject } from "@/components/project/ProjectContext";
-import { createProjectBudget, defaultProjectBudgetScenario } from "@/lib/builder/projectBudget";
 import type { ContractorProfile } from "@/lib/marketplace/discovery";
+import { projectBudgetForProject } from "@/lib/project/document";
 import { projectDiscoveryRecords } from "@/lib/project/discoveryRecord";
 import { createProjectRfq, validateProjectRfq, type ProjectRfq, type RfqScope } from "@/lib/project/rfq";
 
@@ -33,13 +33,7 @@ export default function RfqWorkbench() {
   const contractorById = new Map(records.map((record) => [record.subjectId, record.data]));
   const shortlist = (project?.discovery.contractors.shortlist ?? []).map((id) => contractorById.get(id)).filter((item): item is ContractorProfile => !!item);
   const rfqs = savedRfqs(project?.delivery.rfqs ?? []);
-  const budget = useMemo(() => project ? createProjectBudget({
-    document: project.design.document,
-    scenario: defaultProjectBudgetScenario(),
-    region: project.requirements.location.region,
-    municipality: project.requirements.location.municipality,
-    budgetCapCad: project.requirements.budgetCad.max,
-  }) : null, [project]);
+  const budget = useMemo(() => project ? projectBudgetForProject(project) : null, [project]);
 
   async function prepare(event: React.FormEvent) {
     event.preventDefault();

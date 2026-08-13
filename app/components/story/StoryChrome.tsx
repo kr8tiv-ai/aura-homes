@@ -15,6 +15,7 @@
 --------------------------------------------------------------------- */
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { FOLLOW_INTENT } from "../SocialShareLinks";
 import { withBase } from "../../lib/basePath";
 import { GATE, type StoryAudience } from "./copy";
 
@@ -50,7 +51,44 @@ export function EnterGate({
   const [leaving, setLeaving] = useState(false);
   const [soundOn, setSoundOn] = useState(true);
   const [hydrated, setHydrated] = useState(false);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => setHydrated(true), []);
+
+  useEffect(() => {
+    if (entered || !hydrated) return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const focusableElements = () => Array.from(dialog.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    )).filter((element) => !element.hasAttribute("hidden"));
+    focusableElements()[0]?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return;
+      const focusable = focusableElements();
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (!dialog.contains(document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    const onFocusIn = (event: FocusEvent) => {
+      if (!dialog.contains(event.target as Node)) focusableElements()[0]?.focus();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("focusin", onFocusIn);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("focusin", onFocusIn);
+    };
+  }, [entered, hydrated]);
 
   /* ---- the gate film ----
      The founder's Grok-generated establishing film plays as a muted looping
@@ -96,6 +134,7 @@ export function EnterGate({
 
   return (
     <div
+      ref={dialogRef}
       className={`story-gate${leaving ? " leaving" : ""}`}
       role="dialog"
       aria-modal="true"
@@ -150,7 +189,7 @@ export function EnterGate({
         {/* Both journeys are visible together — there is no hidden or default
             selection. Copy is the founder's verbatim pick (copy.ts GATE). */}
         <div className="story-gate-paths" aria-label="Choose your journey">
-          <button type="button" className="story-gate-path" onClick={() => go("project")} disabled={!hydrated || leaving} autoFocus>
+          <button type="button" className="story-gate-path" onClick={() => go("project")} disabled={!hydrated || leaving}>
             <strong>{GATE.paths.project.title}</strong>
             <small>{GATE.paths.project.desc}</small>
           </button>
@@ -226,6 +265,7 @@ export function StoryHUD({
   onSound,
   audience,
   onAudience,
+  initialFocusRef,
 }: {
   night: boolean;
   onNight: () => void;
@@ -233,12 +273,14 @@ export function StoryHUD({
   onSound: () => void;
   audience: StoryAudience;
   onAudience: (audience: StoryAudience) => void;
+  initialFocusRef?: { current: HTMLButtonElement | null };
 }) {
   const stars = useRepoStars();
 
   return (
-    <div className="story-hud">
+    <nav className="story-hud" aria-label="Story controls">
       <button
+        ref={initialFocusRef}
         type="button"
         className="story-hud-btn story-hud-perspective"
         onClick={() => onAudience(audience === "project" ? "crypto" : "project")}
@@ -275,6 +317,26 @@ export function StoryHUD({
             {stars >= 1000 ? `${(stars / 1000).toFixed(1)}k` : stars}
           </em>
         )}
+      </a>
+
+      {/* Follow pill (founder ask, Aug 12): the account is live and the
+          hackathon weighs an ACTIVE one, so the landing asks plainly. A true
+          one-click auto-follow needs OAuth and a server — impossible here —
+          so this is X's own pre-filled follow dialog, the same honest
+          journey shape as STAR_URL above. The soft breathing pulse is the
+          "apparent" treatment; it stops entirely under reduced motion. */}
+      <a
+        className="story-hud-btn story-hud-follow"
+        href={FOLLOW_INTENT}
+        target="_blank"
+        rel="noreferrer"
+        aria-label="Follow @AuraHomes_fun on X"
+        title="Follow @AuraHomes_fun on X"
+      >
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+        </svg>
+        <span>Follow us on X</span>
       </a>
 
       <button
@@ -316,7 +378,7 @@ export function StoryHUD({
         )}
         <span className="story-hud-sr">{sound ? "Sound on" : "Sound off"}</span>
       </button>
-    </div>
+    </nav>
   );
 }
 

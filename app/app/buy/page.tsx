@@ -19,9 +19,9 @@ import HomeCatalog from "@/components/buy/HomeCatalog";
 import LegacyResearch from "@/components/buy/LegacyResearch";
 
 export const metadata = {
-  title: "Choose a finished eco home — Aura Homes",
+  title: "Explore eco-home models and concepts — Aura Homes",
   description:
-    "A catalog of finished home models mapped honestly from dated research: model and maker, price state, delivery regions, and sources. Aura facilitates; it does not sell.",
+    "A dated research catalog of manufactured-home models and concepts: maker, price state, delivery evidence, and unresolved questions. Aura facilitates; it does not sell.",
 };
 
 export default function BuyPage() {
@@ -31,15 +31,14 @@ export default function BuyPage() {
         <p className="aura-label mb-4">The other path · choose, don&rsquo;t start from scratch</p>
       </Reveal>
       <RevealWords
-        text="Choose a finished eco home"
+        text="Explore eco-home models and concepts"
         className="max-w-3xl font-display text-[2.35rem] font-medium leading-[1.08] tracking-[-0.025em]"
       />
       <Reveal delay={0.08} y={12} className="mt-4">
         <p className="max-w-2xl text-[0.95rem] leading-[1.65] text-aura-text/75">
-          Every home below is a real model from a real maker, mapped from dated research — never
-          dressed up beyond what the evidence says. Where the record has no price, the card says
-          so and offers a quote request instead. Where delivery is unconfirmed, the card says ask
-          the maker.
+          This is a small, dated research catalog—not inventory and not an offer for sale. It
+          separates current maker models from announced concepts, leaves missing prices blank,
+          and tells you when delivery still has to be confirmed with the maker.
         </p>
       </Reveal>
       <Reveal delay={0.12} y={12} className="mt-4">

@@ -183,7 +183,7 @@ export function describeTransactionFailure(
     return "The on-chain refund window has closed, so refundDeposit() correctly reverted. Nothing moved.";
   }
   if (text.includes("insufficient") && (text.includes("balance") || text.includes("allowance"))) {
-    return `The ${action} could not proceed because the wallet lacks the required native USDC balance or allowance. Nothing moved.`;
+    return `The ${action} could not proceed because the wallet lacks the configured test-token balance or allowance. Nothing moved.`;
   }
   if (text.includes("revert")) {
     return `The ${action} reverted on X Layer. Nothing moved. Wallet detail: ${raw.slice(0, 180)}`;

@@ -32,6 +32,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
+    site: "@AuraHomes_fun",
+    creator: "@AuraHomes_fun",
     title: TITLE,
     description: DESCRIPTION,
     images: ["/social/aura-homes-social-v2.jpg"],

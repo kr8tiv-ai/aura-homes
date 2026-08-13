@@ -74,6 +74,37 @@ test("every plan carries a transparent Alberta materials-and-systems range", () 
   }
 });
 
+test("steel and polycarbonate studies disclose when the range is only a proxy", () => {
+  for (const id of ["fjell-cube", "lys-lantern", "lightframe-pavilion"]) {
+    const estimate = estimatePlanTemplate(id) as ReturnType<typeof estimatePlanTemplate> & {
+      costBasis?: { status: string; label: string; note: string };
+    };
+
+    expect(estimate.costBasis?.status).toBe("proxy");
+    expect(estimate.costBasis?.label).toMatch(/proxy/i);
+    expect(estimate.costBasis?.note).toMatch(/SIP|timber|steel|polycarbonate/i);
+  }
+});
+
+test("a selected plan keeps its origin and cost basis through document validation", () => {
+  const document = instantiatePlanTemplate("lightframe-pavilion");
+
+  expect(document.planOrigin).toEqual({
+    templateId: "lightframe-pavilion",
+    templateTitle: "Lightframe Pavilion",
+    costBasis: {
+      status: "proxy",
+      label: "Timber/SIP proxy",
+      note: expect.stringMatching(/steel frame and polycarbonate packages/i),
+    },
+  });
+
+  const restored = validateBuilderDocument(JSON.parse(JSON.stringify(document)));
+  expect(restored.ok).toBe(true);
+  if (!restored.ok) return;
+  expect(restored.document.planOrigin).toEqual(document.planOrigin);
+});
+
 test("unknown plan identifiers fail instead of silently loading the reference home", () => {
   expect(() => instantiatePlanTemplate("not-a-plan")).toThrow(/Unknown Aura plan template/);
   expect(() => estimatePlanTemplate("not-a-plan")).toThrow(/Unknown Aura plan template/);

@@ -1,8 +1,8 @@
 /* LEGACY RESEARCH — the record behind the catalog, kept readable.
 
    Seven maker records were researched for crypto-payment acceptance in
-   August 2026. Three of them describe a finished home and appear in the
-   catalog above; the other four do not, and this section says exactly why
+   August 2026. Two have enough model-level detail for the research catalog
+   above; the other five do not, and this section says exactly why
    instead of quietly dropping them. The refuted leads stay too — a
    catalog is only as trustworthy as the entries it threw away.
 
@@ -14,7 +14,7 @@ import { FINISHED_HOME_MODELS } from "@/lib/marketplace/homeModels";
 
 /** Why each record is or is not a catalog entry — stated, not implied. */
 const DISPOSITION: Record<string, string> = {
-  "Armstrong Steel": "In the catalog as a residential steel building system.",
+  "Armstrong Steel": "Research only: a broad steel-building category, not a configured home model, with unresolved customer-risk reports.",
   BOXABL: "In the catalog as the Casita foldable factory-built unit.",
   "Lib Work Co., Ltd. (TSE: 1431)": "In the catalog as Lib Earth House model B.",
   "Crypto Emporium":
@@ -36,8 +36,8 @@ export default function LegacyResearch() {
         The record behind the catalog
       </h2>
       <p className="mt-3 max-w-2xl text-sm leading-relaxed text-aura-text/75">
-        Seven maker records were fetched and checked in August 2026. Three describe a finished
-        home and appear above. Four do not — they stay here, with the researcher&rsquo;s caveats
+        Seven maker records were fetched and checked in August 2026. Two have enough model-level
+        detail to compare above; neither is Aura inventory. Five stay here, with the researcher&rsquo;s caveats
         intact, so nobody mistakes a checked record for a listing or re-checks a dead lead.
       </p>
 

@@ -8,7 +8,7 @@ import { USDC_ADDRESS, xLayerTestnet } from "./chains";
 
 export const ESCROW_ADDRESS = "0x4A777bf71d8809244c77A3c2b39ef68793A463b5" as const;
 export const REGISTRY_ADDRESS = "0x1195ED713EEF2Adc32DcF5Bb1c4627F43f1EC32e" as const;
-/** Native Circle USDC on X Layer testnet (6 decimals) — never bridged USDC.e. */
+/** Testnet settlement token: faucet-compatible, six decimals, valueless, and not Circle USDC. */
 export const USDC_TESTNET = USDC_ADDRESS[xLayerTestnet.id];
 
 export const CHAIN_ID = xLayerTestnet.id; // 1952

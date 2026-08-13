@@ -31,23 +31,15 @@ test("durable comfort assumptions participate in builder undo", async ({ page })
   await expect(winterTemperature).toHaveValue("21");
 });
 
-test("builder design handoff reaches a hash-bound quote without losing the project", async ({ page }) => {
+test("builder design handoff reaches the project budget without losing the snapshot", async ({ page }) => {
   test.setTimeout(90_000);
   await page.goto("/build");
   await page.getByRole("button", { name: "Pro", exact: true }).click();
   await page.getByRole("tab", { name: /^Export/ }).click();
   await page.getByRole("button", { name: "Continue to quote" }).click();
 
-  await page.waitForURL(/\/concierge\?project=project-/, { timeout: 30_000 });
-  await expect(page.getByText("Continue to quote is ready", { exact: false })).toBeVisible();
-  await expect(page.getByText("Builder design:", { exact: false })).toBeVisible();
-
-  await page.getByRole("button", { name: "Try 37 Aspen Road" }).click();
-  await page.getByRole("button", { name: "Quote it" }).click();
-
-  await expect(page.getByText("Immutable quote snapshot saved locally", { exact: false })).toBeVisible();
-  await expect(page.getByText("Full documents stay off-chain", { exact: false })).toBeVisible();
-  await expect(page.getByText("quoted", { exact: true })).toBeVisible();
+  await page.waitForURL(/\/budget\?project=project-/, { timeout: 30_000 });
+  await expect(page.getByRole("heading", { name: /A range that moves/ })).toBeVisible();
 
   const stored = await page.evaluate(async () => {
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
@@ -61,5 +53,5 @@ test("builder design handoff reaches a hash-bound quote without losing the proje
       request.onerror = () => reject(request.error);
     });
   });
-  expect(stored).toBe(2);
+  expect(stored).toBe(1);
 });

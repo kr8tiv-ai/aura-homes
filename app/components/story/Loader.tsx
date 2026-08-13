@@ -57,7 +57,7 @@ const FADE_MS = 420;
 /** A beat of "Ready" before the fade, so completion reads as an event. */
 const READY_HOLD_MS = 350;
 
-type LoaderStageName = "Film" | "Canvas" | "Core" | "Landscape" | "Meadow" | "Ready";
+type LoaderStageName = "Preparing scene" | "Canvas" | "Core" | "Landscape" | "Meadow" | "Ready";
 
 /** Frame-stroke milestones. Values are aesthetic; the EVENTS are real. */
 const PAINT_FRAC: Record<OpeningSceneStage, number> = {
@@ -77,6 +77,7 @@ export default function SceneLoader({
   canvasLive,
   fetched,
   painted,
+  onDismissed,
 }: {
   /** entered, motion allowed, and WebGL not known-failed */
   active: boolean;
@@ -86,6 +87,8 @@ export default function SceneLoader({
   fetched: LoaderFetchState;
   /** last progressive stage with a committed frame, null before core */
   painted: OpeningSceneStage | null;
+  /** Fires after the Ready hold and opacity transition have completed. */
+  onDismissed?: () => void;
 }) {
   const [fading, setFading] = useState(false);
   const [gone, setGone] = useState(false);
@@ -111,9 +114,12 @@ export default function SceneLoader({
   }, [complete, fading]);
   useEffect(() => {
     if (!fading) return;
-    const t = window.setTimeout(() => setGone(true), FADE_MS);
+    const t = window.setTimeout(() => {
+      setGone(true);
+      onDismissed?.();
+    }, FADE_MS);
     return () => window.clearTimeout(t);
-  }, [fading]);
+  }, [fading, onDismissed]);
 
   if (!active || gone) return null;
 
@@ -127,7 +133,7 @@ export default function SceneLoader({
   else if (painted !== null) stage = "Landscape"; // core | site | forest painted
   else if (fetchDone) stage = "Core";
   else if (canvasLive && fetched.total > 0) stage = "Canvas";
-  else stage = "Film";
+  else stage = "Preparing scene";
 
   let frac = 0;
   if (canvasLive) frac = FILM_FRAC;
@@ -137,7 +143,14 @@ export default function SceneLoader({
   if (painted !== null) frac = PAINT_FRAC[painted];
 
   const lit = painted !== null; // the window lights when the scene is truly up
-  const showPct = frac > 0;
+  const stageNumber: Record<LoaderStageName, number> = {
+    "Preparing scene": 1,
+    Canvas: 2,
+    Core: 3,
+    Landscape: 4,
+    Meadow: 5,
+    Ready: 5,
+  };
 
   const elapsed = startedAt.current === null ? 0 : Math.max(0, (nowMs || performance.now()) - startedAt.current);
   const timeText = `${(elapsed / 1000).toFixed(1)}s`;
@@ -175,8 +188,7 @@ export default function SceneLoader({
       <span className="aura-loader-txt" aria-hidden>
         <span className="aura-loader-label">{stage}</span>
         <span className="aura-loader-meta">
-          {/* em dash whenever no real fraction exists yet */}
-          <span className="aura-loader-pct">{showPct ? `${Math.round(frac * 100)}%` : "—"}</span>
+          <span className="aura-loader-pct">Stage {stageNumber[stage]} of 5</span>
           <span className="aura-loader-time">{timeText}</span>
         </span>
       </span>

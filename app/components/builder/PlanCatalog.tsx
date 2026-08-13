@@ -57,8 +57,11 @@ export default function PlanCatalog({ onChoose, currentName }: Props) {
      "clicking doesn't seem to change anything" report. Selecting now walks
      the preview into view at those widths; at desktop widths the sticky
      aside is already beside the click and scrolling would be noise. */
-  const choose = useCallback((id: string) => {
+  const choose = useCallback((id: string, scrollPreview: boolean) => {
     setSelectedId(id);
+    /* Keyboard activation keeps focus on the card. Moving the viewport while
+       focus stays in the grid strands keyboard users above the preview. */
+    if (!scrollPreview) return;
     if (typeof window === "undefined") return;
     if (!window.matchMedia("(max-width: 1020px)").matches) return;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -88,18 +91,19 @@ export default function PlanCatalog({ onChoose, currentName }: Props) {
         .includes(needle);
     });
   }, [bedrooms, entries, query, size, source]);
-  const selected = visible.find(({ plan }) => plan.id === selectedId) ?? visible[0] ?? entries[0];
+  const selected = visible.find(({ plan }) => plan.id === selectedId) ?? visible[0] ?? null;
 
   return (
-    <section className="plan-library" aria-labelledby="plan-library-heading" data-selected-plan={selected.plan.id}>
+    <section className="plan-library" aria-labelledby="plan-library-heading" data-selected-plan={selected?.plan.id}>
       <div className="plan-library__intro">
         <div>
           <p className="aura-label text-aura-emerald">Prebuilt plan library</p>
           <h2 id="plan-library-heading">Start from a plan, then make it yours.</h2>
           <p>
             Compare {totalCount} editable eco-home concepts, including {openCount} adapted from
-            open-licence or public-domain sources with their provenance stated in full. Every choice
-            becomes a complete Aura project—3D, plan, autosave, exports and cost range included.
+            open-licence or public-domain sources with their provenance stated in full. Each opens
+            as an editable Aura project—3D massing, plan, autosave, exports and a clearly labelled
+            planning range.
           </p>
         </div>
         <div className="plan-library__truth">
@@ -147,16 +151,20 @@ export default function PlanCatalog({ onChoose, currentName }: Props) {
         </label>
       </div>
 
+      <p className="sr-only" role="status">
+        {selected ? `${selected.plan.title} selected. Details follow.` : "No plans match the current filters."}
+      </p>
+
       <div className="plan-library__body">
         <div className="plan-library__grid">
           {visible.map(({ plan, estimate }) => {
-            const active = selected.plan.id === plan.id;
+            const active = selected?.plan.id === plan.id;
             return (
               <button
                 type="button"
                 key={plan.id}
                 aria-pressed={active}
-                onClick={() => choose(plan.id)}
+                onClick={(event) => choose(plan.id, event.detail > 0)}
                 className="plan-card"
               >
                 <div className="plan-card__visual">
@@ -176,7 +184,13 @@ export default function PlanCatalog({ onChoose, currentName }: Props) {
                   <dl>
                     <div><dt>Sleep</dt><dd>{plan.bedrooms === 0 ? "Studio" : `${plan.bedrooms} bed`}</dd></div>
                     <div><dt>Bath</dt><dd>{plan.bathrooms}</dd></div>
-                    <div><dt>Range</dt><dd>{money(estimate.low)}–{money(estimate.high)}</dd></div>
+                    <div className="plan-card__range">
+                      <dt>Range</dt>
+                      <dd>
+                        {estimate.costBasis.status === "proxy" ? <span className="plan-proxy-badge">Proxy basis</span> : null}
+                        <span>{money(estimate.low)}–{money(estimate.high)}</span>
+                      </dd>
+                    </div>
                   </dl>
                 </div>
               </button>
@@ -192,14 +206,10 @@ export default function PlanCatalog({ onChoose, currentName }: Props) {
           ) : null}
         </div>
 
-        <aside
+        {selected ? <aside
           ref={previewRef}
           className="plan-preview"
           aria-label={`${selected.plan.title} plan preview`}
-          /* aria-live sits HERE, not on the grid: the announcement worth
-             making is "the preview now shows X", spoken from the place that
-             changed. */
-          aria-live="polite"
         >
           <div className="plan-preview__drawing">
             {/* a real hidden-line axonometric from the plan's own model — the
@@ -220,8 +230,11 @@ export default function PlanCatalog({ onChoose, currentName }: Props) {
               <div><span>Planning midpoint</span><strong>{money(selected.estimate.mid)}</strong></div>
             </div>
             <p className="plan-preview__basis">
-              {selected.estimate.lineItems} line items · Alberta pilot range · excludes land, permits,
-              professional design, unknown site work, tax and contingency.
+              <strong>{selected.estimate.costBasis.label}</strong> · {selected.estimate.costBasis.note}
+            </p>
+            <p className="plan-preview__basis">
+              {selected.estimate.lineItems} line items · Alberta pilot planning range · excludes land,
+              permits, professional design, unknown site work, tax and contingency.
             </p>
             <div className="plan-preview__actions">
               <Button tone="loud" onClick={() => onChoose(instantiatePlanTemplate(selected.plan.id), selected.plan)}>
@@ -254,7 +267,7 @@ export default function PlanCatalog({ onChoose, currentName }: Props) {
               <p className="plan-preview__undo">This concept is currently open in the editor.</p>
             )}
           </div>
-        </aside>
+        </aside> : null}
       </div>
     </section>
   );

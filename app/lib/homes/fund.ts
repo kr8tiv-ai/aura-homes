@@ -53,6 +53,8 @@ export interface HomesSnapshot {
   };
   fees: {
     totalUsdc: bigint;
+    tradingUsdc: bigint;
+    serviceUsdc: bigint;
     lastReceiptHash: `0x${string}` | null;
     sources: Array<{
       id: string;
@@ -64,8 +66,6 @@ export interface HomesSnapshot {
   };
   propertyFund: {
     balanceUsdc: bigint;
-    tradingFeeBalanceUsdc: bigint;
-    serviceFeeBalanceUsdc: bigint;
     targetUsdc: bigint;
     escrowAddress: `0x${string}` | null;
   };
@@ -130,7 +130,10 @@ export function allocateHomesTradingFees(totalUsdc: bigint): Record<keyof typeof
 
 function eligibleCommunityHolders(holders: readonly HomesHolder[], limit: number): HomesHolder[] {
   return holders
-    .filter((holder) => holder.staked > BigInt(0) && (holder.classification ?? "community") === "community")
+    /* Eligibility fails closed. An unlabeled address may be a treasury,
+       exchange, LP, contract, or team-controlled wallet; treating it as a
+       community holder would make a future snapshot unsafe by default. */
+    .filter((holder) => holder.staked > BigInt(0) && holder.classification === "community")
     .map((holder) => ({ ...holder }))
     .sort((a, b) => a.staked === b.staked
       ? a.address.localeCompare(b.address)
@@ -179,6 +182,34 @@ export function homesWindDownPayouts(propertyFundBalanceUsdc: bigint, holders: r
   return { eligible, payouts, unallocated: propertyFundBalanceUsdc - paid };
 }
 
+/**
+ * Reconcile the three public fee totals before deriving any allocation.
+ * This is an accounting invariant, not proof that an event is authentic;
+ * receipt-backed adapters remain required before the planned snapshot can
+ * become a live one.
+ */
+export function reconcileHomesFeeLedger(snapshot: HomesSnapshot): {
+  tradingUsdc: bigint;
+  serviceUsdc: bigint;
+  totalUsdc: bigint;
+} {
+  const tradingUsdc = snapshot.fees.tradingUsdc;
+  const serviceUsdc = snapshot.fees.serviceUsdc;
+  const totalUsdc = tradingUsdc + serviceUsdc;
+  const sourceTotal = snapshot.fees.sources.reduce(
+    (sum, source) => sum + source.recognizedUsdc,
+    BigInt(0),
+  );
+
+  if (tradingUsdc < BigInt(0) || serviceUsdc < BigInt(0) || snapshot.fees.totalUsdc < BigInt(0)) {
+    throw new Error("HOMES fee balances cannot be negative.");
+  }
+  if (totalUsdc !== snapshot.fees.totalUsdc || sourceTotal !== snapshot.fees.totalUsdc) {
+    throw new Error("The HOMES fee ledger does not reconcile with its source totals.");
+  }
+  return { tradingUsdc, serviceUsdc, totalUsdc };
+}
+
 export function plannedHomesSnapshot(): HomesSnapshot {
   return {
     status: "planned",
@@ -193,6 +224,8 @@ export function plannedHomesSnapshot(): HomesSnapshot {
     },
     fees: {
       totalUsdc: BigInt(0),
+      tradingUsdc: BigInt(0),
+      serviceUsdc: BigInt(0),
       lastReceiptHash: null,
       sources: [
         { id: "venue", label: "Token venue fee share", model: "Requires a documented venue agreement", status: "planned", recognizedUsdc: BigInt(0) },
@@ -203,8 +236,6 @@ export function plannedHomesSnapshot(): HomesSnapshot {
     },
     propertyFund: {
       balanceUsdc: BigInt(0),
-      tradingFeeBalanceUsdc: BigInt(0),
-      serviceFeeBalanceUsdc: BigInt(0),
       targetUsdc: HOMES_FIRST_PROPERTY_TARGET_USDC,
       escrowAddress: null,
     },

@@ -1,6 +1,7 @@
 "use client";
 
-// Live contract hooks for AuraBuildEscrow / AuraBuildRegistry / native USDC on
+// Live contract hooks for AuraBuildEscrow / AuraBuildRegistry / the configured
+// faucet-compatible test token on
 // X Layer testnet (1952). Every value here is READ FROM THE CHAIN over the
 // public RPC — no wallet needed, no fixture, no stub. The old fixture-backed
 // useEscrowMilestones/useApproveRelease stubs are gone; pages that need the

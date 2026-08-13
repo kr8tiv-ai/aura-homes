@@ -104,7 +104,7 @@ test("no readiness score, purchase-evidence framing or routing detail exists any
 
 test("every home model maps from a real research record, and non-homes never become listings", () => {
   const names = new Set(PROVIDERS.map((provider) => provider.name));
-  expect(FINISHED_HOME_MODELS.length).toBeGreaterThanOrEqual(3);
+  expect(FINISHED_HOME_MODELS.length).toBeGreaterThanOrEqual(2);
   for (const home of FINISHED_HOME_MODELS) {
     expect(names.has(home.legacyProviderName)).toBe(true);
     expect(home.visual.kind).toBe("aura-illustrative");
@@ -116,6 +116,7 @@ test("every home model maps from a real research record, and non-homes never bec
   }
   // existing-property, local site-built and non-home records stay research-only
   const modelled = new Set(FINISHED_HOME_MODELS.map((home) => home.legacyProviderName));
+  expect(modelled.has("Armstrong Steel")).toBe(false);
   for (const provider of PROVIDERS) {
     if (["existing-property", "site-built-home", "unique-stay"].includes(provider.productFit)) {
       expect(modelled.has(provider.name), `${provider.name} must not be a catalog listing`).toBe(false);

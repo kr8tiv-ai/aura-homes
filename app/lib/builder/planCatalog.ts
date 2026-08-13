@@ -75,8 +75,18 @@ export interface PlanTemplate {
   storeys: 1 | 2;
   tags: readonly string[];
   features: readonly string[];
+  /** How honestly the shared Alberta BOM represents this design's intended
+   *  construction. A proxy is still useful for scale, but must never read as
+   *  a steel/polycarbonate quote. */
+  costBasis?: PlanCostBasis;
   source: PlanSource;
   spec: HomeSpec;
+}
+
+export interface PlanCostBasis {
+  status: "modelled" | "proxy";
+  label: string;
+  note: string;
 }
 
 export interface PlanTemplateEstimate {
@@ -89,10 +99,16 @@ export interface PlanTemplateEstimate {
   high: number;
   lineItems: number;
   assumptions: string[];
+  costBasis: PlanCostBasis;
 }
 
 const AURA_REPO = "https://github.com/kr8tiv-ai/aura-homes";
 const AURA_LICENSE = `${AURA_REPO}/blob/main/LICENSE`;
+const MODELLED_COST_BASIS: PlanCostBasis = {
+  status: "modelled",
+  label: "Modelled Aura basis",
+  note: "The range uses the material and systems selected in this editable concept.",
+};
 
 const auraSource = (): PlanSource => ({
   kind: "aura-authored",
@@ -709,6 +725,11 @@ export const PLAN_TEMPLATES: readonly PlanTemplate[] = [
     storeys: 1,
     tags: ["under 400 sq ft", "nordic square", "polycarbonate intent"],
     features: ["True square plan", "Two lantern walls", "Parapet flat roof"],
+    costBasis: {
+      status: "proxy",
+      label: "SIP + glazing proxy",
+      note: "This planning range uses Aura's SIP and glazing inputs; polycarbonate fabrication and detailing require supplier quotes.",
+    },
     volumes: [
       volume({
         width: 20,
@@ -738,6 +759,11 @@ export const PLAN_TEMPLATES: readonly PlanTemplate[] = [
     storeys: 1,
     tags: ["400–800 sq ft", "nordic square", "polycarbonate intent"],
     features: ["Clerestory north light", "18 ft glazing wall", "Square services core"],
+    costBasis: {
+      status: "proxy",
+      label: "SIP + glazing proxy",
+      note: "This planning range uses Aura's SIP and glazing inputs; polycarbonate fabrication and detailing require supplier quotes.",
+    },
     volumes: [
       volume({
         width: 26,
@@ -876,6 +902,11 @@ export const PLAN_TEMPLATES: readonly PlanTemplate[] = [
     storeys: 1,
     tags: ["400–800 sq ft", "steel + polycarbonate", "design forward"],
     features: ["Lantern glazing band", "Solid service spine", "Parapet flat roof"],
+    costBasis: {
+      status: "proxy",
+      label: "Timber/SIP proxy",
+      note: "The current range uses timber/SIP shell inputs; steel frame and polycarbonate packages require project-specific engineering and supplier quotes.",
+    },
     volumes: [volume({ width: 30, depth: 20, roof: "flat", height: 11 })],
     deck: { width: 24, depth: 10 },
     notes: "Aura-authored concept for a steel portal frame with polycarbonate glazing. The cost engine prices this shell on its timber/SIP Alberta basis until a steel basis lands — treat the range as a floor, and have the frame engineered as steel from day one.",
@@ -891,7 +922,15 @@ function findTemplate(id: string): PlanTemplate {
 export function instantiatePlanTemplate(id: string): BuilderDocument {
   const source = findTemplate(id);
   const cloned = JSON.parse(JSON.stringify(source.spec)) as HomeSpec;
-  return builderDocumentFromLegacySpec(cloned);
+  const document = builderDocumentFromLegacySpec(cloned);
+  return {
+    ...document,
+    planOrigin: {
+      templateId: source.id,
+      templateTitle: source.title,
+      costBasis: { ...(source.costBasis ?? MODELLED_COST_BASIS) },
+    },
+  };
 }
 
 function boundsOf(specification: HomeSpec): { width: number; depth: number } {
@@ -961,6 +1000,7 @@ export function estimatePlanTemplate(id: string): PlanTemplateEstimate {
     mid: bom.cad_mid,
     high: bom.cad_high,
     lineItems: bom.items.length,
+    costBasis: plan.costBasis ?? MODELLED_COST_BASIS,
     assumptions: [
       "Aura’s Alberta pilot material, installed shell and appropriately scaled off-grid systems ranges.",
       "Concept geometry only; multi-volume shells use an equivalent-footprint perimeter for this first comparison.",
