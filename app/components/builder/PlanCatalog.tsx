@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { Component, useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 
 import {
   PLAN_TEMPLATES,
@@ -9,7 +9,8 @@ import {
   type PlanTemplate,
 } from "@/lib/builder/planCatalog";
 import type { BuilderDocument } from "@/lib/builder/document";
-import { PlanAxonPreview, PlanDiagram } from "./PlanDiagram";
+import { PlanDiagram } from "./PlanDiagram";
+import PlanModelPreview from "./PlanModelPreview";
 import { Button } from "./ui";
 
 type SizeFilter = "all" | "micro" | "compact" | "home";
@@ -17,8 +18,33 @@ type BedroomFilter = "all" | "studio" | "one" | "two-plus";
 type SourceFilter = "all" | "aura" | "open";
 
 interface Props {
-  onChoose: (document: BuilderDocument, plan: PlanTemplate) => void;
+  onChoose: (document: BuilderDocument, plan: PlanTemplate) => void | Promise<void>;
   currentName: string;
+}
+
+class PreviewBoundary extends Component<
+  { resetKey: string; onRetry: () => void; children: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidUpdate(previous: Readonly<{ resetKey: string; onRetry: () => void; children: ReactNode }>) {
+    if (previous.resetKey !== this.props.resetKey && this.state.failed) this.setState({ failed: false });
+  }
+
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return (
+      <div className="plan-preview__failure" role="alert">
+        <p>The interactive preview could not start. Your open design is unchanged.</p>
+        <button type="button" onClick={this.props.onRetry}>Retry 3D preview</button>
+      </div>
+    );
+  }
 }
 
 const money = (value: number): string =>
@@ -50,6 +76,10 @@ export default function PlanCatalog({ onChoose, currentName }: Props) {
   const [bedrooms, setBedrooms] = useState<BedroomFilter>("all");
   const [source, setSource] = useState<SourceFilter>("all");
   const [selectedId, setSelectedId] = useState(PLAN_TEMPLATES[0].id);
+  const [previewMode, setPreviewMode] = useState<"3d" | "plan">("3d");
+  const [previewRetry, setPreviewRetry] = useState(0);
+  const [commitProblem, setCommitProblem] = useState<string | null>(null);
+  const [committing, setCommitting] = useState(false);
   const previewRef = useRef<HTMLElement | null>(null);
 
   /* Below 1020px the preview stacks under all the cards, so a click near the
@@ -92,6 +122,23 @@ export default function PlanCatalog({ onChoose, currentName }: Props) {
     });
   }, [bedrooms, entries, query, size, source]);
   const selected = visible.find(({ plan }) => plan.id === selectedId) ?? visible[0] ?? null;
+  const previewDocument = useMemo(
+    () => (selected ? instantiatePlanTemplate(selected.plan.id) : null),
+    [selected],
+  );
+
+  const openSelected = useCallback(async () => {
+    if (!selected) return;
+    setCommitting(true);
+    setCommitProblem(null);
+    try {
+      await onChoose(instantiatePlanTemplate(selected.plan.id), selected.plan);
+    } catch (cause) {
+      setCommitProblem(cause instanceof Error ? cause.message : "The design could not be opened. Retry when ready.");
+    } finally {
+      setCommitting(false);
+    }
+  }, [onChoose, selected]);
 
   return (
     <section className="plan-library" aria-labelledby="plan-library-heading" data-selected-plan={selected?.plan.id}>
@@ -212,13 +259,29 @@ export default function PlanCatalog({ onChoose, currentName }: Props) {
           aria-label={`${selected.plan.title} plan preview`}
         >
           <div className="plan-preview__drawing">
-            {/* a real hidden-line axonometric from the plan's own model — the
-                click finally shows massing, roof and storeys, not a rectangle */}
-            <PlanAxonPreview plan={selected.plan} />
+            <div className="plan-preview__view-switch" aria-label="Plan preview view">
+              <button type="button" aria-pressed={previewMode === "3d"} onClick={() => setPreviewMode("3d")}>3D preview</button>
+              <button type="button" aria-pressed={previewMode === "plan"} onClick={() => setPreviewMode("plan")}>Plan view</button>
+            </div>
+            {previewMode === "3d" && previewDocument ? (
+              <PreviewBoundary
+                resetKey={`${selected.plan.id}:${previewRetry}`}
+                onRetry={() => setPreviewRetry((value) => value + 1)}
+              >
+                <PlanModelPreview
+                  key={`${selected.plan.id}:${previewRetry}`}
+                  document={previewDocument}
+                  planId={selected.plan.id}
+                  title={selected.plan.title}
+                />
+              </PreviewBoundary>
+            ) : (
+              <PlanDiagram plan={selected.plan} />
+            )}
             <span>{selected.plan.spec.volumes.length} shell{selected.plan.spec.volumes.length === 1 ? "" : "s"}</span>
           </div>
           <div className="plan-preview__content">
-            <p className="aura-label text-aura-emerald">Selected concept</p>
+            <p className="aura-label text-aura-emerald">Previewing: {selected.plan.title}</p>
             <h3>{selected.plan.title}</h3>
             <p className="plan-preview__best">{selected.plan.bestFor}</p>
             <ul>
@@ -237,8 +300,8 @@ export default function PlanCatalog({ onChoose, currentName }: Props) {
               permits, professional design, unknown site work, tax and contingency.
             </p>
             <div className="plan-preview__actions">
-              <Button tone="loud" onClick={() => onChoose(instantiatePlanTemplate(selected.plan.id), selected.plan)}>
-                Use {selected.plan.title}
+              <Button tone="loud" onClick={() => void openSelected()} disabled={committing}>
+                {committing ? "Opening…" : `Open ${selected.plan.title} in editor`}
               </Button>
               <a href={selected.plan.source.url} target="_blank" rel="noreferrer">
                 {selected.plan.source.kind === "aura-authored"
@@ -248,6 +311,7 @@ export default function PlanCatalog({ onChoose, currentName }: Props) {
                     : "Original plan set ↗"}
               </a>
             </div>
+            {commitProblem ? <p className="plan-preview__commit-error" role="alert">{commitProblem}</p> : null}
             <details className="plan-preview__source">
               <summary>Source, licence and limitations</summary>
               <p>{selected.plan.source.attribution}</p>
@@ -269,6 +333,13 @@ export default function PlanCatalog({ onChoose, currentName }: Props) {
           </div>
         </aside> : null}
       </div>
+      {selected ? (
+        <div className="plan-preview__mobile-bar" aria-label="Selected plan actions">
+          <span><small>Previewing</small>{selected.plan.title}</span>
+          <button type="button" onClick={() => previewRef.current?.scrollIntoView({ block: "start" })}>Preview</button>
+          <button type="button" onClick={() => void openSelected()} disabled={committing}>Open in editor</button>
+        </div>
+      ) : null}
     </section>
   );
 }

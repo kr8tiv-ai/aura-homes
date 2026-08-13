@@ -165,7 +165,7 @@ import {
   type RoofPlacement,
   type WallPlacement,
 } from "@/lib/builder/fixtures";
-import { documentSignature, readAutosave } from "@/lib/builder/store";
+import { documentSignature, readAutosave, writeAutosave } from "@/lib/builder/store";
 import { planFromSpec, type PlanHandoff } from "@/lib/builder/toPlan";
 import AxonSheet from "./AxonSheet";
 import BuilderOrderHandoff from "./BuilderOrderHandoff";
@@ -497,6 +497,11 @@ const initialState = (): EditorState => ({
   loadEpoch: 0,
 });
 
+/** A same-tab resume marker, never the document itself. The durable document
+ * remains in IndexedDB; this only distinguishes an explicit plan commit from
+ * an unrelated crash copy that must still ask before replacing the canvas. */
+const COMMITTED_PLAN_RESUME_KEY = "aura:builder:committed-plan:v1";
+
 type ViewMode = "3d" | "2d";
 
 const VIEW_MODES: ReadonlyArray<{ id: ViewMode; label: string; title: string }> = [
@@ -662,6 +667,7 @@ export default function BuilderApp() {
      persisted, so nothing about the geometry or the export depends on it. */
   const gesture = useRef(0);
   const hydratedProjectId = useRef<string | null>(null);
+  const resumableSignature = useRef<string | null>(null);
 
   useEffect(() => {
     if (!projectReady || !auraProject || hydratedProjectId.current === auraProject.id) return;
@@ -920,10 +926,26 @@ export default function BuilderApp() {
   const documentRef = useRef(state.doc);
   documentRef.current = state.doc;
   useEffect(() => {
+    if (!projectReady || auraProject) return;
     let alive = true;
     void readAutosave().then(
       (auto) => {
         if (!alive || !auto.present) return;
+        let requested: string | null = null;
+        try {
+          requested = window.sessionStorage.getItem(COMMITTED_PLAN_RESUME_KEY);
+        } catch {
+          /* The ordinary recovery prompt remains available without session storage. */
+        }
+        if (auto.readable && requested !== null && auto.record.signature === requested) {
+          resumableSignature.current = requested;
+          dispatch({ type: "load", doc: auto.record.document, label: "plan:resume" });
+          setMode("3d");
+          setGuidedStep("shell");
+          setWorkspace("shape");
+          setPlanStatus(`${auto.record.name} was restored from this tab’s committed design.`);
+          return;
+        }
         const differs =
           !auto.readable || auto.record.signature !== documentSignature(documentRef.current);
         if (differs) setWorkspace("library");
@@ -935,7 +957,21 @@ export default function BuilderApp() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [auraProject, projectReady]);
+
+  /* Undo or a later edit invalidates the narrow auto-resume promise. The
+     regular autosave/recovery flow still protects that work, but it asks
+     before replacing a future canvas. */
+  useEffect(() => {
+    const expected = resumableSignature.current;
+    if (!expected || documentSignature(state.doc) === expected) return;
+    resumableSignature.current = null;
+    try {
+      window.sessionStorage.removeItem(COMMITTED_PLAN_RESUME_KEY);
+    } catch {
+      /* No session storage means there is no marker to clear. */
+    }
+  }, [state.doc]);
 
   /* ---- undo / redo, also on the keyboard, because this is an editor. */
   const canUndo = state.past.length > 0;
@@ -1043,7 +1079,15 @@ export default function BuilderApp() {
     if (step.view) setMode(step.view);
   }, []);
 
-  const choosePlan = useCallback((document: BuilderDocument, plan: { title: string }) => {
+  const choosePlan = useCallback(async (document: BuilderDocument, plan: { title: string }) => {
+    const signature = documentSignature(document);
+    await writeAutosave(document);
+    try {
+      window.sessionStorage.setItem(COMMITTED_PLAN_RESUME_KEY, signature);
+    } catch {
+      throw new Error("This browser blocked same-tab recovery, so the open design was left unchanged. Allow session storage and retry.");
+    }
+    resumableSignature.current = signature;
     dispatch({ type: "load", doc: document, label: `plan:${plan.title}` });
     setSelectedVolumeId(null);
     setSelectedOpeningId(null);
@@ -1057,7 +1101,11 @@ export default function BuilderApp() {
   }, []);
 
   return (
-    <div className="space-y-6">
+    <div
+      className="space-y-6"
+      data-active-plan={state.doc.planOrigin?.templateId ?? "custom"}
+      data-active-design-hash={documentSignature(state.doc)}
+    >
       {loadedFromLink ? (
         <p className="rounded-md border border-aura-teal px-4 py-3 text-xs leading-relaxed text-aura-text/75">
           This home was opened from a share link. Everything is editable, and undo puts the Aura

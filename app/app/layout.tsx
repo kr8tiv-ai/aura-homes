@@ -6,10 +6,14 @@ import "./globals.css";
 import { Providers } from "./providers";
 import SiteShell from "../components/SiteShell";
 import { NO_FLASH_SCRIPT } from "../lib/theme";
+import { createChunkRecoveryScript } from "../lib/chunkRecovery.mjs";
 
 const TITLE = "Aura Homes — Design your eco home. Find the land. Manage the build.";
 const DESCRIPTION =
   "Plan or choose an eco home, match it with the right property and keep your team, costs and next steps together.";
+const CHUNK_RECOVERY_SCRIPT = createChunkRecoveryScript(
+  process.env.NEXT_PUBLIC_DEPLOYMENT_ID ?? "development",
+);
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://aurahomes.fun"),
@@ -49,6 +53,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
        dark-mode load; without the suppression, React warns about the fix. */
     <html lang="en" suppressHydrationWarning>
       <head>
+        {/* This listener must be inline: an external recovery chunk cannot
+            recover itself when cached HTML points at a retired release. */}
+        <script id="aura-chunk-recovery" dangerouslySetInnerHTML={{ __html: CHUNK_RECOVERY_SCRIPT }} />
         {/* Runs before first paint. Resolution order is explicit choice →
             OS preference; source lives in lib/theme.ts so nothing can drift. */}
         <script dangerouslySetInnerHTML={{ __html: NO_FLASH_SCRIPT }} />

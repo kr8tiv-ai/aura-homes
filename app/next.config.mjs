@@ -1,3 +1,5 @@
+import { execFileSync } from "node:child_process";
+
 /** @type {import('next').NextConfig} */
 // GH_PAGES=1 builds the static export. The site lives at the custom domain
 // https://aurahomes.fun, which GitHub Pages serves at the ROOT — so no
@@ -6,16 +8,35 @@
 const ghPages = process.env.GH_PAGES === "1";
 const basePath = process.env.BASE_PATH || "";
 
+function resolveDeploymentId() {
+  if (process.env.AURA_RELEASE_ID) return process.env.AURA_RELEASE_ID;
+  if (!ghPages) return "development";
+  try {
+    return execFileSync("git", ["rev-parse", "--verify", "HEAD"], {
+      cwd: new URL("..", import.meta.url),
+      encoding: "utf8",
+    }).trim();
+  } catch {
+    throw new Error("GH_PAGES builds require AURA_RELEASE_ID when the Git commit is unavailable");
+  }
+}
+
+const deploymentId = resolveDeploymentId();
+
 const nextConfig = {
   reactStrictMode: true,
   // The concierge pages import the agent's reducer/catalog/pipeline directly
   // from ../agent/src (ONE source of truth — never a hand-mirrored copy), plus
   // ../data and ../agent/samples. externalDir lets SWC compile those files.
   experimental: { externalDir: true },
-  env: { NEXT_PUBLIC_BASE_PATH: basePath },
+  env: {
+    NEXT_PUBLIC_BASE_PATH: basePath,
+    NEXT_PUBLIC_DEPLOYMENT_ID: deploymentId,
+  },
   ...(ghPages
     ? {
         output: "export",
+        generateBuildId: async () => deploymentId,
         ...(basePath ? { basePath, assetPrefix: `${basePath}/` } : {}),
         trailingSlash: true,
         images: { unoptimized: true },
