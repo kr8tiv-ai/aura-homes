@@ -1,4 +1,4 @@
-# Aura Homes Full-System Graph
+# Aura Homes Full-System Graph v1.1
 
 > **Status: PROPOSED — founder approval required.**
 >
@@ -28,6 +28,21 @@ as separately validated services where justified.
 ---
 
 ## 0. Approval packet
+
+### Revision status
+
+Graph v1 was committed at `f783728`, published for approval with SHA-256
+`DE8427DA80561BEDFFCA2C5F614142C3001D4CD65C6CAFFBD0E46C2735BF4AC8`, and
+approved conversationally on August 13, 2026. Before a hash-bound approval record
+or execution-authority update was created, Matt requested a pilot-geography
+revision. That approval is therefore superseded. Graph v1.1 returns to
+`PROPOSED`; implementation and the recurring orchestrator remain frozen/audit-
+only until v1.1 receives its own approval.
+
+The first pilot location is intentionally undecided between **Edmonton, Alberta**
+and **Costa Rica**. The selected jurisdiction changes authoritative sources and
+qualified reviewers, but not Aura's core product, evidence, safety, privacy,
+pricing, provider, payment or build-operation rules.
 
 ### What is already committed
 
@@ -221,7 +236,7 @@ flowchart TD
 | **SG-B** | B00–B39 | One coherent builder/product release. |
 | **SG-P** | P00–P09 | Validated AuraProject v3 and command/evidence boundary. |
 | **SG-V** | V00–V14 | Hardened hosted foundation and optional identity/sync. |
-| **SG-L** | L00–L14 | Authorized pilot land/parcel system. |
+| **SG-L** | L00–L12 | Authorized pilot land/parcel system. |
 | **SG-S** | S00–S06 and S10–S16 | Consented provider/model evidence system. |
 | **SG-Q** | Q00–Q08 | Durable budget/RFQ/quote and DIY-or-hire system. |
 | **SG-E** | E00–E13 | Semantic handoff, pre-check/seal path and bounded environmental analysis. |
@@ -345,7 +360,7 @@ interface GraphAuditReport {
 | **R00** | Preserve the committed R0 baseline and backups. | **Verified/committed** at `525c888`; not pushed/deployed. |
 | **R01** | Stage append-only static assets, verify old/new HTML, publish assets before HTML, retain newest five or 30 days, and prune separately; wire the same two-stage logic into reviewed release automation without bot-authored source commits. | Tooling committed; production rehearsal and final release verification still required. |
 | **R02** | Interactive plan preview, explicit `Use this design`, undoable commit, durable origin/cost/licence/hash, camera reframe, same-tab reload, keyboard/touch parity. | Core code/tests committed; add approved fixed-camera pixel-difference regression and fresh full-browser verifier before deploy. |
-| **R03** | Progressive worker-built meadow: dense near grass, mid clumps/cards, far texture, many deterministic flower clusters, Alberta/Costa Rica palettes, static rich fallback. | Not started. Must not restore synchronous million-instance rebuild. |
+| **R03** | Progressive worker-built meadow: dense near grass, mid clumps/cards, far texture, many deterministic flower clusters, and a rich site-neutral Aura botanical palette with a static fallback. Jurisdiction-specific Alberta or Costa Rica presets are optional later assets, not a dependency of R0. | Not started. Must not restore synchronous million-instance rebuild. |
 | **R04** | Push verified backup tags, back up again, merge/rebase, push main, build, append-only publish, desktop/mobile smoke, old-HTML compatibility, live hydration and interaction test. | Starts only after R01–R03 and R05 pass and G00 approval. |
 | **R05** | Re-encode and serve the landing film as responsive poster-first sources (measured AV1/WebM/MP4 where supported), defer high-resolution bytes until useful, and preserve a composed still so sharpness never causes an LCP or transition regression. | Visual bitrate/quality comparison, network/device matrix and Core Web Vitals gate. |
 
@@ -377,9 +392,37 @@ interface GraphAuditReport {
 | **B04** | Remove ordinary-project escrow/deposit/refund language; keep the existing testnet proof under a noindex lab. | Adopt |
 | **B05** | Define the target customer: cost/land/permit/team uncertainty first; crypto optional. Validate with interviews and funnel evidence. | Adopt |
 | **B06** | Use `Today`, `Next`, and `Future` presentation labels backed by richer machine states. | Adopt |
-| **B07** | Maintain Alberta as primary pilot and Grecia, Alajuela as second pilot; Sarchí follows. | Adopt |
+| **B07** | Keep the first pilot jurisdiction undecided between Edmonton, Alberta and Costa Rica. Selection requires a separate founder decision; activation requires a passing `PilotJurisdictionContract`. Neither option is the default. | Adopt |
 | **B08** | Build normal-user value before token promotion. | Adopt |
 | **B09** | Add a coherent app information architecture and journey spine only within active projects. | Adopt |
+
+### Shared pilot jurisdiction contract
+
+```ts
+type PilotJurisdiction = "edmonton-alberta" | "costa-rica" | "undecided";
+
+interface PilotJurisdictionContract {
+  jurisdiction: PilotJurisdiction;
+  authorizedListingAndParcelSources: boolean;
+  listingOfferSeparatedFromParcelContext: boolean;
+  authoritativeLandUseTitleHazardWaterAccessUtilityEvidence: boolean;
+  qualifiedProfessionalAndClosingPath: boolean;
+  providerIdentityLicenceCoverageInsuranceAndReferences: boolean;
+  localizedBudgetTaxDeliveryFoundationUtilityAndContingencyBasis: boolean;
+  hashBoundRfqQuoteAndPaymentCapability: boolean;
+  humanVerifiedBuildMilestonesAndHomeBook: boolean;
+  privacyRetentionExpiryAndDeletionRules: boolean;
+  demonstrationDataExcludedFromRealProgress: boolean;
+}
+```
+
+The BuilderDocument, BuildingGraph, editor, exports, RFQs, payments, milestone
+model and home book remain one implementation in either pilot. Jurisdiction
+adapters may identify different authorities, documents, currencies, professional
+roles, taxes and land constraints, but they may not weaken the shared contract.
+Until Matt selects a jurisdiction and every required field is supported by
+current evidence, the land/provider surfaces remain demonstration, user-supplied
+or research-only and cannot complete real project progress.
 
 ### B10–B19: BuildingGraph v2
 
@@ -516,20 +559,18 @@ affected builder nodes start.
 | ID | Job and output | Gate / class |
 |---|---|---|
 | **L00** | Separate `ListingOffer` from `ParcelContext`; public geometry is not automatically for sale. | Adopt |
-| **L01** | BYOD import for authorized RESO Common Format/CSV, survey/title files, municipal GIS, zoning documents and external links. | Adopt; local parsing first |
-| **L02** | Apply for CREA DDF or broker/Pillar 9 access with display, photo, refresh, deletion, analytics, caching and derived-fit rights. | **External agreement** |
-| **L03** | Never scrape REALTOR.ca, AlbertaLand, RE.cr, BBB, Google or review sites. | Permanent rule |
-| **L04** | Altalis cadastral geometry; Calgary/Edmonton zoning; NRCan terrain; individually licensed Alberta layers. | Agreements/licence audit |
-| **L05** | Alberta screening: footprint, setbacks, access, slope, hazards, utilities and unresolved professional/document gates. | Pilot |
-| **L06** | Neutral display/link-out until written RECA determination or licensed brokerage arrangement; no negotiation/offers/referral fees/funds. | **External legal gate** |
-| **L07** | Grecia pilot via authorized RE.cr/Propertyshelf or partner feed; user-supplied parcels before feed. | **External agreement** |
-| **L08** | Costa Rica screening: SNIT/SIRI, INVU, CNE, SINAC, utilities/municipality where reuse permits. | Source-specific audit |
-| **L09** | Require land-use certificate, certified title/cadastral evidence, water, topography and professional review before confirmed fit. | Human/professional gate |
-| **L10** | Exclude maritime-zone, protected-area conflict, ambiguous title and unresolved possession from pilot. | Hard veto |
-| **L11** | Do not expose owner names. Closing remains with enabled Costa Rican notary. | Privacy/legal gate |
-| **L12** | Pilot targets: 10–20 authorized Grecia parcels and named local professional bench. | Partner-dependent |
-| **L13** | Fit result explains source/date, screening vs confirmed, assumptions, flags and required next evidence. | Release gate |
-| **L14** | Use compliant PMTiles or approved tile provider before real traffic; retain accessible list view and attribution. | Defer until traffic/data |
+| **L01** | BYOD import for authorized listing CSV/JSON or RESO Common Format where applicable, survey/title files, municipal GIS, zoning documents and external links. | Adopt; local parsing first |
+| **L02** | For the selected jurisdiction, obtain an authorized broker, listing or partner feed with explicit display, photo, refresh, deletion, analytics, caching and derived-fit rights. Edmonton may use a licensed Canadian feed; Costa Rica requires its own written provider terms. | **External agreement** |
+| **L03** | Never scrape listing, land, brokerage, business-rating, search or review sites; use only licensed feeds, explicit partner rights, public data with compatible terms or user-supplied records. | Permanent rule |
+| **L04** | Build one source registry per candidate jurisdiction: Edmonton/Alberta cadastral, zoning and terrain evidence or Costa Rica national/municipal equivalents. Every layer requires an exact rights, date, geography and fitness-for-use audit before activation. | Agreements/licence audit |
+| **L05** | Apply the same screening contract in either jurisdiction: footprint, setbacks, land use, access, slope/topography, hazards, water, utilities and unresolved professional/document gates. | Pilot |
+| **L06** | Remain a neutral display/link-out tool until the selected jurisdiction's brokerage/legal scope is documented; no negotiation, offer preparation, representation claim, transaction-based referral fee or property-fund handling. | **External legal gate** |
+| **L07** | Require current authoritative land-use/zoning, certified title/cadastral evidence, water availability, access/utilities, topography and qualified professional review before confirmed fit. | Human/professional gate |
+| **L08** | Exclude protected or special land regimes, unresolved possession, ambiguous title, missing access/water, and any jurisdiction-specific hard constraint from the pilot until resolved. | Hard veto |
+| **L09** | Do not expose owner names or private title evidence. Closing remains with a qualified local lawyer, notary or other authorized professional for the selected jurisdiction. | Privacy/legal gate |
+| **L10** | Do not set parcel-count, locality or partner-volume targets until the jurisdiction is selected and source/partner rights are confirmed. | Founder/partner decision |
+| **L11** | Fit result explains source/date, screening vs confirmed, assumptions, flags and required next evidence. | Release gate |
+| **L12** | Use compliant PMTiles or approved tile provider before real traffic; retain accessible list view and attribution. | Defer until traffic/data |
 
 ---
 
@@ -541,11 +582,11 @@ affected builder nodes start.
 |---|---|---|
 | **S00** | `ProviderOrg` with legal-entity matching, service area, project type and consent status. | Adopt |
 | **S01** | Distinguish `owner-attested` from `authority-verified`; a checkbox cannot satisfy a mandatory gate. | Hard truth gate |
-| **S02** | Alberta evidence: builder licence where relevant, WCB clearance, insurance, trade/prepaid credentials, service area, comparable work and consented references. | Source/document required |
-| **S03** | Costa Rica evidence: CFIA status, Hacienda, CCSS, INS worker risk, service/region and references; label SUGEF only for what it proves. | Source/document required |
-| **S04** | Explain comparison scoring but never say “Aura vetted.” COR/OHS are context, not workmanship proof. | Hard copy gate |
+| **S02** | In either jurisdiction, require exact legal-entity match, applicable builder/professional/trade authorization, worker coverage, current insurance, service area, comparable work and consented references. | Source/document required |
+| **S03** | A jurisdiction adapter maps the shared provider gate to Edmonton/Alberta or Costa Rica authorities and documents without changing what must be proven; every source is labelled only for the fact it actually establishes. | Source/document required |
+| **S04** | Explain comparison scoring but never say “Aura vetted.” Jurisdiction-specific safety or enforcement records are context, not workmanship proof. | Hard copy gate |
 | **S05** | Seed prospects internally from lawful directories; publish only consented/user-entered case files. | Consent gate |
-| **S06** | Target 10–20 consented Alberta providers and 5–10 Costa Rica case files across required scopes. | External outreach |
+| **S06** | Define provider-count and trade-coverage targets only after pilot selection; launch requires consented coverage for the selected jurisdiction's essential design, site, foundation, shell, MEP, utility and professional scopes. | External outreach |
 
 ### Manufacturer/home model graph
 
@@ -553,8 +594,8 @@ affected builder nodes start.
 |---|---|---|
 | **S10** | Separate `ResearchLead`, `FinishedHomeModel`, `DeliveryCapability`, `ListingOffer` and `OrderableOffer`. | Adopt |
 | **S11** | An orderable offer requires verified entity, exact configuration, destination, price/quote, shipping, inclusions, certifications, warranty, lead time, payment destination and media/data rights. | Hard gate |
-| **S12** | Alberta retail-home licence and plant/model certification evidence where applicable. | Authority evidence |
-| **S13** | Costa Rica engineering route, material conformity, customs class/broker quote, freight, duty/VAT, port, inland delivery, foundation and crane. | Partner/professional evidence |
+| **S12** | Require the selected jurisdiction's retail-home seller, plant/model certification, local engineering and material-conformity evidence where applicable. | Authority evidence |
+| **S13** | For every destination, reconcile the exact delivery route and landed cost, including freight, tax/duty, customs or interprovincial requirements, port/yard handling, inland delivery, foundation, crane and installation where applicable. | Partner/professional evidence |
 | **S14** | Catalog UI: image → model/maker → price → delivery → size/bedrooms → view/save/compare/request quote. | Adopt |
 | **S15** | Missing price copy: “Reliable pricing not found — request a quote.” Sources/caveats live in progressive details. | Adopt |
 | **S16** | Initial target: 5–10 consented manufacturers/models, fewer only with explicit coverage. | External outreach |
@@ -578,8 +619,8 @@ affected builder nodes start.
 | ID | Job and output | Gate |
 |---|---|---|
 | **Q00** | Budget binds design, site, region, foundation, utilities, delivery, finish, shipping, tax, contingency, source and date. | Adopt |
-| **Q01** | Unsupported geography shows Alberta/Costa Rica reference separately; never relabel it local. | Hard truth gate |
-| **Q02** | Reconcile current canonical Alberta anchor and all unbudgeted lines before publishing a “whole project” range. | Data gate |
+| **Q01** | Keep Edmonton/Alberta and Costa Rica research scenarios separate until a pilot is selected and a localized source basis passes the shared contract. Unsupported geography may show a named reference benchmark, but never relabel it as local pricing. | Hard truth gate |
+| **Q02** | Reconcile the current Alberta anchor and all unbudgeted lines. If Costa Rica is selected, create an equivalently sourced local anchor before publishing a “whole project” range there; no reference model may be relabelled local. | Data gate |
 | **Q03** | Comparable RFQ packages for design, engineering, foundation, shell/home, MEP, solar, water/septic, interiors, GC, delivery and installation. | Adopt |
 | **Q04** | RFQ includes drawings, quantities, assumptions, exclusions, schedule, response template, hashes and manifest in PDF/JSON. | Adopt |
 | **Q05** | Quote import maps line items, allowances, omissions, originals and evidence checksums. | Adopt |
@@ -593,7 +634,7 @@ affected builder nodes start.
 |---|---|---|
 | **Y00** | Quote-level `PaymentCapability`; never infer support from provider marketing or another product. | Adopt |
 | **Y01** | State machine: draft → action → processing → settled/failed/expired; settled → refund requested → partial/refunded/disputed. | Adopt |
-| **Y02** | Stripe Connect direct/provider-owned Checkout for eligible Canadian vendors; card for small invoices, PAD/bank/wire for large ones. | **Stripe approval + vendor contracts + legal scope** |
+| **Y02** | Use provider-direct fiat rails approved for the selected jurisdiction and exact vendor/country pair. Edmonton may use Stripe Connect direct/provider-owned Checkout, cards for smaller invoices, and PAD/bank/wire for larger ones; Costa Rica requires its own approved processor, provider-hosted invoice or bank-transfer route before fiat is shown. | **Processor approval + vendor contracts + jurisdiction/legal scope** |
 | **Y03** | Signed webhook verification, dedupe, canonical provider fetch, idempotency and append-only receipt. Return URL never settles. | Hard security gate |
 | **Y04** | Native Circle USDC direct vendor transfer on X Layer mainnet only for a real quote, verified recipient and supported vendor. | **Legal/provider/mainnet product gate** |
 | **Y05** | Verify chain 196, current Circle token, code/decimals/balance/recipient/expiry; require wallet signature; verify transfer through two sources. | Hard chain gate |
@@ -639,7 +680,7 @@ affected builder nodes start.
 | **E09** | Versioned, source-dated rule catalog for narrowly scoped geometric and document pre-checks; each rule names jurisdiction, applicability, required inputs, source clause, effective date and reviewer. | Adopt after L/P; legal/professional review |
 | **E10** | Four-state pre-check result: `RULE_SATISFIED`, `RULE_NOT_SATISFIED`, `REVIEW_REQUIRED`, or `UNKNOWN`; missing data can never become a pass. | Hard deterministic gate |
 | **E11** | Professional review workspace with evidence, rule trace, comments, override reason, reviewer identity/credential and immutable revision history. | Pilot with a qualified partner |
-| **E12** | Export a review/seal package and integrate Notarius/ConsignO or another approved Canadian signing rail only after provider, identity, jurisdiction, retention and signature-validity review. | External provider/professional gate |
+| **E12** | Export a review/seal package and integrate a signing/professional-seal rail valid for the selected jurisdiction only after provider, identity, credential, retention and signature-validity review. Notarius/ConsignO are Edmonton candidates; Costa Rica requires its own qualified local digital-signature and professional workflow. | External provider/professional gate |
 | **E13** | Sealed output records who reviewed which exact hashes and when; Aura still never calls an unreviewed design compliant or permit-ready. | Permanent truth and audit rule |
 
 ### Collaboration
@@ -698,11 +739,11 @@ retyped independently across code, site, deck or README.
 
 | ID | Required artifact | Result if absent |
 |---|---|---|
-| **H20.1** | Alberta and Costa Rica legal opinions and signed jurisdiction matrix. | Mainnet disabled. |
+| **H20.1** | Signed Canadian/Alberta and/or Costa Rica legal opinions for every jurisdiction actually enabled by the value-bearing system; builder-pilot selection alone does not activate HOMES in either jurisdiction. | Mainnet disabled. |
 | **H20.2** | Entity/trust/SPV, title, beneficial-owner, governance and property-account structure. | No property claim. |
 | **H20.3** | Securities/offering/dealer/transfer/eligibility route. | No sale, pool, distribution or public rights. |
-| **H20.4** | FINTRAC and Bank of Canada RPAA determinations. | No custody/routing/forwarding service. |
-| **H20.5** | Tax, T3/GST/withholding and accounting design. | No distribution. |
+| **H20.4** | FINTRAC/Bank of Canada RPAA and equivalent AML/payment-service determinations for every enabled jurisdiction. | No custody/routing/forwarding service. |
+| **H20.5** | Tax, trust/beneficiary reporting, sales tax or VAT, withholding and accounting design for every enabled jurisdiction. | No distribution. |
 | **H20.6** | Venue/liquidity policy, source of capital, Safe signers and timelock. | No market launch. |
 | **H20.7** | Independent Solidity and economic audit; verified source; monitoring/incident plan. | Mainnet hard stop remains. |
 | **H20.8** | Sufficient operating capital and protocol-owned liquidity. | Test/demo liquidity only. |
@@ -839,9 +880,9 @@ cannot change classifications without returning the graph to `PROPOSED`.
 | Many interesting rights-cleared plans | B30–B39 | 25 current; audited expansion planned |
 | A-frame/SIP/steel/polycarbonate homes | B31/B33/B37 | Included with clean-room constraint |
 | Cost estimates tied to real basis | B39, Q00–Q02 | Partial → planned |
-| MLS/live land inside app | L00–L14 | Authorized-feed external gate; BYOD/pilot first |
+| MLS/live land inside app | L00–L12 | Authorized-feed external gate; BYOD/pilot first |
 | AlbertaLand/REALTOR/BBB research | L03/S rules | Scraping rejected; lawful links/feeds only |
-| Costa Rica/Grecia expansion | B07, L07–L12 | Planned/external |
+| First pilot location: Edmonton or Costa Rica | B07 and shared pilot contract, L00–L12 | Undecided; identical core readiness rules, jurisdiction-specific evidence adapters |
 | Real contractor search and scoring | S00–S06 | Planned with evidence/consent, never “vetted” |
 | Manufacturers globally/crypto support | S10–S16, Y | Planned quote-by-quote; global claim rejected |
 | Buy or build journey | B01, M, Y | Included |
@@ -920,7 +961,7 @@ Minimum anchors:
 | **W0** | Graph approval, governance, R0 grass/flowers, full stabilization deploy. | 1–3 days after approval |
 | **W1** | BuildingGraph/editor/plan/material/budget release. | 1–3 weeks |
 | **W2** | AuraProject v3, optional identity/sync, hardened VPS and deterministic APIs. | 3–6 weeks |
-| **W3** | BYOD + authorized Alberta/Grecia land and consented provider pilot. | 6–12 weeks; agreements/outreach |
+| **W3** | BYOD plus authorized land and consented providers in the selected pilot jurisdiction: Edmonton, Alberta or Costa Rica. | 6–12 weeks after selection; agreements/outreach |
 | **W4** | RFQ/quote, bounded copilot, provider-direct payment pilot. | 8–16 weeks; legal/provider gates |
 | **W5** | Build operations, commissioning and home book. | 12–20 weeks; pilot project |
 | **W6** | Semantic IFC/environment services and async collaboration; realtime pilot only if justified. | After graph/project foundation |
@@ -968,6 +1009,10 @@ Approval means Matt agrees with these product decisions:
 - R0 grass/flowers and stabilization are the first implementation after approval.
 - Live MLS/listing/provider/payment work begins with agreements and consent, not
   scraping or invented data.
+- The first builder pilot remains undecided between Edmonton, Alberta and Costa
+  Rica. Both choices must pass the same `PilotJurisdictionContract`; choosing a
+  country does not waive evidence, professional, privacy, cost, payment or build-
+  operation gates.
 - Aura remains useful without account, wallet, token or hosted AI.
 - No automated permit/compliance/engineering claim.
 - Approve the proposed amendment from the older doctrine: compare foundations by
@@ -982,9 +1027,10 @@ Approval means Matt agrees with these product decisions:
   ready, conflict-free nodes; it never commits, deploys, spends or crosses gates.
 - Brand and presentation are generated from the claim registry, not vice versa.
 
-**Approval phrase:** `Approve Aura Full-System Graph v1`.
+**Approval phrase:** `Approve Aura Full-System Graph v1.1`.
 
-Any requested changes produce v1.1 and reset G00 to `PROPOSED` until approved.
+Any requested change produces a new graph revision and resets G00 to `PROPOSED`
+until that exact revision is approved.
 
 ---
 
@@ -999,7 +1045,7 @@ Any requested changes produce v1.1 and reset G00 to `PROPOSED` until approved.
   <https://www.ladybug.tools/honeybee-energy/docs/>
 - Yjs and provider model: <https://github.com/yjs/yjs>
 - Hyperswitch: <https://github.com/juspay/hyperswitch>
-- RESO and CREA DDF:
+- Candidate listing standards and Canadian feed research (not selected adapters):
   <https://www.reso.org/reso-web-api/> and
   <https://www.crea.ca/technology/realtor-ca-for-realtors/realtor-ca-tools/realtor-ca-ddf/>
 - X Layer network information:
@@ -1009,15 +1055,8 @@ Any requested changes produce v1.1 and reset G00 to `PROPOSED` until approved.
   <https://developers.circle.com/cctp/concepts/supported-chains-and-domains>
 - Stripe Connect/direct charges:
   <https://docs.stripe.com/connect/charges>
-- Costa Rica authorized listing/embed terms and public screening services:
-  <https://help.propertyshelf.com/en/articles/how-to-add-the-iframe-embedding-into-a-website>,
-  <https://www.re.cr/en/terms-conditions>,
-  <https://www.snitcr.go.cr/ico_servicios_ogc>, and
-  <https://www.cne.go.cr/reduccion_riesgo/mapas_amenzas/index.aspx>
-- Costa Rica registry, planning, professional and lodging gates:
-  <https://servicios.rnpdigital.com/>,
-  <https://www.invu.go.cr/sighat>,
-  <https://cfia.or.cr/site/tramites-tecnicos/>, and
-  <https://www.ict.go.cr/es/servicios-institucionales/registro-de-hospedaje-no-tradicional.html>
+- Candidate Costa Rica listing, land, professional and lodging sources remain in
+  historical research. They are not selected production adapters or evidence of
+  pilot readiness until the jurisdiction decision and source-by-source audit.
 - Ethereum/security doctrine: installed EthSkills and the repository's current
   mainnet hard-stop remain required inputs to any H-stream contract work.
