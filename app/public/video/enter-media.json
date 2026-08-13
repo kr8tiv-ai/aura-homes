@@ -1,0 +1,95 @@
+{
+  "schema": "AuraLandingFilmProofV1",
+  "measuredAt": "2026-08-13T22:24:00Z",
+  "measurement": {
+    "ffmpeg": "ffmpeg 8.0.1",
+    "dimensionAndBitrateTool": "ffprobe",
+    "qualityTool": "ffmpeg ssim + psnr",
+    "qualityMethod": "Decode the AV1 hero as reference, Lanczos-scale each H.264 tier to 1920x1294, normalize timebases and compare all 361 frames. The compatibility encode uses x264 slow CRF 29 to cut mobile transfer while retaining the declared SSIM floor.",
+    "limitation": "Cross-encode consistency does not prove fidelity to the unavailable camera or generation master."
+  },
+  "delivery": {
+    "poster": "immediate high-priority LCP layer",
+    "hero": "viewport >=1440 CSS px or >=1800 physical px, Save-Data off, and smooth power-efficient AV1 decode",
+    "desktop": "viewport >=900 CSS px when the hero gate is not satisfied",
+    "compatibility": "viewport <900 CSS px, Save-Data, or final H.264 fallback",
+    "motionFallback": "poster only",
+    "stallTimeoutMs": 6000
+  },
+  "assets": [
+    {
+      "role": "hero",
+      "file": "enter-1920.av1.webm",
+      "sha256": "6b5820cc61074b467d285be5b2ed5c85ccd313418057660491a3a32047f50337",
+      "container": "webm",
+      "codec": "av1",
+      "profile": "Main",
+      "pixelFormat": "yuv420p",
+      "width": 1920,
+      "height": 1294,
+      "fps": 24,
+      "durationSeconds": 15.042,
+      "bitrate": 2768788,
+      "bytes": 5206015
+    },
+    {
+      "role": "desktop",
+      "file": "enter-desktop.mp4",
+      "sha256": "9fcc1c3dde836dea14f7aa8c25ef122f980e92712d60fa2c05bf9dee6f942832",
+      "container": "mp4",
+      "codec": "h264",
+      "profile": "High",
+      "pixelFormat": "yuv420p",
+      "width": 1440,
+      "height": 972,
+      "fps": 24,
+      "durationSeconds": 15.041667,
+      "bitrate": 1929816,
+      "bytes": 3628457
+    },
+    {
+      "role": "compatibility",
+      "file": "enter.mp4",
+      "sha256": "e412c7f55f8fd0d345798aa17542e72f0c8f625f5125356058e746b3879515e5",
+      "container": "mp4",
+      "codec": "h264",
+      "profile": "High",
+      "pixelFormat": "yuv420p",
+      "width": 1280,
+      "height": 864,
+      "fps": 24,
+      "durationSeconds": 15.041667,
+      "bitrate": 1264131,
+      "bytes": 2376831
+    },
+    {
+      "role": "poster",
+      "file": "enter-poster.avif",
+      "sha256": "fe05b82d2302d47417e93377791c218db4c50568037c6f585af0d267c55f445d",
+      "container": "avif",
+      "codec": "av1",
+      "profile": "Main",
+      "pixelFormat": "yuv420p",
+      "width": 1920,
+      "height": 1294,
+      "fps": 1,
+      "bytes": 23680
+    }
+  ],
+  "comparisons": [
+    {
+      "reference": "enter-1920.av1.webm",
+      "distorted": "enter-desktop.mp4",
+      "scale": "lanczos 1920x1294",
+      "ssim": 0.950035,
+      "psnrDb": 34.851941
+    },
+    {
+      "reference": "enter-1920.av1.webm",
+      "distorted": "enter.mp4",
+      "scale": "lanczos 1920x1294",
+      "ssim": 0.949595,
+      "psnrDb": 34.860824
+    }
+  ]
+}

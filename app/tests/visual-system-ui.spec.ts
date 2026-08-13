@@ -215,21 +215,22 @@ test("mobile uses the safe scene tier and a complete menu without horizontal ove
   expect(widths.scroll).toBe(widths.client);
 });
 
-test("the landing film serves a sharp, hardware-decodable desktop source within its transfer budget", async ({ page }) => {
+test("the landing film keeps its poster first and selects the measured desktop fallback at an ordinary viewport", async ({ page }) => {
   const desktopFilm = resolve(process.cwd(), "public/video/enter-desktop.mp4");
   expect(statSync(desktopFilm).size).toBeLessThanOrEqual(3_750_000);
 
   await page.goto("/");
+  const poster = page.locator("img.story-gate-poster");
+  await expect(poster).toBeVisible();
+  await expect(poster).toHaveAttribute("src", /enter-poster\.avif$/);
+  await expect(poster).toHaveAttribute("fetchpriority", "high");
+
   const video = page.locator("video.story-gate-video");
   await expect(video).toBeVisible();
-  await expect(video.locator('source[media="(min-width: 900px)"]')).toHaveAttribute(
-    "src",
-    /enter-desktop\.mp4$/,
-  );
-  await expect(video.locator('source[media="(min-width: 900px)"]')).toHaveAttribute("type", "video/mp4");
-  await expect(video.locator('source[type="video\/mp4"]:not([media])')).toHaveAttribute(
-    "src",
-    /enter\.mp4$/,
-  );
+  await expect(video).toHaveAttribute("preload", "none");
+  await expect(video.locator("source")).toHaveCount(2);
+  await expect(video.locator("source").first()).toHaveAttribute("src", /enter-desktop\.mp4$/);
+  await expect(video.locator("source").first()).toHaveAttribute("type", "video/mp4");
+  await expect(video.locator("source").nth(1)).toHaveAttribute("src", /enter\.mp4$/);
   await expect(video).toHaveAttribute("poster", /enter-poster\.avif$/);
 });

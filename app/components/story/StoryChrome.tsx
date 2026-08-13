@@ -34,6 +34,37 @@ export const XLAYER_URL = "https://web3.okx.com/xlayer";
 export const OKX_URL = "https://www.okx.com/";
 export const BUILDX_URL = "https://web3.okx.com/xlayer/build-x-series";
 
+const LANDING_FILM_TIMEOUT_MS = 6_000;
+const LANDING_FILM_AV1_TYPE = 'video/webm; codecs="av01.0.08M.08"';
+
+type LandingFilmTier = "compatibility" | "desktop" | "hero";
+type LandingFilmFallback = "motion" | "error" | "timeout";
+
+async function chooseLandingFilmTier(): Promise<LandingFilmTier> {
+  const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+  if (connection?.saveData || window.innerWidth < 900) return "compatibility";
+
+  const physicalWidth = window.innerWidth * Math.max(1, window.devicePixelRatio || 1);
+  const heroPixelsAreUseful = window.innerWidth >= 1_440 || physicalWidth >= 1_800;
+  if (!heroPixelsAreUseful || !navigator.mediaCapabilities?.decodingInfo) return "desktop";
+
+  try {
+    const support = await navigator.mediaCapabilities.decodingInfo({
+      type: "file",
+      video: {
+        contentType: LANDING_FILM_AV1_TYPE,
+        width: 1_920,
+        height: 1_294,
+        bitrate: 2_768_788,
+        framerate: 24,
+      },
+    });
+    return support.supported && support.smooth && support.powerEfficient ? "hero" : "desktop";
+  } catch {
+    return "desktop";
+  }
+}
+
 /* ----------------------------- the gate ----------------------------- */
 
 export function EnterGate({
@@ -91,32 +122,90 @@ export function EnterGate({
   }, [entered, hydrated]);
 
   /* ---- the gate film ----
-     The founder's Grok-generated establishing film plays as a muted looping
-     cover behind the gate copy. Asset contract (app/public/video/enter.mp4):
-     Desktop browsers that decode AV1 receive the 1920-wide, lightly restored
-     source; mobile and compatibility clients keep the 1280-wide H.264 file.
-     Both are yuv420p, silent and 15 s. The media query prevents phones from
-     paying for desktop pixels, while the 1920 AVIF poster costs only 24 KB.
-     Degradation is graceful and free of 404 spinners: the file ships with
-     the bundle, and if it ever errors (or the visitor asks for reduced
-     motion) the video unmounts and the gate is exactly the pre-film paper
-     gate with the 3D scene behind it. playsInline keeps iOS from going
-     fullscreen; muted is ALSO set via ref because React renders the muted
-     prop after hydration, which some Chromium builds treat as unmuted at
-     autoplay-policy time. */
-  const [videoOk, setVideoOk] = useState(true);
+     The 24 KB AVIF is an authored, immediate LCP layer. Moving bytes are not
+     discoverable until two post-hydration frames have let that poster paint.
+     The 1920 AV1 stream is reserved for a genuinely high-resolution viewport
+     with a smooth, power-efficient decoder. Desktop H.264 covers ordinary
+     screens; small screens and Save-Data receive only the 1280 compatibility
+     stream. Any motion preference, media error, or six-second stall leaves
+     the same composed poster and usable journey controls in place. */
   const [reducedM, setReducedM] = useState(false);
+  const [motionPreferenceKnown, setMotionPreferenceKnown] = useState(false);
+  const [posterReady, setPosterReady] = useState(false);
+  const [filmTier, setFilmTier] = useState<LandingFilmTier | null>(null);
+  const [filmPlaying, setFilmPlaying] = useState(false);
+  const [filmFallback, setFilmFallback] = useState<LandingFilmFallback | null>(null);
+  const posterRef = useRef<HTMLImageElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    const poster = posterRef.current;
+    // A small, eagerly fetched poster can complete before React hydrates and
+    // attaches onLoad. Checking the DOM state closes that race without making
+    // the moving film discoverable before the composed first frame exists.
+    if (hydrated && poster?.complete && poster.naturalWidth > 0) setPosterReady(true);
+  }, [hydrated]);
+
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const set = () => setReducedM(mq.matches);
+    const set = () => {
+      setReducedM(mq.matches);
+      setMotionPreferenceKnown(true);
+      setFilmFallback((current) => {
+        if (mq.matches) return "motion";
+        return current === "motion" ? null : current;
+      });
+    };
     set();
     mq.addEventListener("change", set);
     return () => mq.removeEventListener("change", set);
   }, []);
-  const videoDead = !videoOk || reducedM;
+
   useEffect(() => {
-    if (videoDead) onVideoFallback?.();
-  }, [videoDead, onVideoFallback]);
+    if (!hydrated || !motionPreferenceKnown || !posterReady || reducedM || entered || filmFallback || filmTier) return;
+    let cancelled = false;
+    let secondFrame = 0;
+    const firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(() => {
+        performance.mark("aura:landing-poster-painted");
+        void chooseLandingFilmTier().then((tier) => {
+          if (!cancelled) {
+            performance.mark("aura:landing-film-discovered");
+            setFilmTier(tier);
+          }
+        });
+      });
+    });
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(firstFrame);
+      if (secondFrame) window.cancelAnimationFrame(secondFrame);
+    };
+  }, [entered, filmFallback, filmTier, hydrated, motionPreferenceKnown, posterReady, reducedM]);
+
+  const failFilm = useCallback((reason: Exclude<LandingFilmFallback, "motion">) => {
+    setFilmFallback((current) => current ?? reason);
+    setFilmTier(null);
+    setFilmPlaying(false);
+  }, []);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!filmTier || !video || filmFallback) return;
+    video.muted = true;
+    video.load();
+    void video.play().catch(() => failFilm("error"));
+  }, [failFilm, filmFallback, filmTier]);
+
+  useEffect(() => {
+    if (!filmTier || filmPlaying || filmFallback) return;
+    const timeout = window.setTimeout(() => failFilm("timeout"), LANDING_FILM_TIMEOUT_MS);
+    return () => window.clearTimeout(timeout);
+  }, [failFilm, filmFallback, filmPlaying, filmTier]);
+
+  useEffect(() => {
+    if (filmFallback) onVideoFallback?.();
+  }, [filmFallback, onVideoFallback]);
 
   const go = useCallback(
     (audience: StoryAudience) => {
@@ -139,37 +228,50 @@ export function EnterGate({
       role="dialog"
       aria-modal="true"
       aria-label="Choose an Aura Homes journey"
+      data-film-state={filmFallback ? "fallback" : filmPlaying ? "playing" : filmTier ? "loading" : "poster"}
+      data-film-fallback={filmFallback ?? undefined}
+      data-poster-ready={posterReady ? "true" : "false"}
     >
-      {!videoDead && (
-        <>
-          <video
-            className="story-gate-video"
-            /* The film is the LCP element: a 24KB AVIF poster paints the
-               first frame immediately while preload="metadata" limits
-               network contention. Both streams use hardware-decodable H.264
-               so playback cannot starve the Three.js handoff. */
-            poster={withBase("/video/enter-poster.avif")}
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            aria-hidden
-            ref={(el) => {
-              if (el) el.muted = true;
-            }}
-            onError={() => setVideoOk(false)}
-          >
-            <source
-              src={withBase("/video/enter-desktop.mp4")}
-              type="video/mp4"
-              media="(min-width: 900px)"
-            />
-            <source src={withBase("/video/enter.mp4")} type="video/mp4" />
-          </video>
-          <div className="story-gate-scrim" aria-hidden />
-        </>
-      )}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        ref={posterRef}
+        className="story-gate-video story-gate-poster"
+        src={withBase("/video/enter-poster.avif")}
+        alt=""
+        width={1920}
+        height={1294}
+        fetchPriority="high"
+        decoding="async"
+        onLoad={() => setPosterReady(true)}
+        aria-hidden
+      />
+      {filmTier && !filmFallback ? (
+        <video
+          className="story-gate-video"
+          poster={withBase("/video/enter-poster.avif")}
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="none"
+          aria-hidden
+          ref={(element) => {
+            videoRef.current = element;
+            if (element) element.muted = true;
+          }}
+          onPlaying={() => setFilmPlaying(true)}
+          onError={() => failFilm("error")}
+        >
+          {filmTier === "hero" ? (
+            <source src={withBase("/video/enter-1920.av1.webm")} type={LANDING_FILM_AV1_TYPE} />
+          ) : null}
+          {filmTier !== "compatibility" ? (
+            <source src={withBase("/video/enter-desktop.mp4")} type="video/mp4" />
+          ) : null}
+          <source src={withBase("/video/enter.mp4")} type="video/mp4" />
+        </video>
+      ) : null}
+      <div className="story-gate-scrim" aria-hidden />
       <div className="story-gate-inner">
         <div className="story-gate-brand">
           {/* eslint-disable-next-line @next/next/no-img-element */}

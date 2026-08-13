@@ -278,14 +278,35 @@ export default function Story() {
       setAudience(selectedAudience);
       setEntered(true);
       setLoaderDismissed(false);
-      const webgl = probeWebGL();
-      if (webgl === false) setCanvasUnavailable(true);
-      else setCanvasBoot(true);
       document.documentElement.classList.remove("story-gated");
+      // Audio must begin in the trusted gesture. Its synchronous portion is
+      // small; moving it would make autoplay unreliable in Safari and iOS.
       if (withSound) audio.start();
     },
     [audio]
   );
+
+  /* Creating even a throwaway WebGL context can hold the compositor for a
+     frame. It used to happen inside the journey click, so Event Timing counted
+     GPU setup against the gate's first visual response. Commit the selected
+     journey and loader, restore focus in the same animation frame, then probe
+     from a task after that frame has painted. Film-fallback boot remains
+     untouched: if it already requested the canvas there is nothing to probe. */
+  useEffect(() => {
+    if (!entered || canvasBoot || canvasUnavailable) return;
+    let task = 0;
+    const frameId = window.requestAnimationFrame(() => {
+      task = window.setTimeout(() => {
+        const webgl = probeWebGL();
+        if (webgl === false) setCanvasUnavailable(true);
+        else setCanvasBoot(true);
+      }, 0);
+    });
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      if (task) window.clearTimeout(task);
+    };
+  }, [canvasBoot, canvasUnavailable, entered]);
 
   /* Lock the page behind the gate so the story can't be scrolled past it. */
   useEffect(() => {

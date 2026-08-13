@@ -15,6 +15,7 @@
       "responsive desktop and mobile MP4 fallbacks",
       "measured dimensions/bitrate/quality manifest",
       "poster remains immediate LCP candidate",
+      "five-run cold-context p75 CWV measurements artifact",
       "reduced-motion, load-error, timeout, and WebGL fallbacks remain composed"
     ]
   },
@@ -34,19 +35,34 @@
       "app/public/video/**",
       "app/scripts/video-proof.mjs",
       "app/tests/landing-film.spec.ts",
+      "app/tests/landing-vitals.spec.ts",
+      "app/playwright.r0.config.ts",
       "app/tests/visual-system-ui.spec.ts"
     ]
   },
   "verify": {
     "owner": "fresh-context verifier",
     "commands": [
-      "npx playwright test tests/landing-film.spec.ts tests/visual-system-ui.spec.ts --workers=1",
+      "npx playwright test --config=playwright.r0.config.ts tests/landing-film.spec.ts tests/landing-vitals.spec.ts tests/visual-system-ui.spec.ts --workers=1",
       "node scripts/video-proof.mjs",
       "npx tsc --noEmit"
     ],
-    "anchors": ["network request matrix", "media metadata", "poster paint", "entry focus", "reduced-motion fallback"]
+    "anchors": ["network request matrix", "media metadata", "poster paint", "p75 CWV measurements artifact", "entry focus", "reduced-motion fallback"]
   },
   "repairLimit": 1,
   "sideEffect": "local",
-  "status": "ready"
+  "evidence": {
+    "verifiedAt": "2026-08-13T23:52:50.237Z",
+    "verdict": "pass",
+    "browserTests": "19/19",
+    "coldContexts": 5,
+    "p75LcpMs": 368,
+    "p75InpMs": 120,
+    "p75Cls": 0.004287394607606738,
+    "mediaAssets": 4,
+    "qualityComparisons": 2,
+    "typescript": "pass",
+    "artifact": "app/shots/r05-film/cwv-proof.json"
+  },
+  "status": "verified"
 }

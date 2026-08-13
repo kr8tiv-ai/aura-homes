@@ -1,0 +1,102 @@
+{
+  "schema": "AuraLandingVitalsProofV1",
+  "measuredAt": "2026-08-13T23:52:50.237Z",
+  "method": {
+    "environment": "local static export, unthrottled Chromium",
+    "runs": 5,
+    "cache": "new isolated browser context and blocked service workers for every run",
+    "lcp": "750 ms quiet window before the first interaction",
+    "percentile": "nearest-rank p75 across fresh contexts",
+    "limitation": "This repeatable lab gate complements, but does not replace, field Core Web Vitals."
+  },
+  "thresholds": {
+    "lcpMs": 2000,
+    "inpMs": 160,
+    "cls": 0.08
+  },
+  "browser": {
+    "name": "chromium",
+    "version": "151.0.7922.34",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    }
+  },
+  "runs": [
+    {
+      "run": 1,
+      "lcpMs": 360,
+      "lcpElement": "h1.story-display.story-gate-title",
+      "inpMs": 120,
+      "cls": 0.004287394607606738,
+      "interactionCount": 3,
+      "observerSupport": {
+        "lcp": true,
+        "cls": true,
+        "event": true
+      },
+      "observerErrors": []
+    },
+    {
+      "run": 2,
+      "lcpMs": 372,
+      "lcpElement": "h1.story-display.story-gate-title",
+      "inpMs": 120,
+      "cls": 0.004287394607606738,
+      "interactionCount": 3,
+      "observerSupport": {
+        "lcp": true,
+        "cls": true,
+        "event": true
+      },
+      "observerErrors": []
+    },
+    {
+      "run": 3,
+      "lcpMs": 368,
+      "lcpElement": "h1.story-display.story-gate-title",
+      "inpMs": 120,
+      "cls": 0.004287394607606738,
+      "interactionCount": 3,
+      "observerSupport": {
+        "lcp": true,
+        "cls": true,
+        "event": true
+      },
+      "observerErrors": []
+    },
+    {
+      "run": 4,
+      "lcpMs": 324,
+      "lcpElement": "h1.story-display.story-gate-title",
+      "inpMs": 96,
+      "cls": 0.004287394607606738,
+      "interactionCount": 3,
+      "observerSupport": {
+        "lcp": true,
+        "cls": true,
+        "event": true
+      },
+      "observerErrors": []
+    },
+    {
+      "run": 5,
+      "lcpMs": 280,
+      "lcpElement": "h1.story-display.story-gate-title",
+      "inpMs": 152,
+      "cls": 0.004814831065739133,
+      "interactionCount": 3,
+      "observerSupport": {
+        "lcp": true,
+        "cls": true,
+        "event": true
+      },
+      "observerErrors": []
+    }
+  ],
+  "p75": {
+    "lcpMs": 368,
+    "inpMs": 120,
+    "cls": 0.004287394607606738
+  }
+}
