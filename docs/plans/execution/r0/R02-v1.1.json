@@ -47,5 +47,19 @@
   },
   "repairLimit": 1,
   "sideEffect": "local",
-  "status": "ready"
+  "evidence": {
+    "verifiedAt": "2026-08-13T23:45:13.474Z",
+    "verdict": "pass",
+    "tddRed": "missing data-preview-camera-mode=fixed-comparison-v1",
+    "focusedPureTests": "10/10",
+    "fixedCameraBrowserTest": "1/1",
+    "keyboardAndTouch": "pass",
+    "typescript": "pass",
+    "camera": "72,44,92→0,9,0",
+    "projection": "perspective:38/0.5/2000",
+    "pixelThreshold": "RGB delta >=48 on >2.5% of pixels",
+    "measuredPairwiseDifferences": [0.06908474277660324, 0.3021347192858821, 0.27278599953018556],
+    "artifact": "app/shots/r02-plan-selection/fixed-camera-differences.json"
+  },
+  "status": "verified"
 }

@@ -8,7 +8,6 @@ import type { BuilderDocument } from "@/lib/builder/document";
 import { hashBuilderDocument } from "@/lib/builder/document";
 import {
   buildHome,
-  cameraFrameForSummary,
   GRADE_Y_FT,
   type Part,
 } from "@/lib/builder/geometry";
@@ -29,6 +28,97 @@ const MATERIAL = {
   tub: NORDIC_MATERIALS.cedar,
   water: NORDIC_MATERIALS.water,
 } as const;
+
+/**
+ * One comparison camera for every catalog model. The user can still orbit and
+ * zoom, but each newly selected plan starts at the same scale and projection;
+ * a smaller plan therefore looks smaller instead of being auto-framed into
+ * the same silhouette as a larger one.
+ */
+const PROOF_CAMERA = {
+  position: [72, 44, 92] as const,
+  target: [0, 9, 0] as const,
+  fov: 38,
+  aspect: 16 / 10,
+};
+const RENDER_CAMERA = `${PROOF_CAMERA.position.join(",")}→${PROOF_CAMERA.target.join(",")}`;
+const RENDER_PROJECTION = `perspective:${PROOF_CAMERA.fov}/0.5/2000`;
+const RENDER_DISTANCE = new THREE.Vector3(...PROOF_CAMERA.position).distanceTo(
+  new THREE.Vector3(...PROOF_CAMERA.target),
+);
+
+function previewGeometryProof(home: ReturnType<typeof buildHome>) {
+  const camera = new THREE.PerspectiveCamera(
+    PROOF_CAMERA.fov,
+    PROOF_CAMERA.aspect,
+    0.5,
+    2_000,
+  );
+  camera.position.set(...PROOF_CAMERA.position);
+  camera.lookAt(...PROOF_CAMERA.target);
+  camera.updateMatrixWorld(true);
+  camera.updateProjectionMatrix();
+
+  const world = new THREE.Box3();
+  const projected = new THREE.Box2();
+  let hash = 0x811c9dc5;
+
+  const mix = (value: number) => {
+    hash ^= value | 0;
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  };
+  const visit = (
+    origin: readonly [number, number, number],
+    rotationY: number,
+    parts: readonly Part[],
+  ) => {
+    const transform = new THREE.Matrix4().makeRotationY(rotationY);
+    transform.setPosition(...origin);
+    for (const part of parts) {
+      for (let index = 0; index < part.surface.length; index += 1) {
+        mix(part.surface.charCodeAt(index));
+      }
+      const positions = part.geometry.getAttribute("position");
+      mix(positions.count);
+      for (let index = 0; index < positions.count; index += 1) {
+        const point = new THREE.Vector3(
+          positions.getX(index),
+          positions.getY(index),
+          positions.getZ(index),
+        ).applyMatrix4(transform);
+        world.expandByPoint(point);
+        const view = point.clone().project(camera);
+        projected.expandByPoint(new THREE.Vector2(view.x, view.y));
+        mix(Math.round(point.x * 1_000));
+        mix(Math.round(point.y * 1_000));
+        mix(Math.round(point.z * 1_000));
+      }
+    }
+  };
+
+  for (const volume of home.volumes) visit(volume.origin, volume.rotationY, volume.parts);
+  if (home.deck) visit(home.deck.origin, home.deck.rotationY, home.deck.parts);
+
+  const fixed = (value: number) => value.toFixed(4);
+  return {
+    signature: `preview-v1:${hash.toString(16).padStart(8, "0")}`,
+    camera: `${PROOF_CAMERA.position.join(",")}→${PROOF_CAMERA.target.join(",")}@${PROOF_CAMERA.fov}/${PROOF_CAMERA.aspect}`,
+    projectedBounds: [
+      projected.min.x,
+      projected.min.y,
+      projected.max.x,
+      projected.max.y,
+    ].map(fixed).join(","),
+    worldBounds: [
+      world.min.x,
+      world.min.y,
+      world.min.z,
+      world.max.x,
+      world.max.y,
+      world.max.z,
+    ].map(fixed).join(","),
+  };
+}
 
 function PreviewPart({ part }: { part: Part }) {
   const material = MATERIAL[part.surface];
@@ -70,16 +160,22 @@ export default function PlanModelPreview({
   title: string;
 }) {
   const home = useMemo(() => buildHome(document.spec), [document]);
-  const frame = useMemo(() => cameraFrameForSummary(home.summary), [home]);
   const bounds = home.summary.boundsWithRoof;
-  const span = Math.max(bounds.maxX - bounds.minX, bounds.maxZ - bounds.minZ, 24);
   const designHash = hashBuilderDocument(document);
+  const proof = useMemo(() => previewGeometryProof(home), [home]);
 
   return (
     <div
       className="plan-model-preview"
       data-plan-model-preview={planId}
       data-preview-design-hash={designHash}
+      data-preview-camera-mode="fixed-comparison-v1"
+      data-preview-render-camera={RENDER_CAMERA}
+      data-preview-render-projection={RENDER_PROJECTION}
+      data-preview-geometry-signature={proof.signature}
+      data-preview-camera={proof.camera}
+      data-preview-projected-bounds={proof.projectedBounds}
+      data-preview-world-bounds={proof.worldBounds}
       data-preview-width={(bounds.maxX - bounds.minX).toFixed(2)}
       data-preview-depth={(bounds.maxZ - bounds.minZ).toFixed(2)}
       role="img"
@@ -88,13 +184,18 @@ export default function PlanModelPreview({
       <Canvas
         frameloop="demand"
         dpr={[1, 1.35]}
-        camera={{ fov: 38, near: 0.5, far: 2000, position: frame.position }}
+        camera={{
+          fov: PROOF_CAMERA.fov,
+          near: 0.5,
+          far: 2_000,
+          position: [...PROOF_CAMERA.position],
+        }}
         gl={{ antialias: true, powerPreference: "high-performance" }}
-        onCreated={({ camera }) => camera.lookAt(...frame.target)}
+        onCreated={({ camera }) => camera.lookAt(...PROOF_CAMERA.target)}
       >
         <color attach="background" args={["#dce8df"]} />
         <hemisphereLight color="#f5f1e7" groundColor="#66765d" intensity={1.45} />
-        <directionalLight position={[span, span * 1.5, span]} intensity={2.1} color="#fff4de" />
+        <directionalLight position={[48, 72, 48]} intensity={2.1} color="#fff4de" />
         <group>
           {home.volumes.map((volume) => (
             <group
@@ -115,16 +216,16 @@ export default function PlanModelPreview({
           ) : null}
         </group>
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, GRADE_Y_FT - 0.02, 0]}>
-          <planeGeometry args={[span * 5, span * 5]} />
+          <planeGeometry args={[300, 300]} />
           <meshStandardMaterial color="#839879" roughness={1} />
         </mesh>
         <OrbitControls
           makeDefault
-          target={frame.target}
+          target={PROOF_CAMERA.target}
           enablePan={false}
           enableDamping={false}
-          minDistance={Math.max(8, frame.distance * 0.45)}
-          maxDistance={frame.distance * 2.5}
+          minDistance={RENDER_DISTANCE * 0.4}
+          maxDistance={RENDER_DISTANCE * 2.5}
           maxPolarAngle={Math.PI / 2 - 0.04}
         />
       </Canvas>

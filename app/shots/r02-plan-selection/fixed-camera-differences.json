@@ -1,0 +1,57 @@
+{
+  "schema": "R02FixedCameraPixelProofV1",
+  "capturedAt": "2026-08-13T23:45:13.474Z",
+  "threshold": {
+    "rgbDelta": 48,
+    "minChangedRatio": 0.025
+  },
+  "captures": [
+    {
+      "id": "ridge-a-frame",
+      "sha256": "c16551d810918ab73c382fa5454fe2060375ec77d9a60c842b211f86d0181443",
+      "camera": "72,44,92→0,9,0",
+      "projection": "perspective:38/0.5/2000",
+      "geometry": "preview-v1:7c9e8bca",
+      "projectedBounds": "-0.3549,-0.5096,0.2658,0.4408",
+      "worldBounds": "-11.5000,-4.1673,-16.5000,11.5000,25.5988,24.0000"
+    },
+    {
+      "id": "fjell-cube",
+      "sha256": "60afe12973cdf43b038ec76585892b3a991a2d9d24b6b069c7f91243303eee57",
+      "camera": "72,44,92→0,9,0",
+      "projection": "perspective:38/0.5/2000",
+      "geometry": "preview-v1:cefad002",
+      "projectedBounds": "-0.2616,-0.4370,0.2386,0.1700",
+      "worldBounds": "-11.5000,-2.7500,-11.5314,11.5000,12.5000,18.0000"
+    },
+    {
+      "id": "lightframe-pavilion",
+      "sha256": "b9501a4c14f17ebdb3ca9ea8919c89ebc7346498d70cd126108fc244005db699",
+      "camera": "72,44,92→0,9,0",
+      "projection": "perspective:38/0.5/2000",
+      "geometry": "preview-v1:4e5a3611",
+      "projectedBounds": "-0.3388,-0.4930,0.3033,0.1645",
+      "worldBounds": "-16.5000,-2.7500,-11.5314,16.5000,11.5000,20.0000"
+    }
+  ],
+  "differences": [
+    {
+      "pair": "ridge-a-frame vs fjell-cube",
+      "ratio": 0.06908474277660324,
+      "changedPixels": 9411,
+      "totalPixels": 136224
+    },
+    {
+      "pair": "ridge-a-frame vs lightframe-pavilion",
+      "ratio": 0.3021347192858821,
+      "changedPixels": 41158,
+      "totalPixels": 136224
+    },
+    {
+      "pair": "fjell-cube vs lightframe-pavilion",
+      "ratio": 0.27278599953018556,
+      "changedPixels": 37160,
+      "totalPixels": 136224
+    }
+  ]
+}
