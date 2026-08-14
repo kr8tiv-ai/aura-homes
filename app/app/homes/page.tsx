@@ -14,6 +14,8 @@ import {
   reconcileHomesFeeLedger,
 } from "@/lib/homes/fund";
 import {
+  HOMES_CREATOR_WALLET,
+  HOMES_CREATOR_WALLET_EXPLORER_URL,
   HOMES_EXPLORER_URL,
   HOMES_GECKOTERMINAL_URL,
   HOMES_POOL_ADDRESS,
@@ -95,8 +97,9 @@ export default function HomesPage() {
         <p className="max-w-3xl text-base leading-relaxed text-aura-text/85">
           In plain words: HOMES is <strong>live</strong> — launched on XLaunch, a permissionless
           launchpad on X Layer mainnet, where you can buy it today. The idea it funds is a
-          user-owned network of eco stays, like an Airbnb its guests and hosts own, backed by a
-          transparent property trust — and that part is still <strong>planned</strong>: no trust,
+          future owner-participating network of eco stays — think Airbnb, owned over time by its
+          guests and hosts once those rights actually exist — backed by a
+          transparent property trust. That part is still <strong>planned</strong>: no trust,
           staking, property, or payout exists yet. It is a micro-cap experiment on an unaudited
           venue factory; buy only what you can afford to lose. Every zero below is declared, and
           every claim keeps its Today / Next / Future label until something is real.
@@ -204,6 +207,7 @@ export default function HomesPage() {
         <dl className="homes-proof">
           <div><dt>HOMES token contract</dt><dd>Live · <a href={HOMES_EXPLORER_URL} target="_blank" rel="noreferrer">{shortHomesAddress()} on the X Layer explorer ↗</a></dd></div>
           <div><dt>Venue market</dt><dd>XLaunch · HOMES/wSPCXx pool <a href={HOMES_GECKOTERMINAL_URL} target="_blank" rel="noreferrer">{shortHomesAddress(HOMES_POOL_ADDRESS)} ↗</a> · liquidity locked in the venue&apos;s locker, no withdraw path</dd></div>
+          <div><dt>Creator fee-claim wallet</dt><dd>Published · <a href={HOMES_CREATOR_WALLET_EXPLORER_URL} target="_blank" rel="noreferrer">{shortHomesAddress(HOMES_CREATOR_WALLET)} ↗</a> · receives 60% of the venue&apos;s 1% swap fee; claims appear here with receipts before any amount is recognized</dd></div>
           <div><dt>Property-fund vault</dt><dd>Not deployed</dd></div>
           <div><dt>Staking + distribution</dt><dd>Coming later · design only</dd></div>
           <div><dt>Property holding trust</dt><dd>Not formed; no legal title held</dd></div>
@@ -282,7 +286,7 @@ export default function HomesPage() {
 
       <section className="homes-future" aria-labelledby="rental-heading">
         <p className="aura-label">The operating layer</p>
-        <h2 id="rental-heading">From one transparent rental to a decentralized stay network.</h2>
+        <h2 id="rental-heading">From one transparent rental toward a decentralized stay network.</h2>
         <p>The intended holding structure is a decentralized property trust: a properly formed legal vehicle holds registered title while the on-chain ledger publishes community economics, votes, receipts and distributions. Aura would first prove one home—acquisition, build, booking, expenses, maintenance, reserves and guest operations—before expanding into owner-listed eco homes and an open rental marketplace.</p>
       </section>
 

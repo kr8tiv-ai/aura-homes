@@ -221,7 +221,7 @@ export interface RepoCostModelLineItem {
   mid: number;
   high: number;
   basis?: string;
-  /** Legacy schema field — no current line is optional (AWG is standard on every home). */
+  /** Legacy schema field — the reference configuration includes every line (AWG recommended on every home, not mandatory; founder decision 2026-08-14). */
   optional?: boolean;
   ownerBuildable?: boolean;
   ownerNote?: string;

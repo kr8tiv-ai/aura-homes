@@ -68,7 +68,7 @@ const ARCS: Array<{
       "Published in full and honestly labelled: the HOMES token itself is live and listed under Now above; everything below is planned, and nothing here is an offer.",
     items: [
       { text: "A planned property-holding and governance model for real eco homes. The legal vehicle, participant rights, and fee rules still need jurisdiction-specific design." },
-      { text: "A user-owned network of eco stays — the long-term story: an Airbnb its guests and hosts own." },
+      { text: "A future owner-participating network of eco stays — the Airbnb comparison guests already understand, owned over time by the people in it once those rights exist." },
       { text: "An RWA launchpad where owners fund their own eco-stay projects, with receipts public by construction." },
       { text: "Every claim carries its label on the ledger page — zeros rendered honestly until something is real.", href: "/homes", label: "Read the HOMES ledger" },
     ],

@@ -21,7 +21,7 @@
     { "key": "permitsSoft", "label": "Permits, design, engineering, insurance", "low": 8000, "mid": 12000, "high": 18000, "basis": "Dev permit ~$231 (Leduc Cty); building+trade permits $1.5-7K; Owner Builder Authorization $750; drafting $1.2-2.7K; truss P.Eng in truss package (STANDATA 23-BCB-002); course-of-construction insurance $1.5-3K", "ownerBuildable": false }
   ],
   "contingencyPct": { "low": 0.10, "mid": 0.12, "high": 0.15 },
-  "totalsRule": "totals = sum of non-optional line items x (1 + contingencyPct); no line is currently optional (AWG is standard on every home); land excluded from ex-land totals. Totals below are COMPUTED from the lines above - if you change a line, recompute.",
+  "totalsRule": "totals = sum of non-optional line items x (1 + contingencyPct); the published totals describe the REFERENCE configuration, in which every line including AWG is present (founder decision 2026-08-14: AWG is recommended on every home, not mandatory - a project may descope it, and a descoped budget recomputes from its own lines); land excluded from ex-land totals. Totals below are COMPUTED from the lines above - if you change a line, recompute.",
   "totalsExLand": { "low": 199100, "mid": 301280, "high": 443900 },
   "totalsIncLand": { "low": 274100, "mid": 451280, "high": 793900 },
   "builderComparison": { "low": 450000, "high": 650000, "basis": "Same home builder-delivered ex-land at $250-450/sqft hard + 25-40% soft; owner-builder saves 30-40% ($150-250K) for 12-24 months of labour" },

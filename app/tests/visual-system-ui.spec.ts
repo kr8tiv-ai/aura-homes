@@ -45,7 +45,7 @@ test("the landing offers both journeys together over one scene, with the founder
   await expect(page.getByText("Start with a home that fits your life.", { exact: true })).toBeAttached();
   await expect(page.getByText("Choose how to pay when a real quote exists.", { exact: true })).toBeAttached();
   /* HOMES stays out of the eco beats — it appears once, on the end sheet. */
-  await expect(page.getByText("Long term: a user-owned Airbnb for eco stays.", { exact: false })).toBeAttached();
+  await expect(page.getByText("Long term: a future owner-participating stay network", { exact: false })).toBeAttached();
   await expect(page.getByRole("button", { name: "Switch to the X Layer ecosystem" })).toBeVisible();
   await expect(page.getByRole("button", { name: "04 Team" })).toBeAttached();
   await expect(page.getByRole("button", { name: "06 Payments" })).toBeAttached();

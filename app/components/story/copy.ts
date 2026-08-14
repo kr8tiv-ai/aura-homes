@@ -174,7 +174,7 @@ export const END: End = {
   },
   /* HOMES appears here and ONLY here on the eco side (founder, verbatim). */
   homes: {
-    text: "Long term: a user-owned Airbnb for eco stays.",
+    text: "Long term: a future owner-participating stay network — an Airbnb its guests could one day own.",
     href: "/homes",
     label: "Learn about $HOMES on X Layer",
   },

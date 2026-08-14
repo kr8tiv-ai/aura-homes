@@ -33,6 +33,11 @@
       "gate": "VT04: recognized in the ledger only after claim receipts are published"
     },
     {
+      "claim": "The creator fee-claim wallet is 0x5e8abc953f4d685943f1a0a730afffbba9df41de",
+      "proof": "Founder-published August 14, 2026 (matches the deployer address XLaunch labels DEV); rendered with an explorer link in the /homes proof register (lib/homes/token.ts HOMES_CREATOR_WALLET)",
+      "gate": "Claim transactions from this wallet, with receipts, are the only path to non-zero venue fees on the ledger"
+    },
+    {
       "claim": "The 30/10/10/20/30 supply split is a design target, not the live mint",
       "proof": "Labelled on /homes and in the FAQ; live distribution verification pending (VT03)",
       "gate": "VT03 on-chain verification before any design number reads as live"

@@ -36,6 +36,9 @@ test("the live token ships its receipts, buy path, and risk labels together", as
   await expect(page.getByRole("heading", { name: "How to buy HOMES." })).toBeVisible();
   await expect(page.getByText("Read this before buying.", { exact: true })).toBeVisible();
   await expect(page.getByText("tokens like this routinely go to zero", { exact: false })).toBeVisible();
+  // The founder-published creator fee-claim wallet is a receipt, not a secret.
+  await expect(page.getByText("Creator fee-claim wallet", { exact: true })).toBeVisible();
+  await expect(page.getByText("0x5e8a…41de", { exact: false })).toBeVisible();
   // What is NOT live keeps saying so, next to the live thing.
   await expect(page.getByText("Property-fund vault", { exact: true })).toBeVisible();
   await expect(page.getByText("Not formed; no legal title held", { exact: true })).toBeVisible();
@@ -54,9 +57,11 @@ test("the eco journey mentions HOMES once, at the end, never as live", async ({ 
   await paths.locator("button").first().click();
 
   // The sentence shares its <p> with the link, so exact-match can never hit;
-  // substring + the link's accessible name pin the same contract.
+  // substring + the link's accessible name pin the same contract. Aug 14
+  // copy decision: the Airbnb comparison stays, future-tensed until rights
+  // exist ("could one day own"), per the graph's §16 rule.
   await expect(
-    page.getByText("a user-owned Airbnb for eco stays", { exact: false }).first(),
+    page.getByText("an Airbnb its guests could one day own", { exact: false }).first(),
   ).toBeAttached({ timeout: 60_000 });
   await expect(page.getByRole("link", { name: /Learn about \$HOMES on X Layer/ })).toBeAttached();
 });

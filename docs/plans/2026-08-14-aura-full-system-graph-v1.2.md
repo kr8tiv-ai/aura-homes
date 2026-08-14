@@ -167,21 +167,23 @@ from the guide, this poisons the submission unless fixed first. **Amendment:**
 the guide's §"CORRECTED" rows are fixed in this wave; MA01 (§1.2) is the
 standing gate that makes this class of error a ten-second detection.
 
-### 1.10 AWG and the concrete doctrine: NOT adopted — awaiting explicit decision
+### 1.10 AWG: DECIDED Aug 14 (recommended, not mandatory) · concrete doctrine: still undecided
 
 v1.1 §7/§22 folded two reversals of standing founder mandates into the
-approval checklist, and the recorded approval instruction was the word "go".
-The AWG amendment also collides with frozen money math:
-`cost-model.json` `totalsRule` reads *"no line is currently optional (AWG is
-standard on every home)"*, and GRAPH-ENGINEERING rule 7 freezes the totals
-rule. Making AWG optional therefore requires: an explicit founder decision,
-a totalsRule revision, a full recompute, and re-derivation of every published
-figure — none of which "go" authorizes.
+approval checklist behind the word "go" — insufficient for either. On
+**August 14 the founder decided the AWG half explicitly**: *"I want those
+for sure. It's not mandatory, but definitely suggested."*
 
-**Status in v1.2: both amendments are `PROPOSED founder amendment —
-undecided`. Status quo holds everywhere: AWG standard on every home; the
-site-evidence-based foundation comparison remains a proposal.** A one-line
-explicit decision from the founder flips this; nothing else does.
+**Resolution (D-2026-08-14-awg-recommended):** AWG is recommended on every
+home, not mandatory. The REFERENCE configuration keeps AWG, so the anchored
+ex-land triplet ($199,100/$301,280/$443,900) and the money anchor are
+unchanged — the `totalsRule` text now says exactly this. A project may
+descope AWG; its budget recomputes from its own lines. Follow-up feature
+node **BQ-AWG** exposes AWG as a deselectable line in the budget UI.
+
+**The no-concrete half** (site-evidence-based foundation comparison instead
+of a universal concrete ban) **remains `PROPOSED — undecided`**; status quo
+holds until the founder addresses it by name.
 
 ### 1.11 Missing engineering nodes added
 

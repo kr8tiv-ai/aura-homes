@@ -6,8 +6,14 @@
       "id": "D-2026-08-07-awg-standard",
       "date": "2026-08-07",
       "decision": "AWG (atmospheric water generation) is standard on every home; data/alberta/cost-model.json totalsRule treats no line as optional.",
+      "standing": "superseded-by:D-2026-08-14-awg-recommended"
+    },
+    {
+      "id": "D-2026-08-14-awg-recommended",
+      "date": "2026-08-14",
+      "decision": "AWG is RECOMMENDED on every home, not mandatory ('I want those for sure. It's not mandatory, but definitely suggested'). The reference configuration keeps AWG, so the anchored ex-land triplet $199,100/$301,280/$443,900 stands unchanged and the money anchor still reconciles; a project may descope AWG and its budget recomputes from its own lines.",
       "standing": "active",
-      "notes": "Graph v1.1 §7/§22 proposed reversing this (AWG optional, no universal concrete ban). That amendment is PROPOSED-UNDECIDED: a thin 'go' does not reverse a standing mandate, and the change would alter the frozen totalsRule requiring a full recompute. Awaiting an explicit founder line."
+      "notes": "Settles graph v1.1 §7's AWG amendment in modified form. The no-concrete half of that amendment (site-evidence-based foundation comparison) remains PROPOSED-UNDECIDED. Follow-up feature node BQ-AWG: expose AWG as a deselectable line in the budget UI."
     },
     {
       "id": "D-2026-08-12-interleave",

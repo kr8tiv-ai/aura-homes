@@ -54,6 +54,15 @@ export const HOMES_EXPLORER_URL =
 export const XLAUNCH_SWAP_FEE_PERCENT = 1;
 export const XLAUNCH_CREATOR_FEE_SHARE_PERCENT = 60;
 
+/** The founder's creator/fee-claim wallet — published August 14, 2026. It is
+ * the token's deployer on XLaunch (the address the venue labels DEV) and the
+ * destination of the creator fee share; claims from it become the first real
+ * property-fund inflows once their receipts are published on the ledger. */
+export const HOMES_CREATOR_WALLET = "0x5e8abc953f4d685943f1a0a730afffbba9df41de" as const;
+
+export const HOMES_CREATOR_WALLET_EXPLORER_URL =
+  `https://web3.okx.com/explorer/x-layer/address/${HOMES_CREATOR_WALLET}` as const;
+
 export function shortHomesAddress(address: `0x${string}` = HOMES_TOKEN_ADDRESS): string {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
