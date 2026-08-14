@@ -13,8 +13,9 @@
 [**Start a project**](https://aurahomes.fun/start) · [**Open the builder**](https://aurahomes.fun/build) · [**Explore the live site**](https://aurahomes.fun) · [**Explore the blockchain layer**](#x-layer-experiments)
 
 [![Live](https://img.shields.io/badge/live-aurahomes.fun-047857?style=flat-square&labelColor=f5f5f4)](https://aurahomes.fun)
-[![X Layer](https://img.shields.io/badge/X_Layer-testnet_1952-171a18?style=flat-square&labelColor=f5f5f4)](#x-layer-experiments)
-[![Tests](https://img.shields.io/badge/release_checkpoint-93_%2B_27_%2B_24_passing-171a18?style=flat-square&labelColor=f5f5f4)](#verification)
+[![HOMES](https://img.shields.io/badge/%24HOMES-live_on_X_Layer_196-047857?style=flat-square&labelColor=f5f5f4)](https://aurahomes.fun/homes)
+[![X Layer](https://img.shields.io/badge/labs-X_Layer_testnet_1952-171a18?style=flat-square&labelColor=f5f5f4)](#x-layer-experiments)
+[![Tests](https://img.shields.io/badge/gates-175_unit_%2B_58_UI_%2B_hardware_proof-171a18?style=flat-square&labelColor=f5f5f4)](#verification)
 [![License](https://img.shields.io/badge/license-MIT-171a18?style=flat-square&labelColor=f5f5f4)](LICENSE)
 
 <sub>Open-source product and hackathon submission by <a href="https://github.com/Matt-Aurora-Ventures">Matt Haynes / Aura Ventures</a>. Alberta first; designed to travel.</sub>
@@ -47,7 +48,7 @@ The landing page now asks one useful question before the story begins: **what br
 | Perspective | What the story makes clear |
 | --- | --- |
 | **For eco-home enthusiasts** | Design or choose an eco-home, find suitable land, source a team, compare quotes, and carry one private project toward professional review and construction. No wallet is required. The longer-term destination is a user-owned alternative to a centralized Airbnb-style marketplace: real stays with transparent operating records and optional shared ownership rails. |
-| **Blockchain ecosystem** | Explore provider-supported [X Layer](https://web3.okx.com/xlayer) payments, the [OKX Build X · AI Season](https://web3.okx.com/xlayer/build-x-series) submission, the planned HOMES property trust, and the path toward an accountable network of independently operated stays. The later owner launchpad lets people prepare a real home project before any token, vault, or public raise exists. |
+| **Blockchain ecosystem** | Explore provider-supported [X Layer](https://web3.okx.com/xlayer) payments, the [OKX Build X · AI Season](https://web3.okx.com/xlayer/build-x-series) submission, the live [$HOMES token](https://aurahomes.fun/homes) and its planned property trust, and the path toward an accountable network of independently operated stays. The later owner launchpad lets people prepare a real home project before any vault or public raise exists. |
 
 The crypto story still leads to the useful product: homes can be designed, matched to land, costed, sourced, and eventually paid for with cash or confirmed X Layer USDC where a real provider and payment destination exist. The homeowner story still explains the larger ambition in plain language: people should eventually be able to build, host, and participate in a user-owned network of distinctive stays without first becoming crypto experts.
 
@@ -97,7 +98,8 @@ Aura uses explicit status language throughout the interface and this submission:
 | Finished-home readiness catalog | **Pilot** | Research and quote preparation, not instant global purchasing. |
 | Deterministic Aura brain and MCP tools | **Live locally** | Hosted, evidence-grounded concierge and `PreparedAction` confirmations remain in build. |
 | X Layer payment and registry experiments | **Testnet / isolated** | Technical prototypes remain outside the customer journey. Provider-supported USDC payments are the relevant product path. |
-| HOMES trust, token, staking and property ledger | **Planned** | Public dashboard intentionally reads zero. No address, venue, pool, property, or payout exists. |
+| $HOMES token | **Live (venue)** | Launched Aug 13, 2026 through the third-party XLaunch launchpad on X Layer mainnet 196; contract, pool, locker, and creator fee-claim wallet published with a buy guide and plain risk labels on [/homes](https://aurahomes.fun/homes). A micro-cap experiment on an unaudited venue factory — not the designed token architecture. |
+| HOMES trust, staking and property ledger | **Planned** | The ledger intentionally reads zero everywhere a receipt does not exist: no trust, staking, fund balance, property, or payout. Venue fees accrue but count only after claim receipts publish. |
 | Owner-led unique-stay launchpad | **Planned** | Architecture published; project vaults, review, contracts and operating partners are future work. |
 
 <div align="center"><img src="assets/section-rule.png" alt="" width="88%"></div>
@@ -194,9 +196,30 @@ The repository retains an isolated testnet registry and earlier payment experime
 
 <div align="center"><img src="assets/section-rule.png" alt="" width="88%"></div>
 
-## HOMES — the planned trust layer
+## HOMES — a live token, a planned trust
 
-HOMES is a **planned X Layer token and transparent property trust concept** attached to Aura's long-term unique-stay network. It is not deployed, listed, paired, staked, or collecting fees. The dashboard begins at zero on purpose.
+**The $HOMES token is live.** The founder launched it on August 13, 2026 through
+[XLaunch](https://xlaunch.fun/token/0x642855d557ada1eba8a66014aaff902e6394c0de),
+a permissionless launchpad on X Layer mainnet 196:
+
+| Receipt | Value |
+| --- | --- |
+| Contract | [`0x642855d557ada1eba8a66014aaff902e6394c0de`](https://web3.okx.com/explorer/x-layer/address/0x642855d557ada1eba8a66014aaff902e6394c0de) |
+| Venue market | HOMES/wSPCXx on XLaunch · [GeckoTerminal pool](https://www.geckoterminal.com/x-layer/pools/0xf59d07dfe38807b398f0b4697f187d2f943b06a4) |
+| Liquidity | Locked in XLaunch's locker contract — no withdraw path |
+| Creator fee-claim wallet | [`0x5e8abc953f4d685943f1a0a730afffbba9df41de`](https://web3.okx.com/explorer/x-layer/address/0x5e8abc953f4d685943f1a0a730afffbba9df41de) — receives 60% of the venue's 1% swap fee |
+| How to buy | [aurahomes.fun/homes](https://aurahomes.fun/homes) — wallet, OKB gas/bridge steps, the venue Buy panel, and address verification |
+
+Say it plainly: this is a **micro-cap experiment minted by an unaudited,
+permissionless venue factory**, quoted against a wrapped-stock token whose
+issuer can pause transfers. Tokens like this routinely go to zero; locked
+liquidity is not a price floor; nothing here is investment advice or an offer.
+
+**The trust layer around it remains a planned concept.** No trust, staking,
+fund balance, property, or payout exists; the venue's creator fees accrue but
+appear on the ledger only after claim receipts are published — the build fails
+on any unreceipted number by construction. The dashboard's zeros are declared,
+not decorative.
 
 The thesis is simple: if Aura eventually earns disclosed platform, service, API, AI-routing, or venue-agreement fees, a published allocation can route part of those fees into a property fund. The fund can acquire and operate distinctive small stays, while public on-chain records show what entered, what was allocated, what property was acquired, and what operating profit was distributed.
 
@@ -211,10 +234,10 @@ The thesis is simple: if Aura eventually earns disclosed platform, service, API,
 | Property economics | Planned 60% community / 40% team share of net property profit |
 | Later distribution eligibility | Planned top 200 qualifying community stakers, prorated by the finalized stake snapshot rules |
 | Wind-down concept | If a defined raise fails by its deadline, the distributable purchase-fund balance would be claimable by the top 50 qualifying community holders under published snapshot rules |
-| Initial market design | Proposed 2% account cap and 30% team allocation; implementation, exemptions, venue behavior, and anti-bot tradeoffs remain unresolved |
-| Proposed market | X Layer; a HOMES/SPACEX pool has been discussed, but no verified counter-token, venue, pool, or launch configuration has been selected |
+| Initial market design | The 2% launch-window wallet cap turned out to be venue-enforced by XLaunch (~6 minutes); the 30% team allocation remains a design target |
+| Live market | HOMES/wSPCXx on XLaunch (the founder's launch decision superseded the earlier "SPACEX pool blocked until verified" policy); the wrapper's upgradeable/pausable risks are disclosed beside the buy path |
 
-“Trading fees” only exist if a venue or pool design actually routes them by contract or agreement. Aura will not display assumed exchange revenue as collected money. The public dashboard exposes contract addresses, snapshot block, fee receipts, fund balance, property receipts, eligible-holder cutoff, and USDC distribution transactions only when those values exist.
+These percentages describe the **design**, not the live mint: the token was minted by XLaunch's factory, and its actual on-chain distribution is being verified before any design number is presented as the live one. One venue fee is now real by the venue's own rules — XLaunch routes 60% of its 1% swap fee to the creator wallet — and it still counts as revenue on the dashboard only after claim receipts are published. The public dashboard exposes contract addresses, snapshot block, fee receipts, fund balance, property receipts, eligible-holder cutoff, and USDC distribution transactions only when those values exist.
 
 No private owner documents, guest data, title records, full plans, or personal information belong in the token ledger.
 
@@ -267,16 +290,16 @@ Solidity + OpenZeppelin + Hardhat on X Layer. The active product direction is pr
 
 ## Verification
 
-The current release checkpoint produced:
+The current release checkpoint (August 14, 2026, deploy `3e00c66`) produced:
 
 | Suite | Result |
 | --- | ---: |
 | TypeScript / production compilation | Passed |
-| Deterministic app tests | **93 passed** |
-| Playwright UI tests | **27 passed** |
-| Hardhat contract tests | **24 passed** |
-| Static routes generated | **19** |
-| Homepage first-load JavaScript | **109 kB** in the production build |
+| Deterministic app + contract-truth specs | **175 passed** |
+| Playwright UI specs against a fresh static export | **58 passed** |
+| Hardware scene proof (real GPU, desktop + mobile) | **Passed** — meadow settled both tiers, wind measured at 26% pixel motion on an idle scene, render p95 8.3 ms at the full tier |
+| Money anchor (`agent/` `npm run demo`) | **Reconciles to the dollar** — ex-land $199,100 / $301,280 / $443,900 vs `data/alberta/cost-model.json` |
+| Release tooling (`npm run test:release`) | Passed — append-only two-phase gh-pages publishing with chunk recovery |
 
 Run the same checks:
 
@@ -284,18 +307,47 @@ Run the same checks:
 cd app
 npm install
 npx tsc --noEmit
-npm test
-npm run test:ui
-GH_PAGES=1 npm run build
+npm test           # unit + contract-truth specs (includes release-truth and meadow pins)
+npm run test:ui    # builds the static export, then walks it in a real browser
+npm run test:release
+
+# the hardware scene proof needs a real GPU and an approved baseline directory:
+AURA_MEADOW_BASELINE=/path/to/aura-r03-baseline node scripts/meadow-proof.mjs
+
+cd ../agent
+npm install && npm run demo   # the money anchor — totals must match to the dollar
 
 cd ../contracts
-npm install
-npm test
+npm install && npm test
 ```
 
-The release suite covers document validation and migration, canonical hashes, IndexedDB storage, share/import, order snapshots, comfort calculations, graph invariants, multi-storey relationships, blocked geometry, marketplace discovery, buy readiness, scene quality, X Layer configuration and lifecycle behavior, Guided/Pro interaction, mobile layouts, and key accessibility states.
+Some gates are deliberately adversarial: the meadow proof fails if the grass
+stops moving (pixel-motion between idle frames), if any baked card stands on
+the deck, walkway, or entrance steps (decoded from the shipped binary), or if
+the offline atlas generator's clearance field drifts from the runtime's by
+any amount at any of 3,000 sampled points. A spec that merely *says* the
+scene is beautiful cannot pass for one that proves it.
 
-Performance gates are part of the product contract: homepage LCP ≤ 2.0 s, INP ≤ 160 ms, CLS ≤ 0.08; roughly 60 fps desktop and 30 fps mobile while actively editing; no automatically running mobile 3D.
+Performance gates are part of the product contract: homepage LCP ≤ 2.0 s, steady-state interactions ≤ 160 ms (first-use compile ≤ 250 ms), CLS ≤ 0.08; roughly 60 fps desktop while actively editing; no automatically running mobile 3D.
+
+## How this repo is governed
+
+This repository is built by AI agents under an explicit engineering contract,
+and the contract is itself versioned in the repo — which is exactly what makes
+the work reviewable and continuable by anyone (or any model):
+
+| Artifact | Role |
+| --- | --- |
+| [`docs/plans/2026-08-14-aura-full-system-graph-v1.2.md`](docs/plans/2026-08-14-aura-full-system-graph-v1.2.md) | The full-system dependency graph: every stream of work, its gates, and the calendar. The current authority. |
+| [`docs/plans/registry/decisions.json`](docs/plans/registry/decisions.json) | Founder decisions, dated. A plan document cannot reverse one; only a newer decision can. |
+| [`docs/plans/registry/claims.json`](docs/plans/registry/claims.json) | Every load-bearing public claim mapped to its proof. Collateral generates from this file, not the other way around. |
+| [`docs/plans/execution/`](docs/plans/execution/) | Typed execution manifests: one bounded job per node with inputs, rejection gates, write-set, verification commands, and recorded evidence. `next/` holds ready-to-run scaffolds for the upcoming nodes. |
+| [`docs/GRAPH-ENGINEERING.md`](docs/GRAPH-ENGINEERING.md) | The doctrine underneath it all: node contracts, fresh-context verification, frozen anchors. |
+| [`docs/AUDIT-LOG.md`](docs/AUDIT-LOG.md) | Fresh-context audits of the whole system, graded and dated. |
+
+The one-sentence version of the truth rule: **nothing unbuilt is written in
+the present tense, every number has one anchored source, and a claim without
+a receipt renders as a declared zero.**
 
 ## Run locally
 
@@ -350,7 +402,7 @@ Never commit private keys. Testnet deployment instructions and provenance are in
 - AI cannot sign, contact, or spend without confirmation.
 - No custody, mainnet funds, autonomous conversion, hidden bridge, or automatic ChangeNOW execution.
 - On-chain records contain hashes and public proof, not homeowner files or personal data.
-- HOMES, its trust, venue, staking, properties, launchpad, and distributions remain planned until addresses and receipts exist.
+- The $HOMES token is live with published receipts; its trust, staking, properties, launchpad, and distributions remain planned until their own addresses and receipts exist.
 
 ## Documentation
 

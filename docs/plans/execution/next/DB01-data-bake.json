@@ -1,0 +1,29 @@
+{
+  "node": "DB01",
+  "graphVersion": "1.2",
+  "job": "GitHub Actions scheduled data-bake: refresh free-tier data as committed JSON, no server (plan C5 step 1; founder decision D-2026-08-12-free-tier).",
+  "context": "The site is fully static. Data that changes over time (cost indexes from StatCan 18-10-0276-01, open Alberta land datasets, listing-metadata expiry lint, the HOMES mint verification) should refresh on a schedule by committing JSON - never by adding a runtime backend.",
+  "writeSet": [
+    ".github/workflows/data-bake.yml",
+    "app/scripts/bake-*.mjs (new bake scripts)",
+    "data/**"
+  ],
+  "rejectionGates": [
+    "the workflow must be enabled by the FOUNDER (it needs Actions write permission and creates commits) - prepare it fully, open a PR or leave it on a branch, and say so in the evidence",
+    "no paid APIs, no scraping restricted sources, no partner outreach (D-2026-08-12-free-tier)",
+    "bake commits must be as the github-actions bot with a fixed message prefix 'bake:' so release provenance stays legible"
+  ],
+  "instructions": [
+    "1. Write .github/workflows/data-bake.yml: cron weekly (e.g. Mondays 12:00 UTC) + workflow_dispatch; checkout, node 20, run each bake script, git diff --quiet || commit + push. Do NOT auto-deploy - the deploy stays a human-triggered release.",
+    "2. First bake script: app/scripts/bake-mint-verification.mjs already effectively exists as scripts/verify-homes-mint.mjs - call it and commit data/homes/mint-verification.json when the block advances.",
+    "3. Second: bake-cost-indexes.mjs pulling StatCan table 18-10-0276-01 CSV (free, no key) into data/cost-indexes/statcan-1810027601.json with source URL + retrieval date fields. DO NOT wire it into the budget yet - that is plan C2 stage 1 with its own anchor-invariance test.",
+    "4. Third: a lint step that fails the workflow when any licensed-photo permission in data/listings (once C-1 lands) is past expiresAtISO.",
+    "5. Evidence: the workflow file, one successful local dry-run of each script, and a note that enabling the schedule is a founder action."
+  ],
+  "verify": {
+    "commands": ["node app/scripts/verify-homes-mint.mjs", "node app/scripts/bake-cost-indexes.mjs"],
+    "note": "plus actionlint or GitHub's workflow parser via a draft PR"
+  },
+  "sideEffect": "local (remote-write only when the founder enables the schedule)",
+  "status": "ready"
+}

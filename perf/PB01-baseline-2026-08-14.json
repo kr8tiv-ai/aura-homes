@@ -1,0 +1,148 @@
+{
+  "schema": "PerfBaselineV1",
+  "capturedAt": "2026-08-14T00:50:26-06:00",
+  "sourceCommit": "3e00c6619b11b0d0fd5b1211ec0701f94664bccd",
+  "buildSharedFirstLoadKb": 88.2,
+  "totalStaticAssetBytes": 4896223.0,
+  "routeHtml": [
+    {
+      "route": "/",
+      "htmlBytes": 43066
+    },
+    {
+      "route": "/404/",
+      "htmlBytes": 25103
+    },
+    {
+      "route": "/about/",
+      "htmlBytes": 32707
+    },
+    {
+      "route": "/budget/",
+      "htmlBytes": 46181
+    },
+    {
+      "route": "/build/",
+      "htmlBytes": 25412
+    },
+    {
+      "route": "/buy/",
+      "htmlBytes": 100213
+    },
+    {
+      "route": "/concierge/",
+      "htmlBytes": 13081
+    },
+    {
+      "route": "/contractors/",
+      "htmlBytes": 32224
+    },
+    {
+      "route": "/dashboard/",
+      "htmlBytes": 23535
+    },
+    {
+      "route": "/design/",
+      "htmlBytes": 23716
+    },
+    {
+      "route": "/escrow/",
+      "htmlBytes": 23749
+    },
+    {
+      "route": "/faq/",
+      "htmlBytes": 69512
+    },
+    {
+      "route": "/homes/",
+      "htmlBytes": 73465
+    },
+    {
+      "route": "/how-crypto-works/",
+      "htmlBytes": 61630
+    },
+    {
+      "route": "/how-it-works/",
+      "htmlBytes": 41229
+    },
+    {
+      "route": "/labs/xlayer-proof/",
+      "htmlBytes": 41898
+    },
+    {
+      "route": "/land/",
+      "htmlBytes": 50506
+    },
+    {
+      "route": "/operator/registry/",
+      "htmlBytes": 26023
+    },
+    {
+      "route": "/overview/",
+      "htmlBytes": 23707
+    },
+    {
+      "route": "/projects/",
+      "htmlBytes": 24276
+    },
+    {
+      "route": "/roadmap/",
+      "htmlBytes": 47174
+    },
+    {
+      "route": "/start/",
+      "htmlBytes": 27142
+    }
+  ],
+  "largestAssets": [
+    {
+      "file": "b536a0f1-e977161661092af7.js",
+      "bytes": 684157
+    },
+    {
+      "file": "ca4dcb09.e679332f54c9fe34.js",
+      "bytes": 566178
+    },
+    {
+      "file": "e919c1aa.b3262ecf00568bde.js",
+      "bytes": 416790
+    },
+    {
+      "file": "277.6f1cd247b9eb7cb7.js",
+      "bytes": 402204
+    },
+    {
+      "file": "129-e45ae6deeb6c37cc.js",
+      "bytes": 214077
+    },
+    {
+      "file": "5746.f60675c877a4cf1a.js",
+      "bytes": 192185
+    },
+    {
+      "file": "fd9d1056-1c6ca6e961fc414b.js",
+      "bytes": 172837
+    },
+    {
+      "file": "36-0121d27a44307f0a.js",
+      "bytes": 151091
+    },
+    {
+      "file": "framework-8e0e0f4a6b83a956.js",
+      "bytes": 140001
+    },
+    {
+      "file": "7f390c5c62f334df.css",
+      "bytes": 134940
+    },
+    {
+      "file": "9274.922f2c309802b4ac.js",
+      "bytes": 126012
+    },
+    {
+      "file": "2117-e736bee40d7401c3.js",
+      "bytes": 124998
+    }
+  ],
+  "note": "Byte baseline from the GH_PAGES production build. The Lighthouse half of PB01 runs against the live site per the PB02-PB04 scaffold; no perf change ships without a before/after against THIS file."
+}

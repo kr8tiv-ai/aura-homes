@@ -1,0 +1,37 @@
+{
+  "node": "B-P1",
+  "graphVersion": "1.2",
+  "job": "Plot-of-land in the builder: a site slot on the document, the already-drawn A1 SITE PLAN sheet wired up, parcel checks surfaced, and graded terrain in the viewport.",
+  "context": "Three assets are ALREADY BUILT and waiting: (1) the A1 SITE PLAN sheet is fully drawn at app/lib/builder/sheets.ts:633-790 but never receives a parcel; (2) checkSpecAgainstParcel at app/lib/builder/toPlan.ts:1302 is never called; (3) ParcelPanel/parseParcel exist on /land. This node connects them.",
+  "writeSet": [
+    "app/lib/builder/site.ts (new)",
+    "app/lib/builder/document.ts",
+    "app/lib/builder/share.ts",
+    "app/lib/builder/terrain.ts (new)",
+    "app/components/builder/BuilderApp.tsx",
+    "app/components/builder/Viewport.tsx",
+    "app/tests/document.spec.ts",
+    "app/tests/project-ui.spec.ts",
+    "app/scripts/site-proof.mjs (new)"
+  ],
+  "rejectionGates": [
+    "BUILDER_DOCUMENT_VERSION bumps 2->3 WITH a migration AND lowest-version share emission: the share codec must emit v2 whenever site === null so every existing share link keeps opening - pin this in document.spec.ts before writing the feature",
+    "the load-epoch anti-yank contract is spec-pinned: adding the Site step must not reframe the camera on ordinary edits",
+    "listings-derived parcels carry post-setback envelopes - map honestly: setbacks 0 + an explanatory note, never invented numbers"
+  ],
+  "instructions": [
+    "1. lib/builder/site.ts: BuilderSite { parcel: ParcelFacts | null, provenance: 'manual' | 'listing-derived' | 'geojson', grade: 'flat' | 'plane' | 'heightfield', seed?: number }.",
+    "2. document.ts: optional site slot; v3 migration (absent -> null); document.spec pins: v2 docs open, v3 round-trips, share emits v2 when site is null.",
+    "3. Populate paths: a Site guided step hosting the existing ParcelPanel (pure setSite edit = ONE undo step), and a 'Use this plot' action on /land cards.",
+    "4. Thread parcel into BuilderApp.generate -> drawingSet so sheets.ts A1 SITE PLAN renders lot lines; call checkSpecAgainstParcel and surface findings in the review step (calm list, no modal).",
+    "5. terrain.ts: pure gradeHeightFt(x, z, site); displace the Viewport ground plane; convert GRADE_Y_FT flat piles to per-pile lengths via the existing pileGrid.",
+    "6. scripts/site-proof.mjs: screenshot A1 with lot lines + a sloped-site 3D shot, following the plan-proof.mjs pattern.",
+    "7. Stretch only if all gates green: MapLibre polygon draw -> ParcelFacts on /land."
+  ],
+  "verify": {
+    "commands": ["npx tsc --noEmit", "npm test", "npm run test:ui", "node scripts/site-proof.mjs"],
+    "note": "document.spec byte-stability pins are the hard part - write them FIRST"
+  },
+  "sideEffect": "local",
+  "status": "ready"
+}

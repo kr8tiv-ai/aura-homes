@@ -1,0 +1,31 @@
+{
+  "node": "D-1",
+  "graphVersion": "1.2",
+  "job": "Add the three missing AuraBNB dashboard sections to /homes - property pipeline, profit reconciliation, distribution proof - zero-state honest, receipt-required by construction.",
+  "context": "The AuraBNB audit prescribed 7 sections; /homes has 4 plus the new buy guide. The data layer (lib/homes/fund.ts HomesSnapshot) already carries properties[], distributions[], and windDown; currentHomesSnapshot() returns empty arrays - the sections render their declared-zero states from day one and light up only when receipts exist.",
+  "writeSet": [
+    "app/lib/homes/fund.ts",
+    "app/app/homes/page.tsx",
+    "app/app/globals.css (homes-* system additions only)",
+    "app/tests/homes-fund.spec.ts",
+    "app/tests/homes-ui.spec.ts"
+  ],
+  "rejectionGates": [
+    "any non-zero USDC value MUST require >= 1 receipt hash structurally (extend reconcile-style invariants; a fabricated number must be a build failure, not a review comment)",
+    "match the existing homes-* CSS system exactly - no new design language",
+    "the page is a server component computing from currentHomesSnapshot() at module scope; keep it that way"
+  ],
+  "instructions": [
+    "1. fund.ts type additions: chain gains lastVerifiedBlock/verifiedAtISO + a staleness helper; properties entries gain blockers[] and evidence[]; add profitLedger[] (gross, expenses, reserves, net, communityPool, receiptHashes[]); distributions gain snapshotBlock, eligibleCount, claimTxHashes[], unclaimedUsdc.",
+    "2. Invariant functions with throw-on-violation: net = gross - expenses - reserves; communityPool = 60% of net (reuse HOMES_PROPERTY_OWNERSHIP); paid + unclaimed = communityPool; any non-zero amount without receiptHashes throws.",
+    "3. Page sections in order after the proof register: 'Property pipeline' (empty state: 'No candidate properties. Entries appear with their diligence evidence and blockers.'), 'Profit reconciliation' (the 4-step flow exists - add the ledger table zero state), 'Distribution proof' (snapshot block, eligible count, claim txs - all 'not set').",
+    "4. Status bar: add last-verified-block to the homes-status aside once chain.lastVerifiedBlock is non-null (wire it to data/homes/mint-verification.json block via lib, so it is real on day one).",
+    "5. Specs: invariant unit tests (fabricated-number-throws is the important one) + UI presence of the three headings and their declared-zero lines."
+  ],
+  "verify": {
+    "commands": ["npx tsc --noEmit", "npm test", "npm run test:ui"],
+    "note": "run from app/"
+  },
+  "sideEffect": "local",
+  "status": "ready"
+}

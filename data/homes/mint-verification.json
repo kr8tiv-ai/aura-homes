@@ -1,0 +1,42 @@
+{
+  "schema": "HomesMintVerificationV1",
+  "verifiedAt": "2026-08-14T06:49:45.480Z",
+  "rpc": "https://rpc.xlayer.tech",
+  "chainId": 196,
+  "block": 67921152,
+  "token": {
+    "address": "0x642855d557ada1eba8a66014aaff902e6394c0de",
+    "name": "Aura Homes",
+    "symbol": "HOMES",
+    "decimals": 18
+  },
+  "totalSupply": {
+    "raw": "1000000000000000000000000000",
+    "tokens": 1000000000
+  },
+  "knownHolders": {
+    "creatorWallet": {
+      "address": "0x5e8abc953f4d685943f1a0a730afffbba9df41de",
+      "raw": "8019942281710807956834289",
+      "tokens": 8019942.28171,
+      "percentOfSupply": 0.8
+    },
+    "xlaunchLocker": {
+      "address": "0xa5c6b1a1b76d3db979381faede0cdbd4e089e47b",
+      "raw": "0",
+      "tokens": 0,
+      "percentOfSupply": 0
+    },
+    "wspcxxPool": {
+      "address": "0xf59d07dfe38807b398f0b4697f187d2f943b06a4",
+      "raw": "946330181878460633860582657",
+      "tokens": 946330181.87846,
+      "percentOfSupply": 94.63
+    }
+  },
+  "notes": [
+    "Read directly from the public X Layer RPC; no indexer, no third-party API.",
+    "knownHolders covers only the addresses the site already publishes (creator, venue locker, pool). A full holder census needs an indexer and is out of scope here.",
+    "Compare knownHolders percentages against the DESIGN split (30/10/10/20/30) before ever presenting a design number as live."
+  ]
+}

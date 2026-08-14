@@ -1,0 +1,29 @@
+{
+  "node": "NW01",
+  "graphVersion": "1.2",
+  "job": "Eliminate the two measured one-time compile stalls: ~5.7 s after the full-tier promotion and ~6.7 s on the first night toggle, via asynchronous program warmup.",
+  "context": "meadow-proof LoAF ledgers attribute both stalls to FrameRequestCallback in the scene chunk right after settle and on the first 'Switch to night' click - synchronous WebGL program compilation of the restored full-tier set (EffectComposer, PCSS) and the night material set. The scene already has the pattern to copy: GrassProgramWarmup in app/components/story/SceneDetail.tsx uses gl.compileAsync(warmScene, camera) behind KHR_parallel_shader_compile.",
+  "writeSet": [
+    "app/components/story/Scene.tsx",
+    "app/components/story/SceneDetail.tsx",
+    "app/tests/meadow-progressive.spec.ts",
+    "app/scripts/meadow-proof.mjs (budget tightening only, after the fix proves out)"
+  ],
+  "rejectionGates": [
+    "never compile synchronously on mount - the warmup must be idle-scheduled AFTER settled, or it recreates the stall it removes",
+    "the warmup must not mount visible geometry or lights that change the image (three.js recompiles ALL programs when the light count changes - warm with the real light configuration)"
+  ],
+  "instructions": [
+    "1. Identify what mounts/changes on night toggle (StarField, dusk material variants, OutdoorLighting night lights). If OutdoorLighting adds lights at night, consider mounting them always at intensity 0 - constant light count avoids the global program recompile entirely and may be the whole fix.",
+    "2. Build a NightProgramWarmup component modeled on GrassProgramWarmup: after the meadow reports terminal (listen to aura:meadow-progress like StoryCanvas does) and behind requestIdleCallback, gl.compileAsync a hidden scene containing the night-only materials with the night-time light configuration.",
+    "3. Measure with scripts/meadow-proof.mjs on a quiet machine: interactionMs (first toggle) should drop toward the steady 150 ms range; the post-settle LoAF burst should disappear from fullRunLongAnimationFrames.",
+    "4. Once proven across 2 consecutive runs, tighten the proof budget: interactionMs <= 250 back down toward 160, and note the change in the proof comment.",
+    "5. Spec-pin the warmup existence in meadow-progressive.spec.ts (grep for the component name + compileAsync)."
+  ],
+  "verify": {
+    "commands": ["npx tsc --noEmit", "npm test", "npm run test:ui", "AURA_MEADOW_BASELINE=<baseline-dir> node scripts/meadow-proof.mjs"],
+    "note": "two consecutive passing proofs required before tightening the budget"
+  },
+  "sideEffect": "local",
+  "status": "ready"
+}

@@ -1,0 +1,24 @@
+{
+  "node": "X12",
+  "graphVersion": "1.2",
+  "job": "Capture and edit the 90-second hackathon video against the LIVE site; the founder approves the final cut, voices it if desired, and uploads.",
+  "context": "The canonical demo script lives in docs/SUBMISSION.md (the judge path table in README.md mirrors it). Every capability shown must be usable and truth-labelled at the recorded commit. The site is live at aurahomes.fun on release 3e00c66+.",
+  "writeSet": ["perf/video/** (working files)", "docs/SUBMISSION.md (only to note the video link once the founder uploads)"],
+  "rejectionGates": [
+    "record against the LIVE site, not localhost - the deployment id in the page source must match origin/main",
+    "no fake purchases, no unbuilt features, no speeding through risk labels on /homes",
+    "founder-only: final approval, voice, upload destination, and the X post (X13/X14)"
+  ],
+  "instructions": [
+    "1. Storyboard from SUBMISSION.md's demo path: gate both journeys visible -> eco story beats with the living meadow (hold 3-4s on the wind) -> /build guided, pick a plan, one phrase edit (Ctrl-K 'width 24') -> /land REJECT with the bylaw citation -> /budget reconciled LOW/MID/HIGH -> /homes live token receipts + how-to-buy (hold on the risk band - honesty IS the differentiator) -> /labs/xlayer-proof live testnet read -> close on the roadmap arcs + follow @AuraHomes_fun.",
+    "2. Capture 1440x900 at 60fps (OBS or playwright video), day scene, cursor visible, no dev tools. Capture RAW segments per scene; do not try to one-take it.",
+    "3. Edit to <= 90 seconds; captions only (no music requirements from the organizers - check the BuildX page); ffmpeg on this machine works but its drawtext is broken (fontconfig) - burn captions with an editor, not ffmpeg filters.",
+    "4. Deliver the cut + segment files to the founder for voice/upload. Record the eventual URL in SUBMISSION.md and the submission form (X13, founder-only)."
+  ],
+  "verify": {
+    "commands": [],
+    "note": "verification is the founder watching it and the deployment-id frame matching the live release"
+  },
+  "sideEffect": "local until the founder uploads",
+  "status": "ready"
+}

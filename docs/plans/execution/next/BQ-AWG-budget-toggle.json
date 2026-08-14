@@ -1,0 +1,30 @@
+{
+  "node": "BQ-AWG",
+  "graphVersion": "1.2",
+  "job": "Expose AWG as a deselectable line in the budget UI, honouring D-2026-08-14-awg-recommended: recommended on every home, not mandatory.",
+  "context": "data/alberta/cost-model.json totalsRule now says the published totals describe the REFERENCE configuration (AWG included); a project may descope AWG and its budget recomputes from its own lines. The budget page already has a DIY-or-hire toggle per line - reuse that interaction pattern, do not invent a new one.",
+  "writeSet": [
+    "app/lib/builder/projectBudget.ts (or wherever the line-item model lives - find the DIY-or-hire toggle's data path first)",
+    "app/app/budget/page.tsx and its components",
+    "app/tests/budget-ui.spec.ts",
+    "app/tests/project-budget.spec.ts"
+  ],
+  "rejectionGates": [
+    "the DEFAULT stays AWG-included: reference totals must render unchanged ($199,100 / $301,280 / $443,900 ex-land) with AWG on",
+    "agent/ npm run demo must still reconcile to the dollar (it computes the reference configuration)",
+    "never hardcode recomputed totals - deselection recomputes from lines through the same code path the totals already use"
+  ],
+  "instructions": [
+    "1. Find the AWG line item in data/alberta/cost-model.json and the code path that sums lines into LOW/MID/HIGH (grep totalsExLand consumers).",
+    "2. Add an 'included' boolean to the budget UI state for the AWG line only, default true, labelled: 'Atmospheric water generation - recommended on every home (founder decision Aug 14, 2026); deselect to descope'. Copy tone: calm, no exclamation points.",
+    "3. When deselected, recompute the displayed bands from the remaining lines x (1 + contingencyPct) and label the result 'descoped configuration - not the published reference totals'.",
+    "4. Specs: assert default-on renders the reference triplet; assert deselection changes the bands AND shows the descoped label; assert re-selection restores the exact reference numbers.",
+    "5. Do NOT change cost-model.json numbers or the agent pipeline."
+  ],
+  "verify": {
+    "commands": ["npx tsc --noEmit", "npm test", "npm run test:ui", "cd ../agent && npm run demo"],
+    "note": "the demo's dollar-exact reconciliation is the hard gate"
+  },
+  "sideEffect": "local",
+  "status": "ready"
+}

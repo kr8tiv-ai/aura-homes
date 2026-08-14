@@ -1,0 +1,24 @@
+{
+  "node": "AL01",
+  "graphVersion": "1.2",
+  "job": "Audit #7: a FRESH-context checker grades the Aug 13-14 wave and appends to docs/AUDIT-LOG.md; the 48h cadence resumes.",
+  "context": "The audit cadence lapsed after Audit #6 (Aug 10). Since then: the Codex meadow rework + its regressions, the R03I restoration, the HOMES token launch + site truth flips, graph v1.2, and the AWG decision. The auditor MUST be a context that did not build these - a fresh session with only this manifest and the repo.",
+  "writeSet": ["docs/AUDIT-LOG.md (append only)"],
+  "rejectionGates": [
+    "if you (the executing context) wrote any of the code under audit, STOP - hand this manifest to a fresh session",
+    "append-only: never edit prior audit entries"
+  ],
+  "instructions": [
+    "1. Read docs/AUDIT-LOG.md entries #5-#6 for the house format (numbered findings, severity, anchors re-derived, lapse notes).",
+    "2. Re-run the anchors yourself; do not trust recorded evidence: cd app && npx tsc --noEmit && npm test && npm run test:ui; cd ../agent && npm run demo (totals must equal data/alberta/cost-model.json totalsExLand to the dollar); cd ../contracts && npm test.",
+    "3. Grade specifically: (a) did the R03I falsifiable gates actually close the regression class (try to construct a frozen-wind or deck-piercing change that passes them); (b) is every live-token claim on /homes backed by a row in docs/plans/registry/claims.json; (c) does any page say something unbuilt in the present tense (grep the truth-rule violations the graph bans in §16); (d) sample 3 execution manifests for evidence honesty; (e) record the cadence lapse Aug 10 -> Aug 14 as a finding against process, with the R03A-H repair-limit evasion.",
+    "4. Append the entry as '## Audit #7 - <date> - fresh-context checker', findings numbered, each with file:line anchors, and a verdict per the house scale.",
+    "5. Update the audit cadence note: next audit due 48h after this one through Aug 21."
+  ],
+  "verify": {
+    "commands": ["git diff --stat docs/AUDIT-LOG.md"],
+    "note": "the audit IS the verification artifact; commit as Matt-Aurora-Ventures"
+  },
+  "sideEffect": "local",
+  "status": "ready"
+}

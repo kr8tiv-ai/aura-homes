@@ -1,0 +1,28 @@
+{
+  "node": "PB02-PB04",
+  "graphVersion": "1.2",
+  "job": "Perf pass with before/after proof against the PB01 baseline: GLB optimization, font/bundle audit, re-measure. No quality or feature loss - visually indistinguishable or revert.",
+  "context": "PB01 baseline artifact: perf/PB01-baseline-2026-08-14.json (route HTML bytes, total static bytes, 12 largest assets, 88.2 kB shared first-load). The founder's standing rule: no perf change ships without a before/after pair against that file.",
+  "writeSet": [
+    "app/public/models/*.glb",
+    "app/next.config.mjs (ANALYZE flag only)",
+    "app/components/** (dynamic-import moves only)",
+    "perf/**"
+  ],
+  "rejectionGates": [
+    "if perf/PB01-baseline-2026-08-14.json is missing, stop - the baseline is the contract",
+    "any visual change beyond pixel-identical model rendering means revert that asset"
+  ],
+  "instructions": [
+    "PB02 GLBs: npm i -D @gltf-transform/cli, then for each of the 6 files in app/public/models: gltf-transform optimize in.glb out.glb --compress meshopt --texture-compress webp. Register the meshopt decoder in the story loader (drei useGLTF.setDecoderPath / meshoptDecoder import) ONLY if compression is applied. Capture before/after screenshots with scripts/meadow-proof.mjs fixed cameras; if vegetationTextureCoverage or any visible difference appears, revert that asset. KTX2 only if a texture inspection shows it pays for the transcoder weight.",
+    "PB03 fonts/bundles: add @next/bundle-analyzer behind process.env.ANALYZE === '1' in next.config.mjs. Run ANALYZE=1 GH_PAGES=1 npm run build; save the treemap HTML into perf/. Verify: three/r3f absent from non-story app routes' first load; wagmi/viem only on chain surfaces; maplibre only /land. Move violations behind next/dynamic. For the 4 @fontsource-variable families: grep usage; drop any unused axis/family import.",
+    "PB04 re-measure: rebuild GH_PAGES, regenerate the same byte table as PB01 (see the PowerShell in the git history of perf/PB01) into perf/PB04-after-<date>.json, plus Lighthouse: npx lighthouse https://aurahomes.fun --preset=desktop --output=json --output-path=perf/lighthouse-after.json. Ship only if routes' first-load bytes are <= baseline and LCP <= 2.0s.",
+    "Also in scope if time allows - NW01 (see its own scaffold): the two measured one-time compile stalls."
+  ],
+  "verify": {
+    "commands": ["npx tsc --noEmit", "npm test", "npm run test:ui", "AURA_MEADOW_BASELINE=<baseline-dir> node scripts/meadow-proof.mjs"],
+    "note": "meadow-proof needs a quiet machine and the approved baseline dir (Kin/aura-r03-baseline-20260813 on the build machine)"
+  },
+  "sideEffect": "local",
+  "status": "ready"
+}

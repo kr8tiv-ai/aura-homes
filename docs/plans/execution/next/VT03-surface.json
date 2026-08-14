@@ -1,0 +1,38 @@
+{
+  "node": "VT03-surface",
+  "graphVersion": "1.2",
+  "job": "Surface the on-chain mint verification on /homes so the design-vs-live supply distinction is visible, not just recorded.",
+  "context": "VT03's read half is DONE: app/scripts/verify-homes-mint.mjs read the live token at block 67921152 and wrote data/homes/mint-verification.json (total supply 1,000,000,000 HOMES; pool 94.63%, creator wallet 0.80%, locker 0 - a launchpad curve, NOT the 30/10/10/20/30 design). The page currently says the live mint 'is being verified'; that sentence is now stale.",
+  "writeSet": [
+    "app/app/homes/page.tsx",
+    "app/lib/homes/token.ts",
+    "app/tests/homes-ui.spec.ts"
+  ],
+  "rejectionGates": [
+    "data/homes/mint-verification.json must exist and parse; if absent run: cd app && node scripts/verify-homes-mint.mjs",
+    "never import data/ JSON into client components via fetch at runtime - import it statically (resolveJsonModule is on; @data/* path alias exists)"
+  ],
+  "instructions": [
+    "1. In app/app/homes/page.tsx, import the artifact: import mintVerification from '@data/homes/mint-verification.json'.",
+    "2. Under the 'Token supply · 100%' design-target note, replace the sentence 'its actual on-chain distribution is being verified and will be published as-is here' with a rendered verification line: verified at block {mintVerification.block}: total supply {1,000,000,000} HOMES; venue pool {94.63}% · creator wallet {0.8}% - a launchpad curve, not the design split. Derive every number from the JSON, never retype.",
+    "3. Add a proof-register row: <dt>Live mint verification</dt> with the block number and a link to app/scripts/verify-homes-mint.mjs on GitHub (label it 'reproduce this read').",
+    "4. Update the FAQ supply answer only if its 'is being verified' phrasing reads as stale after step 2; keep the design-vs-live distinction wording.",
+    "5. Extend the 'live token ships its receipts' test in app/tests/homes-ui.spec.ts: expect the text 'Live mint verification' and the block number rendered.",
+    "6. Re-run verify-homes-mint.mjs is NOT required per deploy; note in the page copy that the verification is dated (render verifiedAt as a date)."
+  ],
+  "verify": {
+    "commands": ["npx tsc --noEmit", "npm test", "npm run test:ui"],
+    "note": "run from app/"
+  },
+  "sideEffect": "local",
+  "status": "ready",
+  "evidence": {
+    "readHalf": {
+      "verifiedAt": "2026-08-14T06:49:45.480Z",
+      "block": 67921152,
+      "totalSupplyTokens": 1000000000,
+      "poolPercent": 94.63,
+      "creatorPercent": 0.8
+    }
+  }
+}
