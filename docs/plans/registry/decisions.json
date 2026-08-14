@@ -1,0 +1,52 @@
+{
+  "schema": "FounderDecisionRegistryV1",
+  "note": "Machine-readable founder decisions. A decision here governs intent until the founder explicitly supersedes it. Anything marked undecided is NOT adopted no matter what any plan document says.",
+  "decisions": [
+    {
+      "id": "D-2026-08-07-awg-standard",
+      "date": "2026-08-07",
+      "decision": "AWG (atmospheric water generation) is standard on every home; data/alberta/cost-model.json totalsRule treats no line as optional.",
+      "standing": "active",
+      "notes": "Graph v1.1 §7/§22 proposed reversing this (AWG optional, no universal concrete ban). That amendment is PROPOSED-UNDECIDED: a thin 'go' does not reverse a standing mandate, and the change would alter the frozen totalsRule requiring a full recompute. Awaiting an explicit founder line."
+    },
+    {
+      "id": "D-2026-08-12-interleave",
+      "date": "2026-08-12",
+      "decision": "Interleave hackathon and product work daily (two tracks), rather than a strict serial pipeline.",
+      "standing": "active"
+    },
+    {
+      "id": "D-2026-08-12-free-tier",
+      "date": "2026-08-12",
+      "decision": "Free-tier data only. No paid deals, no partner outreach.",
+      "standing": "active",
+      "notes": "Defers graph v1.1 L02 (broker/listing feed agreement) and S06/S16 (manufacturer outreach) until explicitly reopened."
+    },
+    {
+      "id": "D-2026-08-12-mainnet-hold",
+      "date": "2026-08-12",
+      "decision": "Do not deploy the current AuraBuildRegistry, a fee router, or any Aura-authored HOMES contract to X Layer mainnet. Hold until the replacement attestation design passes its gates.",
+      "standing": "active",
+      "notes": "docs/MAINNET-DECISION-BRIEF.md. Untouched by the venue token launch below."
+    },
+    {
+      "id": "D-2026-08-13-token-launch",
+      "date": "2026-08-13",
+      "decision": "The founder launched $HOMES through the third-party XLaunch venue on X Layer mainnet 196 (contract 0x642855d557ada1eba8a66014aaff902e6394c0de, pair wSPCXx). The site discloses it as live with receipts and risk labels, plus a how-to-buy guide on the crypto side.",
+      "standing": "fact-recorded",
+      "notes": "Supersedes the 'SPACEX pool blocked until verified' policy line. Does NOT activate any designed HOMES right; H20-class gates still guard staking, trust, treasury, distributions, and Aura-authored contracts. See MAINNET-DECISION-BRIEF addendum."
+    },
+    {
+      "id": "D-2026-08-13-scene-restoration",
+      "date": "2026-08-13",
+      "decision": "Keep the new baked-atlas grass LOOK; restore the wind, the deck/walkway exclusion, and the full-tier effects; keep every copy, page-flow, and editor change from the Aug 13 wave.",
+      "standing": "executed"
+    },
+    {
+      "id": "D-2026-08-12-copy-latitude",
+      "date": "2026-08-12",
+      "decision": "Copy latitude: trim bodies, keep headings verbatim. Larger copy changes are per-line founder approvals.",
+      "standing": "active"
+    }
+  ]
+}

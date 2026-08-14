@@ -109,3 +109,46 @@ Reopen the mainnet decision only after:
    owner
 
 Until then, the decision is **hold**.
+
+---
+
+## Addendum — August 13, 2026: the founder launched HOMES on a third-party venue
+
+**What happened.** The founder launched the HOMES token on XLaunch
+(xlaunch.fun), a permissionless launchpad on X Layer mainnet 196. Token:
+Aura Homes ($HOMES), contract
+`0x642855d557ada1eba8a66014aaff902e6394c0de`, paired against wrapped SpaceX
+(wSPCXx), pool `0xf59d07dfe38807b398f0b4697f187d2f943b06a4`, liquidity locked
+in XLaunch's locker contract with no withdraw path. Founder-confirmed via the
+token page URL; independently corroborated by the page's links back to
+x.com/AuraHomes_fun and aurahomes.fun.
+
+**What this changes.** The token exists and trades, so the site's
+"no token contract" zero-states are flipped to live-state receipts with the
+address, venue, pool, and honest risk labels (micro-cap, unaudited
+permissionless factory, wrapper-stock quote asset that its issuer can pause).
+XLaunch's venue mechanics also make two previously proposed numbers real:
+the 2% launch-window wallet cap is venue-enforced (~6 minutes), and the
+venue's 1% swap fee routes 60% of the quote side to the creator wallet —
+a real, claimable fee source whose claim wallet and receipts must be
+published before any amount is recognized in the ledger.
+
+**What this does NOT change.**
+
+- The registry/escrow hold above stands in full. Nothing in this addendum
+  deploys Aura-authored contracts to mainnet; the five blockers are untouched.
+- The token was minted by XLaunch's factory on venue infrastructure — it is
+  not the audited, vesting-governed, treasury-multisig token architecture
+  this brief requires before HOMES carries designed rights. No staking,
+  distribution, property vehicle, trust, or payout exists.
+- The supply/vesting design (30/10/10/20/30) describes the DESIGN, not the
+  live mint. The live token's actual distribution must be verified on-chain
+  and labelled accordingly until reconciled.
+- The earlier "SPACEX pair blocked until verified" policy was superseded by
+  the founder's launch decision; the live pair is disclosed with the wrapper's
+  risks rather than implied to be an endorsement or affiliation.
+- H20-style external gates (legal opinion, securities route, audits, capital)
+  still stand between this experiment-tier token and any value-bearing HOMES
+  system. The launch sits at the site's own "Experiment" budget tier —
+  "suitable for testing mechanics, not meaningful price discovery" — and the
+  site says so next to the buy path.

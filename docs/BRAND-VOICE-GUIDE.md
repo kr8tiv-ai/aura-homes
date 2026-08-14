@@ -237,11 +237,16 @@ and the repo's own truth ledger. Verdicts:
 - **The coordination-margin story** — the strongest economic hook we have,
   *when quoted at the real numbers* (below).
 
-**CORRECTED (right idea, wrong facts):**
-- The brief's owner-built triplet "$199,100 / $301,280 / $443,900" does not
-  match the repo's anchored cost model: **$195,250 / $295,680 / $434,700**
-  (ex-land, data/alberta/cost-model.json, reconciled by test). Only the
-  anchored numbers may appear in copy.
+**CORRECTED (this guide itself was wrong here — fixed Aug 14, 2026):**
+- The anchored owner-built triplet IS **$199,100 / $301,280 / $443,900**
+  (ex-land, `data/alberta/cost-model.json` `totalsExLand`, verified to the
+  dollar by Audit #6 and by `agent/ npm run demo`). An earlier revision of
+  this guide inverted the correction: it blessed the stale Audit-#1
+  stale-build numbers ($195,250/…/$434,700, captured while `npm run demo`
+  was broken) and invented a mid figure ($295,680) that exists nowhere in
+  the repo. Only $199,100 / $301,280 / $443,900 may appear in copy, and the
+  money anchor (`npm run demo` reconciliation) is the standing gate that
+  settles any future dispute in ten seconds.
 - "Up to 40% coordination margins" — unsourced. Say what we can defend:
   *"a conventional builder delivers this reference home at $450–650K
   ex-land; owner-coordinated, the same home computes to $195–435K on our
@@ -392,7 +397,7 @@ sheet's link to /buy says "Payments." Rename to what the page is:
 ### 8.4 The coordination-margin story *(new block, /how-it-works or /budget — corrected numbers only)*
 > "A conventional builder delivers our reference home at $450,000–650,000
 > before land. The same home, owner-coordinated with licensed trades,
-> computes to $195,250–$434,700 on our published Alberta model — every line
+> computes to $199,100–$443,900 on our published Alberta model — every line
 > item public, every assumption named. The difference is coordination, and
 > coordination is what software is for. (An estimate, not a quote — and
 > we'll keep saying so.)"

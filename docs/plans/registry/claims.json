@@ -1,0 +1,51 @@
+{
+  "schema": "PublicClaimRegistryV1",
+  "note": "Every load-bearing public claim maps to its proof. X06/X07/X13 collateral generates FROM this file; a claim with no proof pointer may not ship. Numbers come from their anchors, never retyped.",
+  "claims": [
+    {
+      "claim": "Owner-built reference triplet ex-land: $199,100 / $301,280 / $443,900",
+      "proof": "data/alberta/cost-model.json totalsExLand; agent/ `npm run demo` reconciles to the dollar; docs/AUDIT-LOG.md Audit #6",
+      "gate": "MA01 money anchor"
+    },
+    {
+      "claim": "HOMES token live on X Layer mainnet 196",
+      "proof": "Contract 0x642855d557ada1eba8a66014aaff902e6394c0de on the OKX X Layer explorer; XLaunch token page; GeckoTerminal pool 0xf59d07dfe38807b398f0b4697f187d2f943b06a4",
+      "gate": "homes-ui.spec live-token test; founder-confirmed URL Aug 13 2026"
+    },
+    {
+      "claim": "Liquidity locked at the venue",
+      "proof": "XLaunch locker 0xa5C6b1A1b76d3DB979381Faede0cdbd4E089e47B, no withdraw path per venue docs",
+      "gate": "Never phrased as 'trust-owned liquidity' — the locker owns it"
+    },
+    {
+      "claim": "Aura's own contracts are testnet-only (escrow + registry, X Layer 1952)",
+      "proof": "docs/DEPLOYMENTS.md; release-truth.spec.ts source pins; xlayer-lifecycle.spec.ts addresses",
+      "gate": "MAINNET-DECISION-BRIEF hold (D-2026-08-12-mainnet-hold)"
+    },
+    {
+      "claim": "No trust, staking, distribution, property, exchange listing, or payout is live",
+      "proof": "lib/homes/fund.ts currentHomesSnapshot nulls/zeros; homes-fund.spec.ts declared-zero test; /homes proof register",
+      "gate": "reconcileHomesFeeLedger throws at build on any unreceipted number"
+    },
+    {
+      "claim": "Venue trading fees accrue to the creator wallet (60% of XLaunch's 1% swap fee)",
+      "proof": "XLaunch docs; disclosed on /homes and in the FAQ money answer",
+      "gate": "VT04: recognized in the ledger only after claim receipts are published"
+    },
+    {
+      "claim": "The 30/10/10/20/30 supply split is a design target, not the live mint",
+      "proof": "Labelled on /homes and in the FAQ; live distribution verification pending (VT03)",
+      "gate": "VT03 on-chain verification before any design number reads as live"
+    },
+    {
+      "claim": "MIT software; plan studies keep their listed licences",
+      "proof": "LICENSE; lib/builder/planCatalog.ts per-plan source records; SiteShell licence line",
+      "gate": "Never 'MIT end to end'"
+    },
+    {
+      "claim": "The landing meadow's wind, deck exclusion, and full-tier promotion are proven, not asserted",
+      "proof": "scripts/meadow-proof.mjs livingWind (pixel motion ≥0.4%); meadow-progressive.spec deck/parity tests; story-quality.spec full-tier assertion",
+      "gate": "R03I falsifiable gates"
+    }
+  ]
+}

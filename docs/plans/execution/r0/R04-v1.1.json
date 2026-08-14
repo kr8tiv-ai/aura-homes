@@ -57,8 +57,8 @@
     "productionDeploymentId": "92da6b7de6971af2ae85052a4c5354049d59a7d4 embedded in https://aurahomes.fun/ HTML",
     "productionSmoke": "HTTP 200: / /build/ /homes/ /roadmap/ /how-crypto-works/ /textures/meadow-atlas.json (desktop HEAD crawl)",
     "rollbackCoordinates": "gh-pages 5575d10 (prior HTML publish); main 13c5072 (prior release)",
+    "datedBackups": "production: C:/Users/lucid/Desktop/Kin/aura-r04-prod-20260813-211649 (gh-pages tree snapshot, 21:16 local); source: C:/Users/lucid/Desktop/Kin/aura-r01-site-20260813-155406; frozen pre-R0 set: C:/Users/lucid/Desktop/aura-homes-backups/20260813-141247-full-system-r0 with tags backup/full-system-main-before-r0-20260813-141247 and backup/full-system-production-before-r0-20260813-141247",
     "missingRequiredOutputs": [
-      "dated source and production backups: not located by the checker",
       "old-HTML hydration compatibility report: chunk-recovery script present in served HTML but compatibility not independently re-run",
       "mobile production smoke: not re-run post-hoc"
     ]
