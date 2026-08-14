@@ -151,6 +151,7 @@ import { buildGraphHome } from "@/lib/builder/graphGeometry";
 import type { HomeSpec } from "@/lib/builder/spec";
 import { documentFromLocation } from "@/lib/builder/share";
 import type { BuilderSite } from "@/lib/builder/site";
+import type { GuidanceTopic } from "@/lib/builder/guidance";
 import SitePanel from "./SitePanel";
 import { PHRASE_GUIDE, applyPhrase } from "./phrases";
 import {
@@ -185,6 +186,7 @@ import DrawingSheets from "./DrawingSheets";
 import ExportRow from "./ExportRow";
 import FixturePalette, { FixtureLayer, useFixtureGeometry } from "./FixturePalette";
 import GraphPlanEditor from "./GraphPlanEditor";
+import GuidanceNote from "./GuidanceNote";
 import HandoffPanel from "./HandoffPanel";
 import LiveReadout from "./LiveReadout";
 import Plan2D from "./Plan2D";
@@ -568,6 +570,17 @@ function editorModeFromLocation(): EditorMode {
   if (typeof window === "undefined") return "guided";
   return new URLSearchParams(window.location.search).get("mode") === "pro" ? "pro" : "guided";
 }
+
+/* Which sourced explanations belong to which step of the walk. A step with no
+   entry gets no note rather than a filler one — the guidance module answers
+   only the questions it can actually cite, and the walk should not invent a
+   question to have something to say. */
+const GUIDED_STEP_TOPICS: Partial<Record<GuidedStep, readonly GuidanceTopic[]>> = {
+  shell: ["storey-count", "minimum-dwelling-size"],
+  rooms: ["room-layout"],
+  openings: ["glazing-ratio"],
+  performance: ["wall-r-value", "roof-r-value"],
+};
 
 const GUIDED_STEPS: ReadonlyArray<{
   id: GuidedStep;
@@ -1300,6 +1313,15 @@ export default function BuilderApp() {
               <span>{activeGuidedStep.label}</span>
               <p>{activeGuidedStep.hint}</p>
             </div>
+            {/* The "why" for whatever this step is actually deciding, sourced
+                or absent. `explain` returns null when this document cannot be
+                traced to a source, and GuidanceNote then renders nothing —
+                saying nothing is the correct output, because a placeholder
+                would be a sentence about Aura where somebody wanted a
+                sentence about their home. */}
+            {GUIDED_STEP_TOPICS[activeGuidedStep.id]?.map((topic) => (
+              <GuidanceNote key={topic} topic={topic} document={state.doc} />
+            ))}
             {/* One decision in view needs a way to take the NEXT one without
                 hunting the strip above — guided is a walk, so it gets legs.
                 The last step trades Next for graduation: the same document,

@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import ContractorDirectory from "@/components/contractors/ContractorDirectory";
+import SupplierDirectory from "@/components/contractors/SupplierDirectory";
 import { Reveal } from "@/components/Reveal";
 
 export const metadata = {
@@ -27,6 +28,11 @@ export default function ContractorsPage() {
       </Reveal>
 
       <ContractorDirectory />
+
+      {/* Who builds it and where the material comes from are different
+          questions with different evidence, so they are different sections
+          rather than one blurred list. */}
+      <SupplierDirectory />
 
       <Reveal y={10} className="mt-14">
         <p className="max-w-2xl text-sm leading-relaxed text-aura-text/70">
