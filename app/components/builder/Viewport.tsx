@@ -65,6 +65,8 @@ import {
   type VolumeSummary,
 } from "@/lib/builder/geometry";
 import { EXPORT_IGNORE } from "@/lib/builder/exportSpec";
+import type { BuilderSite } from "@/lib/builder/site";
+import { gradeHeightFt } from "@/lib/builder/terrain";
 import type { ComfortPlate } from "@/lib/builder/comfort";
 import {
   materialForPart,
@@ -358,8 +360,32 @@ function VolumeGroup({
 
 /** The ground the home stands on, and the grid that gives the eye a scale.
  *  Both carry EXPORT_IGNORE — a .glb of an Aura home does not contain a lawn. */
-function Site({ theme }: { theme: Theme }) {
+function Site({ theme, site }: { theme: Theme; site?: BuilderSite | null }) {
   const w = WORLD[theme];
+  /* B-P1: the ground follows the site's slope answer. A flat site keeps the
+     single quad it always had; a sloped one gets a displaced grid, built
+     once per site from the pure gradeHeightFt so the render and the pile
+     schedule are measuring the same surface. */
+  const groundGeometry = useMemo(() => {
+    if (!site || site.grade === "flat" || !site.parcel || site.parcel.slope === "flat") return null;
+    const SPAN = 600;
+    const SEGMENTS = 96;
+    const geometry = new THREE.PlaneGeometry(SPAN, SPAN, SEGMENTS, SEGMENTS);
+    const position = geometry.attributes.position as THREE.BufferAttribute;
+    for (let i = 0; i < position.count; i += 1) {
+      /* The plane is authored in its own XY and rotated -90° about X below,
+         so its local +y becomes world −z. */
+      const x = position.getX(i);
+      const z = -position.getY(i);
+      position.setZ(i, gradeHeightFt(x, z, site));
+    }
+    position.needsUpdate = true;
+    geometry.computeVertexNormals();
+    return geometry;
+  }, [site]);
+
+  useEffect(() => () => groundGeometry?.dispose(), [groundGeometry]);
+
   return (
     <group userData={{ [EXPORT_IGNORE]: true }}>
       <mesh
@@ -367,8 +393,9 @@ function Site({ theme }: { theme: Theme }) {
         position={[0, GRADE_Y_FT, 0]}
         receiveShadow
         userData={{ [EXPORT_IGNORE]: true }}
+        {...(groundGeometry ? { geometry: groundGeometry } : {})}
       >
-        <planeGeometry args={[600, 600]} />
+        {groundGeometry ? null : <planeGeometry args={[600, 600]} />}
         <meshStandardMaterial color={w.ground} roughness={1} metalness={0} />
       </mesh>
       {/* 5-foot squares out to 200 feet: a scale you can count, not a texture */}
@@ -526,6 +553,7 @@ function Scene({
   comfort,
   houseChildren,
   quality,
+  site,
 }: {
   home: HomeGeometry;
   sun: SunPosition;
@@ -537,6 +565,7 @@ function Scene({
   comfort: ViewportComfort | null;
   houseChildren: ReactNode;
   quality: BuilderSceneQuality;
+  site: BuilderSite | null;
 }) {
   const w = WORLD[theme];
   const night = theme === "dark";
@@ -600,7 +629,7 @@ function Scene({
           holes. Deliberately weak — it is not a second sun. */}
       <directionalLight position={[-radius, radius * 1.4, -radius * 1.6]} color={w.sky} intensity={0.18} />
 
-      <Site theme={theme} />
+      <Site theme={theme} site={site} />
       <ContactShadows
         key={shadowKey}
         position={[0, GRADE_Y_FT + 0.045, 0]}
@@ -713,6 +742,7 @@ export default function Viewport({
   surfaces = null,
   comfort = null,
   houseChildren = null,
+  site = null,
 }: {
   home: HomeGeometry;
   sun: SunPosition;
@@ -720,6 +750,9 @@ export default function Viewport({
   selectedId: string | null;
   onSelect: (id: string) => void;
   houseRef: MutableRefObject<THREE.Group | null>;
+  /** The land under the home. Null keeps the flat datum the builder has
+   *  always drawn; a sloped site displaces the ground under it. */
+  site?: BuilderSite | null;
   /** bumped by BuilderApp only when a whole document loads — the one signal
    *  the camera reframes on. Edits and undo never move it. */
   loadEpoch?: number;
@@ -814,6 +847,7 @@ export default function Viewport({
             comfort={comfort}
             houseChildren={houseChildren}
             quality={quality}
+            site={site}
           />
           {/* Renders nothing. It registers the capture the project library
               asks for when it saves a thumbnail, and it has to be INSIDE this

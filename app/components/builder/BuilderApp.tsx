@@ -141,6 +141,8 @@ import { buildHome, disposeHome, type HomeGeometry } from "@/lib/builder/geometr
 import { buildGraphHome } from "@/lib/builder/graphGeometry";
 import type { HomeSpec } from "@/lib/builder/spec";
 import { documentFromLocation } from "@/lib/builder/share";
+import type { BuilderSite } from "@/lib/builder/site";
+import SitePanel from "./SitePanel";
 import { PHRASE_GUIDE, applyPhrase } from "./phrases";
 import {
   buildSurfaceIndex,
@@ -166,7 +168,7 @@ import {
   type WallPlacement,
 } from "@/lib/builder/fixtures";
 import { documentSignature, readAutosave, writeAutosave } from "@/lib/builder/store";
-import { planFromSpec, type PlanHandoff } from "@/lib/builder/toPlan";
+import { checkSpecAgainstParcel, planFromSpec, type PlanHandoff } from "@/lib/builder/toPlan";
 import AxonSheet from "./AxonSheet";
 import BuilderOrderHandoff from "./BuilderOrderHandoff";
 import ComfortPanel from "./ComfortPanel";
@@ -239,6 +241,7 @@ type Action =
   | { type: "surfaces"; overrides: SurfaceOverrides; label: string }
   | { type: "fixtures"; fixtures: FixtureSet; label: string }
   | { type: "comfort"; comfort: BuilderDocument["comfort"]; label: string }
+  | { type: "site"; site: BuilderSite | null; label: string }
   | { type: "load"; doc: EditorDoc; label: string }
   | { type: "undo" }
   | { type: "redo" };
@@ -428,6 +431,18 @@ function reducer(state: EditorState, action: Action): EditorState {
     case "comfort": {
       if (action.comfort === state.doc.comfort) return state;
       return commit(state, { ...state.doc, comfort: action.comfort }, action.label);
+    }
+    /* The land under the home. Clearing it REMOVES the key rather than
+       storing a null, so a project that never had a parcel stays
+       byte-identical to its pre-site self (document.spec pins this). */
+    case "site": {
+      if (action.site === null) {
+        if (state.doc.site === undefined) return state;
+        const { site: _dropped, ...withoutSite } = state.doc;
+        return commit(state, withoutSite, action.label);
+      }
+      if (action.site === state.doc.site) return state;
+      return commit(state, { ...state.doc, site: action.site }, action.label);
     }
     case "load": {
       // A house off a link or off somebody's disk is untrusted in exactly the
@@ -694,6 +709,26 @@ export default function BuilderApp() {
   const editGraph = useCallback((next: BuildingGraph, label: string) => {
     dispatch({ type: "graph", graph: next, label });
   }, []);
+
+  const editSite = useCallback((next: BuilderSite | null, label: string) => {
+    dispatch({ type: "site", site: next, label });
+  }, []);
+
+  /* Does this home fit this land? checkSpecAgainstParcel has existed and
+     gone uncalled since the plan engine landed; the Site step is the first
+     place with both halves of the question. Arithmetic only — it runs here,
+     sends nothing anywhere, and says no when the answer is no. */
+  const siteCheck = useMemo(() => {
+    const parcel = state.doc.site?.parcel;
+    if (!parcel) return null;
+    return checkSpecAgainstParcel(spec, {
+      lotWidthFt: parcel.lotWidthFt,
+      lotDepthFt: parcel.lotDepthFt,
+      frontSetbackFt: parcel.frontSetbackFt,
+      sideSetbackFt: parcel.sideSetbackFt,
+      rearSetbackFt: parcel.rearSetbackFt,
+    });
+  }, [spec, state.doc.site]);
 
   const convertToPlanarGraph = useCallback(() => {
     const converted = convertBuilderDocumentToGraph(state.doc, 0.5);
@@ -1032,10 +1067,30 @@ export default function BuilderApp() {
        the SVG is byte-identical. */
     const dateISO = new Date().toISOString().slice(0, 10);
 
+    /* B-P1: the A1 SITE PLAN sheet has always known how to draw a parcel and
+       has always been handed nothing, so it printed its honest blank. The
+       Site step's answers reach it here — and only when they are real, so
+       an absent site still gets the blank rather than an invented lot. */
+    const siteParcel = state.doc.site?.parcel ?? null;
+
     setDrawn({
       document: state.doc,
       handoff,
-      set: drawingSet({ document: state.doc, dateISO, projectName: spec.name, rooms }),
+      set: drawingSet({
+        document: state.doc,
+        dateISO,
+        projectName: spec.name,
+        rooms,
+        parcel: siteParcel
+          ? {
+              lotWidthFt: siteParcel.lotWidthFt,
+              lotDepthFt: siteParcel.lotDepthFt,
+              frontSetbackFt: siteParcel.frontSetbackFt,
+              sideSetbackFt: siteParcel.sideSetbackFt,
+              rearSetbackFt: siteParcel.rearSetbackFt,
+            }
+          : null,
+      }),
       dateISO,
     });
   }, [spec, state.doc]);
@@ -1260,6 +1315,15 @@ export default function BuilderApp() {
         <PlanCatalog onChoose={choosePlan} currentName={spec.name} />
       </Pane>
 
+      {/* The Site step's own panel. Mounted only while the walk is standing
+          on Site, because it owns form state that should start from the
+          document each time somebody arrives. */}
+      {editorMode === "guided" && guidedStep === "site" ? (
+        <div className="mt-6">
+          <SitePanel site={state.doc.site} onSite={editSite} check={siteCheck} />
+        </div>
+      ) : null}
+
       {/* --------------------------------------------------------- the toggle */}
       <div className="builder-view-switch rounded-2xl px-4 py-3 sm:px-5 sm:py-4">
         <div className="flex flex-wrap items-end justify-between gap-4">
@@ -1301,6 +1365,7 @@ export default function BuilderApp() {
           onSelect={selectVolume}
           houseRef={houseRef}
           loadEpoch={state.loadEpoch}
+          site={state.doc.site ?? null}
           surfaces={
             graphMode
               ? null
