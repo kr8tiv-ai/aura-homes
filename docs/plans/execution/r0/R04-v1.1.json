@@ -46,5 +46,22 @@
   },
   "repairLimit": 1,
   "sideEffect": "remote-write",
-  "status": "ready"
+  "evidence": {
+    "verifiedAt": "2026-08-13T23:59:00-06:00",
+    "verdict": "pass-post-hoc",
+    "note": "The remote writes ran before this record was closed (a graph-contract violation recorded here, not erased): origin/main and origin/gh-pages already carried the release when a fresh-context checker verified it after the fact.",
+    "remoteMainCommit": "92da6b7de6971af2ae85052a4c5354049d59a7d4",
+    "remoteGhPagesAssetsCommit": "9e1999f",
+    "remoteGhPagesHtmlCommit": "bb0c7c3",
+    "appendOnlyManifest": ".aura-release-manifests present on gh-pages; assets-before-HTML two-commit pattern observed",
+    "productionDeploymentId": "92da6b7de6971af2ae85052a4c5354049d59a7d4 embedded in https://aurahomes.fun/ HTML",
+    "productionSmoke": "HTTP 200: / /build/ /homes/ /roadmap/ /how-crypto-works/ /textures/meadow-atlas.json (desktop HEAD crawl)",
+    "rollbackCoordinates": "gh-pages 5575d10 (prior HTML publish); main 13c5072 (prior release)",
+    "missingRequiredOutputs": [
+      "dated source and production backups: not located by the checker",
+      "old-HTML hydration compatibility report: chunk-recovery script present in served HTML but compatibility not independently re-run",
+      "mobile production smoke: not re-run post-hoc"
+    ]
+  },
+  "status": "verified-post-hoc"
 }
