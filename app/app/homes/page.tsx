@@ -10,16 +10,25 @@ import {
   HOMES_WIND_DOWN_HOLDER_LIMIT,
   allocateHomesFees,
   allocateHomesTradingFees,
-  plannedHomesSnapshot,
+  currentHomesSnapshot,
   reconcileHomesFeeLedger,
 } from "@/lib/homes/fund";
+import {
+  HOMES_EXPLORER_URL,
+  HOMES_GECKOTERMINAL_URL,
+  HOMES_POOL_ADDRESS,
+  HOMES_TOKEN_ADDRESS,
+  HOMES_TOKEN_CHAIN_ID,
+  XLAUNCH_TOKEN_URL,
+  shortHomesAddress,
+} from "@/lib/homes/token";
 
 export const metadata = {
   title: "HOMES on X Layer — Aura Homes",
-  description: "The planned HOMES property fund, fee ledger, first-property target, and revenue distribution design.",
+  description: "The live HOMES token, its fee ledger, first-property target, and the planned property-trust design.",
 };
 
-const snapshot = plannedHomesSnapshot();
+const snapshot = currentHomesSnapshot();
 const feeLedger = reconcileHomesFeeLedger(snapshot);
 const serviceAllocation = allocateHomesFees(feeLedger.serviceUsdc);
 const tradingAllocation = allocateHomesTradingFees(feeLedger.tradingUsdc);
@@ -71,8 +80,11 @@ export default function HomesPage() {
           </p>
         </div>
         <aside className="homes-status" aria-label="HOMES launch status">
-          <span>Planned · no token contract</span>
-          <p>No sale, staking contract, exchange listing, property, fee receipt, or payout is live.</p>
+          <span>Live · X Layer mainnet {HOMES_TOKEN_CHAIN_ID}</span>
+          <p>
+            The token trades on XLaunch. No staking contract, exchange listing, property, or
+            payout is live; venue fees accrue but no claim receipt is published yet.
+          </p>
         </aside>
       </header>
 
@@ -81,15 +93,18 @@ export default function HomesPage() {
           the person who just wants to know what HOMES is. */}
       <section className="homes-section" aria-label="HOMES in plain words">
         <p className="max-w-3xl text-base leading-relaxed text-aura-text/85">
-          In plain words: HOMES is a <strong>planned</strong> token — not live, nothing to buy
-          today. The idea is a user-owned network of eco stays, like an Airbnb its guests and
-          hosts own, funded by a transparent property trust. Every zero below is declared, and
+          In plain words: HOMES is <strong>live</strong> — launched on XLaunch, a permissionless
+          launchpad on X Layer mainnet, where you can buy it today. The idea it funds is a
+          user-owned network of eco stays, like an Airbnb its guests and hosts own, backed by a
+          transparent property trust — and that part is still <strong>planned</strong>: no trust,
+          staking, property, or payout exists yet. It is a micro-cap experiment on an unaudited
+          venue factory; buy only what you can afford to lose. Every zero below is declared, and
           every claim keeps its Today / Next / Future label until something is real.
         </p>
       </section>
 
       <section className="homes-metrics" aria-label="HOMES declared zero state">
-        <article><span>Total recognized fees</span><strong>{usdc(feeLedger.totalUsdc)}</strong><small>Not connected to a fee data source</small></article>
+        <article><span>Total recognized fees</span><strong>{usdc(feeLedger.totalUsdc)}</strong><small>Venue fees accrue at XLaunch · counted after claim receipts publish</small></article>
         <article><span>Property fund balance</span><strong>{usdc(snapshot.propertyFund.balanceUsdc)}</strong><small>Dedicated fund vault not deployed</small></article>
         <article><span>First-property target</span><strong>{usdc(HOMES_FIRST_PROPERTY_TARGET_USDC).replace(".00", "")}</strong><small>Alberta or Costa Rica · not selected</small></article>
         <article><span>Eligible stakers</span><strong>{snapshot.holders.eligibleCount} / 200</strong><small>Top 200 · snapshot block not set</small></article>
@@ -110,6 +125,11 @@ export default function HomesPage() {
             </article>
           ))}
         </div>
+        <p className="homes-budget-note">
+          These percentages are design targets. The live token was minted by XLaunch&apos;s
+          factory; its actual on-chain distribution is being verified and will be published
+          as-is here before any design number is presented as the live one.
+        </p>
         <h3 className="homes-subledger-title">Trading-fee revenue · proposed</h3>
         <div className="homes-allocation">
           {tradingAllocationRows.map((row) => (
@@ -182,18 +202,46 @@ export default function HomesPage() {
           <p>Every empty field is shown as empty. Contract and venue status will move only after independent verification.</p>
         </div>
         <dl className="homes-proof">
-          <div><dt>HOMES token contract</dt><dd>Not deployed</dd></div>
+          <div><dt>HOMES token contract</dt><dd>Live · <a href={HOMES_EXPLORER_URL} target="_blank" rel="noreferrer">{shortHomesAddress()} on the X Layer explorer ↗</a></dd></div>
+          <div><dt>Venue market</dt><dd>XLaunch · HOMES/wSPCXx pool <a href={HOMES_GECKOTERMINAL_URL} target="_blank" rel="noreferrer">{shortHomesAddress(HOMES_POOL_ADDRESS)} ↗</a> · liquidity locked in the venue&apos;s locker, no withdraw path</dd></div>
           <div><dt>Property-fund vault</dt><dd>Not deployed</dd></div>
           <div><dt>Staking + distribution</dt><dd>Coming later · design only</dd></div>
           <div><dt>Property holding trust</dt><dd>Not formed; no legal title held</dd></div>
-          <div><dt>OKX listing</dt><dd>Not applied / not approved</dd></div>
-          <div><dt>Proposed SpaceX pair</dt><dd>Exact third-party asset and contract unresolved; no affiliation claimed</dd></div>
+          <div><dt>OKX listing</dt><dd>Not applied / not approved · a DEX pool is not an exchange listing</dd></div>
           <div><dt>Acquired properties</dt><dd>None</dd></div>
         </dl>
         <div className="homes-source-links">
-          <a href="https://www.okx.com/en-gb/help/how-can-i-get-my-project-listed-on-okx" target="_blank" rel="noreferrer">OKX listing process ↗</a>
+          <a href={XLAUNCH_TOKEN_URL} target="_blank" rel="noreferrer">Buy HOMES on XLaunch ↗</a>
+          <a href={HOMES_GECKOTERMINAL_URL} target="_blank" rel="noreferrer">GeckoTerminal pool ↗</a>
+          <a href={HOMES_EXPLORER_URL} target="_blank" rel="noreferrer">Contract on the explorer ↗</a>
           <a href="https://www.okx.com/en-gb/help/x-layer-faq" target="_blank" rel="noreferrer">X Layer FAQ ↗</a>
           <Link href="/faq#homes-token">Read the HOMES FAQ</Link>
+        </div>
+      </section>
+
+      <section className="homes-section" aria-labelledby="buy-heading">
+        <div className="homes-section-heading">
+          <div><p className="aura-label">Live on XLaunch</p><h2 id="buy-heading">How to buy HOMES.</h2></div>
+          <p>
+            Four steps, verified against the live venue. The Buy panel accepts OKB directly —
+            XLaunch routes the swap into the wSPCXx-quoted pool for you.
+          </p>
+        </div>
+        <ol className="homes-flow">
+          <li><span>01</span><strong>Wallet</strong><p>Install OKX Wallet or MetaMask and add X Layer mainnet: chain ID {HOMES_TOKEN_CHAIN_ID}, RPC rpc.xlayer.tech, native coin OKB.</p></li>
+          <li><span>02</span><strong>Get OKB for gas and the buy</strong><p>Withdraw OKB from OKX directly to the X Layer network, or bridge from another chain with the official X Layer bridge in OKX web3. Gas costs cents; the OKB you swap is the purchase.</p></li>
+          <li><span>03</span><strong>Buy on the token page</strong><p>Open the HOMES page on XLaunch, connect your wallet, choose the Buy tab, pay in OKB (or wSPCXx), set slippage, confirm. The 1% venue fee applies to every swap.</p></li>
+          <li><span>04</span><strong>Verify what you bought</strong><p>Check the contract address against the one published here — {shortHomesAddress()} — and the pool on GeckoTerminal. If an address differs, it is not HOMES.</p></li>
+        </ol>
+        <div className="homes-micro-liquidity">
+          <strong>Read this before buying.</strong>
+          <p>
+            Transactions are irreversible. HOMES is a micro-cap experiment launched through a
+            permissionless, unaudited venue factory; tokens like this routinely go to zero.
+            Locked liquidity is not a price floor. The quote asset is a wrapped-stock token
+            whose third-party issuer can pause transfers. Nothing here is investment advice or
+            an offer; buy only what you can afford to lose.
+          </p>
         </div>
       </section>
 

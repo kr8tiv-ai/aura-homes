@@ -39,7 +39,7 @@ const faqs = [
   {
     id: "x-layer",
     q: "What is X Layer?",
-    a: "X Layer is the EVM-compatible Layer 2 in the OKX ecosystem. Aura plans to use it for provider-supported USDC payments, public HOMES records and verifiable project artifacts. The normal design and project tools do not require X Layer or a wallet. Current contract work is testnet-only and has no monetary value; mainnet settlement is not live.",
+    a: "X Layer is the EVM-compatible Layer 2 in the OKX ecosystem. Aura plans to use it for provider-supported USDC payments, public HOMES records and verifiable project artifacts. The normal design and project tools do not require X Layer or a wallet. Aura's own contract work is testnet-only and has no monetary value; the HOMES token, launched through the third-party XLaunch venue, lives on X Layer mainnet, and mainnet settlement for Aura's payment tools is not live.",
     link: { href: "https://web3.okx.com/xlayer", label: "Read the official X Layer overview" },
   },
   {
@@ -51,7 +51,7 @@ const faqs = [
   {
     id: "homes-token",
     q: "What is the HOMES token?",
-    a: "HOMES is a planned X Layer token and public property ledger. The proposed model routes 60 percent of recognized platform and venue fees to a first-property fund, targeting 200,000 USDC before an Alberta or Costa Rica acquisition. No HOMES contract, sale, listing, fund balance, property, staking position, or payout exists today; the dashboard shows a declared zero state and says that no data source is connected.",
+    a: "HOMES is a live X Layer token — launched on the XLaunch venue at contract 0x642855d557ada1eba8a66014aaff902e6394c0de — paired with a public property ledger that is still mostly a declared zero state. The proposed model routes 60 percent of recognized platform and venue fees to a first-property fund, targeting 200,000 USDC before an Alberta or Costa Rica acquisition. No exchange listing, fund balance, property, staking position, or payout exists today; venue trading fees accrue but are counted only after claim receipts are published.",
     link: { href: "/homes", label: "Open the HOMES ledger" },
   },
   {
@@ -60,7 +60,7 @@ const faqs = [
   },
   {
     q: "How is the HOMES token supply allocated?",
-    a: "The current design reserves 30 percent for labeled team vesting wallets, 10 percent for marketing, 10 percent for approved exchange-listing requirements, 20 percent for protocol-owned liquidity, and 30 percent for public market distribution. These percentages describe token inventory, not fee revenue. No mint or allocation address exists today, and any unused listing allocation must remain visible rather than silently becoming team supply.",
+    a: "The design reserves 30 percent for labeled team vesting wallets, 10 percent for marketing, 10 percent for approved exchange-listing requirements, 20 percent for protocol-owned liquidity, and 30 percent for public market distribution. These percentages describe intended token inventory, not fee revenue — and not yet the live mint: the token was minted by XLaunch's factory, and its actual on-chain distribution is being verified before any design number is presented as the live one. Any unused listing allocation must remain visible rather than silently becoming team supply.",
   },
   {
     q: "How would HOMES payouts work?",
@@ -89,7 +89,7 @@ const faqs = [
   },
   {
     q: "How does Aura make money?",
-    a: "Today it does not — nothing on this site charges anyone. The planned model uses small, disclosed margins on completed services, partner APIs, marketplaces and AI model routing. OpenRouter-powered services may include a clearly shown 15 percent service margin. The HOMES ledger separates gross customer spend, third-party cost, Aura's net fee, the applicable rule version, and every destination so a margin cannot be hidden inside a home budget.",
+    a: "Nothing on this site charges anyone. One live exception exists off-site: the XLaunch venue routes 60 percent of its 1 percent swap fee on HOMES trades to the founder's creator wallet; those fees accrue at the venue and will appear on the HOMES ledger with claim receipts. The planned model beyond that uses small, disclosed margins on completed services, partner APIs, marketplaces and AI model routing. OpenRouter-powered services may include a clearly shown 15 percent service margin. The HOMES ledger separates gross customer spend, third-party cost, Aura's net fee, the applicable rule version, and every destination so a margin cannot be hidden inside a home budget.",
   },
   {
     q: "Where does it start?",

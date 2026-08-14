@@ -60,9 +60,10 @@ test("the education pages explain the lifecycle and label every crypto plan", as
   await page.goto("/how-crypto-works");
   await expect(page.getByRole("heading", { name: "The crypto side, one plain idea at a time." })).toBeVisible();
   await expect(page.getByRole("heading", { name: "What hashes do not prove" })).toBeVisible();
-  // Every plan carries an honest status chip: HOMES + trust are Next, the
-  // stay network + launchpad are Future. Nothing may read as live.
-  await expect(page.getByText(/Next · planned, being designed/)).toHaveCount(2);
+  // Every plan carries an honest status chip: the HOMES token flipped to
+  // Today when it launched on XLaunch (Aug 13, 2026); the trust stays Next,
+  // the stay network + launchpad stay Future. Nothing unbuilt reads as live.
+  await expect(page.getByText(/Next · planned, being designed/)).toHaveCount(1);
   await expect(page.getByText(/Future · a later idea that may change/)).toHaveCount(2);
 });
 

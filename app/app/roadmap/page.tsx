@@ -1,6 +1,7 @@
 import Link from "next/link";
 import RevealWords from "@/components/RevealWords";
 import { Reveal, Stagger, StaggerItem } from "@/components/Reveal";
+import { HOMES_EXPLORER_URL, HOMES_TOKEN_ADDRESS } from "@/lib/homes/token";
 
 /* THE ROADMAP — one page, three arcs, one rule: nothing unbuilt is written in
    the present tense. The long-form record lives in docs/ROADMAP.md in the
@@ -40,6 +41,7 @@ const ARCS: Array<{
       { text: "An Alberta budget that reconciles to a published cost model to the dollar, with a DIY-or-hire toggle per line.", href: "/budget", label: "See the budget" },
       { text: "Contractor and manufacturer evidence workbenches for demonstration or user-supplied records, with source dates, visible expiries, and missing evidence shown.", href: "/contractors", label: "Check a team" },
       { text: `Experimental transaction-mechanics contracts are deployed on X Layer testnet 1952 — escrow ${ESCROW.slice(0, 6)}… and registry ${REGISTRY.slice(0, 6)}… — with zero milestones and zero home records. The lab proves transaction execution, not lifecycle facts.`, href: `${OKLINK}/${ESCROW}`, label: "Contract on OKLink", external: true },
+      { text: `The HOMES token is live on X Layer mainnet 196 — launched on the XLaunch venue at ${HOMES_TOKEN_ADDRESS.slice(0, 6)}…, a micro-cap experiment with the buy path and every risk label on the ledger page.`, href: HOMES_EXPLORER_URL, label: "Token on the explorer", external: true },
     ],
   },
   {
@@ -63,7 +65,7 @@ const ARCS: Array<{
     chipTone: "border-aura-violet text-aura-violet",
     title: "The HOMES ecosystem",
     lead:
-      "A later idea, published in full and labelled planned: nothing below is live, and nothing here is an offer.",
+      "Published in full and honestly labelled: the HOMES token itself is live and listed under Now above; everything below is planned, and nothing here is an offer.",
     items: [
       { text: "A planned property-holding and governance model for real eco homes. The legal vehicle, participant rights, and fee rules still need jurisdiction-specific design." },
       { text: "A user-owned network of eco stays — the long-term story: an Airbnb its guests and hosts own." },

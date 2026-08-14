@@ -12,8 +12,9 @@ import {
   homesWindDownPayouts,
   homesProfitPayouts,
   reconcileHomesFeeLedger,
-  plannedHomesSnapshot,
+  currentHomesSnapshot,
 } from "@/lib/homes/fund";
+import { HOMES_TOKEN_ADDRESS, HOMES_TOKEN_CHAIN_ID } from "@/lib/homes/token";
 
 test("HOMES fee allocation is complete and sends 60 percent to the property fund", () => {
   expect(Object.values(HOMES_FEE_ALLOCATION).reduce((sum, share) => sum + share, 0)).toBe(100);
@@ -78,22 +79,31 @@ test("only 60 percent of net property profit is distributed pro rata", () => {
   expect(result.payouts.map((payout) => payout.amount)).toEqual([BigInt(450_000), BigInt(150_000)]);
 });
 
-test("the public dashboard starts at a declared, disconnected zero state", () => {
-  const snapshot = plannedHomesSnapshot();
-  expect(snapshot.status).toBe("planned");
+/* Renegotiated Aug 13, 2026 — the token is live on XLaunch. The chain cell
+   carries the real address; every MONEY cell stays a declared zero until a
+   claim receipt exists, and everything unbuilt stays null. */
+test("the public dashboard shows the live token and declared zeros for everything unproven", () => {
+  const snapshot = currentHomesSnapshot();
+  expect(snapshot.status).toBe("live");
+  expect(snapshot.asOfISO).toBe("2026-08-13");
+  expect(snapshot.chain.chainId).toBe(HOMES_TOKEN_CHAIN_ID);
+  expect(snapshot.chain.tokenAddress).toBe(HOMES_TOKEN_ADDRESS);
   expect(snapshot.fees.totalUsdc).toBe(BigInt(0));
   expect(snapshot.propertyFund.balanceUsdc).toBe(BigInt(0));
   expect(snapshot.fees.tradingUsdc).toBe(BigInt(0));
   expect(snapshot.fees.serviceUsdc).toBe(BigInt(0));
-  expect(snapshot.chain.tokenAddress).toBeNull();
+  const venue = snapshot.fees.sources.find((source) => source.id === "venue");
+  expect(venue?.status).toBe("active");
+  expect(venue?.recognizedUsdc).toBe(BigInt(0));
   expect(snapshot.chain.stakingAddress).toBeNull();
+  expect(snapshot.chain.treasuryAddress).toBeNull();
   expect(snapshot.properties).toEqual([]);
   expect(snapshot.windDown.status).toBe("not-configured");
   expect(snapshot.windDown.distributableUsdc).toBe(BigInt(0));
 });
 
 test("fee ledgers reconcile source receipts without double allocating trading and service revenue", () => {
-  const base = plannedHomesSnapshot();
+  const base = currentHomesSnapshot();
   const snapshot = {
     ...base,
     fees: {

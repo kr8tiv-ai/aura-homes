@@ -73,7 +73,7 @@ const sections: Array<{
     status: null,
     paras: [
       "X Layer is an EVM-compatible Layer 2 blockchain in the OKX ecosystem. EVM compatibility lets developers use familiar Ethereum tools; it does not, by itself, establish the network's security model. OKX publishes the network architecture and operating details.",
-      "Aura's contract work runs on the X Layer testnet today: a rehearsal network whose tokens have no monetary value. Nothing Aura has deployed touches real money, and participation in the OKX developer program is not an OKX endorsement.",
+      "Aura's own contract work runs on the X Layer testnet today: a rehearsal network whose tokens have no monetary value. The HOMES token is the one exception — launched through the third-party XLaunch venue on X Layer mainnet, it carries real (small) value, while the escrow and registry labs stay testnet-only. Participation in the OKX developer program is not an OKX endorsement.",
     ],
     link: { href: "/faq#x-layer", label: "The FAQ's X Layer and OKX questions" },
   },
@@ -99,12 +99,12 @@ const sections: Array<{
   {
     n: "07",
     name: "HOMES",
-    status: NEXT,
+    status: TODAY,
     paras: [
-      "HOMES is a planned X Layer token and public property ledger. The proposed model routes a share of recognized platform fees toward a first eco-property, with every balance and rule published on-chain.",
-      "Today: no HOMES contract, sale, listing, fund balance, staking position, or payout exists. The ledger page shows a declared zero state with no connected data source, and the FAQ holds the proposed numbers — fee splits, supply, payout design — as separate questions rather than promises.",
+      "HOMES is a live X Layer token — launched on the XLaunch venue — paired with a public property ledger. The proposed model routes a share of recognized platform and venue fees toward a first eco-property, with every balance and rule published on-chain.",
+      "Today: the token trades on XLaunch and the ledger page shows the contract address, the pool, and how to buy. Still not live: any exchange listing, fund balance, staking position, trust, or payout — the ledger keeps those as declared zeros, and the FAQ holds the proposed numbers as separate questions rather than promises.",
     ],
-    link: { href: "/faq#homes-token", label: "The FAQ's HOMES questions" },
+    link: { href: "/homes#buy-heading", label: "The HOMES ledger and how to buy" },
   },
   {
     n: "08",

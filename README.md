@@ -33,7 +33,7 @@ Aura is built around one provable journey rather than a collection of disconnect
 | 0:15 | Open [the builder](https://aurahomes.fun/build), switch between Guided and Pro, then edit the same design | Both editor modes write one canonical document and one deterministic design hash. |
 | 0:30 | Visit [land](https://aurahomes.fun/land) and [contractors](https://aurahomes.fun/contractors) | Project-fit and evidence scoring work, while pilot/demo records are labelled honestly. |
 | 0:40 | Compare [finished-home routes](https://aurahomes.fun/buy) and payment readiness | Card and X Layer USDC paths stay side by side, and neither is presented as live without a real provider and destination. |
-| 0:50 | Open the [HOMES dashboard](https://aurahomes.fun/homes) | The future trust is presented as a public zero-state ledger: no token, fees, property, staking, or distributions are invented. |
+| 0:50 | Open the [HOMES dashboard](https://aurahomes.fun/homes) | The live HOMES token shows its real receipts (contract, venue, pool); the future trust stays a public zero-state ledger — no fees, property, staking, or distributions are invented. |
 | 1:00 | Inspect [deployment evidence](docs/DEPLOYMENTS.md) and run the suites below | The product claims can be reproduced from code, tests, and public testnet state. |
 
 > The strongest demo is: **brief → design → local save/reload → land fit → team evidence → quote basis → portable project handoff.** Aura prepares and explains; the person confirms.

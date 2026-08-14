@@ -483,7 +483,7 @@ This phase is deliberately dateless. It is gated, and the gates are the point.
 
 **What would make us not launch at all, and that being fine.** If counsel says the design is a security in substance; if usage never reaches the level where a credit token beats simply charging in USDC; or if the token would make the product harder for a normal person to use. The mission is more eco homes built. A token that does not serve that is a liability with a ticker.
 
-**Published limitation.** Announced now, defined later, on purpose. **The hackathon ships no token**, and that decision has not moved.
+**Published limitation.** Announced now, defined later, on purpose. *(Superseded August 13, 2026: the founder launched $HOMES through the third-party XLaunch venue on X Layer mainnet — an experiment-tier venue token, disclosed with receipts and risk labels on the ledger page. The designed token architecture above — vesting, treasury, audited contracts — remains unbuilt, and every gate in this section still applies to it.)*
 
 ---
 

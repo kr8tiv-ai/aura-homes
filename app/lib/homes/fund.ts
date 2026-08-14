@@ -1,3 +1,9 @@
+import {
+  HOMES_LAUNCHED_ISO,
+  HOMES_TOKEN_ADDRESS,
+  HOMES_TOKEN_CHAIN_ID,
+} from "./token";
+
 export const HOMES_FEE_ALLOCATION = {
   propertyFund: 60,
   marketing: 10,
@@ -210,14 +216,20 @@ export function reconcileHomesFeeLedger(snapshot: HomesSnapshot): {
   return { tradingUsdc, serviceUsdc, totalUsdc };
 }
 
-export function plannedHomesSnapshot(): HomesSnapshot {
+/** The current public snapshot. The TOKEN is live (launched on XLaunch,
+ * August 13, 2026); the trust, staking, properties, distributions, and
+ * wind-down remain design-stage, and their fields stay null/zero until each
+ * has its own receipt. Venue fees accrue at XLaunch but are recognized only
+ * after claim receipts are published — `reconcileHomesFeeLedger` makes a
+ * half-recognized number a build failure, not a silent lie. */
+export function currentHomesSnapshot(): HomesSnapshot {
   return {
-    status: "planned",
-    asOfISO: null,
+    status: "live",
+    asOfISO: HOMES_LAUNCHED_ISO,
     chain: {
       name: "X Layer",
-      chainId: null,
-      tokenAddress: null,
+      chainId: HOMES_TOKEN_CHAIN_ID,
+      tokenAddress: HOMES_TOKEN_ADDRESS,
       stakingAddress: null,
       treasuryAddress: null,
       snapshotBlock: null,
@@ -228,7 +240,7 @@ export function plannedHomesSnapshot(): HomesSnapshot {
       serviceUsdc: BigInt(0),
       lastReceiptHash: null,
       sources: [
-        { id: "venue", label: "Token venue fee share", model: "Requires a documented venue agreement", status: "planned", recognizedUsdc: BigInt(0) },
+        { id: "venue", label: "Token venue fee share", model: "XLaunch routes 60% of its 1% swap fee to the creator wallet; amounts count here only after claim receipts are published", status: "active", recognizedUsdc: BigInt(0) },
         { id: "services", label: "Aura service fees", model: "Small disclosed margins on completed marketplace services", status: "planned", recognizedUsdc: BigInt(0) },
         { id: "ai", label: "AI model routing", model: "Provider cost plus a disclosed orchestration margin, including OpenRouter where used", status: "planned", recognizedUsdc: BigInt(0) },
         { id: "api", label: "Partner and API access", model: "Usage-priced tools when Aura's project intelligence is production-ready", status: "planned", recognizedUsdc: BigInt(0) },

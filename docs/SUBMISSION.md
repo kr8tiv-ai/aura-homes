@@ -65,7 +65,9 @@ vetted.
 
 An optional X Layer testnet lab reads deployed lifecycle contracts and links
 to their creation receipts. The current public instance has zero milestones and zero home records.
-It does not sell, finance, escrow, certify, or prove physical work on a home. The planned HOMES concept remains separate: no token,
+It does not sell, finance, escrow, certify, or prove physical work on a home. The HOMES concept remains separate: the token
+itself is live on X Layer mainnet — launched August 13, 2026 through the third-party XLaunch venue at
+`0x642855d557ada1eba8a66014aaff902e6394c0de`, disclosed on the ledger page with its buy path and risk labels — while no
 property vehicle, property, staking position, distribution, or launchpad is
 live. Its legal structure and participant rights remain undecided.
 
