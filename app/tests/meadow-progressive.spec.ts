@@ -198,7 +198,7 @@ test("legacy source slots are deterministically remapped to grass at render time
   expect(metadata.instances.grass).toBe(2_800);
   expect(metadata.instances.flowers).toBe(800);
   expect(metadata.renderedInstances).toEqual({ total: 3_600, grass: 3_600, flowers: 0 });
-  expect(metadata.files.instances.sha256).toBe("c197eb688e13f0d7f103b0fb41ca00fd3c035e07044cfece6f372075a0e412d9");
+  expect(metadata.files.instances.sha256).toBe("0913e10585871853e184545a79a49426e1ffd9c680dbd297d28b931deff9b849");
   expect(detail).toContain('name="aura-meadow-atlas"');
   expect(detail).not.toContain("flowerHeads: Float32Array");
   expect(detail).toContain("mappedGrassCell");
@@ -513,7 +513,7 @@ test("the atlas generator's clearance and terrain match the runtime meadow field
   expect(samples).toBeGreaterThan(2_000);
 });
 
-test("no baked atlas card stands on the deck, the glass walkway, or inside the house", async () => {
+test("no baked atlas card stands on the deck, the walkway, the entrance steps, or inside the house", async () => {
   const bytes = await readFile(path.join(appRoot, "public/textures/meadow-atlas.bin"));
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const count = view.getUint32(12, true);
@@ -533,6 +533,7 @@ test("no baked atlas card stands on the deck, the glass walkway, or inside the h
 
   let onDeck = 0;
   let onWalkway = 0;
+  let onSteps = 0;
   let inHouse = 0;
   for (let index = 0; index < count; index += 1) {
     const offset = headerBytes + index * stride;
@@ -540,9 +541,14 @@ test("no baked atlas card stands on the deck, the glass walkway, or inside the h
     const z = view.getFloat32(offset + 8, true);
     if (insideRect(x, z, -3.9, 2.95, 3.6, 6.3)) onDeck += 1;
     if (segmentDistance(x, z, 3.45, 4.65, 5.9, 5.35) <= 0.85) onWalkway += 1;
+    /* The five treads span x -1.10..1.20, z 6.73..8.53 (EntranceSteps group
+       at 6.55, five 0.36 m treads); the founder's screenshot showed cards
+       standing through the LOWER treads that the tight rect left exposed. */
+    if (insideRect(x, z, -1.1, 6.55, 1.2, 8.6)) onSteps += 1;
     if (insideRect(x, z, -4.3, -3.4, 4.3, 3.4)) inHouse += 1;
   }
   expect(onDeck).toBe(0);
   expect(onWalkway).toBe(0);
+  expect(onSteps).toBe(0);
   expect(inHouse).toBe(0);
 });

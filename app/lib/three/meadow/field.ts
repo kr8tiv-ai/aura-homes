@@ -54,7 +54,15 @@ export function sampleMeadowClearance(x: number, z: number, tight = false): numb
     value = Math.min(value, fade(rectangleDistance(x, z, -3.9, 2.95, 3.6, 6.3), 0.28, 0.95));
     value = Math.min(value, fade(segmentDistance(x, z, 3.45, 4.65, 5.9, 5.35), 0.85, 0.8));
   }
-  value = Math.min(value, fade(rectangleDistance(x, z, -1.1, 6.15, 1.2, 7.3), 0.12, 0.4));
+  /* Entrance steps. The five treads run z 6.91–8.53 (group 6.55 + (i+1)*0.36,
+     0.36 deep) with glass cheeks alongside — the tight rect that briefly
+     served every consumer here stopped at z 7.3 and left the three lower
+     treads unprotected, which is exactly where 1.4 m atlas cards stood
+     through the stairs. Tall consumers (hero blades, atlas cards) take the
+     wide rect; the 8–18 cm filler may still hug the boxes. */
+  value = Math.min(value, tight
+    ? fade(rectangleDistance(x, z, -1.1, 6.15, 1.2, 7.3), 0.12, 0.4)
+    : fade(rectangleDistance(x, z, -1.45, 6.3, 1.55, 8.7), 0.24, 0.7));
   value = Math.min(value, fade(Math.hypot(x - 5.9, z - 5.4), tight ? 0.92 : 1.4, tight ? 0.5 : 0.9));
   value = Math.min(value, fade(Math.hypot(x + 4.7, z - 6.5), tight ? 0.5 : 1.3, tight ? 0.45 : 0.8));
   value = Math.min(value, fade(Math.hypot(x - 8.6, z - 18), tight ? 0.6 : 0.95, tight ? 0.5 : 0.8));

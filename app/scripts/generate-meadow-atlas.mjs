@@ -370,7 +370,7 @@ export function clearance(x, z) {
   value = Math.min(value, fade(rectangleDistance(x, z, -4.3, -3.4, 4.3, 3.4), 0.3, 1.2));
   value = Math.min(value, fade(rectangleDistance(x, z, -3.9, 2.95, 3.6, 6.3), 0.28, 0.95));
   value = Math.min(value, fade(segmentDistance(x, z, 3.45, 4.65, 5.9, 5.35), 0.85, 0.8));
-  value = Math.min(value, fade(rectangleDistance(x, z, -1.1, 6.15, 1.2, 7.3), 0.12, 0.4));
+  value = Math.min(value, fade(rectangleDistance(x, z, -1.45, 6.3, 1.55, 8.7), 0.24, 0.7));
   value = Math.min(value, fade(Math.hypot(x - 5.9, z - 5.4), 1.4, 0.9));
   value = Math.min(value, fade(Math.hypot(x + 4.7, z - 6.5), 1.3, 0.8));
   value = Math.min(value, fade(Math.hypot(x - 8.6, z - 18), 0.95, 0.8));

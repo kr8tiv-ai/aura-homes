@@ -223,8 +223,8 @@
   "files": {
     "source": {
       "path": "scripts/generate-meadow-atlas.mjs",
-      "bytes": 26210,
-      "sha256": "9e0bf59921e0d2937dc793104404f2cc40b42f278c28cc7ace870a86fa51ad2b"
+      "bytes": 26211,
+      "sha256": "6ac76791eeaa8a6e8e1ebfc70714d028bfb4f6eccf14c73d0c12d8fba8cf9d7a"
     },
     "image": {
       "path": "public/textures/meadow-atlas.png",
@@ -235,7 +235,7 @@
     "instances": {
       "path": "public/textures/meadow-atlas.bin",
       "bytes": 172824,
-      "sha256": "c197eb688e13f0d7f103b0fb41ca00fd3c035e07044cfece6f372075a0e412d9"
+      "sha256": "0913e10585871853e184545a79a49426e1ffd9c680dbd297d28b931deff9b849"
     }
   }
 }

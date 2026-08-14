@@ -1640,81 +1640,10 @@ function Hammock({ frozen }: { frozen: boolean }) {
   );
 }
 
-/* ============================== NETTING =============================
-   A slung net lounge off the deck's west shoulder — the thing people
-   actually lie on at dusk. One plane with a canvas-drawn alpha grid beats
-   200 crossed cylinders by about 200 draw calls.
-=================================================================== */
-
-function useNetTexture() {
-  return useMemo(() => {
-    const c = document.createElement("canvas");
-    /* Texture pass (Aug 10): the net is an alphaTest cut-out lying nearly
-       flat — the worst possible case for a soft-edged 128 px line grid: the
-       cords' alpha edge IS the geometry, and at grazing angles the blur
-       read as fray. Backing store rides the shared 2 x min(DPR,2) scale and
-       the grid filters anisotropically like the other detail textures
-       (sharpen also asserts mipmaps stay on — alphaTest plus broken mips is
-       how cut-out cords vanish at mid-distance). */
-    const S = 2 * Math.min(Math.max(1, window.devicePixelRatio || 1), 2);
-    c.width = c.height = 128 * S;
-    const ctx = c.getContext("2d")!;
-    ctx.scale(S, S);
-    ctx.clearRect(0, 0, 128, 128);
-    ctx.strokeStyle = "#efe9dc";
-    ctx.lineWidth = 3.2;
-    for (let i = 0; i <= 8; i++) {
-      const p = (i / 8) * 128;
-      ctx.beginPath();
-      ctx.moveTo(p, 0);
-      ctx.lineTo(p, 128);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(0, p);
-      ctx.lineTo(128, p);
-      ctx.stroke();
-    }
-    const t = new THREE.CanvasTexture(c);
-    t.wrapS = t.wrapT = THREE.RepeatWrapping;
-    t.repeat.set(4, 3);
-    t.colorSpace = THREE.SRGBColorSpace;
-    return sharpen(t);
-  }, []);
-}
-
-function NetLounge() {
-  const tex = useNetTexture();
-  const geo = useMemo(() => {
-    const g = new THREE.PlaneGeometry(2.5, 1.9, 12, 10);
-    const p = g.attributes.position as THREE.BufferAttribute;
-    for (let i = 0; i < p.count; i++) {
-      const x = p.getX(i) / 1.25;
-      const y = p.getY(i) / 0.95;
-      p.setZ(i, -(1 - x * x) * (1 - y * y) * 0.3); // sag toward the middle
-    }
-    g.computeVertexNormals();
-    return g;
-  }, []);
-  return (
-    <group position={[-4.5, 0.5, 4.5]} rotation={[-Math.PI / 2, 0, 0.28]}>
-      <mesh geometry={geo} receiveShadow>
-        <meshStandardMaterial
-          map={tex}
-          transparent
-          alphaTest={0.42}
-          color="#f2ece0"
-          roughness={0.95}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-      {/* rope edge */}
-      <mesh position={[0, 0, 0.02]}>
-        <ringGeometry args={[1.42, 1.5, 4]} />
-        <meshBasicMaterial color="#cdbfa4" side={THREE.DoubleSide} transparent opacity={0} />
-      </mesh>
-    </group>
-  );
-}
+/* NETTING (NetLounge + useNetTexture) removed Aug 14, 2026 at the founder's
+   request: the sagging net plane sat at deck height off the west shoulder
+   and its middle dipped below the walking surface, visibly clipping through
+   the boards. The hammock keeps the soft-fabric role. History: c0108fd^. */
 
 /* =============================== MOOSE ==============================
    Low-poly, in the scene's own faceted language. Two of them, well out in
@@ -2534,7 +2463,6 @@ export default function SceneDetail({
       ) : null}
       <EntranceSteps glassRail={glassRail} />
       {lite ? null : <Hammock frozen={frozen} />}
-      {lite ? null : <NetLounge />}
       {lite ? null : <Moose position={[-15.5, 20.5]} rotY={2.1} graze frozen={frozen} />}
       {lite ? null : <Moose position={[16.5, 24.0]} rotY={-1.15} scale={0.86} frozen={frozen} />}
       <OutdoorLighting night={night} />
