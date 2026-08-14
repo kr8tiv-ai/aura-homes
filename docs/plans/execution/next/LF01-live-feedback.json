@@ -26,5 +26,14 @@
     "note": "the money anchor is the hard gate"
   },
   "sideEffect": "local",
-  "status": "ready"
+  "status": "verified",
+  "evidence": {
+    "verifiedAt": "2026-08-14",
+    "closedLate": "Shipped in b36b222; sat at 'ready' until Audit #9 finding 2.",
+    "delivered": "lib/builder/readiness.ts (pure, deterministic) plus a LiveReadout strip in the builder carrying the LOW/MID/HIGH band, the constraint checks that currently apply, and one readiness reading that separates design intent from ready-for-professional-review with the specific gaps named.",
+    "rejectionGateHeld": "The bands come from createProjectBudget and nowhere else. No second cost path was written - which matters, because a parallel calculation of one fact is the divergence class that produced grass through a deck and a drawing contradicting its owner. `agent/ npm run demo` re-verified: 199,100 / 301,280 / 443,900 to the dollar.",
+    "honestyBehaviour": "For a graph-geometry design the readout reports the setback check as 'Not run' and the glazing ratio as 'Not modelled', with the reason, rather than showing a plausible number for a check it did not perform. That behaviour surfaced a strict-mode collision in graph-ui.spec (one truthful disclosure now appears three times); the assertion was renegotiated to name the export tab's own wording rather than taking .first(), which would have passed while asserting nothing.",
+    "openFinding": "Audit #9 finding 10 (LOW): the coverage detail gives a stale instruction in graph mode. Being corrected in the audit-9 remediation wave.",
+    "gates": "tsc clean; builder-readout spec; 290 unit; 63 UI."
+  }
 }

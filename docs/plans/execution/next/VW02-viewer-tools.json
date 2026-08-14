@@ -1,0 +1,45 @@
+{
+  "node": "VW02",
+  "graphVersion": "1.2",
+  "job": "Viewer tools: section cuts, floor isolation, and quick material switches — so the model can be interrogated, not just orbited.",
+  "wave": "6 — owns BuilderApp.tsx for this wave. Nothing else may touch it.",
+  "context": [
+    "Surveyed before writing this file, because a previous node was authored against guessed types and tsc caught five errors including an invented status value. Every identifier below was read out of the source.",
+    "ORBIT ALREADY EXISTS: <OrbitControls makeDefault enableDamping dampingFactor={0.09} minDistance={12} maxDistance={900}> at Viewport.tsx:886-897, ref typed useRef<ElementRef<typeof OrbitControls>>. The graph row lists orbit as '(exists)' and it does. Do not rebuild it.",
+    "CLIPPING DOES NOT EXIST ANYWHERE. No THREE.Plane, no clippingPlanes, no localClippingEnabled in the repo. The four THREE.PlaneGeometry hits are ground planes, not clip planes. The 'section' hits in exportPro.ts/drawings are 2D SVG sheet annotations (sheet A6, sectionSheet at drawings/sheets.ts:1875) — a drawing model, not a viewer tool. You are building this from nothing.",
+    "MATERIAL SWITCHES ARE ~DONE: lib/builder/surfaces.ts is a complete system — MATERIALS, MATERIAL_LIST, setSurfaceMaterial(overrides, id, material), materialForPart(part, index, overrides), buildSurfaceIndex(home, spec), SurfaceOverrides, pruneOverrides, validateOverrides. UI is SurfacePickLayer (SurfacePicker.tsx:89) with its own THREE.Raycaster on a DOM pointerdown, CLICK_SLOP_PX = 4. This third item is mostly WIRING, not building. Say so honestly rather than reimplementing it.",
+    "BUT materials are disabled in graph mode: surfaces={graphMode ? null : {...}} at BuilderApp.tsx:1424-1434, and the picker panel is gated mode === '3d' && !graphMode at :1570. Decide and state whether VW02 lifts that or leaves it.",
+    "FLOOR ISOLATION — the real constraint. In graph mode buildGraphHome (lib/builder/graphGeometry.ts:422) emits ONE VolumeGeometry per GraphStorey with id: storey.id, so a storey IS already a VolumeGeometry. But VolumeGeometry (lib/builder/geometry.ts:1178) carries NO elevationFt — only eaveHeightFt (= storey.elevationFt + storey.heightFt) and ridgeHeightFt. Re-derive elevation from the BuildingGraph, never from HomeGeometry.",
+    "AND in legacy-spec mode there is no storey decomposition at all: one VolumeGeometry per spec.volumes entry, and a two-storey volume is a single mesh set. Volume.storeys: 1 | 2 (spec.ts:125) is the only storey notion in HomeSpec. Worse, legacySpecToBuildingGraph REFUSES any spec with volume.storeys !== 1 (buildingGraph.ts:1412-1418), so a two-storey legacy home can never reach graph mode either.",
+    "The view toggle you will sit beside: type ViewMode = '3d' | '2d' (BuilderApp.tsx:543), state const [mode, setMode] = useState<ViewMode>('3d') (:687), rendered as <Segmented label=\"View\"> (:1385). It is CSS visibility, never unmount (:1414, :1448). Guided steps drive it via GUIDED_STEPS[].view (:595-605, applied :1174, :1283).",
+    "Viewport has NO exported props interface — the prop type is inline at Viewport.tsx:765-785. Exported from that file: ViewportSurfaces (:93) and ViewportComfort (:114) only."
+  ],
+  "writeSet": [
+    "app/components/builder/Viewport.tsx",
+    "app/components/builder/BuilderApp.tsx",
+    "app/components/builder/SurfacePicker.tsx",
+    "app/lib/three/viewerTools.ts (new)",
+    "app/tests/builder-viewer-tools.spec.ts (new)",
+    "app/app/globals.css — ONLY new tool-chrome selectors; the .builder-stage* rules at :1383-1431 and the phone block at :1778 belong to VW03 and must not be touched"
+  ],
+  "rejectionGates": [
+    "FLOOR ISOLATION MUST REFUSE WHERE IT CANNOT ANSWER. A legacy two-storey volume has no per-floor geometry to isolate. Do not render a control that appears to work and silently isolates nothing — that is the class of defect that put grass through a deck and printed FLAT on a drawing whose owner said gentle. Offer the tool where storeys are real, and where they are not, say which and why.",
+    "the 3D canvas must never remount — it is the export root and VW01 pinned its element identity in builder-viewer.spec.ts. Adding a tool that forces a remount silently breaks export. Prove the same canvas element survives every tool toggle.",
+    "data-load-epoch must not move when a viewer tool is toggled. A tool is a view, not a document load, and the anti-yank contract is spec-pinned.",
+    "enabling gl.localClippingEnabled is global state on the renderer: prove it does not leak into the story scene's own canvas, and that a clipped view still exports unclipped geometry.",
+    "a section cut must not change the document or its hash. Assert hashBuilderDocument (lib/builder/document.ts:571) is identical before and after every tool interaction."
+  ],
+  "instructions": [
+    "1. lib/three/viewerTools.ts: pure derivation only — (graph | null, spec, tool state) -> { clipPlanes: THREE.Plane[], visibleVolumeIds: string[] | null, canIsolate: boolean, whyNot: string | null }. Pure means testable without a browser, which is what lets the spec below be cheap and honest. `canIsolate` and `whyNot` are how the refusal above is carried, not a disabled button with no explanation.",
+    "2. Section cut: one plane, moveable along an axis, driven from the renderer's localClippingEnabled. Cap or do not cap the cut face — but if you do not cap it, say so in the UI, because an uncapped solid reads as a hollow shell and a person will believe the wall is empty.",
+    "3. Floor isolation: derive elevations from BuildingGraph storeys, map to the VolumeGeometry ids buildGraphHome emitted, and toggle visibility. Never guess elevation from eaveHeightFt.",
+    "4. Material switches: WIRE the existing surfaces.ts system into the tool row. Do not write a second material path. If you lift the graph-mode gate, prove overrides survive a graph edit; if you do not, say plainly in the UI that finishes are a legacy-geometry feature today.",
+    "5. Spec: each tool changes what is rendered; the canvas element is identical throughout; the load epoch never moves; the document hash never moves; the refusal path is asserted on a two-storey legacy spec."
+  ],
+  "verify": {
+    "commands": ["npx tsc --noEmit", "npm test"],
+    "note": "the orchestrator runs npm run test:ui and the meadow proof; do not run them (rule 3)"
+  },
+  "sideEffect": "local",
+  "status": "ready"
+}

@@ -26,5 +26,14 @@
     "note": "run from app/; the orchestrator runs test:ui"
   },
   "sideEffect": "local",
-  "status": "ready"
+  "status": "verified",
+  "evidence": {
+    "verifiedAt": "2026-08-14",
+    "closedLate": "Shipped in b36b222; sat at 'ready' until Audit #9 finding 2. See the note in BP1-site-slot.json - this is the same bookkeeping failure.",
+    "delivered": "A two-column builder stage at desktop widths: controls in one column, the live viewer pinned in the other and sticky while the controls scroll; one column below the breakpoint. The viewer is present on all eight guided steps.",
+    "hardGateMet": "The canvas is the export root and must never remount. tests/builder-viewer.spec.ts marks the canvas element on one step and asserts the SAME element carries the mark on another; it also asserts the mark is absent after a reload, so the positive assertion cannot pass vacuously. data-load-epoch verified unchanged across all eight steps and after every edit.",
+    "defectFoundWhileTesting": "The stage's implicit grid track sized itself to the canvas's stale inline pixel width after a viewport shrink and dragged the page sideways on a phone (expected 358, received 1392). Fixed with grid-template-columns: minmax(0, 1fr).",
+    "scopeCorrection": "The manifest asked for 'an edit in each step changes the rendered geometry'. That is not true of every step - comfort targets, finishes and the sun change the SCENE without changing the SHAPE - and asserting it would have required a signature that moves when nothing about the form moved. The pinned form instead: the viewer stays live and identical across all steps; edits WITH geometric consequence arrive immediately, including from the 2D plan; and a finish edit is asserted to leave the geometry signature exactly where it is, which is what stops the positive assertions from being vacuous.",
+    "gates": "tsc clean; builder-viewer 3/3; neighbouring project-ui and plan-catalog-ui specs re-run 13/13; 63 UI specs on a fresh export build."
+  }
 }

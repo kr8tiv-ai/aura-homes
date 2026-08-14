@@ -34,5 +34,12 @@
     "note": "document.spec byte-stability pins are the hard part - write them FIRST"
   },
   "sideEffect": "local",
-  "status": "ready"
+  "status": "verified",
+  "evidence": {
+    "verifiedAt": "2026-08-14",
+    "closedLate": "This record shipped in commits 8ee3ce4 and fb6439c and sat at status 'ready' until Audit #9 finding 2 caught it. Recording that, because an unclosed node's rejection gates are never re-read, which is precisely how FD1's incomplete write-set survived two audits.",
+    "delivered": "Optional site slot on BuilderDocument with byte-stability pinned (a site-less document is identical to its pre-site self, same canonical JSON and hash); the guided Site step hosting /design's ParcelPanel verbatim and writing only validated parcels; checkSpecAgainstParcel called for the first time since it was written, answering the fit question beside the form; the A1 SITE PLAN sheet receiving a real parcel and still printing its honest blank without one; lib/builder/terrain.ts gradeHeightFt plus per-pile lengths, with the viewport ground displaced from the same function the schedule measures.",
+    "provenIn": "scripts/site-proof.mjs - captures the A1 sheet with real lot lines, a sloped viewport, and the plot card. It also caught a real defect the specs could not: A1 printed FLAT while the Site step said gentle, because spec.siting.slope and the parcel's slope were two facts drifting apart. Reconciled in the reducer; the re-run proof shows GENTLE.",
+    "gates": "tsc clean; 185 unit specs at the time (one new spec caught a negative zero at the origin, fixed in the function rather than loosened in the test); site-proof exit 0."
+  }
 }

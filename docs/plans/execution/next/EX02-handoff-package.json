@@ -24,5 +24,13 @@
     "note": "round-trip and byte-identity are the load-bearing assertions"
   },
   "sideEffect": "local",
-  "status": "ready"
+  "status": "verified-with-open-finding",
+  "evidence": {
+    "verifiedAt": "2026-08-14",
+    "closedLate": "Shipped in b36b222; sat at 'ready' until Audit #9 finding 2.",
+    "delivered": "lib/builder/handoffPackage.ts assembling the project, drawings, cost snapshot and evidence notes into one artifact carrying the canonical design hash, plus HandoffPanel mounted beside the individual exporters in the export workspace - a drafter who wants only the DXF should not have to take the rest.",
+    "hardGatesMet": "Preview and download are the same bytes: generated once, shown and saved, with no second render path (pinned). The audit attempted an adversarial construction of a package whose stated hash disagrees with its contents and found no counterexample. Round-trip reproduces the same document hash.",
+    "openFinding": "Audit #9 finding 5 (LOW-MEDIUM): the READER never re-derives projectName and geometryMode from the embedded document, so it trusts the manifest's copy of two fields it could verify. Two-line fix, in the audit-9 remediation wave. The node stays open until that lands - a package format whose reader trusts an unverified field is not finished, even though its headline claim holds.",
+    "gates": "tsc clean; handoff-package 13/13; 290 unit; 63 UI."
+  }
 }

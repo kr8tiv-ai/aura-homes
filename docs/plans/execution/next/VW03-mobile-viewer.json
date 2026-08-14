@@ -1,0 +1,46 @@
+{
+  "node": "VW03",
+  "graphVersion": "1.2",
+  "job": "A clean read-only viewer on phone and tablet, plus a dimensioned plan a person can actually get to on a site visit — with no editing affordance a thumb cannot honestly drive.",
+  "wave": "7 — owns BuilderApp.tsx for this wave. Nothing else may touch it.",
+  "context": [
+    "Surveyed before writing. Every path and line number below was read out of the source.",
+    "THE REAL FINDING, and it changes what this node is for: the dimensioned plan ALREADY EXISTS and is UNREACHABLE for the person who needs it. Sheet A3 FLOOR PLAN is the most dimensioned sheet in the set — dim() calls at drawings/sheets.ts:1092, 1093, 1110, 1111 (CLEAR), 1126 (per-wall runs) — described in drawings.ts:33 as 'poché walls, door swings, window cuts, dimensioned inside and out, section cut line'. It renders in the `drawings` workspace pane (BuilderApp.tsx:1760). But the workspace tab nav renders ONLY in Pro mode (`editorMode === 'pro' ?` at :1613), and NO GUIDED_STEPS entry maps to 'drawings' (:598-605 map to plans/shape/comfort/export only). Guided is the mode a phone lands in. So the drawing set is unreachable exactly where VW03 needs it. It is also blocked entirely in graph mode: GraphPending feature='Professional drawings' at :1761-1762.",
+    "So this node is mostly REACHABILITY, not new drawing code. Say that in the report rather than building a second plan renderer.",
+    "Download today is per-sheet SVG only: <a href={drawingDataUrl(sheet.svg)} download={`aura-${slug(name)}-${sheet.number}.svg`}> at DrawingSheets.tsx:110-117. There is no whole-set download and no PDF.",
+    "THE BREAKPOINT is @media (min-width: 64rem) at globals.css:1401 — that is 1024px, and it is where .builder-stage[data-stage='edit'] becomes two columns. Base rule at :1383-1400 is a single column at all widths. The only phone-side rule today is @media (max-width: 640px) at :1778-1780. data-stage is set at BuilderApp.tsx:1380.",
+    "THE MOBILE PIN YOU MUST NOT BREAK is builder-viewer.spec.ts:147-194 (VW01's file): at 390x844 the view stacks above the controls, both the same width, and `.builder-stage` scrollWidth === clientWidth. That last assertion caught a real defect during VW01 — an implicit grid track sized to a stale inline canvas width dragged the page sideways (expected 358, received 1392).",
+    "THERE IS NO EXISTING ASSERTION THAT THE BUILDER AVOIDS MOUNTING A 3D CANVAS ON A PHONE. The canvas mounts on mobile today. visual-system-ui.spec.ts:189-216 pins no-canvas behaviour for the LANDING page (.story-scene-root canvas toHaveCount(0)), not the builder. Do not cite it as cover.",
+    "Viewport sizing lives in Tailwind on the element itself: className='builder-viewport__stage aspect-[16/10] min-h-[22rem] w-full lg:aspect-[16/9] lg:min-h-[34rem]' (Viewport.tsx:837)."
+  ],
+  "writeSet": [
+    "app/components/builder/BuilderApp.tsx",
+    "app/components/builder/Viewport.tsx",
+    "app/components/builder/DrawingSheets.tsx",
+    "app/app/globals.css — the .builder-stage* rules at :1383-1431 and the phone block at :1778 are YOURS this wave",
+    "app/tests/builder-mobile.spec.ts (new)"
+  ],
+  "doNotTouch": [
+    "app/tests/builder-viewer.spec.ts — VW01 authored it and its mobile assertions are the thing you must keep passing, not edit. The graph row says 'the existing mobile spec extends'; extend it with a NEW file so a regression in your work cannot be hidden by loosening VW01's pins.",
+    "app/lib/builder/drawings/** — read it, do not modify it. The sheets are correct; only their reachability is not."
+  ],
+  "rejectionGates": [
+    "builder-viewer.spec.ts must pass UNCHANGED. If your work makes it fail, the work is wrong — do not edit the spec to agree with you.",
+    "no horizontal overflow at 390x844 on any builder stage or workspace: scrollWidth === clientWidth, asserted per surface you touch, not once.",
+    "the phone must not silently gain an automatically running 3D canvas. Whatever you decide (no canvas, or a canvas that does not animate), assert it — the current absence of an assertion is why nobody noticed it mounts today.",
+    "read-only must mean read-only: assert that a document loaded on a phone viewport cannot be mutated through the surfaces you expose. Prove it with hashBuilderDocument (document.ts:571) identical after interacting with every control you leave visible.",
+    "the plan export you make reachable must be the SAME artifact Pro produces — one drawingSet call (drawings.ts:118), not a mobile-specific redraw. Two renderers for one drawing is the divergence class this repo has been bitten by twice."
+  ],
+  "instructions": [
+    "1. Make sheet A3 reachable outside Pro. Prefer the smallest honest change: a route into the existing drawings pane from guided mode, not a new pane. State which of GUIDED_STEPS / workspace nav you changed and why.",
+    "2. Decide the phone 3D story deliberately: a still, a poster frame, or a canvas the person must tap to start. Any of the three is defensible; an animating WebGL canvas nobody asked for on a phone battery is not. Write the reason down.",
+    "3. Where graph mode blocks drawings (GraphPending at :1761), leave the block and make the message name what the person can do instead. Do not fake a drawing for a geometry the sheets cannot draw.",
+    "4. Spec (new file builder-mobile.spec.ts): the plan is reachable in guided mode at 390x844; the dimensioned A3 is the sheet that arrives; no overflow; the document hash is untouched by every mobile interaction; and the 3D decision from step 2 is asserted, whichever way you went."
+  ],
+  "verify": {
+    "commands": ["npx tsc --noEmit", "npm test"],
+    "note": "the orchestrator runs npm run test:ui — which is where builder-viewer.spec.ts lives, so state plainly in your report that you did not modify it"
+  },
+  "sideEffect": "local",
+  "status": "ready"
+}

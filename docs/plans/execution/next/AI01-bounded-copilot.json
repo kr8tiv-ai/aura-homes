@@ -1,0 +1,49 @@
+{
+  "node": "AI01",
+  "graphVersion": "1.2",
+  "job": "A co-pilot sidebar that can read the current document and journey state, propose changes, explain trade-offs, and apply them ONLY through a confirmation. Evidence-grounded; never autonomous on anything consequential.",
+  "wave": "9 — owns BuilderApp.tsx for this wave. Nothing else may touch it.",
+  "context": [
+    "Surveyed before writing. The two findings below change what this node is, so read them before anything else.",
+    "FINDING 1 — `PreparedAction` DOES NOT EXIST IN CODE. Grep across the whole repo returns two files, both prose: the graph's own AI01 row (graph v1.2:408) and README.md:99 and :183. There is no type to import, no module, no construction site, no confirmation site. AI01 must DEFINE it. The README is honest about this ('remain in build'), so nothing needs correcting — but do not go looking for an existing implementation, and do not let a report imply you extended one.",
+    "FINDING 2 — AND THIS IS THE ONE THAT MATTERS: something already applies a change with no confirmation card. The Ctrl+K command palette's phrase layer applies on ENTER, immediately. BuilderApp.tsx:1943-1946 is an onKeyDown on the palette input calling applyPhraseNow (:1161), which calls edit(phraseMatch.spec, ...) directly. The mitigation in place is preview-plus-undo, not confirmation: phraseMatch.say renders the outcome before Enter, and the edit lands as one undoable history entry. That is a defensible design for direct manipulation. It is NOT the 'confirm-before-act' the AI01 gate describes. So the gate as written — 'a spec asserts no code path applies a suggestion without one' — WILL TRIP ON THE EXISTING PALETTE unless it is scoped to suggestions rather than to all edits. Scope it deliberately and write down the distinction; do not quietly weaken the gate to make it pass.",
+    "The phrase layer is the Salsita-credited work: components/builder/phrases.ts, credit at :4-6, applyPhrase(spec, volumeId, raw): PhraseEdit | null at :141, PHRASE_GUIDE at :56. Explicitly NOT a language model. It is nulled in graph mode (BuilderApp.tsx:1157 `graphGeometry ? null : ...`), so it only speaks HomeSpec.",
+    "THE NEAREST EXISTING SHAPE TO MODEL PreparedAction ON is GuidanceSuggestion (lib/builder/guidance.ts:525): { id: GuidanceSuggestionId; title; value: GuidanceSuggestionValue; display; reason; source: GuidanceSource }, produced by defaultsFor(intake): GuidanceDefaults (:635). GuidanceSuggestionValue is already a discriminated union over the field it would write (:514): 'spec.climateZone' | 'spec.material' | 'spec.volumes[].storeys' | 'spec.volumes[0]'. That is a PreparedAction in all but name.",
+    "AND ITS DOC COMMENT IS ALREADY YOUR CONTRACT, verbatim at guidance.ts:628-634: 'This function SUGGESTS. It writes nothing, applies nothing, and returns no document — GQ03 owns the apply path and requires an explicit human confirmation through the same APIs the buttons use. A guided default that quietly rewrote the home would be the autonomous behaviour this product refuses everywhere else.'",
+    "GQ03 IS UNBUILT: defaultsFor has ZERO .tsx callers. Only explain(topic, document) (:259) is consumed, by GuidanceNote.tsx:53. So there is no existing confirm-then-apply machinery to reuse — AI01 builds it, and building it correctly IS GQ03.",
+    "Deterministic sources a co-pilot may read (all pure, all in-app): readDesignReadiness(input): Readiness (lib/builder/readiness.ts:88) · planFromSpec (toPlan.ts:1104) · checkSpecAgainstParcel (toPlan.ts:1302) · deriveProgram (:429) · modelledGlazingRatio (:342) · comfortReport (comfort.ts) · createProjectBudget (projectBudget.ts) · drawingSet (drawings.ts:118) · hashBuilderDocument (document.ts:571) · explain + defaultsFor (guidance.ts).",
+    "THE agent/ MCP SERVER IS NOT IMPORTABLE FROM THE NEXT APP. It is a separate Node package with its own tsconfig; app/ resolves `@/` rooted at app/. Its 13 tools (agent/src/mcp/tools.ts:695-710 — check_parcel, generate_design_brief, budget_estimate, milestone_schedule, journey_status, next_actions, detect_slips, digest_preview, supplier_directory, alberta_fact, journey_memory, concierge_start, concierge_send, concierge_state) cannot be called from the sidebar without a network hop. A static export has no server. Decide honestly: in-app pure modules only, or a documented offline boundary. Do not ship a sidebar that appears to think and is actually calling nothing.",
+    "Minor: tools.ts:241 still says 'the 10 tools' while TOOLS has 13. Worth a one-line correction if you are in that file — but agent/ is outside this write-set, so report it rather than reaching."
+  ],
+  "writeSet": [
+    "app/lib/builder/preparedAction.ts (new)",
+    "app/components/builder/CoPilotSidebar.tsx (new)",
+    "app/components/builder/BuilderApp.tsx",
+    "app/lib/builder/guidance.ts",
+    "app/tests/copilot-bounded.spec.ts (new)"
+  ],
+  "doNotTouch": [
+    "app/components/builder/phrases.ts — read it; the grammar is a proposal SOURCE. Changing how the palette applies is a founder-facing behaviour change and belongs in a report, not in this diff.",
+    "agent/** — a separate package. Report what you find; do not edit it."
+  ],
+  "rejectionGates": [
+    "NOTHING THE CO-PILOT PROPOSES MAY REACH THE DOCUMENT WITHOUT AN EXPLICIT HUMAN CONFIRMATION. Not a hover, not a focus, not an Enter that doubles as accept. Assert it by constructing a PreparedAction and proving no exported function applies it without the confirm token.",
+    "THE GATE MUST BE SCOPED TO SUGGESTIONS, NOT TO EDITS, and the scoping must be written down — see FINDING 2. A gate that trips on direct manipulation will be loosened by the next person, and a loosened gate is worse than none.",
+    "EVERY PROPOSAL CARRIES ITS EVIDENCE. GuidanceSuggestion already requires source: GuidanceSource with a kind of 'code' | 'data' | 'document' | 'assumption'. A proposal whose basis is an assumption must SAY assumption. A co-pilot that states a number without saying where it came from is the thing this product exists not to be.",
+    "NO INVENTED NUMBERS. Every figure in a proposal traces to one of the pure modules named above. If the co-pilot cannot compute it, it says it cannot — 'not modelled' is a first-class answer here exactly as it is in the readout.",
+    "the co-pilot must be able to say 'I do not know'. Prove it: construct a document state where the honest answer is unknown and assert the sidebar says so rather than producing a plausible sentence."
+  ],
+  "instructions": [
+    "1. lib/builder/preparedAction.ts: define PreparedAction as a discriminated union over the write it would perform, modelled on GuidanceSuggestionValue. It carries: what changes, the human-readable before and after, the reason, the evidence source, and the confirm-token type. Pure. No React. It must be impossible to construct one that does not name its evidence — make that a type-level requirement, not a convention.",
+    "2. The apply path IS GQ03: one function, PreparedAction + explicit confirmation -> the same dispatch the buttons use (edit / editGraph / the typed reducer actions at BuilderApp.tsx:250-260). Never a second write path into the document.",
+    "3. CoPilotSidebar: bounded and quiet. It reads document + journey, offers proposals as confirm-before-act cards, and explains trade-offs with the evidence attached. It is a sidebar, not a modal, and it never speaks unprompted about anything consequential.",
+    "4. Wire defaultsFor at last — it has been sitting unused since it was written, and its suggestions are exactly the proposals this sidebar exists to present.",
+    "5. Spec (copilot-bounded.spec.ts): a proposal never mutates the document; the confirm path produces exactly the same document as the equivalent manual edit, asserted by hashBuilderDocument; an unsourced proposal cannot be constructed; the unknown case says unknown; and the scoping decision from FINDING 2 is asserted explicitly so a future reader sees it was a decision rather than an omission."
+  ],
+  "verify": {
+    "commands": ["npx tsc --noEmit", "npm test"],
+    "note": "the orchestrator runs test:ui (rule 3)"
+  },
+  "sideEffect": "local",
+  "status": "ready"
+}

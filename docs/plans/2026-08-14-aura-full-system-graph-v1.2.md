@@ -297,6 +297,51 @@ even when their file lists happen not to overlap today.
 actual diff before believing it, run the anchors, then commit and deploy. A
 node reporting "done" is a claim like any other: it needs its receipt.
 
+**7. A manifest exists in the repo BEFORE the node is dispatched.** Added after
+Audit #9 found that waves 1 and 4 shipped eight nodes with no manifest at all —
+their briefs lived only in workflow scripts outside this repository, which makes
+rule 1 unauditable in principle. A manifest is not paperwork. It is the only
+artifact a fresh context can read to learn what the node was supposed to
+*refuse* to do, and skipping it has a measured cost: FD1 shipped against a
+write-set an earlier audit had already named as wrong, because there was no
+in-repo gate to re-read before closing it. Records written after the fact are
+history, not contracts — see `execution/next/WAVE-RECORDS-2026-08-14.md`, which
+says so in its own opening lines rather than back-dating manifests that never
+governed anything.
+
+**8. A node closes only when its manifest says so, in writing.** Seven of
+fourteen manifests read `"ready"` while their code was live on aurahomes.fun.
+Nothing was lost, but an unclosed node's rejection gates are never re-read, so
+the record stops being a control and becomes decoration. Closing means an
+evidence block naming the gate that held, the defects found on the way, and any
+finding still open against it — a node with an open finding closes as
+`verified-with-open-finding`, never as `verified`.
+
+### The `BuilderApp.tsx` bottleneck (found Aug 14, before dispatch)
+
+Rule 7 earned its place immediately. A read-only survey run *before* writing the
+manifests for the four remaining U-stream nodes found that **VW02, VW03, PR01
+and AI01 all need `app/components/builder/BuilderApp.tsx`** — viewer-tool state
+beside `mode`, mobile gating and workspace reachability, the canvas-to-`editGraph`
+wiring, and the co-pilot mount respectively. Rule 1 says their write-sets may not
+overlap, so **these four cannot be run in parallel**, and discovering that after
+dispatch would have meant four agents silently overwriting one 2,000-line file.
+
+The resolution is ownership by wave rather than a refactor: **exactly one node
+owns `BuilderApp.tsx` per wave** — VW02 in wave 6, VW03 in 7, PR01 in 8, AI01 in
+9 — and each wave pairs its owner with nodes whose write-sets are genuinely
+elsewhere (PB04, docs, submission work). Splitting the component into a shell
+plus panes would let them run concurrently, and is the right long-term shape, but
+a 2,000-line refactor of the product's central surface one week before the
+deadline buys parallelism at the cost of the thing being parallelised.
+
+Two collisions were dissolved rather than scheduled around, which is always
+better: **PR01 enters through `Viewport.tsx`'s existing `houseChildren` prop**
+(built for exactly this, currently carrying `FixtureLayer`), so it never opens the
+file VW02 and VW03 both edit; and **VW03 writes a new `builder-mobile.spec.ts`**
+instead of editing VW01's `builder-viewer.spec.ts`, so a regression in the new
+work cannot be hidden by loosening the old pins.
+
 ---
 
 ## 3. Verification graph — anchor additions

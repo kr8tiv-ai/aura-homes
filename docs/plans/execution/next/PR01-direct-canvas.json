@@ -1,0 +1,49 @@
+{
+  "node": "PR01",
+  "graphVersion": "1.2",
+  "job": "Direct manipulation of the BuildingGraph on the canvas — select and move vertices, extrude walls, place openings, assign rooms — with the form fields kept as the precise secondary input, not demoted and not removed.",
+  "wave": "8 — owns BuilderApp.tsx for this wave. Nothing else may touch it.",
+  "context": [
+    "Surveyed before writing. Every identifier below was read out of the source, including the ones that do NOT exist.",
+    "THERE IS ZERO DRAG INTERACTION ON THE 3D CANVAS TODAY. Viewport.tsx has exactly one pointer affordance: an onClick with e.stopPropagation() on the VolumeGroup <group> at :345. SurfacePicker.tsx is the only raycasting code (its own THREE.Raycaster at :112, a DOM pointerdown listener at :159, CLICK_SLOP_PX = 4) and it raycasts houseRef only. You are building the interaction from nothing.",
+    "YOU CAN AVOID TOUCHING Viewport.tsx ENTIRELY. It already accepts houseChildren?: ReactNode (Viewport.tsx:782-784), mounted INSIDE the export-root <group ref={houseRef}>, and it currently carries FixtureLayer. That prop was built for exactly this. Use it. This is what keeps PR01 from colliding with VW02 and VW03, both of which edit Viewport.tsx.",
+    "THE PATTERN TO COPY IS Plan2D.tsx, not GraphPlanEditor.tsx. Plan2D has the full drag grammar — type Drag = pan | volume | wall | corner | opening | opening-end | partition | partition-end | partition-door | draw (:170-180), DragState { drag, spec0, parts0, label, moved } (:182), Preview { spec, partitions, adjusted, readout, guides, draft } (:192) — and it commits ONCE on pointerup with Escape emitting nothing. But it operates on HomeSpec, not BuildingGraph.",
+    "GraphPlanEditor.tsx is the graph-aware editor and it is SVG, not canvas. It commits once on release: finishDrag calls onEdit(candidate, `graph:vertex:${id}`) at :117, snap hardcoded 0.5 ft at :103. Its props are { graph, onEdit(graph, label) } (:56-62). Read it for the label grammar; do not duplicate its UI.",
+    "MUTATORS THAT EXIST (lib/builder/buildingGraph.ts, all pure, all validate-then-swap): moveGraphVertex(graph, storeyId, vertexId, point, snapFt=0) :731 · splitWallAt(graph, storeyId, wallId, distanceFromStartFt, vertexId) :766 · addPartitionEdge(...) :865 · addGraphOpening(graph, storeyId, wallId, opening) :914 · duplicateGraphStorey :938 · setGraphStoreyLevels :1002 · addGraphStair :1034 · addGraphShaft :1108 · deriveRoomFaces :304 · validateBuildingGraph :445.",
+    "MUTATORS THAT DO NOT EXIST: deleteGraphVertex, deleteWall, moveWall, extrudeWall, renameRoom, moveGraphOpening. The graph row's 'extrude walls' and 'assign rooms' therefore need NET-NEW pure mutators in buildingGraph.ts, or must compose splitWallAt + moveGraphVertex. Decide which, and say which.",
+    "TYPE TRAPS THAT WILL COST YOU: GraphMutation's FAILURE branch carries `graph` ({ ok:false; problem; graph }, :138) while BuildingGraphValidation's (:134) and GraphFactoryResult's (:142) do not. GraphRoomFace.areaSqft has a lowercase f — unlike footprintSqFt and totalFloorAreaSqFt everywhere else. Do not cross-pollinate the many different `status` unions in this repo (document.ts:89 is 'modelled'|'proxy'; projectBudget.ts:49 is 'modelled'|'allowance'|'quote-needed'; readiness.ts:33 is 'design-intent'|'review-ready').",
+    "The reducer action you dispatch is { type: 'graph'; graph: BuildingGraph; label: string } (BuilderApp.tsx:250-260), via editGraph(next, label) at :750. HISTORY_MAX = 80 (:264); history coalesces on `label`, so a drag emitting one label per frame would eat the undo stack.",
+    "The hash for the gate: hashBuilderDocument(document): Hex at lib/builder/document.ts:571 (keccak256 over canonicalBuilderDocumentJson, :565, which throws if validation fails)."
+  ],
+  "writeSet": [
+    "app/lib/builder/buildingGraph.ts",
+    "app/lib/builder/graphGeometry.ts",
+    "app/components/builder/GraphCanvasEditor.tsx (new)",
+    "app/components/builder/BuilderApp.tsx",
+    "app/tests/graph-canvas.spec.ts (new)"
+  ],
+  "doNotTouch": [
+    "app/components/builder/Viewport.tsx — enter through the existing houseChildren prop. If you believe you genuinely cannot, STOP and report rather than reaching; VW02 and VW03 own that file in neighbouring waves and a shared-tree collision there is silent data loss, not a merge conflict.",
+    "app/components/builder/Plan2D.tsx and GraphPlanEditor.tsx — read them, copy the pattern, leave them alone."
+  ],
+  "rejectionGates": [
+    "THE HEADLINE GATE: a drag and the equivalent typed edit must produce the same graph AND the same hashBuilderDocument. Assert it on at least a vertex move and one opening placement. If they differ by a float epsilon, fix the snapping — do not widen the assertion to tolerate it, because a hash that tolerates drift is not a hash.",
+    "ONE DRAG IS ONE UNDO STEP. Commit on pointerup, never per frame. Escape mid-drag must emit nothing at all — not an edit that undoes to the same place, nothing. Assert the history length before and after.",
+    "every mutation goes through the pure validate-then-swap functions in buildingGraph.ts. A canvas handle that mutates a graph object in place bypasses validateBuildingGraph and can produce a document that canonicalBuilderDocumentJson then THROWS on — which is a corrupted save, not a bad render.",
+    "the form fields stay. The founder asked for direct manipulation WITH fields as precise secondary input; a canvas that replaces the numeric inputs has removed the only way to enter an exact dimension.",
+    "the canvas must not remount and data-load-epoch must not move on a graph edit — VW01's pins."
+  ],
+  "instructions": [
+    "1. Handles live in a new GraphCanvasEditor mounted through houseChildren. Raycast against your own handle meshes, not against the house — SurfacePicker already owns house-surface picking and two raycasters fighting over one pointerdown is a bug you will not enjoy finding.",
+    "2. Preview-then-commit, exactly like Plan2D: hold a candidate graph in local state, render from it, and dispatch once on release.",
+    "3. New mutators go in buildingGraph.ts as pure functions returning GraphMutation, with the same validate-then-swap discipline as their neighbours. Extrude and room-assign are the two the graph row names; if you can compose them from existing primitives, do that and say so.",
+    "4. Where a manipulation is not honestly supported yet, no handle appears. An affordance that moves and then reverts is worse than no affordance.",
+    "5. Spec: drag ≡ typed edit ≡ same hash; one drag is one history entry; Escape emits nothing; an invalid drag (self-intersecting wall, zero-length edge) is refused by the mutator and leaves the document untouched."
+  ],
+  "verify": {
+    "commands": ["npx tsc --noEmit", "npm test"],
+    "note": "the orchestrator runs test:ui and the meadow proof (rule 3)"
+  },
+  "sideEffect": "local",
+  "status": "ready"
+}

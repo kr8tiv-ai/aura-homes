@@ -69,7 +69,7 @@ This is development wiring, not a live construction escrow:
 - the settlement asset is a test token with no monetary value;
 - registry state remains empty until an owner-only test flow records a build;
 - explorer source verification is still a separate release task; and
-- X Layer mainnet, HOMES, staking, the property trust, and owner project vaults are not deployed.
+- none of Aura's own contracts is deployed to X Layer mainnet, and staking, the planned HOMES structure, and owner project vaults do not exist as contracts anywhere. The HOMES *token* is a separate matter and is live — see "Mainnet" below.
 
 Before a real pilot, Aura must deploy a project-specific escrow with distinct parties, verify source on the explorer, complete independent contract review, and exercise the entire lifecycle with the intended counterparties.
 
@@ -97,6 +97,30 @@ npm run deploy:testnet
 
 Record the new addresses, creation transactions, constructor getters, roles, bytecode, and registry zero state here before changing application configuration.
 
-## Mainnet — not deployed
+## Mainnet — one live token, and none of our own contracts
 
-X Layer mainnet uses chain ID `196`. Aura remains testnet-only. No mainnet contract, real customer funds, HOMES token, trust, staking contract, property vault, exchange market, or automated bridge is part of the current release.
+X Layer mainnet uses chain ID `196`. Two different things live here and this
+document said the wrong thing about both until 2026-08-14, so the distinction is
+spelled out rather than summarised.
+
+**The HOMES token is live.** `0x642855d557ada1eba8a66014aaff902e6394c0de` on
+X Layer mainnet 196, launched 2026-08-13 through the XLaunch launchpad against a
+wSPCXx-quoted pool, with liquidity held in XLaunch's locker. It exists.
+
+**We did not write it.** It was minted by XLaunch's third-party factory, not by
+any contract in this repository. `contracts/` has never been deployed to mainnet.
+So the token being live changes nothing about the review status of our own code —
+a different trust surface entirely, which is the whole point of recording it
+separately. See `MAINNET-DECISION-BRIEF.md`; the founder's hold covers our
+registry and escrow contracts and still stands.
+
+**Still not deployed, by us or anyone:** every Aura contract, real customer funds
+in escrow, staking, the planned HOMES structure as a legal or on-chain vehicle,
+owner project vaults, and any automated bridge. The venue's swap fees accrue to
+the published creator wallet `0x5e8abc953f4d685943f1a0a730afffbba9df41de` and are
+reported as claimed only against real receipts.
+
+*This section was corrected after an external audit found it still reading
+"Aura remains testnet-only … no HOMES token" a day after the token went live and
+the rest of the site had been updated. A release gate that compares deployment
+claims against executable reality is now tracked as node **TR01**.*
