@@ -1,0 +1,76 @@
+{
+  "node": "R03A",
+  "parentNode": "R03",
+  "graphVersion": "1.1",
+  "graphBlobSha256": "897147D8F5C3FBF065423A64601509B4B3C6FA9DFA1AA114BD32FA0A047144FD",
+  "approvalCommit": "7d6028667b2ae061df9504eb3a52df091f138207",
+  "job": "Meet the approved R03 visual and performance contract with progressive hero geometry plus one authored alpha-tested mid-field botanical atlas.",
+  "inputs": {
+    "failedProof": "app/shots/r03-meadow/meadow-proof.json",
+    "approvedBaseline": "C:/Users/lucid/Desktop/Kin/aura-r03-baseline-20260813",
+    "retainedSystem": "bounded worker-built near hero grass and deterministic flower clusters",
+    "replacementBoundary": "coarse fill, mid and far live triangles only"
+  },
+  "outputs": {
+    "schema": "ProgressiveMeadowAtlasV1",
+    "required": [
+      "owned reproducible grass-and-flower atlas with checksum and generation source",
+      "one alpha-tested instanced atlas draw for mid-field clumps with fixed LOD bounds",
+      "worker-built near hero blades and deterministic near/mid flower heads",
+      "textured far meadow with no extra far triangle stream",
+      "rich static reduced-motion, low-power and WebGL fallback",
+      "fixed-camera vegetation and flower evidence at the approved thresholds"
+    ]
+  },
+  "dependsOn": ["R00", "R01", "G00", "R03 failed proof"],
+  "rejectionGates": [
+    "any synchronous whole-field instance generation or texture rasterization enters runtime",
+    "more than two botanical draw programs are added",
+    "alpha blending or overdraw replaces alpha-tested/cutout rendering",
+    "promotion continues after a causal task over 50 ms or frame-budget failure",
+    "opening or close vegetation coverage is below 98 percent of the approved baseline",
+    "opening or close flower-head visibility is zero",
+    "desktop active-frame p95 exceeds 16.7 ms or mobile exceeds 33.3 ms",
+    "mobile starts automatic expensive 3D",
+    "sparkle speed differs from 0.0625",
+    "the proof uses software rendering, generic whole-image edge coverage, or a different camera/quality tier"
+  ],
+  "work": {
+    "owner": "unassigned",
+    "writeSet": [
+      "app/components/story/Scene.tsx",
+      "app/components/story/SceneDetail.tsx",
+      "app/components/story/StoryCanvas.tsx",
+      "app/components/story/flora.ts",
+      "app/lib/three/meadow/**",
+      "app/public/textures/meadow-atlas.*",
+      "app/public/textures/meadow-atlas.json",
+      "app/scripts/generate-meadow-atlas.mjs",
+      "app/scripts/meadow-proof.mjs",
+      "app/tests/meadow-progressive.spec.ts",
+      "app/workers/meadow.worker.ts",
+      "app/shots/r03-meadow/**"
+    ]
+  },
+  "verify": {
+    "owner": "fresh-context verifier",
+    "commands": [
+      "node scripts/generate-meadow-atlas.mjs --verify",
+      "npx playwright test tests/meadow-progressive.spec.ts --workers=1",
+      "npx tsc --noEmit",
+      "$env:GH_PAGES='1'; npm run build",
+      "node scripts/meadow-proof.mjs"
+    ],
+    "anchors": [
+      "atlas source hash and alpha occupancy",
+      "fixed-camera vegetation masks",
+      "projected flower-head telemetry",
+      "hardware renderer identity",
+      "causal long tasks and p95 active frames",
+      "settled demand-rendered state"
+    ]
+  },
+  "repairLimit": 1,
+  "sideEffect": "local",
+  "status": "ready"
+}

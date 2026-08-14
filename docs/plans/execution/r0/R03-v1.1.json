@@ -62,5 +62,19 @@
   },
   "repairLimit": 1,
   "sideEffect": "local",
-  "status": "ready"
+  "failedEvidence": {
+    "verifiedAt": "2026-08-13T23:50:04Z",
+    "verdict": "blocked",
+    "renderer": "ANGLE AMD Radeon 740M Direct3D11",
+    "maxCausalTaskMs": 1.1,
+    "p95FrameMs": 20.8,
+    "requiredCoverageRatio": 0.98,
+    "instancesAtFreeze": 23169,
+    "visibleFlowerHeads": { "opening": 997, "close": 1190 },
+    "vegetationCoverageRatio": { "opening": 0.4055, "close": 0.8980 },
+    "artifact": "app/shots/r03-meadow/meadow-proof.json",
+    "decision": "Do not ship or weaken the gate. R03A replaces coarse mid-field triangles with an authored botanical atlas while retaining bounded progressive hero geometry."
+  },
+  "successor": "R03A",
+  "status": "blocked"
 }
