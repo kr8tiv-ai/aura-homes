@@ -1,8 +1,64 @@
-2:I[41362,["2972","static/chunks/2972-b788e62e7a80315b.js","1931","static/chunks/app/page-325a8c2f5becb39c.js"],"default"]
-3:I[74737,["6689","static/chunks/b536a0f1-428d947e8ef9badf.js","2972","static/chunks/2972-b788e62e7a80315b.js","7743","static/chunks/7743-a0cdeba47a5c63fe.js","3169","static/chunks/3169-38210a022652ceb9.js","3706","static/chunks/3706-d26431e092f2c04d.js","6845","static/chunks/6845-acf1708ea9773797.js","129","static/chunks/129-8dabb9ccaaae1d6c.js","1154","static/chunks/1154-82718dd40854c4f2.js","3185","static/chunks/app/layout-1c60bb968c001097.js"],"Providers"]
-4:I[50893,["6689","static/chunks/b536a0f1-428d947e8ef9badf.js","2972","static/chunks/2972-b788e62e7a80315b.js","7743","static/chunks/7743-a0cdeba47a5c63fe.js","3169","static/chunks/3169-38210a022652ceb9.js","3706","static/chunks/3706-d26431e092f2c04d.js","6845","static/chunks/6845-acf1708ea9773797.js","129","static/chunks/129-8dabb9ccaaae1d6c.js","1154","static/chunks/1154-82718dd40854c4f2.js","3185","static/chunks/app/layout-1c60bb968c001097.js"],"default"]
-5:I[4707,[],""]
-6:I[36423,[],""]
-0:["OU_A0z3BziJvafkfm3wOA",[[["",{"children":["__PAGE__",{}]},"$undefined","$undefined",true],["",{"children":["__PAGE__",{},[["$L1",["$","$L2",null,{}],null],null],null]},[[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/css/d4249fa0434efb61.css","precedence":"next","crossOrigin":"$undefined"}],["$","link","1",{"rel":"stylesheet","href":"/_next/static/css/b5db13de38a38785.css","precedence":"next","crossOrigin":"$undefined"}]],["$","html",null,{"lang":"en","suppressHydrationWarning":true,"children":[["$","head",null,{"children":["$","script",null,{"dangerouslySetInnerHTML":{"__html":"(function(){try{var s=localStorage.getItem('aura-theme');var d=s?s==='dark':matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.dataset.theme=d?'dark':'light';}catch(e){}})();"}}]}],["$","body",null,{"className":"min-h-screen antialiased font-sans","children":[["$","a",null,{"href":"#main","className":"skip-link","children":"Skip to content"}],["$","$L3",null,{"children":["$","$L4",null,{"children":["$","$L5",null,{"parallelRouterKey":"children","segmentPath":["children"],"error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L6",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[["$","title",null,{"children":"404: This page could not be found."}],["$","div",null,{"style":{"fontFamily":"system-ui,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\"","height":"100vh","textAlign":"center","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center"},"children":["$","div",null,{"children":[["$","style",null,{"dangerouslySetInnerHTML":{"__html":"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}"}}],["$","h1",null,{"className":"next-error-h1","style":{"display":"inline-block","margin":"0 20px 0 0","padding":"0 23px 0 0","fontSize":24,"fontWeight":500,"verticalAlign":"top","lineHeight":"49px"},"children":"404"}],["$","div",null,{"style":{"display":"inline-block"},"children":["$","h2",null,{"style":{"fontSize":14,"fontWeight":400,"lineHeight":"49px","margin":0},"children":"This page could not be found."}]}]]}]}]],"notFoundStyles":[]}]}]}]]}]]}]],null],null],["$L7",null]]]]
-7:[["$","meta","0",{"name":"viewport","content":"width=device-width, initial-scale=1"}],["$","meta","1",{"charSet":"utf-8"}],["$","title","2",{"children":"Aura Homes — Design your eco home. Find the land. Manage the build."}],["$","meta","3",{"name":"description","content":"Plan or choose an eco home, match it with the right property and keep your team, costs and next steps together."}],["$","meta","4",{"property":"og:title","content":"Aura Homes — Design your eco home. Find the land. Manage the build."}],["$","meta","5",{"property":"og:description","content":"Plan or choose an eco home, match it with the right property and keep your team, costs and next steps together."}],["$","meta","6",{"property":"og:url","content":"https://aurahomes.fun/"}],["$","meta","7",{"property":"og:site_name","content":"Aura Homes"}],["$","meta","8",{"property":"og:image","content":"https://aurahomes.fun/social/aura-homes-social-v2.jpg"}],["$","meta","9",{"property":"og:image:width","content":"1200"}],["$","meta","10",{"property":"og:image:height","content":"630"}],["$","meta","11",{"property":"og:image:alt","content":"Aura Homes — a Nordic eco home among evergreen trees"}],["$","meta","12",{"property":"og:type","content":"website"}],["$","meta","13",{"name":"twitter:card","content":"summary_large_image"}],["$","meta","14",{"name":"twitter:site","content":"@AuraHomes_fun"}],["$","meta","15",{"name":"twitter:creator","content":"@AuraHomes_fun"}],["$","meta","16",{"name":"twitter:title","content":"Aura Homes — Design your eco home. Find the land. Manage the build."}],["$","meta","17",{"name":"twitter:description","content":"Plan or choose an eco home, match it with the right property and keep your team, costs and next steps together."}],["$","meta","18",{"name":"twitter:image","content":"https://aurahomes.fun/social/aura-homes-social-v2.jpg"}]]
+2:I[44666,["8657","static/chunks/8657-63098bf835af6448.js","1931","static/chunks/app/page-f198a9b3d9a33341.js"],"default"]
+4:I[30789,["8352","static/chunks/e66bbdc3-b2ac50230d7e5a88.js","8657","static/chunks/8657-63098bf835af6448.js","6589","static/chunks/6589-64bbdf11c7798c7e.js","5724","static/chunks/5724-017d1b2ecdebe70e.js","5134","static/chunks/5134-bcf20790ea450081.js","3833","static/chunks/3833-097db3e1242cd609.js","6557","static/chunks/6557-9b214dfa16d48ffd.js","8021","static/chunks/8021-f9dcf4c6cbed65c1.js","3185","static/chunks/app/layout-30af2707e4c8e1a5.js"],"Providers"]
+5:I[58907,["8352","static/chunks/e66bbdc3-b2ac50230d7e5a88.js","8657","static/chunks/8657-63098bf835af6448.js","6589","static/chunks/6589-64bbdf11c7798c7e.js","5724","static/chunks/5724-017d1b2ecdebe70e.js","5134","static/chunks/5134-bcf20790ea450081.js","3833","static/chunks/3833-097db3e1242cd609.js","6557","static/chunks/6557-9b214dfa16d48ffd.js","8021","static/chunks/8021-f9dcf4c6cbed65c1.js","3185","static/chunks/app/layout-30af2707e4c8e1a5.js"],"default"]
+6:I[9220,[],""]
+7:I[20295,[],""]
+3:Td60,(function () {
+  var RELEASE = "92da6b7de6971af2ae85052a4c5354049d59a7d4";
+  var STORAGE_KEY = "aura:chunk-recovery";
+
+  function describesChunkFailure(value) {
+    var text = "";
+    try {
+      text = String(value && (value.message || value.name || value.stack) || value || "");
+    } catch (_) {}
+    return /ChunkLoadError|Loading chunk [^ ]+ failed|Failed to fetch dynamically imported module|Importing a module script failed/i.test(text);
+  }
+
+  function isChunkFailure(event) {
+    var target = event && event.target;
+    var source = target && (target.src || target.href) || "";
+    return describesChunkFailure(event && event.error) ||
+      describesChunkFailure(event && event.reason) ||
+      describesChunkFailure(event && event.message) ||
+      /\/_next\/static\/(?:chunks|css)\//i.test(String(source));
+  }
+
+  function mountFallback() {
+    function mount() {
+      if (!document.body || document.getElementById("aura-chunk-fallback")) return;
+      var panel = document.createElement("section");
+      panel.id = "aura-chunk-fallback";
+      panel.setAttribute("role", "alertdialog");
+      panel.setAttribute("aria-modal", "true");
+      panel.setAttribute("aria-labelledby", "aura-chunk-fallback-title");
+      panel.innerHTML = '<div style="width:min(32rem,calc(100% - 2rem));border:1px solid rgba(24,37,32,.18);border-radius:1.25rem;background:#f7f5ee;box-shadow:0 1.5rem 5rem rgba(14,28,22,.2);padding:clamp(1.5rem,5vw,2.5rem);color:#15241d;font-family:Manrope,system-ui,sans-serif"><p style="margin:0 0 .7rem;font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;color:#08785f">Aura Homes</p><h1 id="aura-chunk-fallback-title" style="margin:0;font-size:clamp(1.55rem,5vw,2.25rem);line-height:1.05;letter-spacing:-.035em">Aura updated while this page was open.</h1><p style="margin:1rem 0 1.25rem;max-width:38rem;font-size:.95rem;line-height:1.6;color:rgba(21,36,29,.72)">Your locally saved project is still on this device. Reload to connect this page to the current interactive release.</p><button data-aura-retry type="button" style="min-height:2.75rem;border:0;border-radius:999px;background:#08785f;color:white;padding:.7rem 1.15rem;font:600 .88rem Manrope,system-ui,sans-serif;cursor:pointer">Reload Aura</button></div>';
+      panel.setAttribute("style", "position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;background:rgba(239,239,231,.9);padding:1rem;backdrop-filter:blur(10px)");
+      document.documentElement.setAttribute("data-aura-static-fallback", "true");
+      document.body.appendChild(panel);
+      var retry = panel.querySelector("[data-aura-retry]");
+      if (retry) retry.addEventListener("click", function () {
+        try { window.sessionStorage.removeItem(STORAGE_KEY); } catch (_) {}
+        window.location.reload();
+      });
+    }
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount, { once: true });
+    else mount();
+  }
+
+  function recover(event) {
+    if (!isChunkFailure(event)) return;
+    var alreadyTried = true;
+    try {
+      alreadyTried = window.sessionStorage.getItem(STORAGE_KEY) === RELEASE;
+      if (!alreadyTried) window.sessionStorage.setItem(STORAGE_KEY, RELEASE);
+    } catch (_) {}
+    if (!alreadyTried) window.location.reload();
+    else mountFallback();
+  }
+
+  window.addEventListener("error", recover, true);
+  window.addEventListener("unhandledrejection", recover);
+})();0:["92da6b7de6971af2ae85052a4c5354049d59a7d4",[[["",{"children":["__PAGE__",{}]},"$undefined","$undefined",true],["",{"children":["__PAGE__",{},[["$L1",["$","$L2",null,{}],null],null],null]},[[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/css/d4249fa0434efb61.css","precedence":"next","crossOrigin":"$undefined"}],["$","link","1",{"rel":"stylesheet","href":"/_next/static/css/7f390c5c62f334df.css","precedence":"next","crossOrigin":"$undefined"}]],["$","html",null,{"lang":"en","suppressHydrationWarning":true,"children":[["$","head",null,{"children":[["$","script",null,{"id":"aura-chunk-recovery","dangerouslySetInnerHTML":{"__html":"$3"}}],["$","script",null,{"dangerouslySetInnerHTML":{"__html":"(function(){try{var s=localStorage.getItem('aura-theme');var d=s?s==='dark':matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.dataset.theme=d?'dark':'light';}catch(e){}})();"}}]]}],["$","body",null,{"className":"min-h-screen antialiased font-sans","children":[["$","a",null,{"href":"#main","className":"skip-link","children":"Skip to content"}],["$","$L4",null,{"children":["$","$L5",null,{"children":["$","$L6",null,{"parallelRouterKey":"children","segmentPath":["children"],"error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L7",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[["$","title",null,{"children":"404: This page could not be found."}],["$","div",null,{"style":{"fontFamily":"system-ui,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\"","height":"100vh","textAlign":"center","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center"},"children":["$","div",null,{"children":[["$","style",null,{"dangerouslySetInnerHTML":{"__html":"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}"}}],["$","h1",null,{"className":"next-error-h1","style":{"display":"inline-block","margin":"0 20px 0 0","padding":"0 23px 0 0","fontSize":24,"fontWeight":500,"verticalAlign":"top","lineHeight":"49px"},"children":"404"}],["$","div",null,{"style":{"display":"inline-block"},"children":["$","h2",null,{"style":{"fontSize":14,"fontWeight":400,"lineHeight":"49px","margin":0},"children":"This page could not be found."}]}]]}]}]],"notFoundStyles":[]}]}]}]]}]]}]],null],null],["$L8",null]]]]
+8:[["$","meta","0",{"name":"viewport","content":"width=device-width, initial-scale=1"}],["$","meta","1",{"charSet":"utf-8"}],["$","title","2",{"children":"Aura Homes — Design your eco home. Find the land. Manage the build."}],["$","meta","3",{"name":"description","content":"Plan or choose an eco home, match it with the right property and keep your team, costs and next steps together."}],["$","meta","4",{"property":"og:title","content":"Aura Homes — Design your eco home. Find the land. Manage the build."}],["$","meta","5",{"property":"og:description","content":"Plan or choose an eco home, match it with the right property and keep your team, costs and next steps together."}],["$","meta","6",{"property":"og:url","content":"https://aurahomes.fun/"}],["$","meta","7",{"property":"og:site_name","content":"Aura Homes"}],["$","meta","8",{"property":"og:image","content":"https://aurahomes.fun/social/aura-homes-social-v2.jpg"}],["$","meta","9",{"property":"og:image:width","content":"1200"}],["$","meta","10",{"property":"og:image:height","content":"630"}],["$","meta","11",{"property":"og:image:alt","content":"Aura Homes — a Nordic eco home among evergreen trees"}],["$","meta","12",{"property":"og:type","content":"website"}],["$","meta","13",{"name":"twitter:card","content":"summary_large_image"}],["$","meta","14",{"name":"twitter:site","content":"@AuraHomes_fun"}],["$","meta","15",{"name":"twitter:creator","content":"@AuraHomes_fun"}],["$","meta","16",{"name":"twitter:title","content":"Aura Homes — Design your eco home. Find the land. Manage the build."}],["$","meta","17",{"name":"twitter:description","content":"Plan or choose an eco home, match it with the right property and keep your team, costs and next steps together."}],["$","meta","18",{"name":"twitter:image","content":"https://aurahomes.fun/social/aura-homes-social-v2.jpg"}]]
 1:null
