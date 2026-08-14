@@ -1,0 +1,42 @@
+{
+  "node": "TR01",
+  "graphVersion": "1.2",
+  "job": "A release gate that compares published claims against executable reality, so a number or a status can no longer be true in the code and wrong in the documents.",
+  "origin": "Created 2026-08-14 because it was CITED BEFORE IT EXISTED. The correction to DEPLOYMENTS.md — itself a fix for a drift defect — closed with the sentence 'A release gate comparing deployment claims against reality is now tracked as node TR01.' No such node existed. That is the audited drift class reproduced inside the fix for the audited drift, in the present tense, which is exactly the failure it was describing. Writing the node is the honest repair; deleting the sentence would have been the cheap one.",
+  "context": [
+    "THE CLASS, with four confirmed instances in two days:",
+    "1. docs/DEPLOYMENTS.md read 'Aura remains testnet-only ... no HOMES token' a full day after the token went live and eleven other surfaces had been updated. Found by an external audit, fixed 2026-08-14.",
+    "2. README.md published spec counts wrong by roughly a factor of 1.7 while stating that day's date.",
+    "3. docs/SUBMISSION.md — the document a BuildX judge opens, headed 'Verification a judge can reproduce' — published a THIRD, different, also-wrong count. A judge running `npm test` would have got a number matching neither document.",
+    "4. This node's own citation, above.",
+    "THE ROOT CAUSE, and it is precise: tests/release-truth.spec.ts pins WORDING and never pins NUMBERS, and it never reads README.md at all. Every drift above was a number or a status in a document no gate looks at.",
+    "PARTIALLY BUILT ALREADY, 2026-08-14, in tests/gate-coverage.spec.ts: the spec counts in README.md and docs/SUBMISSION.md are now asserted against a counter derived from the same file lists the runners use. That closes instances 2 and 3 and their whole sub-class. It does NOT close instance 1 — deployment and token status are still unguarded prose."
+  ],
+  "writeSet": [
+    "app/tests/release-truth.spec.ts",
+    "app/tests/gate-coverage.spec.ts",
+    "app/lib/homes/token.ts (read only — do not modify)"
+  ],
+  "rejectionGates": [
+    "EVERY ASSERTION MUST DERIVE ITS EXPECTED VALUE FROM CODE, NEVER FROM A SECOND HAND-TYPED CONSTANT. A gate that compares one hand-written number in a spec against another hand-written number in a README proves the two were typed by the same person on the same day and nothing else. The spec-count assertion already does this correctly — it counts from the runners' own file lists. Copy that shape.",
+    "THE GATE MUST FAIL ON THE HISTORICAL DEFECTS. Do not accept it until you have reproduced instance 1: temporarily restore the old 'Aura remains testnet-only ... no HOMES token' wording to DEPLOYMENTS.md, watch the gate go red, and restore. A truth gate that would not have caught the drift that motivated it is decoration.",
+    "NO ASSERTION MAY REQUIRE THE NETWORK. This suite runs offline and the site is a static export. The on-chain facts live in lib/homes/token.ts as constants; assert documents against THOSE, and let the existing reconciliation invariants police the constants.",
+    "do not weaken release-truth.spec.ts's existing wording pins while adding number pins — the wording pins caught real banned-phrase regressions and both kinds are needed."
+  ],
+  "instructions": [
+    "1. Extend release-truth.spec.ts to read README.md, docs/SUBMISSION.md and docs/DEPLOYMENTS.md — it currently reads none of them.",
+    "2. Assert the deployment/token status claims in those documents against the constants in lib/homes/token.ts (HOMES_TOKEN_ADDRESS, the chain id, the status in lib/homes/fund.ts). Concretely: if the fund snapshot says status 'live', then no document may contain a sentence asserting the token is not deployed; and the address, where printed, must be the constant.",
+    "3. Extend the same treatment to any other number a document publishes that code can derive — the plan count is the obvious next one, since a shipped social-card asset advertises a stale figure.",
+    "4. Prove each new assertion falsifiable by reintroducing the historical wording, per the gate above, and record what you saw."
+  ],
+  "verify": {
+    "commands": ["npx tsc --noEmit", "npm test"],
+    "note": "partially satisfied already by gate-coverage.spec.ts; this node closes the status half"
+  },
+  "sideEffect": "local",
+  "status": "partial",
+  "evidence": {
+    "closedSoFar": "Spec-count drift (instances 2 and 3) is closed by tests/gate-coverage.spec.ts, which counts declarations from the runners' own lists and asserts README.md and docs/SUBMISSION.md state those integers. The counter itself was wrong twice before it was right — first counting seven RegExp.prototype.test() calls as declarations, then counting its own matcher — and both were caught by pinning it against numbers observed from the runners rather than trusting the regex.",
+    "stillOpen": "Instance 1's class: deployment and token status as prose, in any document, unguarded. That is the remaining work above."
+  }
+}

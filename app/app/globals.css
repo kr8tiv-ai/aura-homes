@@ -3842,3 +3842,103 @@ html.story-gated body { overflow: hidden; }
     transition: none;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   VW02 — THE VIEWER TOOL ROW  ·  components/builder/BuilderApp.tsx
+
+   Chrome for the section cut, the floor isolation and the quick finish
+   switch. Layout and surface only: nothing in this block can move the
+   canvas above it, because the tool row is a SIBLING of the viewport and
+   the canvas is the export root — a rule the whole builder stage keeps.
+
+   COLOUR IS TOKENS ONLY, like every block above it, so the row repaints
+   with the night theme rather than staying a pale card at 2 a.m.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.builder-tool-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.85rem;
+  padding: 0.95rem 1.1rem 1.05rem;
+  border: 1px solid rgb(var(--tone-ink) / var(--hair-alpha));
+  border-radius: 0.75rem;
+  background: rgb(var(--tone-raised) / 0.6);
+}
+@media (min-width: 48rem) {
+  .builder-tool-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.1rem;
+  }
+}
+.builder-tool {
+  display: grid;
+  align-content: start;
+  gap: 0.6rem;
+  min-inline-size: 0;
+}
+@media (min-width: 48rem) {
+  .builder-tool + .builder-tool {
+    padding-inline-start: 1.1rem;
+    border-inline-start: 1px solid rgb(var(--tone-ink) / var(--hair-alpha));
+  }
+}
+.builder-tool__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+.builder-tool__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+.builder-tool__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.builder-tool__toggle {
+  min-height: 2rem;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid rgb(var(--tone-ink) / var(--hair-alpha));
+  border-radius: 999px;
+  font-family: var(--st-mono-font);
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--st-ink-dim);
+  transition-property: color, border-color;
+  transition-duration: var(--motion-echo);
+  transition-timing-function: var(--motion-ease);
+}
+.builder-tool__toggle:hover {
+  color: var(--st-ink);
+  border-color: var(--st-emerald-deep);
+}
+.builder-tool__toggle[aria-pressed="true"] {
+  color: var(--st-emerald-deep);
+  border-color: var(--st-emerald-deep);
+}
+.builder-tool__slider {
+  display: grid;
+  gap: 0.35rem;
+}
+.builder-tool__slider input[type="range"] {
+  inline-size: 100%;
+  accent-color: var(--st-emerald-deep);
+}
+.builder-tool__readout {
+  font-family: var(--st-mono-font);
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--st-ink-dim);
+}
+.builder-tool__note {
+  font-size: 0.7rem;
+  line-height: 1.55;
+  color: var(--st-faint);
+}

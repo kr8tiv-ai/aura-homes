@@ -1,0 +1,44 @@
+{
+  "node": "EX04",
+  "graphVersion": "1.2",
+  "job": "Download the drawing set as a real PDF — one multi-page, vector, print-ready file — instead of eight separate SVGs and a pile of JSON.",
+  "origin": "Founder request, 2026-08-14: 'you should be able to download pdfs and not just jsons'. The person on the other end of this file is a drafter, an engineer, a lender or a building department, and every one of them wants a PDF. SVG is the wrong currency for that room.",
+  "context": [
+    "THE GEOMETRY IS ALREADY IN PDF UNITS, which makes this far cheaper than it sounds. drawings/kit.ts:37-41 defines PT_PER_IN = 72, SHEET_W = 17 * PT_PER_IN (1224) and SHEET_H = 11 * PT_PER_IN (792) — ANSI B, 11x17 landscape, described in the source as 'the standard residential permit sheet'. PDF's native unit is the point. So the SVG coordinate system IS the PDF coordinate system at 1:1 and there is no scaling arithmetic to get wrong.",
+    "WHAT EXISTS: drawingSet(input): DrawingSetResult at lib/builder/drawings.ts:118. DrawingSetResult = { sheets: DrawingSheet[]; index: {number,title,scale}[]; warnings: string[] } at drawings/sheets.ts:165. DrawingSheet = { number: 'A0'..'A7'; title: string; scale: string; svg: string; notes: string[] } at :154. Eight sheets: cover, site, foundation, floor, roof, elevations, section, schedules.",
+    "`svg` is a STRING, not a DOM element. Any SVG-to-PDF library will want an element, so it must be parsed (DOMParser) before conversion. That also means this runs in the browser only, which is fine — every other model exporter here is browser-only too.",
+    "TODAY'S DOWNLOAD is one SVG per sheet: DrawingSheets.tsx:110-117, `drawingDataUrl(sheet.svg)` with download={`aura-${slug(name)}-${sheet.number}.svg`}. There is no whole-set download in any format.",
+    "THE PATTERN TO FOLLOW for the dependency: exportSpec.ts imports NOTHING from three at module scope and pulls GLTFExporter/OBJExporter with `await import()` inside the function that needs them, so a page merely OFFERING a download does not pay for the exporter. A PDF library must be loaded the same way. This repo counts the bytes of candidate dependencies and has rejected several on that basis — a static top-level import here would be a real regression and would be caught by the PB01 baseline.",
+    "HANDOFF: lib/builder/handoffPackage.ts already assembles project + drawings + cost snapshot + evidence under one canonical design hash. The PDF should become part of that package, not a ninth thing to remember."
+  ],
+  "writeSet": [
+    "app/lib/builder/exportPdf.ts (new)",
+    "app/components/builder/DrawingSheets.tsx",
+    "app/tests/export-pdf.spec.ts (new)",
+    "app/package.json (dependency + the new spec in the `test` list)"
+  ],
+  "doNotTouch": [
+    "app/lib/builder/drawings/** — the sheets are correct and are the INPUT to this node. If a sheet renders wrong in PDF, the bug is in the conversion, not in the sheet. Report, do not edit.",
+    "app/components/builder/BuilderApp.tsx — mount through DrawingSheets, which is already rendered there."
+  ],
+  "rejectionGates": [
+    "THE PDF MUST BE DETERMINISTIC. exportSpec.ts's header states the rule for every artifact this product writes: 'No timestamps, no random ids, no Date.now() anywhere: the same spec and the same scene produce byte-identical files. That is what makes an export diffable, and a diffable export is how somebody notices that the house changed.' PDF writers default to stamping /CreationDate and /ModDate and a random /ID. Producing the same document twice MUST yield identical bytes — assert it by generating twice and comparing. This is the gate most likely to fail and the one that matters most.",
+    "VECTOR, NOT RASTER. If the conversion rasterises the sheets, the node has failed: a drawing set is read by zooming into dimension text, and a screenshot of a drawing is not a drawing. Assert that text in the output is selectable/extractable, not pixels.",
+    "THE PDF MUST CARRY THE SAME DISCLAIMER AND THE SAME DESIGN HASH as every other export. EXPORT_DISCLAIMER travels in the JSON, the glTF extras and the OBJ header; a PDF that a building department reads without it is the one file where the omission matters most.",
+    "NO STATIC IMPORT of the PDF library. Dynamic `await import()` only, matching exportSpec.ts. Verify the non-story routes' first-load bytes against perf/PB01-baseline-2026-08-14.json are unchanged.",
+    "the per-sheet SVG downloads STAY. A drafter who wants one sheet should not have to take a 3 MB PDF, and removing a working affordance to add a new one is not an upgrade."
+  ],
+  "instructions": [
+    "1. Choose the library and justify it in a comment with its licence and its weight. jspdf + svg2pdf.js (both MIT) are the obvious pairing and svg2pdf is built for exactly this. If you find something lighter that produces true vector output, take it and say why.",
+    "2. lib/builder/exportPdf.ts: `exportDrawingSetPdf(set: DrawingSetResult, meta): Promise<ExportArtifact>` returning the same ExportArtifact shape as every other export (blob, filename, mimeType, byteLength, note) so it drops into the existing UI with no special case. One sheet per page, page size [1224, 792] in points, sheets in A0..A7 order.",
+    "3. Kill the timestamps. Set the PDF's creation and modification dates to a FIXED value derived from nothing (or strip them), and pin the document id. Then prove determinism by generating twice and comparing bytes.",
+    "4. Wire a single 'Download the set (.pdf)' control into DrawingSheets.tsx beside the existing per-sheet links, and add the PDF to the handoff package.",
+    "5. Spec: two generations are byte-identical; the page count equals the sheet count; page size is 1224x792 pt; the disclaimer and the design hash appear in the extracted text; text is extractable rather than rasterised; and the per-sheet SVG links still exist."
+  ],
+  "verify": {
+    "commands": ["npx tsc --noEmit", "npm test"],
+    "note": "the orchestrator runs test:ui and re-checks the PB01 byte baseline"
+  },
+  "sideEffect": "local",
+  "status": "ready"
+}

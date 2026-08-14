@@ -75,6 +75,7 @@ import {
   type SurfaceOverrides,
   type SurfaceRef,
 } from "@/lib/builder/surfaces";
+import { restrictRayToSection } from "@/lib/three/viewerTools";
 import { Panel } from "./ui";
 
 /* ===========================================================================
@@ -93,6 +94,7 @@ export function SurfacePickLayer({
   picked,
   onPick,
   enabled = true,
+  clipPlanes = null,
 }: {
   home: HomeGeometry;
   index: SurfaceIndex;
@@ -101,6 +103,10 @@ export function SurfacePickLayer({
   picked: SurfaceId | null;
   onPick: (id: SurfaceId | null) => void;
   enabled?: boolean;
+  /** VW02's section cut. Clipping happens in the fragment shader and the
+   *  raycaster knows nothing about it, so without this a click over a cut
+   *  home would pick the wall the cut just took away. */
+  clipPlanes?: THREE.Plane[] | null;
 }) {
   const gl = useThree((s) => s.gl);
   const camera = useThree((s) => s.camera);
@@ -119,8 +125,8 @@ export function SurfacePickLayer({
      but it makes the subscription depend on the caller's memoisation habits,
      and a picker that quietly stops working because somebody inlined a
      callback is a bad afternoon. */
-  const live = useRef({ index, onPick });
-  live.current = { index, onPick };
+  const live = useRef({ index, onPick, clipPlanes });
+  live.current = { index, onPick, clipPlanes };
 
   useEffect(() => {
     if (!enabled) return;
@@ -148,6 +154,14 @@ export function SurfacePickLayer({
         -((e.clientY - rect.top) / rect.height) * 2 + 1,
       );
       ray.setFromCamera(ndc, camera);
+
+      // The section cut, honoured for picking as well as for drawing.
+      // `false` means the ray never reaches the half that is still on screen.
+      if (!restrictRayToSection(ray, live.current.clipPlanes ?? [])) {
+        live.current.onPick(null);
+        invalidate();
+        return;
+      }
 
       const hit = pickSurface(live.current.index, ray, group);
       // A click on the sky clears the selection, which is what every editor
@@ -193,6 +207,9 @@ export function SurfacePickLayer({
               polygonOffset
               polygonOffsetFactor={-4}
               polygonOffsetUnits={-4}
+              /* the wash is a copy of the surface, so it is cut with it —
+                 otherwise a highlight floats in the air over the cut face */
+              clippingPlanes={clipPlanes && clipPlanes.length > 0 ? clipPlanes : null}
             />
           </mesh>
         ))}
@@ -569,6 +586,92 @@ export default function SurfacePicker({
         </p>
       </div>
     </Panel>
+  );
+}
+
+/* ===========================================================================
+   THE QUICK SWITCH — the same feature, at arm's length from the model
+
+   VW02 asked for a material switch in the viewer's tool row. This is NOT a
+   second material system: it is the same `materialsFor` palette, the same
+   `MaterialChip`, the same `setSurfaceMaterial` writer and the same override
+   map the panel below the model edits. Painting here and painting there are
+   one undo step apart and byte-identical in the document, because they are
+   literally the same call.
+
+   WHAT IT ADDS over the panel is reach. The panel lives in the controls column
+   and the model lives in the view column; on a phone that is a scroll away.
+   Clicking a wall and then choosing cedar should not require leaving the wall.
+
+   `unavailable` IS THE HONEST STATE, not a disabled button. Finishes are a
+   legacy-geometry feature today — see the note in `BuilderApp` — and a chip
+   row greyed out with no explanation is exactly the thing this project keeps
+   refusing to ship. */
+
+export function SurfaceQuickSwitch({
+  index,
+  overrides,
+  picked,
+  onChange,
+  unavailable = null,
+}: {
+  index: SurfaceIndex;
+  overrides: SurfaceOverrides;
+  picked: SurfaceId | null;
+  onChange: (next: SurfaceOverrides) => void;
+  /** why finishes cannot be assigned on this document, or null when they can */
+  unavailable?: string | null;
+}) {
+  const ref = picked ? index.byId.get(picked) ?? null : null;
+  const current = ref ? materialForRef(ref, overrides) : null;
+  const palette = useMemo(() => (ref ? materialsFor(ref.surface) : null), [ref]);
+
+  if (unavailable) {
+    return (
+      <p className="text-xs leading-relaxed text-aura-text/60" data-tool-finishes="unavailable">
+        {unavailable}
+      </p>
+    );
+  }
+
+  if (!ref || !current || !palette) {
+    return (
+      <p className="text-xs leading-relaxed text-aura-text/60" data-tool-finishes="unpicked">
+        Click any surface in the model to change what it is made of. Every choice is also in the
+        materials panel below, which is reachable from a keyboard.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-2" data-tool-finishes="picked" data-tool-surface={ref.id}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="min-w-0 truncate text-xs text-aura-text/80">
+          {ref.label}
+          <span className="text-aura-text/45"> · {ref.group}</span>
+        </p>
+        {isOverridden(ref.id, overrides) ? (
+          <button
+            type="button"
+            onClick={() => onChange(setSurfaceMaterial(overrides, ref.id, null))}
+            data-cursor="Select"
+            className="shrink-0 font-mono text-[0.6rem] uppercase tracking-label text-aura-text/50 transition-colors hover:text-aura-text"
+          >
+            Use the default
+          </button>
+        ) : null}
+      </div>
+      <div className="grid gap-1.5 sm:grid-cols-2">
+        {palette.recommended.map((m) => (
+          <MaterialChip
+            key={m.id}
+            material={m}
+            active={m.id === current.id}
+            onChoose={() => onChange(setSurfaceMaterial(overrides, ref.id, m.id))}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 

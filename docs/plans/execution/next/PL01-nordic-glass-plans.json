@@ -1,0 +1,46 @@
+{
+  "node": "PL01",
+  "graphVersion": "1.2",
+  "job": "Thirty new modern Nordic plans, glass-forward, added to the editable library.",
+  "origin": "Founder ask, 2026-08-14: '30 more modern nordic looking models with lots of glass and cool modern features'.",
+  "context": [
+    "THE LIBRARY IS 25 RECORDS TODAY, counted not assumed: PLAN_TEMPLATES at lib/builder/planCatalog.ts:274-914, `as const`. 14 aura-authored, 8 public-domain-adaptation, 3 licensed-adaptation.",
+    "AUTHOR ALL THIRTY AS `aura-authored` ORIGINALS. That arm's fields are LITERAL-TYPED — name: \"Aura Homes\", license: \"MIT\", shareAlike: false, relationship: \"original\" — so they carry no third-party redistribution question at all. Copying a real Nordic house would create one. Design them; do not trace them.",
+    "THE HELPER IS `original({...})` at planCatalog.ts:221 and it is MODULE-PRIVATE, as are `volume(input: VolumeInput)` (:156) and `opening(...)` (:125). It synthesises `spec: HomeSpec` for you — the spec field is never hand-written. Add records inside the array, in the same file, using the same helper. Do not export the helpers and do not invent a second authoring path; that is MK01's job, not this one.",
+    "THE RECORD TYPE, verbatim, planCatalog.ts:66-90: { id, title, kicker, summary, bestFor, bedrooms: number, bathrooms: number, sleeping, storeys: 1 | 2, tags: readonly string[], features: readonly string[], costBasis?: PlanCostBasis, source: PlanSource, spec: HomeSpec }. `PlanCostBasis.status` is ONLY \"modelled\" | \"proxy\" — validatePlanOrigin (document.ts:148-176) rejects anything else at runtime, and a previous node in this repo invented a status value and lost five tsc errors to it.",
+    "THE GATE YOU MUST SATISFY, plan-catalog.spec.ts, already in the pure suite. Every plan: source.url and source.licenseUrl must match /^https:\\/\\//; source.license must NOT match /\\bNC\\b|noncommercial/i; bathrooms > 0. Geometry (:113-141): for every opening, `opening.offsetFt + opening.widthFt <= run` and `opening.sillFt + opening.heightFt <= volume.wallHeightFt * volume.storeys + 0.01`, and opening ids unique per volume. THAT SECOND INVARIANT IS THE ONE GLASS-FORWARD DESIGNS BREAK — a tall window plus a low sill runs past the wall head. Solve it in the design, never by loosening the test.",
+    "GLAZING — read this before deciding how much glass to draw. FDWR_MAX = 0.22 (lib/design/materials.ts:183) is the NBC 9.36 PRESCRIPTIVE ceiling, not a legal maximum. The Python design-api trims windows above it (layout.py:242-255) but the static app does not use that service. The TypeScript builder REPORTS the ratio and never clamps it (Readout.tsx:38, toPlan.ts:799), and the readout's own words are that this is 'a comparison, not a code check'. layout.py's warning already says the honest sentence: 'A performance-path model can buy the glass back.'",
+    "So a glass-forward house is legitimate and the tool will tell the truth about it. What is NOT acceptable is thirty plans that silently sail past the prescriptive ceiling with nothing said. Each plan whose modelled glazing ratio exceeds 22% must say so in its own `notes` and name the path it would take — a performance or trade-off model with better glazing and envelope. That sentence is the product working, not an apology."
+  ],
+  "writeSet": [
+    "app/lib/builder/planCatalog.ts",
+    "app/tests/plan-catalog.spec.ts",
+    "app/app/roadmap/page.tsx (the hardcoded '25-plan library' at :39 only)",
+    "app/scripts/plan-proof.mjs (the 'twenty-five diagrams' comment at :15 only)",
+    "docs/research/PLAN-LIBRARY-SOURCES.md"
+  ],
+  "doNotTouch": [
+    "README.md, docs/SUBMISSION.md, app/package.json, app/playwright.ui.config.ts, app/tests/gate-coverage.spec.ts — the ORCHESTRATOR owns these. They carry spec counts and plan counts that must be re-observed from the runners after every wave, and three agents editing them concurrently is silent data loss. Report the numbers you changed; do not write them there.",
+    "app/components/builder/BuilderApp.tsx and PlanCatalog.tsx — the picker renders PLAN_TEMPLATES generically and needs no change for new records. If you believe it does, STOP and report."
+  ],
+  "rejectionGates": [
+    "THIRTY REAL DESIGNS, NOT THIRTY PERMUTATIONS. A width/depth sweep with new names is not a library, and it will be obvious to anyone who opens three of them. Each plan needs a reason to exist: a different site relationship, household, roof strategy, or way of getting light in. If you can only justify twenty, ship twenty and say so — that is a better outcome than thirty with ten of them padding.",
+    "EVERY DIMENSION MUST BE BUILDABLE. Openings inside their walls (the spec asserts it), sensible spans, a bathroom in every plan, circulation that works. These are massing studies, but a massing study whose window runs off the top of the wall is not a study, it is a bug with a name.",
+    "NO SILENT OVER-GLAZING. Any plan above the 22% prescriptive ceiling names it in `notes` and names the compliance path. Add a spec assertion that this holds for every plan in the set, so the next thirty cannot skip it.",
+    "COLD-CLIMATE HONESTY. This is Alberta zone 7A. Large north glass is a heat-loss decision, not a style choice; big south glass needs a summer-shading answer. Where a plan makes an aggressive glazing move, the note says what it costs and what pays for it.",
+    "the existing 25 records are not to be edited. Adding is additive."
+  ],
+  "instructions": [
+    "1. Read ten of the existing 25 records first, including `northern-micro` (:275) and `open-timber-studio` (:429), to absorb the voice of `summary`, `bestFor`, `features` and `notes`. Match it. The copy is part of the product.",
+    "2. Design thirty. Nordic modern means: restrained forms, long low roofs or clean gables and sheds, deep eaves, timber and dark cladding, generous but purposeful glass, strong indoor-outdoor connection. 'Cool modern features' worth reaching for, where the spec supports them: glazing walls, clerestory bands, double-height volumes, courtyard and L-plans, breezeways, sauna and bathhouse volumes, roof decks, carport-to-studio links.",
+    "3. Spread the set across sizes and households — studios through three-bedroom, one and two storey — so the library gets more useful, not just bigger.",
+    "4. Extend plan-catalog.spec.ts with the glazing-disclosure assertion, and prove it can fail by removing one disclosure and watching it go red.",
+    "5. Report the new total and the counts per source kind so the orchestrator can update README, SUBMISSION and the UI-gate expectations."
+  ],
+  "verify": {
+    "commands": ["npx tsc --noEmit", "npm test"],
+    "note": "the orchestrator runs test:ui and node scripts/plan-proof.mjs"
+  },
+  "sideEffect": "local",
+  "status": "ready"
+}

@@ -1,0 +1,184 @@
+import { readFileSync, readdirSync } from "node:fs";
+import path from "node:path";
+import { expect, test } from "playwright/test";
+
+/* Why this file exists.
+
+   Both gates run HARDCODED LISTS — `test` in package.json names its spec files
+   one by one, and playwright.ui.config.ts has a testMatch array. A list like
+   that drifts the moment someone adds a spec and forgets the list, and the
+   failure is completely silent: the file sits in tests/, looks like coverage,
+   reads like coverage in a diff, and never executes.
+
+   It had already happened. buy-catalog.spec.ts — twelve assertions including
+   the /buy catalogue's forbidden-vocabulary contract — was in neither gate.
+   Twelve passing-capable assertions that had never once run in CI or locally
+   as part of a gate. plan-selection-visual.spec.ts and landing-film.spec.ts
+   were in the same state.
+
+   An external audit found it by reading. That is not a control, so this is.
+
+   The second half of the file guards the same class of defect in the DOCS:
+   the README and the hackathon submission both publish spec counts, both were
+   wrong, and they disagreed with each other. For a project whose stated pitch
+   is that claims carry evidence, the headline evidence number being wrong in
+   the judge-facing document is the worst possible place for it. The existing
+   release-truth spec pins WORDING and never pins NUMBERS, so numbers drifted. */
+
+const appRoot = path.resolve(__dirname, "..");
+const repoRoot = path.resolve(appRoot, "..");
+
+const read = (...segments: string[]) => readFileSync(path.join(...segments), "utf8");
+
+const packageJson = read(appRoot, "package.json");
+const uiConfig = read(appRoot, "playwright.ui.config.ts");
+
+const specFiles = readdirSync(path.join(appRoot, "tests"))
+  .filter((name) => name.endsWith(".spec.ts"))
+  .sort();
+
+/* Deliberately outside both gates. Every entry needs a reason, and the reason
+   has to be about the FILE, not about it being inconvenient — an allowlist
+   that anyone can append to without justification is the drift it replaced. */
+const DELIBERATELY_UNGATED: Readonly<Record<string, string>> = {
+  "landing-vitals.spec.ts":
+    "A measurement, not a pass/fail gate. It reads AURA_TEST_BASE_URL to point at an arbitrary deployed target, runs five cold contexts, and writes vitals artifacts. Run it on purpose against a real deployment; running it inside test:ui would measure the local export server and report that number as if it described production.",
+};
+
+const inUnitGate = (file: string) => packageJson.includes(`tests/${file}`);
+const inUiGate = (file: string) => uiConfig.includes(`"${file}"`);
+
+test("the gate detectors can actually fail", () => {
+  /* Both halves below are membership checks against hand-maintained lists,
+     which is exactly the kind of assertion that silently starts matching
+     nothing. Prove each detector still discriminates before trusting it. */
+  expect(inUnitGate("document.spec.ts")).toBe(true);
+  expect(inUnitGate("this-file-does-not-exist.spec.ts")).toBe(false);
+  expect(inUiGate("navigation.spec.ts")).toBe(true);
+  expect(inUiGate("document.spec.ts")).toBe(false);
+
+  /* And that we are looking at a real, populated tests directory. */
+  expect(specFiles.length).toBeGreaterThan(40);
+});
+
+test("every spec file runs in a gate, or is excluded on the record", () => {
+  const orphans = specFiles.filter(
+    (file) => !inUnitGate(file) && !inUiGate(file) && !(file in DELIBERATELY_UNGATED),
+  );
+
+  expect(
+    orphans,
+    `these spec files are in tests/ and execute in NO gate — not in package.json's \`test\` list, not in playwright.ui.config.ts's testMatch, and not on the documented exclusion list.\n` +
+      `They look like coverage in a diff and are worth nothing. Add each to the gate it belongs in (pure specs to \`test\`, specs needing the served export to the UI config), or add it to DELIBERATELY_UNGATED with a reason about the file:\n` +
+      orphans.join("\n"),
+  ).toEqual([]);
+});
+
+test("no spec is claimed by both gates", () => {
+  /* A file in both lists runs twice, and its UI half runs against no server
+     in the pure suite — which either fails confusingly or passes vacuously. */
+  const doubled = specFiles.filter((file) => inUnitGate(file) && inUiGate(file));
+  expect(doubled, `these spec files are listed in BOTH gates:\n${doubled.join("\n")}`).toEqual([]);
+});
+
+test("the exclusion list names only real files, each with a real reason", () => {
+  /* An allowlist that outlives its file silently re-opens the hole it was
+     documenting, so it is itself checked. */
+  for (const [file, reason] of Object.entries(DELIBERATELY_UNGATED)) {
+    expect(specFiles, `${file} is on the exclusion list but no longer exists`).toContain(file);
+    expect(reason.length, `${file}'s exclusion reason is too short to be a reason`).toBeGreaterThan(80);
+  }
+});
+
+/** Counts declared tests.
+ *
+ *  The lookbehind is load-bearing and was added after this counter reported
+ *  326 while the runner declared 319. `\b` does NOT exclude a preceding dot,
+ *  so every `RegExp.prototype.test(` call in a spec — seven of them, in
+ *  builder-readout, buy-readiness, css-tokens, interface-motion and suppliers
+ *  — was being counted as a test declaration. Requiring that `test` is not
+ *  preceded by a dot or word character keeps `.test(` and `latest(` out while
+ *  still counting `test.only` / `test.skip` / `test.fixme`, which are real
+ *  declarations. `test.describe(` and `test.use(` never match the suffix
+ *  group and are excluded already. */
+const countTests = (source: string): number =>
+  /* Three corrections are baked into this one expression, each of which had
+     the counter disagreeing with the runner:
+
+     1. The lookbehind. `\b` does not exclude a preceding dot, so every
+        `RegExp.prototype.test(` call in a spec — seven of them — was counted
+        as a declaration.
+
+     2. The pattern is ASSEMBLED rather than written as a regex literal. A
+        literal spelling necessarily contains the very text it searches for, so
+        this file counted its own matcher and was wrong about itself.
+
+     3. A TITLE IS REQUIRED. The `.skip` form has two meanings in Playwright:
+        given a string title and a body it DECLARES a skipped test, but given a
+        condition and a reason it is a modifier called inside a running case or
+        at describe scope. Three of the modifier form live in
+        builder-viewer-tools and story-quality, and counting them put the UI
+        total at 92 against the runner's 89. Every real declaration opens with
+        a string title, so demanding one separates the two senses exactly.
+
+     Note that all three corrections were found the same way — by disagreeing
+     with a runner — and that none of them was visible by reading. This comment
+     deliberately spells none of the tokens it describes, because the second
+     correction was caused by an earlier version of it doing exactly that. */
+  (
+    source.match(
+      new RegExp(
+        `(?<![.\\w])${"tes" + "t"}(?:\\.only|\\.skip|\\.fixme)?\\(\\s*${"[\"'`]"}`,
+        "g",
+      ),
+    ) ?? []
+  ).length;
+
+const gatedCount = (predicate: (file: string) => boolean): number =>
+  specFiles
+    .filter(predicate)
+    .reduce((total, file) => total + countTests(read(appRoot, "tests", file)), 0);
+
+const UNIT_TESTS = gatedCount(inUnitGate);
+const UI_TESTS = gatedCount(inUiGate);
+
+test("the counter agrees with what the runners actually declare", () => {
+  /* The counter is a regex over source, which is an approximation of what the
+     runner does — and the first version of it was wrong by seven. So it is
+     pinned against numbers OBSERVED from the runners themselves:
+       npm test        -> 333 declared (332 passed + the count assertion that
+                          was red while the number was being corrected)
+       npm run test:ui -> 89 passed, on a full 6.7-minute run against a fresh
+                          static export, up from 63 as landing-film,
+                          plan-selection-visual and builder-viewer-tools
+                          joined the UI gate
+     If a spec is added or removed these numbers move, and moving them means
+     re-running both suites and writing down what they said — which is the
+     point. A counter nobody ever checked against the thing it counts is how
+     the README got its numbers wrong in the first place. */
+  expect(UNIT_TESTS).toBe(333);
+  expect(UI_TESTS).toBe(89);
+
+  const readme = read(repoRoot, "README.md");
+  const submission = read(repoRoot, "docs", "SUBMISSION.md");
+
+  /* SUBMISSION.md is the document a hackathon judge opens, and it invites the
+     reader to reproduce the numbers. It is the one that must never be wrong. */
+  expect(
+    submission.includes(String(UNIT_TESTS)),
+    `docs/SUBMISSION.md does not state the real deterministic spec count (${UNIT_TESTS}). A judge who runs \`npm test\` gets ${UNIT_TESTS} and compares it against whatever this document promises.`,
+  ).toBe(true);
+  expect(
+    submission.includes(String(UI_TESTS)),
+    `docs/SUBMISSION.md does not state the real UI spec count (${UI_TESTS}).`,
+  ).toBe(true);
+
+  expect(
+    readme.includes(String(UNIT_TESTS)),
+    `README.md does not state the real deterministic spec count (${UNIT_TESTS}).`,
+  ).toBe(true);
+  expect(
+    readme.includes(String(UI_TESTS)),
+    `README.md does not state the real UI spec count (${UI_TESTS}).`,
+  ).toBe(true);
+});

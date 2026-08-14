@@ -480,7 +480,11 @@ export default function ExportRow({
             <Door
               title="glTF 2.0 binary (.glb)"
               opens="Blender, SketchUp, Rhino, Unreal, Unity, Godot, macOS Quick Look, Windows 3D Viewer and every free web viewer."
-              body="The model. One self-contained file — geometry, materials, and the whole HomeSpec riding along in the file's own metadata. A Khronos open standard. In metres, converted from the spec's feet at exactly 0.3048. It is a copy of the scene you are looking at, so a finish you assigned arrives as that material's colour and roughness — the finish MAP itself is not in it, so re-importing a .glb cannot restore your choices. Fixtures are in it; the clearance volumes around them are not."
+              body={
+                graphMode
+                  ? "The model. One self-contained file — geometry, materials, and the full design document riding along in the file's own metadata. A Khronos open standard. In metres, converted from feet at exactly 0.3048. Because this project uses planar graph geometry, the stored HomeSpec is a frozen pre-conversion copy: it travels as recovery data, labelled as such, and the file does not present its dimensions as describing this model. It is a copy of the scene you are looking at, so a finish you assigned arrives as that material's colour and roughness — the finish MAP itself is not in it, so re-importing a .glb cannot restore your choices. Fixtures are in it; the clearance volumes around them are not."
+                  : "The model. One self-contained file — geometry, materials, and the whole HomeSpec riding along in the file's own metadata. A Khronos open standard. In metres, converted from the spec's feet at exactly 0.3048. It is a copy of the scene you are looking at, so a finish you assigned arrives as that material's colour and roughness — the finish MAP itself is not in it, so re-importing a .glb cannot restore your choices. Fixtures are in it; the clearance volumes around them are not."
+              }
               action={
                 <Button onClick={() => void model("glb")} disabled={busy !== null}>
                   {busy === "glb" ? "Writing…" : "Download .glb"}

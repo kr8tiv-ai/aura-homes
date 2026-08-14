@@ -5,8 +5,8 @@ import {
   useMemo,
   useRef,
   useState,
+  type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
-  type PointerEvent as ReactPointerEvent,
 } from "react";
 
 import {
@@ -19,8 +19,11 @@ import {
   setGraphStoreyLevels,
   splitWallAt,
   type BuildingGraph,
+  type GraphOpening,
   type GraphPoint,
   type GraphStorey,
+  type GraphVertex,
+  type GraphWallEdge,
 } from "@/lib/builder/buildingGraph";
 import { Button, Segmented } from "./ui";
 
@@ -30,6 +33,81 @@ const TOOL_OPTIONS = [
   { id: "shape" as const, label: "Shape" },
   { id: "partition" as const, label: "Partition" },
 ];
+
+/* ------------------------------------------------------- movement constants
+
+   THE PLAN GRID, once. The drag used to carry a literal 0.5 inside `moveDrag`;
+   a second copy of that number in the keyboard path is exactly the two-places-
+   one-fact drift that has already cost this repo the meadow mask literals, the
+   slope and the deck meshes. Pointer drag, arrow keys and Shift+arrow all read
+   this. */
+export const GRID_SNAP_FT = 0.5;
+/**
+ * Shift+arrow: FIVE grid steps — not a number picked here, but the multiplier
+ * the legacy plan editor already nudges by (`Plan2D.tsx:997`,
+ * `gridFt * (e.shiftKey ? 5 : 1)`). Two plan editors in one product disagreeing
+ * about what Shift means is the same two-places-one-fact problem in miniature.
+ * A multiple of the grid also keeps a coarse nudge on the lattice.
+ */
+export const COARSE_STEP_FT = GRID_SNAP_FT * 5;
+/**
+ * Typed geometry is EXACT. A dimension someone measured is not rounded onto
+ * the drag grid on its way in — the grid exists because a pointer cannot hit
+ * 12.375, not because the building cannot be that size. `moveGraphVertex`
+ * reads a snap of 0 as "do not snap" (buildingGraph.ts:743).
+ */
+export const EXACT_SNAP_FT = 0;
+
+/** Screen up is north, and the viewBox maps `zFt` straight onto y, so up is −z. */
+const ARROW_DELTA: Readonly<Record<string, readonly [number, number]>> = {
+  ArrowLeft: [-1, 0],
+  ArrowRight: [1, 0],
+  ArrowUp: [0, -1],
+  ArrowDown: [0, 1],
+};
+
+/**
+ * The exact point an arrow key asks a vertex to occupy.
+ *
+ * Exported so the keyboard contract can be proved without a browser. It is
+ * deliberately only the ARITHMETIC: the component feeds the result straight
+ * into `moveGraphVertex` with the same snap the drag uses, so there is no
+ * second movement implementation that could agree today and drift tomorrow.
+ */
+export function arrowVertexTarget(
+  vertex: { xFt: number; zFt: number },
+  key: string,
+  shiftKey: boolean,
+): GraphPoint | null {
+  const delta = ARROW_DELTA[key];
+  if (!delta) return null;
+  const step = shiftKey ? COARSE_STEP_FT : GRID_SNAP_FT;
+  return [vertex.xFt + delta[0] * step, vertex.zFt + delta[1] * step];
+}
+
+/**
+ * The undo label a vertex move commits under.
+ *
+ * The pointer drag, the arrow keys and the numeric fields all commit under
+ * THIS, which is what makes a held arrow key one history entry rather than
+ * twenty: BuilderApp's reducer coalesces consecutive edits carrying the same
+ * label and only that (`commit`, BuilderApp.tsx:363-383). Reusing the existing
+ * mechanism is the whole rule — no second coalescing policy was invented here.
+ */
+export const vertexEditLabel = (vertexId: string): string => `graph:vertex:${vertexId}`;
+
+/** A dimension as a person says it: 12.5, 8, 0.75 — never 8.0 and never 8.000. */
+const feet = (value: number): string => String(Number(value.toFixed(3)));
+
+const wallRunFt = (wall: GraphWallEdge, vertices: Map<string, GraphVertex>): number => {
+  const start = vertices.get(wall.startVertexId);
+  const end = vertices.get(wall.endVertexId);
+  if (!start || !end) return 0;
+  return Math.hypot(end.xFt - start.xFt, end.zFt - start.zFt);
+};
+
+const openingNoun = (opening: GraphOpening): string =>
+  opening.kind === "glazing-wall" ? "Glazing wall" : opening.kind === "door" ? "Door" : "Window";
 
 function nextId(existing: Set<string>, prefix: string): string {
   let index = 1;
@@ -53,6 +131,89 @@ function graphBounds(storey: GraphStorey) {
   };
 }
 
+type Selection =
+  | { kind: "vertex"; id: string }
+  | { kind: "wall"; id: string }
+  | { kind: "opening"; wallId: string; id: string };
+
+/**
+ * A geometry field whose ONLY source of truth is the graph.
+ *
+ * It holds no draft state. While the input has focus the DOM value is the
+ * browser's ordinary editing buffer; the moment the model changes — an arrow
+ * key, another field, an undo — or the person commits, the effect below writes
+ * the graph's own number back over it. Neither `text` nor `revision` changes
+ * while somebody is typing, so this never fights the keyboard, and an entry the
+ * mutator refuses snaps back to the number the building actually has instead of
+ * leaving a second, wrong truth on screen.
+ *
+ * Defined at module scope on purpose: a component declared inside the editor
+ * would be a new type on every render and would remount — and blur — this input
+ * on every keystroke the parent re-rendered for.
+ */
+function NumberField({
+  label,
+  value,
+  revision,
+  step,
+  onCommit,
+  note,
+}: {
+  label: string;
+  value: number;
+  /** Bumped by the editor on every commit attempt, accepted or refused. */
+  revision: number;
+  step: number;
+  /** Absent means the graph exposes no mutator for this value — see `note`. */
+  onCommit?: (value: number) => void;
+  note?: string;
+}) {
+  const ref = useRef<HTMLInputElement | null>(null);
+  const text = feet(value);
+  const readOnly = !onCommit;
+
+  useEffect(() => {
+    if (ref.current) ref.current.value = text;
+  }, [text, revision]);
+
+  const commit = () => {
+    const input = ref.current;
+    if (!input || !onCommit) return;
+    const parsed = Number(input.value);
+    if (input.value.trim() === "" || !Number.isFinite(parsed)) {
+      input.value = text;
+      return;
+    }
+    onCommit(parsed);
+  };
+
+  return (
+    <label className="block">
+      <span className="aura-label mb-1.5 block">{label}</span>
+      <input
+        ref={ref}
+        type="number"
+        step={step}
+        defaultValue={text}
+        readOnly={readOnly}
+        aria-readonly={readOnly || undefined}
+        onBlur={readOnly ? undefined : commit}
+        onKeyDown={(event) => {
+          if (readOnly || event.key !== "Enter") return;
+          event.preventDefault();
+          commit();
+        }}
+        className={`w-28 rounded-md border aura-hairline bg-aura-bg px-3 py-2 font-mono text-xs tabular-nums text-aura-text transition-colors focus:border-aura-emerald ${
+          readOnly ? "opacity-60" : ""
+        }`}
+      />
+      {note ? (
+        <span className="mt-1 block max-w-[16rem] text-[0.7rem] leading-snug text-aura-text/55">{note}</span>
+      ) : null}
+    </label>
+  );
+}
+
 export default function GraphPlanEditor({
   graph,
   onEdit,
@@ -63,11 +224,13 @@ export default function GraphPlanEditor({
   const [activeStoreyId, setActiveStoreyId] = useState(graph.storeys[0]?.id ?? "");
   const storey = graph.storeys.find((item) => item.id === activeStoreyId) ?? graph.storeys[0];
   const [tool, setTool] = useState<Tool>("shape");
-  const [selectedWallId, setSelectedWallId] = useState<string | null>(null);
+  const [selection, setSelection] = useState<Selection | null>(null);
   const [partitionEnds, setPartitionEnds] = useState<string[]>([]);
   const [preview, setPreview] = useState<BuildingGraph | null>(null);
   const previewRef = useRef<BuildingGraph | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
+  const [announcement, setAnnouncement] = useState("");
+  const [fieldRevision, setFieldRevision] = useState(0);
   const drag = useRef<{
     vertexId: string;
     graph: BuildingGraph;
@@ -80,6 +243,41 @@ export default function GraphPlanEditor({
   // Keep the pointer transform fixed for the whole gesture. Reframing around
   // every preview vertex would move the coordinate system under the cursor.
   const bounds = useMemo(() => graphBounds(storey), [storey]);
+  const vertexById = useMemo(
+    () => new Map(storey.vertices.map((vertex) => [vertex.id, vertex])),
+    [storey],
+  );
+
+  /* Selection is one value. `selectedWallId` stays derived from it so the
+     existing wall highlight and "add corner to selected wall" keep working
+     exactly as before while an opening's parent wall also reads as selected. */
+  const selectedWallId =
+    selection?.kind === "wall"
+      ? selection.id
+      : selection?.kind === "opening"
+        ? selection.wallId
+        : null;
+  const selectedVertex =
+    selection?.kind === "vertex" ? (vertexById.get(selection.id) ?? null) : null;
+  const selectedWall = selectedWallId
+    ? (storey.walls.find((wall) => wall.id === selectedWallId) ?? null)
+    : null;
+  const selectedOpening =
+    selection?.kind === "opening" && selectedWall
+      ? (selectedWall.openings.find((opening) => opening.id === selection.id) ?? null)
+      : null;
+
+  /* Every outcome in this editor leaves through one of these two, so the
+     violet notice a sighted person reads and the sentence a screen reader
+     hears are the same sentence, and neither can be forgotten at a call site. */
+  const refuse = (message: string) => {
+    setProblem(message);
+    setAnnouncement(message);
+  };
+  const report = (message: string) => {
+    setProblem(null);
+    setAnnouncement(message);
+  };
 
   const toGraphPoint = (clientX: number, clientY: number): GraphPoint => {
     const element = svg.current!;
@@ -92,29 +290,74 @@ export default function GraphPlanEditor({
     return [local.x, local.y];
   };
 
+  /** One sentence for "a vertex ended up here", wherever the move came from. */
+  const announcePlacement = (next: BuildingGraph, vertexId: string, subject: string) => {
+    const placed = next.storeys
+      .find((item) => item.id === storey.id)
+      ?.vertices.find((vertex) => vertex.id === vertexId);
+    report(
+      placed
+        ? `${subject} moved to X ${feet(placed.xFt)} feet, Z ${feet(placed.zFt)} feet.`
+        : `${subject} moved.`,
+    );
+  };
+
+  /**
+   * THE vertex movement path — the only call to `moveGraphVertex` in this file.
+   *
+   * Dragging, the arrow keys and the X/Z/length fields all arrive here, so
+   * "what a vertex move means" has exactly one implementation to be right or
+   * wrong about. `preview` is the in-gesture half of a drag: same mutator, same
+   * snap, same refusal text; it simply does not reach the undo stack until the
+   * pointer is released.
+   */
+  const applyVertexMove = (
+    base: BuildingGraph,
+    vertexId: string,
+    target: GraphPoint,
+    snapFt: number,
+    intent: "preview" | "commit",
+    subject = `Vertex ${vertexId}`,
+  ): BuildingGraph | null => {
+    const moved = moveGraphVertex(base, storey.id, vertexId, target, snapFt);
+    if (!moved.ok) {
+      refuse(`Move rejected: ${moved.problem}`);
+      return null;
+    }
+    if (intent === "preview") {
+      setProblem(null);
+      return moved.graph;
+    }
+    announcePlacement(moved.graph, vertexId, subject);
+    onEdit(moved.graph, vertexEditLabel(vertexId));
+    return moved.graph;
+  };
+
   const moveDrag = (clientX: number, clientY: number) => {
     if (!drag.current) return;
-    const moved = moveGraphVertex(
+    const next = applyVertexMove(
       drag.current.graph,
-      storey.id,
       drag.current.vertexId,
       toGraphPoint(clientX, clientY),
-      0.5,
+      GRID_SNAP_FT,
+      "preview",
     );
-    if (!moved.ok) {
-      setProblem(moved.problem);
-      return;
-    }
-    setProblem(null);
-    previewRef.current = moved.graph;
-    setPreview(moved.graph);
+    if (!next) return;
+    previewRef.current = next;
+    setPreview(next);
   };
 
   const finishDrag = (pointerId?: number) => {
     if (!drag.current) return;
     const active = drag.current;
     const candidate = previewRef.current;
-    if (candidate && candidate !== graph) onEdit(candidate, `graph:vertex:${active.vertexId}`);
+    /* A released drag announces where it landed, exactly as an arrow key or a
+       typed dimension does. The in-gesture previews stay silent — a live
+       region narrating every mousemove is noise, not information. */
+    if (candidate && candidate !== graph) {
+      announcePlacement(candidate, active.vertexId, `Vertex ${active.vertexId}`);
+      onEdit(candidate, vertexEditLabel(active.vertexId));
+    }
     drag.current = null;
     previewRef.current = null;
     setPreview(null);
@@ -151,19 +394,95 @@ export default function GraphPlanEditor({
     window.addEventListener("mouseup", up);
   };
 
-  const selectVertex = (vertexId: string) => {
-    if (tool !== "partition") return;
-    const next = partitionEnds.includes(vertexId)
-      ? partitionEnds.filter((id) => id !== vertexId)
-      : [...partitionEnds, vertexId].slice(-2);
-    setPartitionEnds(next);
-    setProblem(null);
+  const selectObject = (next: Selection) => {
+    setSelection(next);
+    if (next.kind === "vertex" && tool === "partition") {
+      const ends = partitionEnds.includes(next.id)
+        ? partitionEnds.filter((id) => id !== next.id)
+        : [...partitionEnds, next.id].slice(-2);
+      setPartitionEnds(ends);
+      report(`${ends.length} of 2 partition endpoints selected.`);
+      return;
+    }
+    /* Coordinates deliberately stay OUT of this sentence: they live in each
+       object's accessible name in the list, which a screen reader reads on
+       focus. A live region is for what just happened, not for state — and a
+       selection announced immediately after a drag would otherwise quote the
+       position from the render that has not happened yet. */
+    report(
+      next.kind === "vertex"
+        ? `Selected vertex ${next.id}.`
+        : next.kind === "wall"
+          ? `Selected wall ${next.id}.`
+          : `Selected opening ${next.id} on wall ${next.wallId}.`,
+    );
+  };
+
+  const nudgeVertex = (event: ReactKeyboardEvent<HTMLButtonElement>, vertexId: string) => {
+    if (!ARROW_DELTA[event.key]) return;
+    event.preventDefault();
+    if (tool !== "shape") {
+      refuse("Switch to the Shape tool to move vertices with the arrow keys.");
+      return;
+    }
+    const vertex = vertexById.get(vertexId);
+    if (!vertex) return;
+    const target = arrowVertexTarget(vertex, event.key, event.shiftKey);
+    if (!target) return;
+    /* The SAME snap the drag uses. An arrow step is a grid step by
+       construction; snapping again costs nothing and guarantees the keyboard
+       can never land somewhere the pointer could not. */
+    applyVertexMove(graph, vertexId, target, GRID_SNAP_FT, "commit");
+  };
+
+  /** Wraps a field commit so a REFUSED entry still re-syncs the input. */
+  const fieldCommit = (run: (value: number) => void) => (value: number) => {
+    setFieldRevision((revision) => revision + 1);
+    run(value);
+  };
+
+  const commitVertexX = (value: number) => {
+    if (!selectedVertex) return;
+    applyVertexMove(graph, selectedVertex.id, [value, selectedVertex.zFt], EXACT_SNAP_FT, "commit");
+  };
+
+  const commitVertexZ = (value: number) => {
+    if (!selectedVertex) return;
+    applyVertexMove(graph, selectedVertex.id, [selectedVertex.xFt, value], EXACT_SNAP_FT, "commit");
+  };
+
+  const commitWallLength = (wall: GraphWallEdge, lengthFt: number) => {
+    const start = vertexById.get(wall.startVertexId);
+    const end = vertexById.get(wall.endVertexId);
+    if (!start || !end) return;
+    const run = Math.hypot(end.xFt - start.xFt, end.zFt - start.zFt);
+    if (!(lengthFt > 0)) {
+      refuse(`Move rejected: wall ${wall.id} must be longer than zero feet.`);
+      return;
+    }
+    if (run <= 0) {
+      refuse(`Move rejected: wall ${wall.id} has no direction to lengthen along.`);
+      return;
+    }
+    /* Length is expressed as a vertex move on purpose. Sliding the END vertex
+       along the wall's own direction is the only length change that leaves
+       every other vertex where the person put it, and it goes through the same
+       mutator — so a length that would cross another wall is refused with the
+       same sentence the equivalent drag would have produced. */
+    applyVertexMove(
+      graph,
+      wall.endVertexId,
+      [start.xFt + ((end.xFt - start.xFt) / run) * lengthFt, start.zFt + ((end.zFt - start.zFt) / run) * lengthFt],
+      EXACT_SNAP_FT,
+      "commit",
+      `Wall ${wall.id} end`,
+    );
   };
 
   const addCorner = () => {
     const wall = storey.walls.find((item) => item.id === selectedWallId);
     if (!wall) {
-      setProblem("Select an exterior wall first, then add a corner at its midpoint.");
+      refuse("Select an exterior wall first, then add a corner at its midpoint.");
       return;
     }
     const vertices = new Map(storey.vertices.map((vertex) => [vertex.id, vertex]));
@@ -171,19 +490,20 @@ export default function GraphPlanEditor({
     const end = vertices.get(wall.endVertexId)!;
     const length = Math.hypot(end.xFt - start.xFt, end.zFt - start.zFt);
     const ids = new Set(storey.vertices.map((vertex) => vertex.id));
-    const split = splitWallAt(graph, storey.id, wall.id, length / 2, nextId(ids, "vertex"));
+    const vertexId = nextId(ids, "vertex");
+    const split = splitWallAt(graph, storey.id, wall.id, length / 2, vertexId);
     if (!split.ok) {
-      setProblem(split.problem);
+      refuse(split.problem);
       return;
     }
-    setProblem(null);
-    setSelectedWallId(null);
+    setSelection({ kind: "vertex", id: vertexId });
+    report(`Corner ${vertexId} added at the midpoint of wall ${wall.id} and selected.`);
     onEdit(split.graph, `graph:split:${wall.id}`);
   };
 
   const addPartition = () => {
     if (partitionEnds.length !== 2) {
-      setProblem("Choose two existing wall vertices. Add corners first when the endpoints do not exist yet.");
+      refuse("Choose two existing wall vertices. Add corners first when the endpoints do not exist yet.");
       return;
     }
     const ids = new Set(storey.walls.map((wall) => wall.id));
@@ -195,21 +515,25 @@ export default function GraphPlanEditor({
       partitionEnds[1],
     );
     if (!added.ok) {
-      setProblem(added.problem);
+      refuse(added.problem);
       return;
     }
-    setProblem(null);
     setPartitionEnds([]);
+    report(`Partition added between ${partitionEnds[0]} and ${partitionEnds[1]}.`);
     onEdit(added.graph, `graph:partition:${partitionEnds.join(":")}`);
   };
 
   const changeLevels = (levels: { elevationFt?: number; heightFt?: number }, label: string) => {
     const changed = setGraphStoreyLevels(graph, storey.id, levels);
     if (!changed.ok) {
-      setProblem(changed.problem);
+      refuse(changed.problem);
       return;
     }
-    setProblem(null);
+    report(
+      levels.elevationFt === undefined
+        ? `${storey.name} floor to floor is ${feet(levels.heightFt ?? storey.heightFt)} feet.`
+        : `${storey.name} elevation is ${feet(levels.elevationFt)} feet.`,
+    );
     onEdit(changed.graph, label);
   };
 
@@ -223,11 +547,12 @@ export default function GraphPlanEditor({
       elevationFt: top,
     });
     if (!duplicated.ok) {
-      setProblem(duplicated.problem);
+      refuse(duplicated.problem);
       return;
     }
-    setProblem(null);
     setActiveStoreyId(id);
+    setSelection(null);
+    report(`Storey ${graph.storeys.length + 1} duplicated at ${feet(top)} feet.`);
     onEdit(duplicated.graph, `graph:duplicate-storey:${storey.id}`);
   };
 
@@ -236,7 +561,7 @@ export default function GraphPlanEditor({
       (a, b) => a.elevationFt - b.elevationFt || a.id.localeCompare(b.id),
     );
     if (levels.length < 2) {
-      setProblem("Duplicate an aligned upper storey before adding a stair core.");
+      refuse("Duplicate an aligned upper storey before adding a stair core.");
       return;
     }
     const lower = levels[levels.length - 2];
@@ -261,7 +586,7 @@ export default function GraphPlanEditor({
     );
     const run = Math.min(10, maxX - minX - 2);
     if (run < 6 || maxZ - minZ < 5) {
-      setProblem("The aligned floor overlap is too small for Aura's 3 × 6 ft minimum stair core.");
+      refuse("The aligned floor overlap is too small for Aura's 3 × 6 ft minimum stair core.");
       return;
     }
     const centreX = (minX + maxX) / 2;
@@ -276,10 +601,10 @@ export default function GraphPlanEditor({
       widthFt: 3,
     });
     if (!added.ok) {
-      setProblem(added.problem);
+      refuse(added.problem);
       return;
     }
-    setProblem(null);
+    report(`Stair core added between ${lower.name} and ${upper.name}.`);
     onEdit(added.graph, `graph:add-stair:${lower.id}:${upper.id}`);
   };
 
@@ -288,7 +613,7 @@ export default function GraphPlanEditor({
       (a, b) => a.elevationFt - b.elevationFt || a.id.localeCompare(b.id),
     );
     if (levels.length < 2) {
-      setProblem("Duplicate an aligned upper storey before adding a service shaft.");
+      refuse("Duplicate an aligned upper storey before adding a service shaft.");
       return;
     }
     const lower = levels[levels.length - 2];
@@ -310,7 +635,7 @@ export default function GraphPlanEditor({
       Math.max(...upper.vertices.map((vertex) => vertex.zFt)),
     );
     if (maxX - minX < 4 || maxZ - minZ < 4) {
-      setProblem("The aligned floor overlap is too small for a 2 × 2 ft service shaft.");
+      refuse("The aligned floor overlap is too small for a 2 × 2 ft service shaft.");
       return;
     }
     const ids = new Set((graph.shafts ?? []).map((shaft) => shaft.id));
@@ -323,10 +648,10 @@ export default function GraphPlanEditor({
       depthFt: 2,
     });
     if (!added.ok) {
-      setProblem(added.problem);
+      refuse(added.problem);
       return;
     }
-    setProblem(null);
+    report(`Service shaft added between ${lower.name} and ${upper.name}.`);
     onEdit(added.graph, `graph:add-shaft:${lower.id}:${upper.id}`);
   };
 
@@ -340,8 +665,9 @@ export default function GraphPlanEditor({
             Planar building graph
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-aura-text/70">
-            Drag vertices on a half-foot grid. Invalid moves are refused atomically, so walls cannot
-            cross and room faces always remain exact.
+            Drag vertices on a half-foot grid, or select an object below and move it with the arrow
+            keys — Shift for {feet(COARSE_STEP_FT)} ft. Typed dimensions are exact. Invalid moves are
+            refused atomically, so walls cannot cross and room faces always remain exact.
           </p>
         </div>
         <Segmented label="Plan tool" value={tool} options={TOOL_OPTIONS} onChange={(next) => {
@@ -358,7 +684,7 @@ export default function GraphPlanEditor({
           options={graph.storeys.map((item) => ({ id: item.id, label: item.name }))}
           onChange={(id) => {
             setActiveStoreyId(id);
-            setSelectedWallId(null);
+            setSelection(null);
             setPartitionEnds([]);
             setProblem(null);
           }}
@@ -456,7 +782,7 @@ export default function GraphPlanEditor({
                   y2={end.zFt}
                   className="stroke-transparent cursor-pointer"
                   strokeWidth="1.6"
-                  onClick={() => tool === "shape" && setSelectedWallId(wall.id)}
+                  onClick={() => tool === "shape" && selectObject({ kind: "wall", id: wall.id })}
                 />
                 {wall.openings.map((opening) => {
                   const length = Math.hypot(end.xFt - start.xFt, end.zFt - start.zFt);
@@ -478,19 +804,25 @@ export default function GraphPlanEditor({
             );
           })}
 
+          {/* NO tabIndex on these. They carried tabIndex={0} and a per-vertex
+              aria-label, which advertised a keyboard affordance that did not
+              exist — and could not have worked, because role="img" on the svg
+              above makes this whole subtree presentational, so those labels
+              were never announced in the first place. The object list below is
+              the keyboard surface: labelled, enumerable, and actually able to
+              move the thing it names. */}
           {shownStorey.vertices.map((vertex) => {
-            const selected = partitionEnds.includes(vertex.id);
+            const endpoint = partitionEnds.includes(vertex.id);
+            const picked = selection?.kind === "vertex" && selection.id === vertex.id;
             return (
               <circle
                 key={vertex.id}
                 cx={vertex.xFt}
                 cy={vertex.zFt}
-                r="0.55"
-                className={`${selected ? "fill-aura-violet" : "fill-aura-emerald"} stroke-aura-panel cursor-grab active:cursor-grabbing`}
-                strokeWidth="0.16"
-                tabIndex={0}
-                aria-label={`Vertex ${vertex.id} at ${vertex.xFt}, ${vertex.zFt} feet`}
-                onClick={() => selectVertex(vertex.id)}
+                r={picked ? "0.8" : "0.55"}
+                className={`${endpoint ? "fill-aura-violet" : "fill-aura-emerald"} ${picked ? "stroke-aura-text" : "stroke-aura-panel"} cursor-grab active:cursor-grabbing`}
+                strokeWidth={picked ? "0.22" : "0.16"}
+                onClick={() => selectObject({ kind: "vertex", id: vertex.id })}
                 onMouseDown={(event) => startMouseVertexDrag(event, vertex.id)}
                 onPointerMove={(event) => {
                   if (event.pointerType !== "mouse") moveDrag(event.clientX, event.clientY);
@@ -521,6 +853,161 @@ export default function GraphPlanEditor({
         </svg>
       </div>
 
+      {/* The one live region. Selections, accepted moves and refusals all pass
+          through `report`/`refuse`, so nothing this editor does is silent. */}
+      <p
+        role="status"
+        aria-live="polite"
+        className="mt-3 min-h-5 font-mono text-xs leading-relaxed text-aura-text/70"
+      >
+        {announcement}
+      </p>
+
+      <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,20rem)_1fr]">
+        <div>
+          <p className="aura-label mb-2" id="graph-objects-label">
+            Objects on {storey.name}
+          </p>
+          {/* WHY A LIST RATHER THAN SPATIAL TABBING: the plan is drawn as one
+              <circle> per vertex and two <line>s per wall, in graph order. Made
+              focusable that is dozens of stops that read as nothing, arrive in
+              an order with no relation to the drawing, and — inside role="img"
+              — carry no accessible name at all. This list is the same objects
+              in the same order, each named in the units the drawing is in, each
+              a real button. Tab moves between objects; the arrow keys are then
+              free to mean "move the selected vertex" rather than "move focus". */}
+          <ul
+            aria-labelledby="graph-objects-label"
+            className="max-h-64 divide-y divide-aura-text/10 overflow-y-auto rounded-md border aura-hairline"
+          >
+            {storey.vertices.map((vertex) => {
+              const picked = selection?.kind === "vertex" && selection.id === vertex.id;
+              return (
+                <li key={vertex.id}>
+                  <button
+                    type="button"
+                    aria-pressed={picked}
+                    aria-label={`Vertex ${vertex.id}, X ${feet(vertex.xFt)} feet, Z ${feet(vertex.zFt)} feet`}
+                    onClick={() => selectObject({ kind: "vertex", id: vertex.id })}
+                    onKeyDown={(event) => nudgeVertex(event, vertex.id)}
+                    className={`flex w-full items-baseline justify-between gap-3 px-3 py-2 text-left font-mono text-xs transition-colors ${
+                      picked ? "bg-aura-emerald/10 text-aura-text" : "text-aura-text/65 hover:text-aura-text"
+                    }`}
+                  >
+                    <span>Vertex {vertex.id}</span>
+                    <span className="tabular-nums text-aura-text/55">
+                      {feet(vertex.xFt)}, {feet(vertex.zFt)} ft
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+            {storey.walls.map((wall) => {
+              const picked = selection?.kind === "wall" && selection.id === wall.id;
+              const noun = wall.kind === "partition" ? "Partition" : "Wall";
+              const run = wallRunFt(wall, vertexById);
+              return [
+                <li key={wall.id}>
+                  <button
+                    type="button"
+                    aria-pressed={picked}
+                    aria-label={`${noun} ${wall.id}, ${feet(run)} feet long, ${feet(wall.thicknessFt)} feet thick`}
+                    onClick={() => selectObject({ kind: "wall", id: wall.id })}
+                    className={`flex w-full items-baseline justify-between gap-3 px-3 py-2 text-left font-mono text-xs transition-colors ${
+                      picked ? "bg-aura-emerald/10 text-aura-text" : "text-aura-text/65 hover:text-aura-text"
+                    }`}
+                  >
+                    <span>
+                      {noun} {wall.id}
+                    </span>
+                    <span className="tabular-nums text-aura-text/55">{feet(run)} ft</span>
+                  </button>
+                </li>,
+                ...wall.openings.map((opening) => {
+                  const chosen = selection?.kind === "opening" && selection.id === opening.id;
+                  return (
+                    <li key={`${wall.id}:${opening.id}`}>
+                      <button
+                        type="button"
+                        aria-pressed={chosen}
+                        aria-label={`${openingNoun(opening)} ${opening.id} on wall ${wall.id}, offset ${feet(opening.offsetFt)} feet, width ${feet(opening.widthFt)} feet`}
+                        onClick={() => selectObject({ kind: "opening", wallId: wall.id, id: opening.id })}
+                        className={`flex w-full items-baseline justify-between gap-3 py-2 pl-7 pr-3 text-left font-mono text-xs transition-colors ${
+                          chosen ? "bg-aura-emerald/10 text-aura-text" : "text-aura-text/65 hover:text-aura-text"
+                        }`}
+                      >
+                        <span>
+                          {openingNoun(opening)} {opening.id}
+                        </span>
+                        <span className="tabular-nums text-aura-text/55">{feet(opening.widthFt)} ft</span>
+                      </button>
+                    </li>
+                  );
+                }),
+              ];
+            })}
+          </ul>
+        </div>
+
+        <div>
+          <p className="aura-label mb-2">Dimensions</p>
+          {selectedVertex ? (
+            <div className="flex flex-wrap gap-4">
+              <NumberField
+                label={`Vertex ${selectedVertex.id} · X (feet)`}
+                value={selectedVertex.xFt}
+                revision={fieldRevision}
+                step={GRID_SNAP_FT}
+                onCommit={fieldCommit(commitVertexX)}
+              />
+              <NumberField
+                label={`Vertex ${selectedVertex.id} · Z (feet)`}
+                value={selectedVertex.zFt}
+                revision={fieldRevision}
+                step={GRID_SNAP_FT}
+                onCommit={fieldCommit(commitVertexZ)}
+                note={`Arrow keys move the selected vertex by ${feet(GRID_SNAP_FT)} ft, Shift+arrow by ${feet(COARSE_STEP_FT)} ft. A typed value is used exactly.`}
+              />
+            </div>
+          ) : selectedOpening && selectedWall ? (
+            <div className="flex flex-wrap gap-4">
+              <NumberField label="Offset (feet)" value={selectedOpening.offsetFt} revision={fieldRevision} step={GRID_SNAP_FT} />
+              <NumberField label="Width (feet)" value={selectedOpening.widthFt} revision={fieldRevision} step={GRID_SNAP_FT} />
+              <NumberField label="Sill (feet)" value={selectedOpening.sillFt} revision={fieldRevision} step={GRID_SNAP_FT} />
+              <NumberField
+                label="Head height (feet)"
+                value={selectedOpening.heightFt}
+                revision={fieldRevision}
+                step={GRID_SNAP_FT}
+                note="Read-only: buildingGraph.ts can add an opening and split a wall around one, but exposes no mutator that edits an existing opening. Writing these four numbers without one would mean hand-editing the graph past its own validation."
+              />
+            </div>
+          ) : selectedWall ? (
+            <div className="flex flex-wrap gap-4">
+              <NumberField
+                label={`Wall ${selectedWall.id} · length (feet)`}
+                value={wallRunFt(selectedWall, vertexById)}
+                revision={fieldRevision}
+                step={GRID_SNAP_FT}
+                onCommit={fieldCommit((value) => commitWallLength(selectedWall, value))}
+                note="Length slides this wall's end vertex along its own direction; every other vertex stays put."
+              />
+              <NumberField
+                label="Thickness (feet)"
+                value={selectedWall.thicknessFt}
+                revision={fieldRevision}
+                step={0.05}
+                note="Read-only: buildingGraph.ts sets a thickness when a wall is created and validates it, but exposes no mutator that changes one afterwards."
+              />
+            </div>
+          ) : (
+            <p className="text-xs leading-relaxed text-aura-text/55">
+              Select a vertex, wall or opening to read and type its exact dimensions.
+            </p>
+          )}
+        </div>
+      </div>
+
       <div className="mt-4 flex flex-wrap items-center gap-3">
         {tool === "shape" ? (
           <>
@@ -535,7 +1022,15 @@ export default function GraphPlanEditor({
         )}
       </div>
       {problem ? (
-        <p className="mt-4 rounded-md border border-aura-violet px-3 py-2 text-xs leading-relaxed text-aura-violet" role="alert">
+        /* RENEGOTIATED (AX01): this paragraph carried role="alert" and was the
+           file's ONLY live region. It announced refusals assertively and
+           announced nothing else — an accepted move was silent, and a refusal
+           reached a screen reader only because the visible notice happened to
+           be an alert. The polite status line above now carries every outcome,
+           refusals included, and two live regions holding the same sentence
+           would speak every refusal twice. The visible violet notice is
+           unchanged; only the duplicate announcement is gone. */
+        <p className="mt-4 rounded-md border border-aura-violet px-3 py-2 text-xs leading-relaxed text-aura-violet">
           {problem}
         </p>
       ) : null}

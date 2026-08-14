@@ -317,6 +317,25 @@ evidence block naming the gate that held, the defects found on the way, and any
 finding still open against it — a node with an open finding closes as
 `verified-with-open-finding`, never as `verified`.
 
+**9. The orchestrator wires new specs into a gate; the agent cannot.** Both
+gates are hardcoded lists — `test` in `package.json` names its spec files one by
+one, and `playwright.ui.config.ts` has a `testMatch` array — and neither file is
+ever in an agent's write-set. So a node that creates a spec leaves it unwired by
+construction, and an unwired spec is worth nothing: it sits in `tests/`, looks
+like coverage in a diff, reads like coverage in a review, and never executes.
+
+This is not hypothetical either. `buy-catalog.spec.ts` — twelve assertions
+including the `/buy` catalogue's forbidden-vocabulary contract — was in neither
+gate, along with `plan-selection-visual.spec.ts` and `landing-film.spec.ts`. An
+external audit found them by reading. `tests/gate-coverage.spec.ts` now fails the
+build on any spec that runs nowhere, with one documented exclusion
+(`landing-vitals.spec.ts`, a measurement against an arbitrary base URL rather
+than a pass/fail gate). It fired correctly within the hour, on wave 6's own two
+new specs. Expect it to go red at every integration that adds a spec — that
+redness *is* the handoff.
+
+---
+
 ### The `BuilderApp.tsx` bottleneck (found Aug 14, before dispatch)
 
 Rule 7 earned its place immediately. A read-only survey run *before* writing the
@@ -363,6 +382,27 @@ v1.1 §19 stands, plus these minimum anchors:
   `homes-live` spec suite.
 - **XH01 handle grep**; **SUBMISSION placeholder check**; Lighthouse delta
   vs PB01.
+
+---
+
+## 3a-bis. Nodes added August 14 (afternoon), from an external audit and three founder asks
+
+| Node | Job | Gate | State |
+|---|---|---|---|
+| **AX01** | Keyboard operability and exact numeric entry in the graph plan editor: arrow-key vertex movement through the *same* `moveGraphVertex` the drag calls, a named object list replacing dozens of unnamed SVG tab stops, X/Z and wall-length fields that hold no draft of their own, and one `role="status"` region that announces successes as well as refusals. | A keyboard move and the equivalent drag produce the identical graph **and** the identical `hashBuilderDocument`; a held key is one history entry; a refused move is announced. | **Shipped.** 9 specs. Ten mutations run against the gates — nine went red, one went green and exposed a decorative assertion that was then rebuilt. |
+| **TR01** | A release gate comparing published claims against executable reality. Born because it was **cited before it existed**: the `DEPLOYMENTS.md` correction closed with "is now tracked as node TR01" in the present tense, for a node nobody had written — the audited drift class reproduced inside the fix for the audited drift. | Reproduce each historical defect and watch the gate go red. Every expected value derives from code, never from a second hand-typed constant. | **Partial.** Spec-count drift closed by `gate-coverage.spec.ts`; deployment/token *status* prose still unguarded. |
+| **EX04** | Download the drawing set as one multi-page vector PDF. The sheets are already ANSI B in **points** (`kit.ts:37-41`), which is PDF's own unit, so the coordinates map 1:1. | Two generations byte-identical — PDF writers stamp `/CreationDate` and a random `/ID` by default, and this product's stated rule is that the same design produces byte-identical files. Vector, not raster. | Ready. |
+| **MK01** | A module where people *and agents* author models — plans and furniture — for the marketplace, over the existing rights model (`planCatalog` already records source, licence, attribution and modification per record). | Every contributed record carries provenance or is refused. No claim of settlement that settlement does not do. | Scoping. |
+| **PL01** | Thirty modern Nordic plans, glass-forward. | Each record declares its glazing ratio and, where it exceeds the NBC 9.36 **prescriptive** ceiling of 22%, names the performance path rather than quietly failing its own check. Aura-authored originals under MIT, so no third-party redistribution question arises. | Ready. |
+
+**Why PL01 is buildable at all**, recorded because it looked blocked: the hard
+FDWR trim lives only in the Python `design-api` layout solver
+(`layout.py:242-255`), which the static application does not require. The
+TypeScript builder *reports* the ratio and never clamps it (`Readout.tsx:38`,
+`toPlan.ts:799`). `layout.py`'s own warning already says the right sentence — "A
+performance-path model can buy the glass back" — so a glass-forward Nordic house
+is not a design the tool forbids; it is a design the tool tells the truth about.
+That is the product, not a workaround.
 
 ---
 

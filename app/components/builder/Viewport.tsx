@@ -120,6 +120,35 @@ export interface ViewportComfort {
   seasonLabel: string;
 }
 
+/* ------------------------------------------------------------- viewer tools
+
+   VW02. Two ways of interrogating the model rather than orbiting it, both
+   derived in `lib/three/viewerTools.ts` and both purely a VIEW: neither one
+   touches the document, the geometry or the export.
+
+   THE CUT IS A MATERIAL PROPERTY, NOT A RENDERER SETTING. `localClippingEnabled`
+   is the only renderer state touched, and the planes are attached to the house
+   materials alone — so the ground, the grid, the comfort plates and the sun
+   marker are never sliced, and the geometry the .glb writer serialises is
+   untouched by a cut that only ever lived in a fragment shader.
+
+   THE ISOLATION GHOSTS, IT DOES NOT HIDE. `soloVolumeIds` names the volumes
+   that stay solid and the rest are drawn at `GHOST_OPACITY` with no shadow —
+   deliberately NOT `visible={false}`, because three's GLTFExporter defaults to
+   `onlyVisible: true` and `exportGlb` passes that default through, so hiding a
+   floor to look at another one would quietly ship half a house in the .glb. */
+
+export interface ViewportTools {
+  /** empty for no cut; at most one plane today */
+  clipPlanes: THREE.Plane[];
+  /** volumes that stay solid, or null for "all of them" */
+  soloVolumeIds: string[] | null;
+}
+
+/** How faint a floor gets when another floor is the one being looked at.
+ *  Faint enough to read past, present enough to keep the massing legible. */
+const GHOST_OPACITY = 0.07;
+
 /* ---------------------------------------------------------------- palette
 
    One palette, two lights. The night mode does NOT recolour the building —
@@ -275,10 +304,16 @@ function PartMesh({
   part,
   night,
   surfaces,
+  clipPlanes = null,
+  ghost = false,
 }: {
   part: Part;
   night: boolean;
   surfaces: ViewportSurfaces | null;
+  /** the section cut, or null. A material property — see the tools note. */
+  clipPlanes?: THREE.Plane[] | null;
+  /** another floor is being looked at; this one stays in the scene, faintly */
+  ghost?: boolean;
 }) {
   /* `SurfaceMaterial` and `SurfaceStyle` are the same five fields under the
      same names, so the override path and the default path produce the same
@@ -286,15 +321,16 @@ function PartMesh({
   const s: SurfaceStyle = surfaces
     ? materialForPart(part, surfaces.index, surfaces.overrides)
     : SURFACES[part.surface];
-  const lit = night && part.surface === "glass";
+  const lit = night && part.surface === "glass" && !ghost;
   const physical = part.surface === "glass" || part.surface === "water";
+  const clip = clipPlanes && clipPlanes.length > 0 ? clipPlanes : null;
   return (
     <mesh
       geometry={part.geometry}
       /* the geometry belongs to BuilderApp — see rule 1 in the header */
       dispose={null}
-      castShadow={!s.noShadow}
-      receiveShadow={!s.noShadow}
+      castShadow={!s.noShadow && !ghost}
+      receiveShadow={!s.noShadow && !ghost}
     >
       {physical ? (
         <meshPhysicalMaterial
@@ -303,7 +339,8 @@ function PartMesh({
           metalness={s.metalness}
           flatShading={false}
           transparent
-          opacity={s.opacity ?? 0.88}
+          opacity={ghost ? GHOST_OPACITY : s.opacity ?? 0.88}
+          depthWrite={!ghost}
           transmission={part.surface === "glass" ? Math.min(0.42, s.transmission ?? 0.28) : 0}
           thickness={part.surface === "glass" ? 0.12 : 0.04}
           ior={s.ior ?? 1.4}
@@ -312,6 +349,8 @@ function PartMesh({
           emissive={lit ? "#ffc98a" : "#000000"}
           emissiveIntensity={lit ? WORLD.dark.glow : 0}
           side={THREE.DoubleSide}
+          clippingPlanes={clip}
+          clipShadows={clip !== null}
         />
       ) : (
         <meshStandardMaterial
@@ -319,8 +358,13 @@ function PartMesh({
           roughness={s.roughness}
           metalness={s.metalness}
           flatShading={!s.smooth}
+          transparent={ghost}
+          opacity={ghost ? GHOST_OPACITY : 1}
+          depthWrite={!ghost}
           emissive={lit ? "#ffc98a" : "#000000"}
           emissiveIntensity={lit ? WORLD.dark.glow : 0}
+          clippingPlanes={clip}
+          clipShadows={clip !== null}
         />
       )}
     </mesh>
@@ -332,11 +376,15 @@ function VolumeGroup({
   night,
   onSelect,
   surfaces,
+  clipPlanes = null,
+  ghost = false,
 }: {
   volume: VolumeGeometry;
   night: boolean;
   onSelect: (id: string) => void;
   surfaces: ViewportSurfaces | null;
+  clipPlanes?: THREE.Plane[] | null;
+  ghost?: boolean;
 }) {
   return (
     <group
@@ -350,10 +398,42 @@ function VolumeGroup({
       }}
     >
       {volume.parts.map((p) => (
-        <PartMesh key={p.id} part={p} night={night} surfaces={surfaces} />
+        <PartMesh
+          key={p.id}
+          part={p}
+          night={night}
+          surfaces={surfaces}
+          clipPlanes={clipPlanes}
+          ghost={ghost}
+        />
       ))}
     </group>
   );
+}
+
+/**
+ * The one piece of renderer state a section cut needs.
+ *
+ * `localClippingEnabled` lives on the WebGLRenderer, and R3F builds exactly one
+ * renderer per `<Canvas>` — this component is inside the BUILDER's canvas, so
+ * the flag it sets is the builder renderer's own. The landing page's story
+ * scene is a different `<Canvas>` with a different renderer and cannot see it.
+ * The previous value is restored on unmount rather than assumed false, so this
+ * stays true even if something else ever wants clipping in the same scene.
+ */
+function ClippingRig({ enabled }: { enabled: boolean }) {
+  const gl = useThree((s) => s.gl);
+  const invalidate = useThree((s) => s.invalidate);
+  useEffect(() => {
+    const previous = gl.localClippingEnabled;
+    gl.localClippingEnabled = enabled;
+    invalidate();
+    return () => {
+      gl.localClippingEnabled = previous;
+      invalidate();
+    };
+  }, [gl, enabled, invalidate]);
+  return null;
 }
 
 /* -------------------------------------------------------------- furniture */
@@ -573,6 +653,7 @@ function Scene({
   houseChildren,
   quality,
   site,
+  tools,
 }: {
   home: HomeGeometry;
   sun: SunPosition;
@@ -585,6 +666,7 @@ function Scene({
   houseChildren: ReactNode;
   quality: BuilderSceneQuality;
   site: BuilderSite | null;
+  tools: ViewportTools | null;
 }) {
   const w = WORLD[theme];
   const night = theme === "dark";
@@ -609,9 +691,16 @@ function Scene({
   const [sx, sy, sz] = sun.direction;
   const shadowKey = sceneSignature(home);
 
+  /* The tools, unpacked once. `solo === null` is the ordinary state and every
+     volume is solid; a non-null list names the floor being looked at. */
+  const clipPlanes = tools && tools.clipPlanes.length > 0 ? tools.clipPlanes : null;
+  const solo = tools?.soloVolumeIds ?? null;
+  const isGhost = (id: string) => solo !== null && !solo.includes(id);
+
   return (
     <>
       <Refresh />
+      <ClippingRig enabled={clipPlanes !== null} />
       <color attach="background" args={[w.sky]} />
       <fog attach="fog" args={[w.sky, Math.max(120, radius * 4), Math.max(700, radius * 18)]} />
 
@@ -675,6 +764,8 @@ function Scene({
             night={night}
             onSelect={onSelect}
             surfaces={surfaces}
+            clipPlanes={clipPlanes}
+            ghost={isGhost(v.id)}
           />
         ))}
         {home.deck ? (
@@ -683,7 +774,16 @@ function Scene({
             rotation={[0, home.deck.rotationY, 0]}
           >
             {home.deck.parts.map((p) => (
-              <PartMesh key={p.id} part={p} night={night} surfaces={surfaces} />
+              <PartMesh
+                key={p.id}
+                part={p}
+                night={night}
+                surfaces={surfaces}
+                clipPlanes={clipPlanes}
+                /* the deck belongs to no storey, so an isolated floor ghosts
+                   it rather than pretending it is on that floor */
+                ghost={solo !== null}
+              />
             ))}
           </group>
         ) : null}
@@ -707,6 +807,7 @@ function Scene({
           picked={surfaces.picked}
           onPick={surfaces.onPick}
           enabled={surfaces.enabled}
+          clipPlanes={clipPlanes}
         />
       ) : null}
     </>
@@ -762,6 +863,7 @@ export default function Viewport({
   comfort = null,
   houseChildren = null,
   site = null,
+  tools = null,
 }: {
   home: HomeGeometry;
   sun: SunPosition;
@@ -782,6 +884,9 @@ export default function Viewport({
   /** R3F nodes to mount INSIDE the export root, beside the volumes and the
    *  deck. `BuilderApp` passes the fixture layer here. */
   houseChildren?: ReactNode;
+  /** the section cut and the floor isolation, already derived. Omit — or pass
+   *  `null` — for the plain viewport, which is the default state. */
+  tools?: ViewportTools | null;
 }) {
   const theme = useTheme();
   const controls = useRef<ElementRef<typeof OrbitControls>>(null);
@@ -828,6 +933,12 @@ export default function Viewport({
          reaches the viewer and holds still when nothing about the shape
          changed. */
       data-scene-geometry={sceneSignature(home)}
+      /* What the viewer tools are doing to that geometry, published for the
+         same reason: a cut and a ghosted floor are invisible to a test that
+         can only read pixels. Deliberately SEPARATE from the signature above —
+         a tool changes what is drawn, never what was built. */
+      data-section-planes={tools ? tools.clipPlanes.length : 0}
+      data-solo-volumes={tools?.soloVolumeIds ? tools.soloVolumeIds.join(" ") : "all"}
       data-frame-target-x={initial.target[0].toFixed(3)}
       data-frame-target-z={initial.target[2].toFixed(3)}
       className="builder-viewport relative overflow-hidden rounded-2xl bg-aura-sunken"
@@ -875,6 +986,7 @@ export default function Viewport({
             houseChildren={houseChildren}
             quality={quality}
             site={site}
+            tools={tools}
           />
           {/* Renders nothing. It registers the capture the project library
               asks for when it saves a thumbnail, and it has to be INSIDE this
@@ -909,6 +1021,21 @@ export default function Viewport({
               ? `sun ${Math.round(sun.altitudeDeg)}° up, ${bearingWords(sun.azimuthDeg)}`
               : "sun below the horizon"}
           </p>
+          {/* WHAT THE TOOLS ARE DOING, ON THE VIEW ITSELF. A cut face is not
+              capped, so the inside of a wall reads as hollow — somebody who
+              cannot see that sentence will believe the wall is empty. */}
+          {tools && tools.clipPlanes.length > 0 ? (
+            <p className="mt-1.5 max-w-[16rem] font-mono text-[0.55rem] leading-relaxed text-aura-violet">
+              Section cut · the cut face is not capped, so a wall reads hollow where the plane
+              crosses it
+            </p>
+          ) : null}
+          {tools?.soloVolumeIds ? (
+            <p className="mt-1.5 max-w-[16rem] font-mono text-[0.55rem] leading-relaxed text-aura-violet">
+              One floor isolated · the others are ghosted, not removed, and every export still
+              contains the whole home
+            </p>
+          ) : null}
         </div>
         <div className="pointer-events-auto flex gap-2">
           <button

@@ -358,9 +358,26 @@ function prepareForExport(
 
   if (opts.embedSpec !== false) {
     /* glTF carries this through to `extras` on the node (three's GLTFExporter
-       serialises userData there), so the spec that produced the geometry is
-       INSIDE the model file. A designer who receives only the .glb still has
-       every dimension, and can hand it back to us to reopen. */
+       serialises userData there), so what produced the geometry travels INSIDE
+       the model file.
+
+       WHAT THIS BLOCK USED TO CLAIM, AND WHY IT WAS WRONG. It used to say a
+       designer receiving only the .glb "still has every dimension, and can
+       hand it back to us to reopen", and it embedded `spec` and
+       `derived: specSummary(spec)` unconditionally. After a conversion to
+       planar-graph geometry that is false: `document.spec` becomes a FROZEN
+       recovery copy and graph edits never touch it (readiness.ts says so, and
+       refuses to compute a parcel check from it for exactly this reason). So a
+       .glb exported from a graph-edited home carried geometry for one house
+       and a metadata block describing another — a file that contradicts
+       itself, which is the precise failure this project claims not to have.
+       Found by an external audit, 2026-08-14.
+
+       The spec is still carried, because it is genuinely useful recovery data,
+       but under a name that cannot be mistaken for a description of THIS
+       model. The derived summary is dropped outright in graph mode: a stale
+       blob is inert, whereas a stale floor-area NUMBER is read and believed. */
+    const graphBacked = document.geometry.kind === "building-graph";
     clone.userData = {
       ...clone.userData,
       aura: {
@@ -378,8 +395,19 @@ function prepareForExport(
             : `metres (converted from the HomeSpec's feet at exactly ${FEET_TO_METRES} m/ft)`,
         specUnits: "feet (wall thickness in mm, per lib/design/materials.ts)",
         document: JSON.parse(resolved.canonicalJson) as unknown,
-        spec,
-        derived: specSummary(spec),
+        geometrySource: graphBacked ? "building-graph" : "spec.volumes",
+        ...(graphBacked
+          ? {
+              specDescribesThisModel: false,
+              recoverySpec: spec,
+              recoverySpecNote:
+                "Pre-conversion recovery copy of the HomeSpec. This model's geometry comes from the building graph; document.spec was frozen at conversion and graph edits never touch it, so these dimensions do NOT describe the geometry in this file. Read document.geometry.graph for that.",
+            }
+          : {
+              specDescribesThisModel: true,
+              spec,
+              derived: specSummary(spec),
+            }),
         durableDocumentDetailCounts: resolved.durableDetailCounts,
         geometryLimitation: exportSourceLimitation(source, "rendered-scene"),
       },
@@ -532,16 +560,37 @@ export async function exportObj(
   }
 
   const s = specSummary(spec);
+  const graphBacked = document.geometry.kind === "building-graph";
+  /* These three totals come from `spec`, which after a conversion to planar
+     graph geometry is a frozen pre-conversion copy — so in graph mode they
+     described a different house than the vertices below them. An OBJ header is
+     read by a person deciding whether the file is the right one; a confident
+     wrong square-footage there is worse than no square-footage. Omitted with
+     the reason rather than silently dropped, and rather than recomputed here:
+     the graph's own summariser lives in graphGeometry.ts, which imports three
+     at runtime, and this module deliberately does not (see the note at the
+     import block) so that offering a download never costs an exporter.
+     Deriving these from the graph is worth doing — it needs the dynamic-import
+     treatment the exporters already use, and is tracked rather than rushed. */
+  const quantities = graphBacked
+    ? [
+        "# total floor area: not stated — this design uses planar graph geometry,",
+        "#   and the stored HomeSpec is a frozen pre-conversion copy that does not",
+        "#   describe it. Quantities must be taken off the geometry itself.",
+      ]
+    : [
+        `# total floor area: ${round2(s.totalFloorAreaSqFt)} sq ft over ${s.volumeCount} volume${
+          s.volumeCount === 1 ? "" : "s"
+        }`,
+        `# ground footprint: ${round2(s.groundFootprintSqFt)} sq ft`,
+        `# tallest ridge: ${round2(s.tallestRidgeHeightFt)} ft above finished floor`,
+      ];
   const header = [
     `# ${spec.name}`,
     `# Aura Homes builder — document v${document.version} / HomeSpec v${SPEC_VERSION}`,
     `# design hash: ${resolved.hash}`,
     `# units: metres (converted from feet at exactly ${FEET_TO_METRES} m/ft)`,
-    `# total floor area: ${round2(s.totalFloorAreaSqFt)} sq ft over ${s.volumeCount} volume${
-      s.volumeCount === 1 ? "" : "s"
-    }`,
-    `# ground footprint: ${round2(s.groundFootprintSqFt)} sq ft`,
-    `# tallest ridge: ${round2(s.tallestRidgeHeightFt)} ft above finished floor`,
+    ...quantities,
     "#",
     `# ${EXPORT_DISCLAIMER}`,
     ...(exportSourceLimitation(source, "rendered-scene")

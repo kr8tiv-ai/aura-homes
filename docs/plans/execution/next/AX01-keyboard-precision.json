@@ -1,0 +1,51 @@
+{
+  "node": "AX01",
+  "graphVersion": "1.2",
+  "job": "Make the plan editor operable from the keyboard, and make every geometry value editable as an exact number rather than only by dragging.",
+  "origin": "External deep-research audit, 2026-08-14, its single strongest concrete finding. Independently consistent with our own read-only survey of the same file. Both are recorded because two analyses arriving separately at the same defect is the strongest signal we have.",
+  "wave": "6 — runs in PARALLEL with VW02. Write-sets are disjoint: VW02 owns BuilderApp.tsx and Viewport.tsx; AX01 owns GraphPlanEditor.tsx, which VW02 does not touch and PR01's manifest explicitly lists under doNotTouch.",
+  "context": [
+    "THE FINDING, as reported: GraphPlanEditor's vertex SVG circles carry tabIndex={0} and an aria-label — but the movement code is pointer-driven, and wall selection is an onClick on a transparent SVG line. So the editor advertises focusability WITHOUT the editing capability that focus implies. A keyboard user can reach a vertex and then do nothing with it. VERIFY THE tabIndex/aria-label PART YOURSELF before writing anything; our own survey confirmed the pointer-only handlers but did not check the focus attributes.",
+    "What our survey did confirm, with line numbers: the vertex <circle> carries onPointerMove :495, onPointerUp :498, onPointerCancel :501, onPointerDown :504, with setPointerCapture at :510 — and that path is touch/pen only, because mouse goes through onMouseDown={startMouseVertexDrag} at :494 (handler :128) using window listeners. Two separate drag implementations, neither reachable by keyboard.",
+    "The commit point is finishDrag, which calls onEdit(candidate, `graph:vertex:${vertexId}`) at :117 — ONE edit on release. Snap is hardcoded 0.5 ft in moveDrag at :103.",
+    "Component contract: GraphPlanEditor({ graph, onEdit }) at :56-62, where onEdit is (graph: BuildingGraph, label: string) => void. Local state at :63-75: activeStoreyId, tool ('shape' | 'partition'), selectedWallId, partitionEnds, preview, previewRef, problem, drag.",
+    "The mutators you need already exist and are pure: moveGraphVertex(graph, storeyId, vertexId, point, snapFt) at lib/builder/buildingGraph.ts:731, splitWallAt :766, addPartitionEdge :865, addGraphOpening :914. They return GraphMutation, whose FAILURE branch carries `graph` ({ ok:false; problem; graph }) unlike its neighbours — do not assume the union shape.",
+    "There is no existing accessibility spec anywhere in app/tests, and no axe usage in the repo. So there is no baseline to preserve and nothing to avoid breaking; there is also nothing catching a regression, which is why the spec below is part of the node rather than a follow-up.",
+    "CORRECTION, ADDED AFTER DISPATCH — an earlier draft of this manifest said Plan2D 'has the same class of gap'. THAT WAS WRONG and an adversarial verification pass caught it. Plan2D ALREADY HAS full keyboard editing: tabIndex={0} at Plan2D.tsx:1104, onKeyDown at :1112, arrow nudge with grid step and Shift x5 at :997-1009, plus Delete/Backspace and Escape. It also states the house rule at :878 — 'every mouse gesture also has a key'. So Plan2D is the PATTERN TO COPY, not a fellow offender, and GraphPlanEditor is the one editor that skipped the house rule. Read Plan2D before writing.",
+    "THE TRAP THAT WILL BITE YOU, and it is the opposite of what you would guess: the reducer coalesces history on LABEL IDENTITY (const coalesce = label === state.label, BuilderApp.tsx:375). If arrow presses reuse the drag's `graph:vertex:${id}` label, then every keypress AND any preceding mouse drag of the same vertex all fold into ONE undo step. That is not 'one drag is one undo' - that is losing edits. Plan2D solves it with a gesture counter (:965, :972). Do the same. The rejection gate below asks you to prove BOTH directions: a held key is not twenty entries, AND a drag followed by an arrow press is not one entry.",
+    "ALSO FOUND, and it means the existing aria-labels are doing nothing: the parent <svg> carries role=\"img\" at GraphPlanEditor.tsx:404. role=img prunes descendants from the accessibility tree in most screen readers, so the per-vertex aria-label at :492 is very likely never announced. The vertices are today focus stops that are both inert AND silent. Fixing the role (or restructuring what carries it) is IN SCOPE - a keyboard path that no screen reader can hear is half a fix.",
+    "Severity was revised high -> medium on one ground worth knowing: GraphPlanEditor renders only when geometry.kind === 'building-graph' (BuilderApp.tsx:684-685, 1448-1462), reachable only through an explicit one-way 'Convert to planar editing' button (:1681, handler :773-785), and graph mode already declares itself partial - fixtures, comfort, surfaces and export all render GraphPending. So this is a gap in an opt-in mode, not on the default path. It is still worth fixing and still a published release gate (B25), but do not describe it in your report as though the main editor is unusable by keyboard. It is not."
+  ],
+  "writeSet": [
+    "app/components/builder/GraphPlanEditor.tsx",
+    "app/tests/graph-keyboard.spec.ts (new)",
+    "app/app/globals.css — ONLY new selectors for the inspector and focus states. The .builder-stage* rules at :1383-1431 and the phone block belong to VW03; the token blocks at :29-115 belong to nobody without a reason."
+  ],
+  "doNotTouch": [
+    "app/components/builder/BuilderApp.tsx — VW02 owns it this wave. If you believe you need it, STOP and report. Your component already receives everything it needs through its two props.",
+    "app/components/builder/Plan2D.tsx — out of scope, see context.",
+    "app/lib/builder/buildingGraph.ts — the mutators you need exist. If one genuinely does not, report it rather than adding one; PR01 owns that file next wave."
+  ],
+  "rejectionGates": [
+    "ARROW KEYS MUST CALL THE SAME MUTATOR AS THE DRAG. Not a parallel code path that happens to agree today — moveGraphVertex, the same function, the same validation. A second movement implementation is the divergence class that has bitten this repo three times (the mask literals, the slope, the deck meshes) and it would be inexcusable to introduce a fourth knowingly.",
+    "UNDO GRANULARITY MUST BE PROVEN IN BOTH DIRECTIONS, and this gate was rewritten after an adversarial pass found the naive reading of it harmful. (a) Holding an arrow key must not deposit twenty entries into the 80-slot history. (b) A mouse drag of a vertex followed by an arrow press on the SAME vertex must NOT collapse into one entry — because the reducer coalesces on label identity (BuilderApp.tsx:375), reusing the drag's label achieves (a) by silently destroying (b). Assert both. Plan2D's gesture counter (:965, :972) is the shipped solution to exactly this and you should reuse the pattern.",
+    "A REJECTED MOVE MUST BE ANNOUNCED, NOT SWALLOWED. The mutators already refuse invalid geometry and return a problem string. Today a refused drag just snaps back, which a sighted user reads as 'it didn't move' and a screen-reader user experiences as nothing at all. Route the existing problem text to an aria-live region.",
+    "THE NUMERIC FIELDS MUST NOT BE A SECOND SOURCE OF TRUTH. They display from the graph and write through the same mutator. A field that holds its own draft value and diverges from the model on an invalid entry is a bug with a keyboard on it.",
+    "the tab order must be usable, not merely present. Dozens of SVG primitives in DOM order is technically focusable and practically unusable — if spatial tabbing is the result, add a list or tree instead and say why."
+  ],
+  "instructions": [
+    "1. Verify the report's tabIndex/aria-label claim first and say what you actually found. If the attributes are absent, the finding is still real but its shape changes, and the write-up must reflect what is true.",
+    "2. Keyboard movement on a focused vertex: arrow = one grid step (the existing 0.5 ft), Shift+arrow = a larger step. Same mutator, same snap constant — do not retype 0.5.",
+    "3. A numeric inspector for the selected object: X and Z for a vertex; for a wall, its length and thickness; for an opening, offset, width, sill and height. Use whatever accessible number-input pattern fits the existing code — do NOT add a component library dependency for this, the repo has none and one week before a deadline is the wrong moment to acquire one.",
+    "4. Keyboard selection for walls and openings. An object list is likely better than spatial tabbing; whichever you choose, justify it in a comment.",
+    "5. An aria-live region that announces the result of every action, including refusals: 'Vertex moved to X 12.5 feet, Z 8 feet' and 'Move rejected: would cross the west exterior wall'.",
+    "6. Visible focus states that meet the existing focus-ring tokens (--focus-ring-width / --focus-ring-color / --focus-ring-offset, declared at globals.css :100-105 and pinned by interface-motion.spec.ts). Do not invent a second focus treatment.",
+    "7. Spec (graph-keyboard.spec.ts): a complete vertex move performed with ONLY keyboard produces the identical graph and identical document hash as the equivalent drag; one held key is one history entry; an invalid move is refused AND announced; every interactive element has a visible focus state. Use hashBuilderDocument (lib/builder/document.ts:571) for the equivalence assertion."
+  ],
+  "verify": {
+    "commands": ["npx tsc --noEmit", "npm test"],
+    "note": "the orchestrator runs test:ui (rule 3). Do not run npm install — adding a dependency is out of scope for this node."
+  },
+  "sideEffect": "local",
+  "status": "ready"
+}

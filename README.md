@@ -293,14 +293,14 @@ Solidity + OpenZeppelin + Hardhat on X Layer. The active product direction is pr
 
 ## Verification
 
-The current release checkpoint (August 14, 2026, deploy `3e00c66`) produced:
+The current release checkpoint (August 14, 2026, deploy `8e98b68`) produced:
 
 | Suite | Result |
 | --- | ---: |
 | TypeScript / production compilation | Passed |
-| Deterministic app + contract-truth specs | **175 passed** |
-| Playwright UI specs against a fresh static export | **58 passed** |
-| Hardware scene proof (real GPU, desktop + mobile) | **Passed** — meadow settled both tiers, wind measured at 26% pixel motion on an idle scene, render p95 8.3 ms at the full tier |
+| Deterministic app + contract-truth specs | **333 passed** |
+| Playwright UI specs against a fresh static export | **89 passed** |
+| Hardware scene proof (real GPU, desktop + mobile) | **Passed at `3e00c66`** — meadow settled both tiers, wind measured at 26% pixel motion on an idle scene, render p95 8.3 ms at the full tier. Not re-run since; it needs a quiet machine and a real GPU, so it is dated rather than implied. |
 | Money anchor (`agent/` `npm run demo`) | **Reconciles to the dollar** — ex-land $199,100 / $301,280 / $443,900 vs `data/alberta/cost-model.json` |
 | Release tooling (`npm run test:release`) | Passed — append-only two-phase gh-pages publishing with chunk recovery |
 

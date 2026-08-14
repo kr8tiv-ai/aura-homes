@@ -162,6 +162,15 @@ import {
   type SurfaceOverrides,
 } from "@/lib/builder/surfaces";
 import {
+  DEFAULT_VIEWER_TOOLS,
+  deriveViewerTools,
+  viewerFloors,
+  type SectionAxis,
+  type ViewerFloor,
+  type ViewerToolState,
+  type ViewerToolsResult,
+} from "@/lib/three/viewerTools";
+import {
   fitPartition,
   structThicknessOf,
   type Partition,
@@ -195,7 +204,7 @@ import PlanSheet from "./PlanSheet";
 import ProjectLibrary from "./ProjectLibrary";
 import Readout from "./Readout";
 import SpecPanel, { type SunState } from "./SpecPanel";
-import SurfacePicker from "./SurfacePicker";
+import SurfacePicker, { SurfaceQuickSwitch } from "./SurfacePicker";
 import Viewport from "./Viewport";
 import { sunPosition } from "./sun";
 import { Button, Segmented } from "./ui";
@@ -701,6 +710,12 @@ export default function BuilderApp() {
   const [pickedSurface, setPickedSurface] = useState<SurfaceId | null>(null);
   const [selectedFixtureId, setSelectedFixtureId] = useState<string | null>(null);
   const [showClearances, setShowClearances] = useState(true);
+  /* VW02 — the viewer tools. VIEW STATE, deliberately: a section cut and an
+     isolated floor are ways of looking at the document, not edits to it, so
+     they are not in `state.doc`, never reach the reducer, never enter history
+     and cannot move `hashBuilderDocument`. The same rule the heatmap toggle
+     and the season already follow. */
+  const [viewerTools, setViewerTools] = useState<ViewerToolState>(DEFAULT_VIEWER_TOOLS);
   const [sun, setSun] = useState<SunState>({ hour: 12, season: "winter" });
 
   /* ---- comfort view state. The assumptions and per-room targets are part of
@@ -893,6 +908,23 @@ export default function BuilderApp() {
   const surfaceIndex: SurfaceIndex = useMemo(
     () => buildSurfaceIndex(home, graphMode ? undefined : spec),
     [home, graphMode, spec],
+  );
+
+  /* ---- VW02: the viewer tools, derived. Pure arithmetic over the graph, the
+         spec and the tool state — `lib/three/viewerTools.ts` owns every
+         decision in here, including the refusal when a floor cannot honestly
+         be isolated. Nothing below touches the document. */
+  const toolFloors: ViewerFloor[] = useMemo(
+    () => viewerFloors(graphGeometry?.graph ?? null),
+    [graphGeometry],
+  );
+  const toolsResult: ViewerToolsResult = useMemo(
+    () => deriveViewerTools(graphGeometry?.graph ?? null, spec, viewerTools),
+    [graphGeometry, spec, viewerTools],
+  );
+  const viewportTools = useMemo(
+    () => ({ clipPlanes: toolsResult.clipPlanes, soloVolumeIds: toolsResult.visibleVolumeIds }),
+    [toolsResult],
   );
 
   /* ---- the fixtures, resolved against the shell and then built. The
@@ -1433,6 +1465,7 @@ export default function BuilderApp() {
                     }
               }
               comfort={comfortOverlay}
+              tools={viewportTools}
               houseChildren={
                 graphMode ? null : (
                   <FixtureLayer
@@ -1444,6 +1477,40 @@ export default function BuilderApp() {
               }
             />
           </div>
+
+          {/* ---------------------------------------------- VW02: the tool row
+
+              Under the model rather than over it: these are ways of
+              INTERROGATING the home — cut it, look at one floor, say what a
+              surface is made of — and they belong beside the thing they act
+              on. Rendered only in 3D, because none of them mean anything over
+              a 2D plan, and as a sibling SLOT so the canvas above keeps its
+              parent and its position on every toggle. */}
+          {mode === "3d" ? (
+            <ViewerToolRow
+              tools={viewerTools}
+              onTools={setViewerTools}
+              result={toolsResult}
+              floors={toolFloors}
+              index={surfaceIndex}
+              overrides={overrides}
+              picked={pickedSurface}
+              onFinishes={editSurfaces}
+              /* THE GRAPH-MODE GATE IS KEPT, and said out loud rather than
+                 hidden behind a disabled control. Finishes are keyed on
+                 surface ids built from the LEGACY spec; `pruneOverrides` drops
+                 every id it cannot find in `spec.volumes`, and in graph mode
+                 the spec is a frozen recovery copy whose volume ids do not
+                 match the storey ids the graph geometry emits. Opening the
+                 picker here would let somebody paint a wall and lose it the
+                 next time anything touched the spec. */
+              finishesUnavailable={
+                graphMode
+                  ? "Finishes are a legacy-geometry feature today. This project uses planar graph geometry, where a surface belongs to a storey rather than to a spec volume, and Aura will not offer a paint it cannot promise to keep."
+                  : null
+              }
+            />
+          ) : null}
 
           <div className={mode === "2d" ? "block" : "hidden"}>
             {graphGeometry ? (
@@ -2008,6 +2075,199 @@ function GraphPending({ feature }: { feature: string }) {
         calculation against its recovery copy and present that as the current design. The graph and
         recovery source remain safely stored while this consumer is upgraded.
       </p>
+    </section>
+  );
+}
+
+/* ===========================================================================
+   VW02 — THE VIEWER TOOL ROW
+
+   Three ways of interrogating the model instead of orbiting it. All three are
+   VIEWS: none of them writes to the document, so none of them can move the
+   design hash, open a history step or reframe the camera.
+
+   WHY THE THIRD ONE IS THIN. The material switch is not new work — it is the
+   `lib/builder/surfaces.ts` system that already runs the panel below the
+   model, reached from beside the model. `SurfaceQuickSwitch` shares the chip,
+   the palette and the writer with `SurfacePicker`; there is deliberately no
+   second material path, because two ways of assigning a finish is two ways for
+   them to disagree.
+
+   WHY THE SECOND ONE SOMETIMES REFUSES. See `viewerTools.ts`: a floor is real
+   in graph geometry and not in legacy geometry, and a two-storey legacy home
+   cannot even convert. Where the tool cannot answer it prints the reason
+   rather than a control that hides nothing. */
+
+const SECTION_AXES: ReadonlyArray<{ id: SectionAxis; label: string; title: string }> = [
+  { id: "x", label: "East–west", title: "A vertical cut moving east to west across the home" },
+  { id: "z", label: "North–south", title: "A vertical cut moving north to south through the home" },
+  { id: "y", label: "Level", title: "A horizontal cut, like a plan taken at any height" },
+];
+
+const AXIS_WORD: Readonly<Record<SectionAxis, string>> = {
+  x: "east of the origin",
+  y: "above grade",
+  z: "south of the origin",
+};
+
+function ViewerToolRow({
+  tools,
+  onTools,
+  result,
+  floors,
+  index,
+  overrides,
+  picked,
+  onFinishes,
+  finishesUnavailable,
+}: {
+  tools: ViewerToolState;
+  onTools: (next: ViewerToolState) => void;
+  result: ViewerToolsResult;
+  floors: readonly ViewerFloor[];
+  index: SurfaceIndex;
+  overrides: SurfaceOverrides;
+  picked: SurfaceId | null;
+  onFinishes: (next: SurfaceOverrides) => void;
+  finishesUnavailable: string | null;
+}) {
+  const section = tools.section;
+  const setSection = (patch: Partial<ViewerToolState["section"]>) =>
+    onTools({ ...tools, section: { ...section, ...patch } });
+  const isolated = result.visibleVolumeIds?.[0] ?? null;
+
+  return (
+    <section
+      className="builder-tool-row"
+      aria-label="Viewer tools"
+      data-section-cut={section.enabled ? "on" : "off"}
+      data-isolated-floor={isolated ?? "all"}
+      data-can-isolate={result.canIsolate ? "yes" : "no"}
+    >
+      {/* ------------------------------------------------------ section cut */}
+      <div className="builder-tool">
+        <div className="builder-tool__head">
+          <p className="aura-label">Section cut</p>
+          <button
+            type="button"
+            aria-pressed={section.enabled}
+            onClick={() => setSection({ enabled: !section.enabled })}
+            data-cursor="Select"
+            className="builder-tool__toggle"
+          >
+            {section.enabled ? "On" : "Off"}
+          </button>
+        </div>
+        {section.enabled ? (
+          <>
+            <Segmented<SectionAxis>
+              label="Cut axis"
+              value={section.axis}
+              options={SECTION_AXES}
+              onChange={(axis) => setSection({ axis })}
+            />
+            <label className="builder-tool__slider">
+              <span className="aura-label">Cut position</span>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.005}
+                value={section.t}
+                onChange={(event) => setSection({ t: Number(event.target.value) })}
+              />
+            </label>
+            <div className="builder-tool__row">
+              <p className="builder-tool__readout">
+                {result.cutAtFt.toFixed(1)} ft {AXIS_WORD[section.axis]} · travels{" "}
+                {result.span.minFt.toFixed(1)} to {result.span.maxFt.toFixed(1)} ft
+              </p>
+              <button
+                type="button"
+                aria-pressed={section.flipped}
+                onClick={() => setSection({ flipped: !section.flipped })}
+                data-cursor="Select"
+                className="builder-tool__toggle"
+              >
+                Flip the kept side
+              </button>
+            </div>
+            {/* The two things a person will get wrong if nobody says them.
+                The second is a real limit rather than a choice: the fixture
+                layer is drawn by another module and this row does not reach
+                into it. */}
+            <p className="builder-tool__note">
+              The cut face is not capped: you are seeing through the shell, not into a solid wall.
+              A wall that looks empty at the cut is a hollow model, not a hollow wall. Fixtures and
+              their clearance boxes are not cut either — they stay whole where the plane crosses
+              them.
+            </p>
+          </>
+        ) : (
+          <p className="builder-tool__note">
+            Slice the model on any axis to look inside it. The cut is a view only — it changes
+            nothing about the design, and every export still writes the whole home.
+          </p>
+        )}
+      </div>
+
+      {/* ---------------------------------------------------- floor isolation */}
+      <div className="builder-tool">
+        <div className="builder-tool__head">
+          <p className="aura-label">Floors</p>
+        </div>
+        {result.canIsolate ? (
+          <>
+            <div className="builder-tool__choices" role="group" aria-label="Isolate a floor">
+              <button
+                type="button"
+                aria-pressed={isolated === null}
+                onClick={() => onTools({ ...tools, isolatedFloorId: null })}
+                data-cursor="Select"
+                className="builder-tool__toggle"
+              >
+                All floors
+              </button>
+              {floors.map((floor) => (
+                <button
+                  key={floor.id}
+                  type="button"
+                  aria-pressed={isolated === floor.id}
+                  onClick={() => onTools({ ...tools, isolatedFloorId: floor.id })}
+                  data-cursor="Select"
+                  className="builder-tool__toggle"
+                  title={`Finished floor at ${floor.elevationFt.toFixed(1)} ft, ${floor.heightFt.toFixed(1)} ft to the underside of the storey above`}
+                >
+                  {floor.name} · +{floor.elevationFt.toFixed(1)} ft
+                </button>
+              ))}
+            </div>
+            <p className="builder-tool__note">
+              Elevations come from the building graph&rsquo;s own storeys. The floors you are not
+              looking at are ghosted rather than removed, so the .glb, the .obj and every drawing
+              still contain the whole home.
+            </p>
+          </>
+        ) : (
+          <p className="builder-tool__note" data-tool-refusal="floors">
+            {result.whyNot}
+          </p>
+        )}
+      </div>
+
+      {/* ------------------------------------------------------- the finishes */}
+      <div className="builder-tool">
+        <div className="builder-tool__head">
+          <p className="aura-label">Finish</p>
+        </div>
+        <SurfaceQuickSwitch
+          index={index}
+          overrides={overrides}
+          picked={picked}
+          onChange={onFinishes}
+          unavailable={finishesUnavailable}
+        />
+      </div>
     </section>
   );
 }
