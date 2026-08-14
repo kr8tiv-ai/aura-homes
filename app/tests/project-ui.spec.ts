@@ -30,9 +30,18 @@ test("a non-technical intake creates and restores one local project", async ({ p
   await expect(page).toHaveURL(/\/build/);
   await expect(page.getByText("Foothills family home", { exact: true })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Project journey" })).toBeVisible();
-  // Explicit confirmation completes the requirements step, so the spine can
-  // safely recommend design next without inferring completion from filled fields.
-  await expect(page.getByText("Next · Shape your home", { exact: true })).toBeVisible();
+  /* Explicit confirmation completes the requirements step, so the product can
+     safely recommend design next without inferring completion from filled
+     fields. RENEGOTIATED Aug 14, 2026: this asserted the journey spine's
+     "Next · Shape your home" pill, which was retired when the status spine
+     began rendering the document's own recommendedNextAction — the same
+     destination plus the reason. The contract is unchanged and now reads it
+     from the single source: the recommendation exists, it names design, and
+     it points at /build. */
+  const nextAction = page.locator("[data-project-spine] [data-spine-next]");
+  await expect(nextAction).toBeVisible();
+  await expect(nextAction).toHaveAttribute("href", /^\/build\/?$/);
+  await expect(nextAction).toContainText(/shape your home/i);
 
   await page.reload();
   await expect(page.getByText("Foothills family home", { exact: true })).toBeVisible();

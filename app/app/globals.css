@@ -1376,6 +1376,60 @@ main p {
     0 24px 70px rgb(var(--tone-ink) / 0.09);
 }
 
+/* ---- the stage: the home beside the step that is changing it ---------
+   Layout only. The canvas is the export root and must keep one parent for
+   the whole session, so every state here is a grid rule — nothing in this
+   block can move a child, and `data-stage` is the only switch. */
+.builder-stage,
+.builder-stage__view,
+.builder-stage__controls {
+  display: grid;
+  /* NOT the implicit `auto` track. three.js writes a pixel width onto the
+     canvas element itself and only corrects it when its resize observer
+     fires, so for one frame after a window resize the canvas is still as wide
+     as the last layout — and an `auto` track sizes to that, dragging the whole
+     page sideways. A zero floor keeps the stale frame clipped where it
+     belongs. Measured: 1392px of canvas inside a 358px phone column. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem;
+}
+.builder-stage__view,
+.builder-stage__controls {
+  align-content: start;
+  min-inline-size: 0;
+}
+@media (min-width: 64rem) {
+  .builder-stage[data-stage="edit"] {
+    grid-template-columns: minmax(22rem, 0.95fr) minmax(34rem, 1.05fr);
+    /* start, not stretch: a stretched column is exactly as tall as the row,
+       which leaves sticky nothing to travel through */
+    align-items: start;
+  }
+  /* The model holds while the controls scroll. That is what "always present"
+     has to mean once a panel is taller than the screen. */
+  .builder-stage[data-stage="edit"] .builder-stage__view {
+    position: sticky;
+    top: 5.15rem;
+    max-block-size: calc(100vh - 6.5rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  /* Sticky inside a sticky column is a second frame nobody asked for. */
+  .builder-stage[data-stage="edit"] .builder-view-switch {
+    position: static;
+  }
+  .builder-stage[data-stage="edit"] .builder-viewport__stage {
+    min-block-size: 0;
+    block-size: clamp(18rem, calc(100vh - 20rem), 34rem);
+  }
+}
+/* Browsing the library is a different job: it keeps the full width, and the
+   model above it shrinks so the plans stay within reach of the fold. */
+.builder-stage[data-stage="browse"] .builder-viewport__stage {
+  min-block-size: 0;
+  block-size: min(26rem, 48vh);
+}
+
 /* ---- editable prebuilt plan library ------------------------------- */
 .plan-library {
   /* clip, NOT hidden: overflow-hidden makes this box the sticky containing

@@ -33,7 +33,16 @@ test("planar conversion drives the visible plan, 3D model and honest exports", a
   await expect(page.locator(".builder-viewport canvas")).toBeVisible();
 
   await page.getByRole("tab", { name: /^Export/ }).click();
-  await expect(page.getByText("This project uses planar graph geometry", { exact: false })).toBeVisible();
+  /* RENEGOTIATED Aug 14, 2026: the live readout (LF01) now discloses graph
+     mode too — "Not run" for the setback check and "Not modelled" for the
+     glazing ratio, each using this same honest sentence. Three copies of one
+     truthful disclosure is the product being consistent, not a regression, so
+     the assertion names the EXPORT tab's own wording instead of the shared
+     opening clause. The contract is unchanged: the export surface must say
+     which formats the graph actually reaches. */
+  await expect(
+    page.getByText("The project file, share link, glTF and OBJ below use the current graph-backed design", { exact: false }),
+  ).toBeVisible();
   await expect(page.getByRole("button", { name: "Download .dxf" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Download .ifc", exact: true })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Download .aura.json" })).toBeEnabled();

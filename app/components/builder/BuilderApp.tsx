@@ -62,12 +62,21 @@
       a ref and freed when it is superseded. The cost is one house's worth of
       buffers left to the garbage collector when the page unmounts, which
       happens as the WebGL context is being torn down anyway.
-   4. THE 3D CANVAS STAYS MOUNTED IN 2D MODE. The toggle hides it with CSS
-      rather than unmounting it, because `houseRef` — the group the .glb and
-      .obj exporters are handed — only exists while the canvas does. Unmounting
-      it would make "Download .glb" fail with "the 3D view has not finished
-      mounting yet" for anybody who had switched to the plan. `frameloop`
-      is `"demand"`, so a hidden canvas costs nothing per frame.
+   4. THE 3D CANVAS STAYS MOUNTED IN 2D MODE — AND ON EVERY STEP. The toggle
+      hides it with CSS rather than unmounting it, because `houseRef` — the
+      group the .glb and .obj exporters are handed — only exists while the
+      canvas does. Unmounting it would make "Download .glb" fail with "the 3D
+      view has not finished mounting yet" for anybody who had switched to the
+      plan. `frameloop` is `"demand"`, so a hidden canvas costs nothing per
+      frame.
+
+      THE STAGE BELOW EXTENDS THAT RULE TO THE LAYOUT. The guided walk shows
+      the home beside the step that is changing it, and it does so by moving
+      GRID RULES, never children: the canvas keeps one parent, one position and
+      one WebGL context from the first step to the last. Anything that would
+      re-parent it — a step-conditional wrapper, a keyed remount, a portal —
+      takes the export root with it. `tests/builder-viewer.spec.ts` holds a
+      mark on the live canvas element across the whole walk for exactly this.
    5. THE DRAWING KNOWS WHICH SPEC MADE IT. `drawn` holds the spec alongside
       the handoff, so the page can say "this drawing is of an earlier version
       of your home" instead of showing a stale sheet as if it were current.
@@ -176,6 +185,8 @@ import DrawingSheets from "./DrawingSheets";
 import ExportRow from "./ExportRow";
 import FixturePalette, { FixtureLayer, useFixtureGeometry } from "./FixturePalette";
 import GraphPlanEditor from "./GraphPlanEditor";
+import HandoffPanel from "./HandoffPanel";
+import LiveReadout from "./LiveReadout";
 import Plan2D from "./Plan2D";
 import PlanCatalog from "./PlanCatalog";
 import PlanSheet from "./PlanSheet";
@@ -562,17 +573,23 @@ const GUIDED_STEPS: ReadonlyArray<{
   id: GuidedStep;
   label: string;
   workspace: Workspace;
-  view?: ViewMode;
+  /* The view this step is honest in — plan where the decision is a plan
+     decision, model everywhere else. It is applied ON ARRIVAL and never
+     again, so the View toggle beside the model wins for as long as somebody
+     stays on the step. A preference, not a lock. Two steps used to arrive
+     with no preference at all and inherited whichever view the last step
+     left behind, which is how Performance could open in plan. */
+  view: ViewMode;
   hint: string;
 }> = [
-  { id: "brief", label: "Plans", workspace: "plans", hint: "Choose an editable concept or begin from Aura’s reference home." },
+  { id: "brief", label: "Plans", workspace: "plans", view: "3d", hint: "Choose an editable concept or begin from Aura’s reference home." },
   { id: "shell", label: "Shell", workspace: "shape", view: "3d", hint: "Shape the massing, roof and exterior openings." },
   { id: "rooms", label: "Rooms", workspace: "shape", view: "2d", hint: "Arrange the plan and its exact room faces." },
   { id: "openings", label: "Openings", workspace: "shape", view: "2d", hint: "Place doors and windows with measured feedback." },
   { id: "site", label: "Site", workspace: "shape", view: "3d", hint: "Check orientation, sun and terrain assumptions." },
-  { id: "performance", label: "Performance", workspace: "comfort", hint: "State comfort targets and review limitations." },
+  { id: "performance", label: "Performance", workspace: "comfort", view: "3d", hint: "State comfort targets and review limitations." },
   { id: "materials", label: "Materials", workspace: "shape", view: "3d", hint: "Assign a tactile, buildable finish palette." },
-  { id: "review", label: "Review", workspace: "export", hint: "Review, quote and hand the design off." },
+  { id: "review", label: "Review", workspace: "export", view: "3d", hint: "Review, quote and hand the design off." },
 ];
 
 const WORKSPACES: ReadonlyArray<{ id: Workspace; label: string; hint: string }> = [
@@ -1321,524 +1338,560 @@ export default function BuilderApp() {
         ) : null}
       </section>
 
-      <Pane on={workspace === "plans"}>
-        <PlanCatalog onChoose={choosePlan} currentName={spec.name} />
-      </Pane>
+      {/* ================================================================ THE STAGE
 
-      {/* The Site step's own panel. Mounted only while the walk is standing
-          on Site, because it owns form state that should start from the
-          document each time somebody arrives. */}
-      {editorMode === "guided" && guidedStep === "site" ? (
-        <div className="mt-6">
-          <SitePanel site={state.doc.site} onSite={editSite} check={siteCheck} />
-        </div>
-      ) : null}
+          The home, and the step that is changing it, beside each other. Two
+          grid columns at desktop widths and one stacked column below them,
+          with the model FIRST in the document either way — a guided walk in
+          which the thing you are shaping is below the fold is a walk taken on
+          faith.
 
-      {/* --------------------------------------------------------- the toggle */}
-      <div className="builder-view-switch rounded-2xl px-4 py-3 sm:px-5 sm:py-4">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <Segmented<ViewMode> label="View" value={mode} options={VIEW_MODES} onChange={setMode} />
-          <p className="max-w-md text-xs leading-relaxed text-aura-text/55">
-            {mode === "3d"
-              ? "Orbit the massing, move the sun, click any surface to say what it is made of, and click a fixture to edit it."
-              : "North up and to scale. Drag a corner to resize, a wall to push one face, an opening to slide it, or draw an interior partition inside a mass."}
-          </p>
-        </div>
+          THE COLUMNS ARE CSS AND ONLY CSS. The canvas inside is the export
+          root; moving it between parents would remount it, lose the GPU state
+          and break `houseRef` for the .glb writers. So `data-stage` swaps grid
+          rules while the children stay exactly where they are, on every step.
 
-        {/* Two views over one durable project document. */}
-        <details className="builder-document-note mt-3 border-t aura-hairline pt-3">
-          <summary>One document drives every view and handoff</summary>
-          <p className="mt-3 max-w-3xl text-xs leading-relaxed text-aura-text/60">
-            Push a wall in plan and the model moves. The same versioned project keeps partitions,
-            finishes, fixtures, comfort targets, repair-held details, autosave, share links, and
-            <span className="font-mono"> .aura.json</span> together. Legacy DXF and IFC consumers
-            still state their HomeSpec limits beside their actions.
-            {durableDetailCount > 0 ? (
-              <>
-                {" "}Current detail: {partitionCount} partition{partitionCount === 1 ? "" : "s"},{" "}
-                {finishCount} finish{finishCount === 1 ? "" : "es"}, and {fixtureCount} fixture
-                {fixtureCount === 1 ? "" : "s"}.
-              </>
-            ) : null}
-          </p>
-        </details>
-      </div>
+          THE PLANS WORKSPACE OPTS OUT and stays full width. The library
+          carries its own preview aside and a four-control filter row whose
+          minimum widths total more than a half-width column can give it, so
+          squeezing it there would push a scrollbar across the page. */}
+      <div className="builder-stage" data-stage={workspace === "plans" ? "browse" : "edit"}>
+        <div className="builder-stage__view">
+          {/* ------------------------------------------------------- the toggle */}
+          <div className="builder-view-switch rounded-2xl px-4 py-3 sm:px-5 sm:py-4">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <Segmented<ViewMode> label="View" value={mode} options={VIEW_MODES} onChange={setMode} />
+              <p className="max-w-md text-xs leading-relaxed text-aura-text/55">
+                {mode === "3d"
+                  ? "Orbit the massing, move the sun, click any surface to say what it is made of, and click a fixture to edit it."
+                  : "North up and to scale. Drag a corner to resize, a wall to push one face, an opening to slide it, or draw an interior partition inside a mass."}
+              </p>
+            </div>
 
-      {/* The 3D canvas is never unmounted — it is the export root. See
-          decision 4 in the header. */}
-      <div className={mode === "3d" ? "block" : "hidden"}>
-        <Viewport
-          home={home}
-          sun={sunPos}
-          hour={sun.hour}
-          selectedId={graphGeometry?.graph.storeys[0]?.id ?? activeVolumeId}
-          onSelect={selectVolume}
-          houseRef={houseRef}
-          loadEpoch={state.loadEpoch}
-          site={state.doc.site ?? null}
-          surfaces={
-            graphMode
-              ? null
-              : {
-                  index: surfaceIndex,
-                  overrides,
-                  picked: pickedSurface,
-                  onPick: setPickedSurface,
-                  enabled: mode === "3d",
-                }
-          }
-          comfort={comfortOverlay}
-          houseChildren={
-            graphMode ? null : (
-              <FixtureLayer
-                geometry={fixtureGeometry}
-                selectedId={activeFixtureId}
-                onSelect={pickFixture}
+            {/* Two views over one durable project document. */}
+            <details className="builder-document-note mt-3 border-t aura-hairline pt-3">
+              <summary>One document drives every view and handoff</summary>
+              <p className="mt-3 max-w-3xl text-xs leading-relaxed text-aura-text/60">
+                Push a wall in plan and the model moves. The same versioned project keeps partitions,
+                finishes, fixtures, comfort targets, repair-held details, autosave, share links, and
+                <span className="font-mono"> .aura.json</span> together. Legacy DXF and IFC consumers
+                still state their HomeSpec limits beside their actions.
+                {durableDetailCount > 0 ? (
+                  <>
+                    {" "}Current detail: {partitionCount} partition{partitionCount === 1 ? "" : "s"},{" "}
+                    {finishCount} finish{finishCount === 1 ? "" : "es"}, and {fixtureCount} fixture
+                    {fixtureCount === 1 ? "" : "s"}.
+                  </>
+                ) : null}
+              </p>
+            </details>
+          </div>
+
+          {/* The 3D canvas is never unmounted — it is the export root. See
+              decision 4 in the header. */}
+          <div className={mode === "3d" ? "block" : "hidden"}>
+            <Viewport
+              home={home}
+              sun={sunPos}
+              hour={sun.hour}
+              selectedId={graphGeometry?.graph.storeys[0]?.id ?? activeVolumeId}
+              onSelect={selectVolume}
+              houseRef={houseRef}
+              loadEpoch={state.loadEpoch}
+              site={state.doc.site ?? null}
+              surfaces={
+                graphMode
+                  ? null
+                  : {
+                      index: surfaceIndex,
+                      overrides,
+                      picked: pickedSurface,
+                      onPick: setPickedSurface,
+                      enabled: mode === "3d",
+                    }
+              }
+              comfort={comfortOverlay}
+              houseChildren={
+                graphMode ? null : (
+                  <FixtureLayer
+                    geometry={fixtureGeometry}
+                    selectedId={activeFixtureId}
+                    onSelect={pickFixture}
+                  />
+                )
+              }
+            />
+          </div>
+
+          <div className={mode === "2d" ? "block" : "hidden"}>
+            {graphGeometry ? (
+              <GraphPlanEditor graph={graphGeometry.graph} onEdit={editGraph} />
+            ) : (
+              <Plan2D
+                spec={spec}
+                onEdit={edit}
+                partitions={partitions}
+                onPartitions={editPartitions}
+                selectedVolumeId={activeVolumeId}
+                onSelectVolume={selectVolume}
+                selectedOpeningId={selectedOpeningId}
+                onSelectOpening={setSelectedOpeningId}
               />
-            )
-          }
-        />
-      </div>
-
-      <div className={mode === "2d" ? "block" : "hidden"}>
-        {graphGeometry ? (
-          <GraphPlanEditor graph={graphGeometry.graph} onEdit={editGraph} />
-        ) : (
-          <Plan2D
-            spec={spec}
-            onEdit={edit}
-            partitions={partitions}
-            onPartitions={editPartitions}
-            selectedVolumeId={activeVolumeId}
-            onSelectVolume={selectVolume}
-            selectedOpeningId={selectedOpeningId}
-            onSelectOpening={setSelectedOpeningId}
-          />
-        )}
-      </div>
-
-      {/* ------------------------------------------------ clearances, unburied
-
-          A wood stove four inches from a combustible wall is the most
-          expensive thing this tool can catch, and it catches it for nothing —
-          which is worth nothing at all if it is three tabs down. So the
-          blocking issues are here, under the model, on every tab and in both
-          views. The full account of every clearance, with the source each one
-          came from, is in the fixtures tab; this is the part that must not be
-          possible to miss. */}
-      {clashes.length > 0 ? (
-        <div className="rounded-xl border border-aura-violet p-5">
-          <div className="flex flex-wrap items-baseline justify-between gap-3">
-            <p className="aura-label text-aura-violet">
-              {clashes.length} clearance clash{clashes.length === 1 ? "" : "es"} in this home
-            </p>
-            <Button tone="danger" onClick={() => { setEditorMode("pro"); setWorkspace("fixtures"); }}>
-              Open the fixtures
-            </Button>
+            )}
           </div>
-          <ul className="mt-3 space-y-2">
-            {clashes.map((i, n) => (
-              <li
-                key={`${i.fixtureId}-${i.ruleKey ?? "fit"}-${n}`}
-                className="flex gap-3 text-sm leading-relaxed text-aura-text/80"
-              >
-                <span aria-hidden className="text-aura-violet">
-                  ·
-                </span>
-                <span>{i.message}</span>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-4 border-t aura-hairline pt-3 text-xs leading-relaxed text-aura-text/60">
-            The violet boxes in the 3D view are the clearance volumes that are obstructed — switch
-            them off with &ldquo;Clearances on&rdquo; in the fixtures tab if they are in the way.
-            Every clearance names the source it came from and whether that source is a code, a
-            manufacturer or a convention. None of it has been verified against the authority having
-            jurisdiction, and a wood-burning appliance is signed off by a WETT inspector on the day,
-            not by this page.
-          </p>
-        </div>
-      ) : null}
 
-      {worthChecking.length > 0 && clashes.length === 0 ? (
-        <p className="rounded-md border border-aura-lime px-4 py-3 text-xs leading-relaxed text-aura-text/70">
-          Nothing is clashing, but {worthChecking.length} thing
-          {worthChecking.length === 1 ? " is" : "s are"} worth checking about your fixtures — the
-          fixtures tab names {worthChecking.length === 1 ? "it" : "them"} in full.
-        </p>
-      ) : null}
+          {/* ------------------------------------------------ clearances, unburied
 
-      {graphMode ? (
-        <section className="rounded-xl border aura-hairline p-5">
-          <p className="aura-label text-aura-emerald">Graph geometry · exact faces</p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-md border aura-hairline px-4 py-3">
-              <p className="aura-label">Floor area</p>
-              <p className="mt-1 text-lg tabular-nums">{Math.round(home.summary.totalFloorAreaSqFt)} sq ft</p>
-            </div>
-            <div className="rounded-md border aura-hairline px-4 py-3">
-              <p className="aura-label">Room faces</p>
-              <p className="mt-1 text-lg tabular-nums">
-                {graphGeometry?.graph.storeys.reduce((sum, storey) => sum + storey.rooms.length, 0)}
-              </p>
-            </div>
-            <div className="rounded-md border aura-hairline px-4 py-3">
-              <p className="aura-label">Storeys</p>
-              <p className="mt-1 text-lg tabular-nums">{graphGeometry?.graph.storeys.length}</p>
-            </div>
-          </div>
-          {home.warnings.length > 0 ? (
-            <ul className="mt-4 space-y-1 text-xs leading-relaxed text-aura-violet">
-              {home.warnings.map((warning) => <li key={warning}>· {warning}</li>)}
-            </ul>
-          ) : null}
-        </section>
-      ) : (
-        <Readout spec={spec} summary={home.summary} warnings={home.warnings} />
-      )}
-
-      {/* Only in 3D: the panel's own copy says "click any surface in the view
-          above", and in plan mode there is no such view to click. Every
-          assignment already made survives the switch — it is in the document,
-          not in this panel. */}
-      {mode === "3d" && !graphMode ? (
-        <SurfacePicker
-          index={surfaceIndex}
-          overrides={overrides}
-          picked={pickedSurface}
-          onPick={setPickedSurface}
-          onChange={editSurfaces}
-        />
-      ) : null}
-
-      {/* ------------------------------------------------------- toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border aura-hairline px-5 py-4">
-        <p className="text-xs leading-relaxed text-aura-text/55">
-          {state.past.length === 0
-            ? "Nothing changed yet. Every edit here is undoable, and nothing in this tool is a dead end."
-            : `${state.past.length} step${state.past.length === 1 ? "" : "s"} back available · Ctrl+Z, Ctrl+Shift+Z · a wall drag, a partition, a finish, a fixture and opening a saved design are all one kind of step`}
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <Button onClick={() => dispatch({ type: "undo" })} disabled={!canUndo}>
-            Undo
-          </Button>
-          <Button onClick={() => dispatch({ type: "redo" })} disabled={!canRedo}>
-            Redo
-          </Button>
-          <Button onClick={() => setCommandsOpen(true)} title="Search tools and views · Ctrl+K">
-            Commands
-          </Button>
-          <Button
-            onClick={() =>
-              dispatch({
-                type: "load",
-                doc: defaultBuilderDocument(),
-                label: "reset",
-              })
-            }
-            title="Back to the Aura reference build"
-          >
-            Start over
-          </Button>
-        </div>
-      </div>
-
-      {/* ------------------------------------------------------ the workspaces */}
-      {editorMode === "pro" ? <nav role="tablist" aria-label="Builder workspaces" className="rounded-xl border aura-hairline p-2">
-        <div className="grid gap-1.5 sm:grid-cols-3 lg:grid-cols-7">
-          {WORKSPACES.map((w) => {
-            const on = w.id === workspace;
-            const badge =
-              w.id === "fixtures" && clashes.length > 0
-                ? `${clashes.length} clash${clashes.length === 1 ? "" : "es"}`
-                : null;
-            return (
-              <button
-                key={w.id}
-                type="button"
-                role="tab"
-                onClick={() => setWorkspace(w.id)}
-                aria-pressed={on}
-                aria-selected={on}
-                data-cursor="Select"
-                className={`rounded-md border px-3 py-2.5 text-left transition-colors ${
-                  on
-                    ? "border-aura-emerald text-aura-text"
-                    : "aura-hairline text-aura-text/60 hover:text-aura-text"
-                }`}
-              >
-                <span className="flex flex-wrap items-baseline gap-2">
-                  <span className="font-mono text-[0.65rem] uppercase tracking-label">
-                    {w.label}
-                  </span>
-                  {badge ? (
-                    <span className="rounded-full border border-aura-violet px-1.5 font-mono text-[0.55rem] uppercase tracking-label text-aura-violet">
-                      {badge}
-                    </span>
-                  ) : null}
-                </span>
-                <span className="mt-0.5 block text-[0.7rem] leading-snug text-aura-text/55">
-                  {w.hint}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </nav> : null}
-
-      {/* ============================================================== SHAPE */}
-      <Pane on={workspace === "shape"}>
-        {graphGeometry ? (
-          <section className="rounded-xl border aura-hairline p-5">
-            <p className="aura-label text-aura-emerald">Planar source of truth active</p>
-            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-aura-text/70">
-              Switch to Plan above to drag corners, add vertices and divide exact room faces. The 3D
-              model is rebuilt from those same graph edges. Undo returns through every conversion
-              and graph edit, including all the way to the untouched recovery HomeSpec.
-            </p>
-            {graphGeometry.migrationWarnings.length > 0 ? (
-              <ul className="mt-4 space-y-2 text-xs leading-relaxed text-aura-violet">
-                {graphGeometry.migrationWarnings.map((warning) => <li key={warning}>· {warning}</li>)}
-              </ul>
-            ) : null}
-          </section>
-        ) : (
-          <>
-            <section className="mb-5 rounded-xl border border-aura-emerald p-5">
-              <p className="aura-label text-aura-emerald">Ready for angled walls</p>
-              <p className="mt-3 max-w-3xl text-sm leading-relaxed text-aura-text/70">
-                Convert this single-storey massing into the planar graph to add non-rectangular
-                corners and exact room faces. The original design stays attached as recovery data;
-                details that cannot be placed with certainty are held for repair, never deleted.
-              </p>
-              <div className="mt-4">
-                <Button tone="loud" onClick={convertToPlanarGraph}>Convert to planar editing</Button>
+              A wood stove four inches from a combustible wall is the most
+              expensive thing this tool can catch, and it catches it for nothing —
+              which is worth nothing at all if it is three tabs down. So the
+              blocking issues are here, under the model, on every tab and in both
+              views — inside the view column rather than the control column, so
+              they travel with the thing they are about. The full account of every
+              clearance, with the source each one came from, is in the fixtures
+              tab; this is the part that must not be possible to miss. */}
+          {clashes.length > 0 ? (
+            <div className="rounded-xl border border-aura-violet p-5">
+              <div className="flex flex-wrap items-baseline justify-between gap-3">
+                <p className="aura-label text-aura-violet">
+                  {clashes.length} clearance clash{clashes.length === 1 ? "" : "es"} in this home
+                </p>
+                <Button tone="danger" onClick={() => { setEditorMode("pro"); setWorkspace("fixtures"); }}>
+                  Open the fixtures
+                </Button>
               </div>
-            </section>
-            <SpecPanel
-              spec={spec}
-              selectedVolumeId={activeVolumeId}
-              selectedOpeningId={selectedOpeningId}
-              onSelectVolume={selectVolume}
-              onSelectOpening={setSelectedOpeningId}
-              onEdit={edit}
-              sun={sun}
-              onSun={setSun}
-            />
-          </>
-        )}
-      </Pane>
+              <ul className="mt-3 space-y-2">
+                {clashes.map((i, n) => (
+                  <li
+                    key={`${i.fixtureId}-${i.ruleKey ?? "fit"}-${n}`}
+                    className="flex gap-3 text-sm leading-relaxed text-aura-text/80"
+                  >
+                    <span aria-hidden className="text-aura-violet">
+                      ·
+                    </span>
+                    <span>{i.message}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-4 border-t aura-hairline pt-3 text-xs leading-relaxed text-aura-text/60">
+                The violet boxes in the 3D view are the clearance volumes that are obstructed — switch
+                them off with &ldquo;Clearances on&rdquo; in the fixtures tab if they are in the way.
+                Every clearance names the source it came from and whether that source is a code, a
+                manufacturer or a convention. None of it has been verified against the authority having
+                jurisdiction, and a wood-burning appliance is signed off by a WETT inspector on the day,
+                not by this page.
+              </p>
+            </div>
+          ) : null}
 
-      {/* =========================================================== FIXTURES
-
-          The palette works from either view — it is a list, and adding a stove
-          does not need a canvas. What needs the 3D view is CLICKING one, which
-          is why `FixtureLayer` is mounted with the model and a click there
-          opens this tab. */}
-      <Pane on={workspace === "fixtures"}>
-        {graphMode ? (
-          <GraphPending feature="Fixture placement" />
-        ) : (
-          <>
-            <FixturePalette
-              spec={spec}
-              value={fixtures}
-              onChange={editFixtures}
-              selectedId={activeFixtureId}
-              onSelect={setSelectedFixtureId}
-              showClearances={showClearances}
-              onShowClearances={setShowClearances}
-              resolution={fixtureResolution}
-            />
-            <p className="mt-5 rounded-md border aura-hairline px-4 py-3 text-xs leading-relaxed text-aura-text/60">
-          Click a fixture in the 3D model to select it, and move it with the sliders here rather
-          than by dragging it around the view. That is deliberate: a stove that comes within about
-          fifteen inches of a wall turns square and seats flat against it, and a solar array is held
-          inside a roof-edge setback — snapping is doing something a free drag cannot express, and
-          the numbers you set here are the numbers that reach the schedule. Fixtures travel in the
-          .glb, project file, share links, library saves and autosave. They are not yet represented
-          on the legacy drawing set, in DXF or in IFC; those writers still derive their shell from
-          HomeSpec, and each export names that limitation.
+          {worthChecking.length > 0 && clashes.length === 0 ? (
+            <p className="rounded-md border border-aura-lime px-4 py-3 text-xs leading-relaxed text-aura-text/70">
+              Nothing is clashing, but {worthChecking.length} thing
+              {worthChecking.length === 1 ? " is" : "s are"} worth checking about your fixtures — the
+              fixtures tab names {worthChecking.length === 1 ? "it" : "them"} in full.
             </p>
-          </>
-        )}
-      </Pane>
-
-      {/* ============================================================ COMFORT
-
-          MOUNTED rather than hidden, like `AxonSheet` and `SemanticExport`
-          and for the same reason: the panel's whole content is derived from
-          `comfortReport`, which runs the plan solve on every spec change.
-          Gating the memo already stops that cost when the tab is shut; not
-          mounting the tree is the second half of the same bargain, and this
-          panel holds no state a switch must preserve — the settings, the
-          season and the heatmap all live in `BuilderApp`, so leaving and
-          coming back finds everything exactly as it was. */}
-      <Pane on={workspace === "comfort"}>
-        {graphMode ? (
-          <GraphPending feature="Comfort spaces" />
-        ) : workspace === "comfort" && comfort ? (
-          <ComfortPanel
-            report={comfort}
-            settings={comfortSettings}
-            onSettings={editComfort}
-            season={comfortSeason}
-            onSeason={setComfortSeason}
-            heatmap={heatmap}
-            onHeatmap={setHeatmap}
-          />
-        ) : null}
-      </Pane>
-
-      {/* =========================================================== DRAWINGS */}
-      <Pane on={workspace === "drawings"}>
-      {graphMode ? (
-        <GraphPending feature="Professional drawings" />
-      ) : (
-      <>
-      <section className="rounded-xl border border-aura-emerald p-6">
-        <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <p className="aura-label">Generate the drawing</p>
-          {stale ? (
-            <span className="rounded border border-aura-violet px-2 py-0.5 font-mono text-[0.6rem] uppercase tracking-label text-aura-violet">
-              Model changed since this sheet
-            </span>
           ) : null}
         </div>
-        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-aura-text/75">
-          The same object you have been dragging goes two ways at once. To the deterministic plan
-          engine — the one the design page uses — which solves a room program and returns a
-          dimensioned sheet at 1/4&quot; = 1&apos;-0&quot;, with every cost of that translation
-          itemised, because it solves ONE rectangle and you may well have built something else. And
-          to the drawing engine, which draws your model directly: site, foundation, roof plan, all
-          four elevations, a building section and the schedules. Both run in this browser — no
-          server, no key, no wait.
-        </p>
-        <div className="mt-5 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={generate}
-            data-cursor="Generate"
-            /* Deliberately never disabled. Fed a model with no floor area the
-               bridge returns a `blocked` note explaining why nothing was
-               drawn — which is a better answer than a dead button. */
-            className="rounded-full border border-aura-emerald bg-aura-emerald/10 px-6 py-2.5 font-mono text-xs uppercase tracking-label text-aura-emerald transition-colors hover:bg-aura-emerald/20"
-          >
-            {drawn ? (stale ? "Redraw from the current model" : "Draw it again") : "Generate the drawing"}
-          </button>
-          <span className="font-mono text-[0.65rem] uppercase tracking-label text-aura-text/45">
-            Deterministic · the same home always draws the same sheet
-          </span>
-        </div>
-        {/* THE HONESTY POLICY, next to the action rather than buried. */}
-        <p className="mt-5 border-t aura-hairline pt-4 max-w-3xl text-xs leading-relaxed text-aura-text/60">
-          This is a massing and layout tool. It is not a structural design, not an energy model, and
-          not a permit set. Nothing here has been checked against a building code, sized by an
-          engineer, or approved by anyone. A licensed designer and the trades&rsquo; engineers
-          produce the drawings you build from — this is the study you take to them.
-          {partitionCount + fixtureCount > 0 ? (
+
+        <div className="builder-stage__controls">
+          <Pane on={workspace === "plans"}>
+            <PlanCatalog onChoose={choosePlan} currentName={spec.name} />
+          </Pane>
+
+          {/* The Site step's own panel. Mounted only while the walk is standing
+              on Site, because it owns form state that should start from the
+              document each time somebody arrives. */}
+          {editorMode === "guided" && guidedStep === "site" ? (
+            <SitePanel site={state.doc.site} onSite={editSite} check={siteCheck} />
+          ) : null}
+
+          {graphMode ? (
+            <section className="rounded-xl border aura-hairline p-5">
+              <p className="aura-label text-aura-emerald">Graph geometry · exact faces</p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-md border aura-hairline px-4 py-3">
+                  <p className="aura-label">Floor area</p>
+                  <p className="mt-1 text-lg tabular-nums">{Math.round(home.summary.totalFloorAreaSqFt)} sq ft</p>
+                </div>
+                <div className="rounded-md border aura-hairline px-4 py-3">
+                  <p className="aura-label">Room faces</p>
+                  <p className="mt-1 text-lg tabular-nums">
+                    {graphGeometry?.graph.storeys.reduce((sum, storey) => sum + storey.rooms.length, 0)}
+                  </p>
+                </div>
+                <div className="rounded-md border aura-hairline px-4 py-3">
+                  <p className="aura-label">Storeys</p>
+                  <p className="mt-1 text-lg tabular-nums">{graphGeometry?.graph.storeys.length}</p>
+                </div>
+              </div>
+              {home.warnings.length > 0 ? (
+                <ul className="mt-4 space-y-1 text-xs leading-relaxed text-aura-violet">
+                  {home.warnings.map((warning) => <li key={warning}>· {warning}</li>)}
+                </ul>
+              ) : null}
+            </section>
+          ) : (
+            <Readout spec={spec} summary={home.summary} warnings={home.warnings} />
+          )}
+
+          {/* LF01/LF02 — the consequence of the edit, beside the edit. Cost bands
+              from `createProjectBudget`, the fit and coverage checks from the
+              `siteCheck` computed above, and one readiness reading that names what
+              is still missing. It recomputes from the document, so it moves while
+              you work rather than on a submit. */}
+          <LiveReadout document={state.doc} parcelCheck={siteCheck} />
+
+          {/* Only in 3D: the panel's own copy says "click any surface in the view
+              above", and in plan mode there is no such view to click. Every
+              assignment already made survives the switch — it is in the document,
+              not in this panel. */}
+          {mode === "3d" && !graphMode ? (
+            <SurfacePicker
+              index={surfaceIndex}
+              overrides={overrides}
+              picked={pickedSurface}
+              onPick={setPickedSurface}
+              onChange={editSurfaces}
+            />
+          ) : null}
+
+          {/* ------------------------------------------------------- toolbar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border aura-hairline px-5 py-4">
+            <p className="text-xs leading-relaxed text-aura-text/55">
+              {state.past.length === 0
+                ? "Nothing changed yet. Every edit here is undoable, and nothing in this tool is a dead end."
+                : `${state.past.length} step${state.past.length === 1 ? "" : "s"} back available · Ctrl+Z, Ctrl+Shift+Z · a wall drag, a partition, a finish, a fixture and opening a saved design are all one kind of step`}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => dispatch({ type: "undo" })} disabled={!canUndo}>
+                Undo
+              </Button>
+              <Button onClick={() => dispatch({ type: "redo" })} disabled={!canRedo}>
+                Redo
+              </Button>
+              <Button onClick={() => setCommandsOpen(true)} title="Search tools and views · Ctrl+K">
+                Commands
+              </Button>
+              <Button
+                onClick={() =>
+                  dispatch({
+                    type: "load",
+                    doc: defaultBuilderDocument(),
+                    label: "reset",
+                  })
+                }
+                title="Back to the Aura reference build"
+              >
+                Start over
+              </Button>
+            </div>
+          </div>
+
+          {/* ------------------------------------------------------ the workspaces */}
+          {editorMode === "pro" ? <nav role="tablist" aria-label="Builder workspaces" className="rounded-xl border aura-hairline p-2">
+            <div className="grid gap-1.5 sm:grid-cols-3 lg:grid-cols-7">
+              {WORKSPACES.map((w) => {
+                const on = w.id === workspace;
+                const badge =
+                  w.id === "fixtures" && clashes.length > 0
+                    ? `${clashes.length} clash${clashes.length === 1 ? "" : "es"}`
+                    : null;
+                return (
+                  <button
+                    key={w.id}
+                    type="button"
+                    role="tab"
+                    onClick={() => setWorkspace(w.id)}
+                    aria-pressed={on}
+                    aria-selected={on}
+                    data-cursor="Select"
+                    className={`rounded-md border px-3 py-2.5 text-left transition-colors ${
+                      on
+                        ? "border-aura-emerald text-aura-text"
+                        : "aura-hairline text-aura-text/60 hover:text-aura-text"
+                    }`}
+                  >
+                    <span className="flex flex-wrap items-baseline gap-2">
+                      <span className="font-mono text-[0.65rem] uppercase tracking-label">
+                        {w.label}
+                      </span>
+                      {badge ? (
+                        <span className="rounded-full border border-aura-violet px-1.5 font-mono text-[0.55rem] uppercase tracking-label text-aura-violet">
+                          {badge}
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="mt-0.5 block text-[0.7rem] leading-snug text-aura-text/55">
+                      {w.hint}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </nav> : null}
+
+          {/* ============================================================== SHAPE */}
+          <Pane on={workspace === "shape"}>
+            {graphGeometry ? (
+              <section className="rounded-xl border aura-hairline p-5">
+                <p className="aura-label text-aura-emerald">Planar source of truth active</p>
+                <p className="mt-3 max-w-3xl text-sm leading-relaxed text-aura-text/70">
+                  Switch to Plan above to drag corners, add vertices and divide exact room faces. The 3D
+                  model is rebuilt from those same graph edges. Undo returns through every conversion
+                  and graph edit, including all the way to the untouched recovery HomeSpec.
+                </p>
+                {graphGeometry.migrationWarnings.length > 0 ? (
+                  <ul className="mt-4 space-y-2 text-xs leading-relaxed text-aura-violet">
+                    {graphGeometry.migrationWarnings.map((warning) => <li key={warning}>· {warning}</li>)}
+                  </ul>
+                ) : null}
+              </section>
+            ) : (
+              <>
+                <section className="mb-5 rounded-xl border border-aura-emerald p-5">
+                  <p className="aura-label text-aura-emerald">Ready for angled walls</p>
+                  <p className="mt-3 max-w-3xl text-sm leading-relaxed text-aura-text/70">
+                    Convert this single-storey massing into the planar graph to add non-rectangular
+                    corners and exact room faces. The original design stays attached as recovery data;
+                    details that cannot be placed with certainty are held for repair, never deleted.
+                  </p>
+                  <div className="mt-4">
+                    <Button tone="loud" onClick={convertToPlanarGraph}>Convert to planar editing</Button>
+                  </div>
+                </section>
+                <SpecPanel
+                  spec={spec}
+                  selectedVolumeId={activeVolumeId}
+                  selectedOpeningId={selectedOpeningId}
+                  onSelectVolume={selectVolume}
+                  onSelectOpening={setSelectedOpeningId}
+                  onEdit={edit}
+                  sun={sun}
+                  onSun={setSun}
+                />
+              </>
+            )}
+          </Pane>
+
+          {/* =========================================================== FIXTURES
+
+              The palette works from either view — it is a list, and adding a stove
+              does not need a canvas. What needs the 3D view is CLICKING one, which
+              is why `FixtureLayer` is mounted with the model and a click there
+              opens this tab. */}
+          <Pane on={workspace === "fixtures"}>
+            {graphMode ? (
+              <GraphPending feature="Fixture placement" />
+            ) : (
+              <>
+                <FixturePalette
+                  spec={spec}
+                  value={fixtures}
+                  onChange={editFixtures}
+                  selectedId={activeFixtureId}
+                  onSelect={setSelectedFixtureId}
+                  showClearances={showClearances}
+                  onShowClearances={setShowClearances}
+                  resolution={fixtureResolution}
+                />
+                <p className="mt-5 rounded-md border aura-hairline px-4 py-3 text-xs leading-relaxed text-aura-text/60">
+              Click a fixture in the 3D model to select it, and move it with the sliders here rather
+              than by dragging it around the view. That is deliberate: a stove that comes within about
+              fifteen inches of a wall turns square and seats flat against it, and a solar array is held
+              inside a roof-edge setback — snapping is doing something a free drag cannot express, and
+              the numbers you set here are the numbers that reach the schedule. Fixtures travel in the
+              .glb, project file, share links, library saves and autosave. They are not yet represented
+              on the legacy drawing set, in DXF or in IFC; those writers still derive their shell from
+              HomeSpec, and each export names that limitation.
+                </p>
+              </>
+            )}
+          </Pane>
+
+          {/* ============================================================ COMFORT
+
+              MOUNTED rather than hidden, like `AxonSheet` and `SemanticExport`
+              and for the same reason: the panel's whole content is derived from
+              `comfortReport`, which runs the plan solve on every spec change.
+              Gating the memo already stops that cost when the tab is shut; not
+              mounting the tree is the second half of the same bargain, and this
+              panel holds no state a switch must preserve — the settings, the
+              season and the heatmap all live in `BuilderApp`, so leaving and
+              coming back finds everything exactly as it was. */}
+          <Pane on={workspace === "comfort"}>
+            {graphMode ? (
+              <GraphPending feature="Comfort spaces" />
+            ) : workspace === "comfort" && comfort ? (
+              <ComfortPanel
+                report={comfort}
+                settings={comfortSettings}
+                onSettings={editComfort}
+                season={comfortSeason}
+                onSeason={setComfortSeason}
+                heatmap={heatmap}
+                onHeatmap={setHeatmap}
+              />
+            ) : null}
+          </Pane>
+
+          {/* =========================================================== DRAWINGS */}
+          <Pane on={workspace === "drawings"}>
+          {graphMode ? (
+            <GraphPending feature="Professional drawings" />
+          ) : (
+          <>
+          <section className="rounded-xl border border-aura-emerald p-6">
+            <div className="flex flex-wrap items-baseline justify-between gap-3">
+              <p className="aura-label">Generate the drawing</p>
+              {stale ? (
+                <span className="rounded border border-aura-violet px-2 py-0.5 font-mono text-[0.6rem] uppercase tracking-label text-aura-violet">
+                  Model changed since this sheet
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-aura-text/75">
+              The same object you have been dragging goes two ways at once. To the deterministic plan
+              engine — the one the design page uses — which solves a room program and returns a
+              dimensioned sheet at 1/4&quot; = 1&apos;-0&quot;, with every cost of that translation
+              itemised, because it solves ONE rectangle and you may well have built something else. And
+              to the drawing engine, which draws your model directly: site, foundation, roof plan, all
+              four elevations, a building section and the schedules. Both run in this browser — no
+              server, no key, no wait.
+            </p>
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={generate}
+                data-cursor="Generate"
+                /* Deliberately never disabled. Fed a model with no floor area the
+                   bridge returns a `blocked` note explaining why nothing was
+                   drawn — which is a better answer than a dead button. */
+                className="rounded-full border border-aura-emerald bg-aura-emerald/10 px-6 py-2.5 font-mono text-xs uppercase tracking-label text-aura-emerald transition-colors hover:bg-aura-emerald/20"
+              >
+                {drawn ? (stale ? "Redraw from the current model" : "Draw it again") : "Generate the drawing"}
+              </button>
+              <span className="font-mono text-[0.65rem] uppercase tracking-label text-aura-text/45">
+                Deterministic · the same home always draws the same sheet
+              </span>
+            </div>
+            {/* THE HONESTY POLICY, next to the action rather than buried. */}
+            <p className="mt-5 border-t aura-hairline pt-4 max-w-3xl text-xs leading-relaxed text-aura-text/60">
+              This is a massing and layout tool. It is not a structural design, not an energy model, and
+              not a permit set. Nothing here has been checked against a building code, sized by an
+              engineer, or approved by anyone. A licensed designer and the trades&rsquo; engineers
+              produce the drawings you build from — this is the study you take to them.
+              {partitionCount + fixtureCount > 0 ? (
+                <>
+                  {" "}
+                  The {partitionCount} partition{partitionCount === 1 ? "" : "s"} and {fixtureCount}{" "}
+                  fixture{fixtureCount === 1 ? "" : "s"} you placed are not on these sheets: the drawing
+                  set is generated from the spec, and the spec does not carry them yet.
+                </>
+              ) : null}
+            </p>
+          </section>
+
+          {drawn ? (
             <>
-              {" "}
-              The {partitionCount} partition{partitionCount === 1 ? "" : "s"} and {fixtureCount}{" "}
-              fixture{fixtureCount === 1 ? "" : "s"} you placed are not on these sheets: the drawing
-              set is generated from the spec, and the spec does not carry them yet.
+              {/* The account of the translation leads, then the plan engine's own
+                  sheet, then the eight sheets drawn from the model itself. */}
+              <PlanSheet handoff={drawn.handoff} />
+              <DrawingSheets
+                set={drawn.set}
+                name={drawn.document.spec.name}
+                dateISO={drawn.dateISO}
+              />
             </>
           ) : null}
-        </p>
-      </section>
 
-      {drawn ? (
-        <>
-          {/* The account of the translation leads, then the plan engine's own
-              sheet, then the eight sheets drawn from the model itself. */}
-          <PlanSheet handoff={drawn.handoff} />
-          <DrawingSheets
-            set={drawn.set}
-            name={drawn.document.spec.name}
-            dateISO={drawn.dateISO}
-          />
-        </>
-      ) : null}
+          {/* ------------------------------------------------------ the ninth view
 
-      {/* ------------------------------------------------------ the ninth view
+              Beside the set rather than in it, because it is a different KIND of
+              drawing and saying so is more useful than hiding the difference
+              behind a matching sheet number. A0–A7 are DERIVED: the generator
+              knows what every line means, which is what lets them carry true
+              dimensions. This one is COMPUTED — which lines you can see from
+              three-quarters depends on every solid in the model at once, so there
+              is no closed form and it carries no dimensions on purpose.
 
-          Beside the set rather than in it, because it is a different KIND of
-          drawing and saying so is more useful than hiding the difference
-          behind a matching sheet number. A0–A7 are DERIVED: the generator
-          knows what every line means, which is what lets them carry true
-          dimensions. This one is COMPUTED — which lines you can see from
-          three-quarters depends on every solid in the model at once, so there
-          is no closed form and it carries no dimensions on purpose.
+              Mounted only while this tab is open. The hidden-line pass costs about
+              27 ms on the reference home and re-runs on every edit; that is worth
+              paying while somebody is reading the drawings and worth nothing at
+              all while they are dragging a slider two tabs away. */}
+          {workspace === "drawings" ? (
+            <div className="mt-6 space-y-3">
+              <p className="max-w-3xl text-xs leading-relaxed text-aura-text/60">
+                One more view, and the only one in this tool that cannot be worked out from arithmetic.
+                It also redraws LIVE from the model on screen, so unlike the sheets above it is never
+                stale — which does mean it can disagree with a set you generated before your last edit.
+              </p>
+              <AxonSheet home={home} name={spec.name} />
+            </div>
+          ) : null}
+          </>
+          )}
+          </Pane>
 
-          Mounted only while this tab is open. The hidden-line pass costs about
-          27 ms on the reference home and re-runs on every edit; that is worth
-          paying while somebody is reading the drawings and worth nothing at
-          all while they are dragging a slider two tabs away. */}
-      {workspace === "drawings" ? (
-        <div className="mt-6 space-y-3">
-          <p className="max-w-3xl text-xs leading-relaxed text-aura-text/60">
-            One more view, and the only one in this tool that cannot be worked out from arithmetic.
-            It also redraws LIVE from the model on screen, so unlike the sheets above it is never
-            stale — which does mean it can disagree with a set you generated before your last edit.
-          </p>
-          <AxonSheet home={home} name={spec.name} />
+          {/* ============================================================= EXPORT */}
+          <Pane on={workspace === "export"}>
+            <div className="mb-6">
+              <BuilderOrderHandoff document={state.doc} />
+            </div>
+            <ExportRow
+              value={state.doc}
+              comfort={comfort}
+              houseRef={houseRef}
+              onLoad={(loaded, label) =>
+                dispatch({
+                  type: "load",
+                  doc: loaded,
+                  label,
+                })
+              }
+            />
+            {/* One package for the professional who has to finish this: the
+                project, its drawings, its cost snapshot and the evidence
+                notes, carrying the hash that says which design they describe.
+                It sits beside the individual exporters rather than replacing
+                them — a drafter who wants only the DXF should not have to
+                take the rest. */}
+            <HandoffPanel document={state.doc} comfort={comfort} />
+            {/* Mounted only while this tab is open: `roundTripReport` really does
+                serialise the whole building and parse it back — 4.5 ms for the
+                reference home, 28.8 ms for a deliberately absurd one, both measured
+                by the module itself — and it re-runs on every spec change. */}
+            {workspace === "export" && !graphMode ? (
+              <div className="mt-6">
+                <SemanticExport document={state.doc} comfort={comfort} />
+              </div>
+            ) : null}
+          </Pane>
+
+          {/* ============================================================ LIBRARY
+
+              Always mounted — see decision 7. It owns the autosave loop and the
+              crash-recovery handshake, and both have to be running whether or not
+              this is the tab on screen. */}
+          <Pane on={workspace === "library"}>
+            <ProjectLibrary
+              value={state.doc}
+              onOpen={(loaded, label) =>
+                dispatch({
+                  type: "load",
+                  doc: loaded,
+                  label,
+                })
+              }
+            />
+            <p className="mt-5 rounded-md border aura-hairline px-4 py-3 text-xs leading-relaxed text-aura-text/60">
+              Every saved design and autosave is a complete versioned project: shell geometry,
+              partitions, finishes, fixtures, comfort targets and anything held for repair. Opening or
+              restoring one is still an ordinary edit, so Ctrl+Z puts the previous project back. Legacy
+              HomeSpec-only records remain readable and are migrated without overwriting their source.
+            </p>
+          </Pane>
         </div>
-      ) : null}
-      </>
-      )}
-      </Pane>
-
-      {/* ============================================================= EXPORT */}
-      <Pane on={workspace === "export"}>
-        <div className="mb-6">
-          <BuilderOrderHandoff document={state.doc} />
-        </div>
-        <ExportRow
-          value={state.doc}
-          comfort={comfort}
-          houseRef={houseRef}
-          onLoad={(loaded, label) =>
-            dispatch({
-              type: "load",
-              doc: loaded,
-              label,
-            })
-          }
-        />
-        {/* Mounted only while this tab is open: `roundTripReport` really does
-            serialise the whole building and parse it back — 4.5 ms for the
-            reference home, 28.8 ms for a deliberately absurd one, both measured
-            by the module itself — and it re-runs on every spec change. */}
-        {workspace === "export" && !graphMode ? (
-          <div className="mt-6">
-            <SemanticExport document={state.doc} comfort={comfort} />
-          </div>
-        ) : null}
-      </Pane>
-
-      {/* ============================================================ LIBRARY
-
-          Always mounted — see decision 7. It owns the autosave loop and the
-          crash-recovery handshake, and both have to be running whether or not
-          this is the tab on screen. */}
-      <Pane on={workspace === "library"}>
-        <ProjectLibrary
-          value={state.doc}
-          onOpen={(loaded, label) =>
-            dispatch({
-              type: "load",
-              doc: loaded,
-              label,
-            })
-          }
-        />
-        <p className="mt-5 rounded-md border aura-hairline px-4 py-3 text-xs leading-relaxed text-aura-text/60">
-          Every saved design and autosave is a complete versioned project: shell geometry,
-          partitions, finishes, fixtures, comfort targets and anything held for repair. Opening or
-          restoring one is still an ordinary edit, so Ctrl+Z puts the previous project back. Legacy
-          HomeSpec-only records remain readable and are migrated without overwriting their source.
-        </p>
-      </Pane>
+      </div>
 
       {commandsOpen ? (
         <div className="builder-command-backdrop" onMouseDown={() => setCommandsOpen(false)}>

@@ -529,6 +529,25 @@ function SunMarker({ sun, distance, theme }: { sun: SunPosition; distance: numbe
   );
 }
 
+/**
+ * The geometry currently in the scene, named in one string.
+ *
+ * It is a PROJECTION of the built `HomeGeometry`, never a second measurement
+ * of it: every field is read straight off the summary `geometry.ts` produced,
+ * so it cannot disagree with what the canvas is drawing. Two readers share it
+ * — the contact-shadow key, which has to re-bake when the massing moves, and
+ * the `data-scene-geometry` attribute a test can watch to see an edit arrive.
+ * One source, two readers, rather than two formulas for one fact.
+ *
+ * WHAT IT DOES NOT COVER, deliberately: finishes, comfort plates, the sun and
+ * the ground are not geometry, and a signature that moved when a wall was
+ * repainted would tell a reader the shape had changed when it had not.
+ */
+function sceneSignature(home: HomeGeometry): string {
+  const b = home.summary.boundsWithRoof;
+  return `${home.volumes.length}-${b.minX}-${b.maxX}-${b.minZ}-${b.maxZ}-${home.summary.totalFloorAreaSqFt}`;
+}
+
 /** Draw one frame whenever React commits a change to the scene. This is what
  *  makes `frameloop="demand"` safe: every slider, every theme flip and every
  *  rebuild passes through a render of this component's parent. */
@@ -588,7 +607,7 @@ function Scene({
   const shadowSpan = radius + 25;
   const sunDistance = Math.max(150, radius * 4);
   const [sx, sy, sz] = sun.direction;
-  const shadowKey = `${home.volumes.length}-${b.minX}-${b.maxX}-${b.minZ}-${b.maxZ}-${home.summary.totalFloorAreaSqFt}`;
+  const shadowKey = sceneSignature(home);
 
   return (
     <>
@@ -803,11 +822,19 @@ export default function Viewport({
     <div
       data-builder-quality={quality.tier}
       data-load-epoch={loadEpoch}
+      /* The shape on screen, readable from outside the canvas. WebGL renders
+         to pixels a test cannot ask questions of, so the geometry the scene
+         was handed is published here instead — it moves the moment an edit
+         reaches the viewer and holds still when nothing about the shape
+         changed. */
+      data-scene-geometry={sceneSignature(home)}
       data-frame-target-x={initial.target[0].toFixed(3)}
       data-frame-target-z={initial.target[2].toFixed(3)}
       className="builder-viewport relative overflow-hidden rounded-2xl bg-aura-sunken"
     >
-      <div className="aspect-[16/10] min-h-[22rem] w-full lg:aspect-[16/9] lg:min-h-[34rem]">
+      {/* The class is the layout hook the builder stage sizes against; the
+          utilities remain the default shape wherever no stage rule applies. */}
+      <div className="builder-viewport__stage aspect-[16/10] min-h-[22rem] w-full lg:aspect-[16/9] lg:min-h-[34rem]">
         <Canvas
           shadows
           dpr={[1, quality.maxDpr]}

@@ -50,7 +50,12 @@ export default function ProjectJourneySpine() {
           );
         })}
       </nav>
-      <Link href={next.href} className="project-spine-next">Next · {next.next}</Link>
+      {/* The "Next · …" pill lived here until Aug 14, 2026, when the status
+          spine below started rendering the document's own
+          recommendedNextAction — the same destination, plus the reason it is
+          recommended. Two pills pointing one place is the product saying the
+          same thing twice, which is the opposite of calm. One affordance,
+          the one that explains itself. */}
     </section>
   );
 }
