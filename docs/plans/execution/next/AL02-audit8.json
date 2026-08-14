@@ -1,0 +1,27 @@
+{
+  "node": "AL02",
+  "graphVersion": "1.2",
+  "job": "Audit #8: the resumed 48-hour cadence's next fresh-context grading, due 2026-08-16.",
+  "context": "Audit #7 (2026-08-14) restored the cadence after a four-day lapse that coincided exactly with the window in which the frozen-wind and deck-piercing regressions shipped. It raised 7 findings; findings 1, 2, 5 and 7 were fixed the same day, finding 4 (a present-tense claim that the unbuilt trust owned the liquidity) was rewritten as an explicit design-vs-live split, and finding 6 (process) produced the multi-agent coordination protocol now in graph v1.2 section 2b.",
+  "writeSet": ["docs/AUDIT-LOG.md (append only)", "docs/plans/execution/next/AL02-audit8.json"],
+  "rejectionGates": [
+    "the auditor must be a context that did not write the code under audit - if you built any of it, hand this manifest to a fresh session",
+    "append-only: never edit prior audit entries",
+    "do NOT re-run test:ui or meadow-proof if another agent or build is active on the machine; audit their recorded evidence instead and say that is what you did"
+  ],
+  "instructions": [
+    "1. Read Audit #7 in docs/AUDIT-LOG.md for the house format and its open items.",
+    "2. Re-run the fast anchors yourself: cd app && npx tsc --noEmit && npm test; cd ../agent && npm run demo (ex-land totals MUST equal data/alberta/cost-model.json totalsExLand to the dollar); cd ../contracts && npm test.",
+    "3. Grade the wave since Audit #7 - the B-P1 site slot and Site step, the FD1 shared scene geometry, the perf pass, the submission refresh, the listings schema, and whatever else the git log shows since commit 8d1c78c.",
+    "4. Specifically verify: (a) does the FD1 refactor prove it changed structure and not values (the atlas instancesSha256 must be unchanged); (b) does the Site step ever write an unvalidated or partial parcel; (c) does the A1 sheet still print its honest blank when there is no site; (d) do the new listings fields make a provenance-less photo structurally impossible or merely discouraged; (e) did any doc reintroduce a banned claim (run tests/release-truth.spec.ts).",
+    "5. Check Audit #7's own follow-through: is finding 4's design-vs-live split honest, and is finding 6's coordination protocol actually being followed by the parallel waves.",
+    "6. Append '## Audit #8 - <date> - fresh-context checker' in the house format, numbered findings with file:line anchors, and set the next audit due 48h out."
+  ],
+  "verify": {
+    "commands": ["git diff --stat docs/AUDIT-LOG.md"],
+    "note": "the audit IS the artifact; commit as Matt-Aurora-Ventures <lucidbloks@gmail.com>, no Co-Authored-By"
+  },
+  "sideEffect": "local",
+  "status": "ready",
+  "dueISO": "2026-08-16"
+}

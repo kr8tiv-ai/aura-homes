@@ -1,3 +1,19 @@
+/* Footprints come from ONE module so the mask and the meshes cannot drift.
+   Pads and feathers stay here, because they are this consumer's own. */
+import {
+  BENCH_CENTER,
+  DECK_RECT,
+  FIREPIT_CENTER,
+  HOUSE_RECT,
+  PATH,
+  STEPS_RECT_TIGHT,
+  STEPS_RECT_WIDE,
+  TUB_CENTER,
+  WALKWAY_SEGMENT,
+  type GroundRect,
+  type GroundSegment,
+} from "./geometry";
+
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 
 const smooth01 = (a: number, b: number, value: number) => {
@@ -39,33 +55,33 @@ function segmentDistance(x: number, z: number, ax: number, az: number, bx: numbe
   return Math.hypot(x - (ax + vx * t), z - (az + vz * t));
 }
 
-const PATH: [number, number][] = [
-  [-2.4, 33], [-2.1, 31.2], [-1.6, 29.2], [-0.6, 27.4], [0.3, 25.6], [0.9, 23.8],
-  [0.6, 21.8], [-0.4, 19.6], [-1.4, 17.2], [-2, 14.8], [-1.9, 12.4], [-1.3, 10.4],
-  [-0.5, 8.9], [0.1, 7.7],
-];
+const rectDistanceTo = (x: number, z: number, rect: GroundRect) =>
+  rectangleDistance(x, z, rect.x0, rect.z0, rect.x1, rect.z1);
+
+const segmentDistanceTo = (x: number, z: number, run: GroundSegment) =>
+  segmentDistance(x, z, run.ax, run.az, run.bx, run.bz);
 
 export function sampleMeadowClearance(x: number, z: number, tight = false): number {
   const fade = (distance: number, pad: number, feather: number) => clamp01((distance - pad) / feather);
   let value = 1;
   const home = tight ? [0.12, 0.4] : [0.3, 1.2];
-  value = Math.min(value, fade(rectangleDistance(x, z, -4.3, -3.4, 4.3, 3.4), home[0], home[1]));
+  value = Math.min(value, fade(rectDistanceTo(x, z, HOUSE_RECT), home[0], home[1]));
   if (!tight) {
-    value = Math.min(value, fade(rectangleDistance(x, z, -3.9, 2.95, 3.6, 6.3), 0.28, 0.95));
-    value = Math.min(value, fade(segmentDistance(x, z, 3.45, 4.65, 5.9, 5.35), 0.85, 0.8));
+    value = Math.min(value, fade(rectDistanceTo(x, z, DECK_RECT), 0.28, 0.95));
+    value = Math.min(value, fade(segmentDistanceTo(x, z, WALKWAY_SEGMENT), WALKWAY_SEGMENT.halfWidth, 0.8));
   }
-  /* Entrance steps. The five treads run z 6.91–8.53 (group 6.55 + (i+1)*0.36,
-     0.36 deep) with glass cheeks alongside — the tight rect that briefly
-     served every consumer here stopped at z 7.3 and left the three lower
-     treads unprotected, which is exactly where 1.4 m atlas cards stood
-     through the stairs. Tall consumers (hero blades, atlas cards) take the
-     wide rect; the 8–18 cm filler may still hug the boxes. */
+  /* Entrance steps. The tread run is STEPS_TREAD_FOOTPRINT (derived from
+     STEPS_TREADS, so it cannot fall out of step with the mesh); the tight
+     rect stops well short of its far edge and, when it briefly served every
+     consumer here, left the three lower treads unprotected — exactly where
+     1.4 m atlas cards stood through the stairs. Tall consumers (hero blades,
+     atlas cards) take the wide rect; the 8–18 cm filler may hug the boxes. */
   value = Math.min(value, tight
-    ? fade(rectangleDistance(x, z, -1.1, 6.15, 1.2, 7.3), 0.12, 0.4)
-    : fade(rectangleDistance(x, z, -1.45, 6.3, 1.55, 8.7), 0.24, 0.7));
-  value = Math.min(value, fade(Math.hypot(x - 5.9, z - 5.4), tight ? 0.92 : 1.4, tight ? 0.5 : 0.9));
-  value = Math.min(value, fade(Math.hypot(x + 4.7, z - 6.5), tight ? 0.5 : 1.3, tight ? 0.45 : 0.8));
-  value = Math.min(value, fade(Math.hypot(x - 8.6, z - 18), tight ? 0.6 : 0.95, tight ? 0.5 : 0.8));
+    ? fade(rectDistanceTo(x, z, STEPS_RECT_TIGHT), 0.12, 0.4)
+    : fade(rectDistanceTo(x, z, STEPS_RECT_WIDE), 0.24, 0.7));
+  value = Math.min(value, fade(Math.hypot(x - TUB_CENTER.x, z - TUB_CENTER.z), tight ? 0.92 : 1.4, tight ? 0.5 : 0.9));
+  value = Math.min(value, fade(Math.hypot(x - FIREPIT_CENTER.x, z - FIREPIT_CENTER.z), tight ? 0.5 : 1.3, tight ? 0.45 : 0.8));
+  value = Math.min(value, fade(Math.hypot(x - BENCH_CENTER.x, z - BENCH_CENTER.z), tight ? 0.6 : 0.95, tight ? 0.5 : 0.8));
   let pathDistance = Number.POSITIVE_INFINITY;
   for (let index = 0; index < PATH.length - 1; index += 1) {
     pathDistance = Math.min(

@@ -6,6 +6,7 @@ import {
   validateBuilderDocument,
   type BuilderDocument,
 } from "../builder/document";
+import { validateBuilderSite, type BuilderSite } from "../builder/site";
 import {
   createProjectBudget,
   defaultProjectBudgetScenario,
@@ -256,6 +257,35 @@ export function withProjectDesign(project: AuraProject, document: BuilderDocumen
     stepStates,
     recommendedNextAction: changed ? nextActionFor(stepStates) : checkedProject.project.recommendedNextAction,
   };
+}
+
+/**
+ * Put a piece of land under the project's design — or take it away again.
+ *
+ * The site lives on the BUILDER DOCUMENT rather than beside it, so every
+ * surface that already reads the design (the viewport, the A1 site plan, the
+ * pile schedule, the share codec, the export) receives it without a second
+ * source of truth to keep in step. That also means writing one is a design
+ * change: it goes through `withProjectDesign`, which rehashes and reopens the
+ * design step exactly as any other edit would.
+ *
+ * Passing `null` removes the slot rather than storing an empty parcel, which
+ * restores the document — and its hash — to what it was before a plot was
+ * ever attached.
+ */
+export function withProjectSite(
+  project: AuraProject,
+  site: BuilderSite | null,
+  now: Date,
+): AuraProject {
+  const checked = validateAuraProject(project);
+  if (!checked.ok) throw new Error(`Cannot update this project: ${checked.problem}`);
+  const checkedSite = validateBuilderSite(site);
+  if (!checkedSite.ok) throw new Error(`Cannot save this plot: ${checkedSite.problem}`);
+  const document: BuilderDocument = { ...checked.project.design.document };
+  if (checkedSite.site) document.site = checkedSite.site;
+  else delete document.site;
+  return withProjectDesign(checked.project, document, now);
 }
 
 export function withProjectStepState(

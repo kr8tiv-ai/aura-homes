@@ -5,8 +5,15 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Counter, GrowBar, Reveal, Stagger, StaggerItem } from "@/components/Reveal";
 import LandMap from "@/components/land/LandMap";
+import {
+  PLOT_SETBACK_NOTE,
+  PLOT_UNKNOWN_NOTE,
+  isPlotOnSite,
+  siteFromListing,
+} from "@/components/land/plotSite";
 import { useAuraProject } from "@/components/project/ProjectContext";
 import { createDiscoveryRecord, setProjectShortlist, upsertProjectDiscoveryRecord } from "@/lib/project/discoveryRecord";
+import { withProjectSite } from "@/lib/project/document";
 import {
   DEMO_LAND_LISTINGS,
   LAND_LISTING_PROVIDERS,
@@ -57,6 +64,14 @@ export default function LandPage() {
   >({ kind: "manual" });
   const [show, setShow] = useState<"all" | LandFitResult["verdict"]>("all");
   const [saveProblem, setSaveProblem] = useState<string | null>(null);
+  /* One card at a time answers, because one card at a time was pressed. The
+     id keeps the answer under the plot it belongs to. */
+  const [plotState, setPlotState] = useState<
+    | { kind: "idle" }
+    | { kind: "no-project"; id: string }
+    | { kind: "saved"; id: string }
+    | { kind: "problem"; id: string; message: string }
+  >({ kind: "idle" });
 
   useEffect(() => {
     const projectId = new URLSearchParams(window.location.search).get("project");
@@ -114,6 +129,7 @@ export default function LandPage() {
   const potential = results.filter((result) => result.verdict === "potential-match").length;
   const review = results.filter((result) => result.verdict === "manual-review").length;
   const shortlisted = new Set(project?.discovery.land.shortlist ?? []);
+  const currentSite = project?.design.document.site ?? null;
 
   const updateNumber = (key: "floorAreaSqft" | "footprintSqft" | "maxHeightFt", raw: string) =>
     setRequirements((current) => ({ ...current, [key]: numberValue(raw, current[key]) }));
@@ -146,6 +162,30 @@ export default function LandPage() {
       });
     } catch (error) {
       setSaveProblem(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  /* THE PLOT GOES UNDER THE HOME. Not into a shortlist — onto the design
+     itself, where the viewport, the A1 site plan and the pile schedule all
+     already look. Refusing quietly would be the wrong failure here, so a
+     visitor with no project open is told so and sent somewhere. */
+  async function useThisPlot(result: LandFitResult) {
+    const site = siteFromListing(result.listing);
+    if (!site) return;
+    if (!project) {
+      setPlotState({ kind: "no-project", id: result.listing.id });
+      return;
+    }
+    setPlotState({ kind: "idle" });
+    try {
+      await update((current) => withProjectSite(current, site, new Date()));
+      setPlotState({ kind: "saved", id: result.listing.id });
+    } catch (error) {
+      setPlotState({
+        kind: "problem",
+        id: result.listing.id,
+        message: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
@@ -292,7 +332,11 @@ export default function LandPage() {
       </Stagger>
 
       <Stagger className="mt-6 space-y-5">
-        {shown.map((result) => (
+        {shown.map((result) => {
+          const plot = siteFromListing(result.listing);
+          const onThisProject = isPlotOnSite(result.listing, currentSite);
+          const said = plotState.kind !== "idle" && plotState.id === result.listing.id ? plotState : null;
+          return (
           <StaggerItem key={result.listing.id}>
             <article id={`land-${result.listing.id}`} className="aura-panel aura-panel-lift scroll-mt-32 p-6 sm:p-7">
               <div className="flex flex-wrap items-start justify-between gap-5">
@@ -343,6 +387,23 @@ export default function LandPage() {
                 >
                   {!project ? "Start a project to save" : shortlisted.has(result.listing.id) ? "Saved to project" : "Save demo comparison"}
                 </button>
+                {plot ? (
+                  /* Never disabled. Pressed without a project it explains
+                     itself below, which is a better answer than a dead
+                     control that says nothing. */
+                  <button
+                    type="button"
+                    aria-pressed={onThisProject}
+                    onClick={() => void useThisPlot(result)}
+                    className={`rounded-md border px-4 py-2 text-xs font-medium uppercase tracking-label transition-colors ${
+                      onThisProject
+                        ? "border-aura-emerald text-aura-emerald"
+                        : "aura-hairline hover:border-aura-emerald hover:text-aura-emerald"
+                    }`}
+                  >
+                    {onThisProject ? "This project’s plot" : "Use this plot"}
+                  </button>
+                ) : null}
                 <Link href="/budget" className="rounded-md border aura-hairline px-4 py-2 text-xs font-medium uppercase tracking-label transition-colors hover:border-aura-emerald hover:text-aura-emerald">
                   Test the cost scenario
                 </Link>
@@ -350,9 +411,45 @@ export default function LandPage() {
                   Find the build team
                 </Link>
               </div>
+
+              {/* WHY THE SETBACKS ARE ZERO, next to the button that writes
+                  them, because a reader who never opens the builder still
+                  deserves to know what the number means. */}
+              {plot ? (
+                <div className="mt-4 max-w-2xl space-y-2">
+                  <p className="text-xs leading-relaxed text-aura-text/60">{PLOT_SETBACK_NOTE}</p>
+                  {said?.kind === "no-project" ? (
+                    <p role="alert" className="text-xs leading-relaxed text-aura-violet">
+                      No project is open, so there is nowhere to put this plot.{" "}
+                      <Link href="/start" className="underline underline-offset-4">
+                        Start a project
+                      </Link>{" "}
+                      and it will have somewhere to land.
+                    </p>
+                  ) : null}
+                  {said?.kind === "saved" ? (
+                    <p role="status" className="text-xs leading-relaxed tabular-nums text-aura-emerald">
+                      Saved as this project&rsquo;s site: a {plot.parcel.lotWidthFt} × {plot.parcel.lotDepthFt} ft
+                      lot with zero setbacks. Slope and the direction the front lot line faces are not
+                      in this record, so the ground stays flat until the builder&rsquo;s Site step is
+                      answered.
+                    </p>
+                  ) : null}
+                  {said?.kind === "problem" ? (
+                    <p role="alert" className="text-xs leading-relaxed text-aura-violet">
+                      {said.message}
+                    </p>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="mt-4 max-w-2xl text-xs leading-relaxed text-aura-text/60">
+                  {PLOT_UNKNOWN_NOTE}
+                </p>
+              )}
             </article>
           </StaggerItem>
-        ))}
+          );
+        })}
       </Stagger>
 
       {saveProblem ? <p role="alert" className="mt-4 text-sm text-aura-violet">{saveProblem}</p> : null}

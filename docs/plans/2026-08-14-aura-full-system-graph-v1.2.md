@@ -259,6 +259,46 @@ flowchart TD
 
 ---
 
+## 2b. Multi-agent coordination protocol (added Aug 14, after running it)
+
+The graph's whole point is that work can be handed to more than one worker at
+once. Doing that in ONE shared checkout — no worktrees, no merge step — works
+if and only if the fan-out is designed around these rules. They are written
+here because we ran it and they are what made it safe.
+
+**1. Disjoint write-sets are the coordination primitive.** Every parallel node
+declares the exact files it may touch, and no two nodes may name the same file.
+Not "should not" — *may not*. If a node discovers it needs a file outside its
+set, it stops and reports rather than reaching. Two agents editing one file in
+a shared tree is silent data loss, not a merge conflict.
+
+**2. Agents never touch git.** No commit, add, push, checkout, stash, or
+restore. Concurrent index writes corrupt each other, and a `git restore` from
+one agent deletes another's in-flight work. Agents leave changes in the working
+tree; the orchestrator reviews the whole surface and commits once.
+
+**3. Heavyweight gates are serialized, and only the orchestrator runs them.**
+`npm run build`, `npm run test:ui`, and `scripts/meadow-proof.mjs` each want the
+whole machine. Run in parallel they contend and produce numbers that describe
+the contention, not the product — we have already seen a proof's own second
+browser tab manufacture 161–257 ms long tasks and fail a healthy meadow. Agents
+run `tsc` and their own targeted spec; the orchestrator runs the full chain once
+against the integrated tree.
+
+**4. Fresh-context nodes must be genuinely fresh.** An audit or verification
+node handed to the context that wrote the code is not an audit. AL01 found a
+present-tense claim the author had read past twice.
+
+**5. Sequence anything that shares a surface.** Nodes touching the same
+subsystem (FD1 and NW01 both live in the story scene) go in different waves,
+even when their file lists happen not to overlap today.
+
+**6. The orchestrator owns integration.** Read every agent's report against the
+actual diff before believing it, run the anchors, then commit and deploy. A
+node reporting "done" is a claim like any other: it needs its receipt.
+
+---
+
 ## 3. Verification graph — anchor additions
 
 v1.1 §19 stands, plus these minimum anchors:
@@ -278,6 +318,88 @@ v1.1 §19 stands, plus these minimum anchors:
   `homes-live` spec suite.
 - **XH01 handle grep**; **SUBMISSION placeholder check**; Lighthouse delta
   vs PB01.
+
+---
+
+## 3b. U-stream — the workspace people actually live in
+
+Added August 14, 2026 from the founder's product direction. The through-line is
+one sentence: **one portable project you own** — and today the product keeps
+that promise in the data model while the interface still makes you take its
+word for it. This stream makes the promise visible on every screen.
+
+Ordering principle: a node ships only when its own falsifiable gate passes, and
+nodes that touch the same surface go in different waves (§2b rule 5). Nothing
+here is allowed to slow the Aug 21 submission path; the waves are sized so the
+hackathon-critical set can be lifted out untouched.
+
+### U1 — the project spine (highest value: it IS the promise)
+
+| ID | Job | Gate |
+|---|---|---|
+| **SP01** | One persistent, lightweight spine across `/start`, `/build`, `/land`, `/contractors`, `/budget`, `/projects`: current stage, design-hash status (with a plain "saved/changed" reading, never a raw hex dump), open blockers, and the single recommended next action. It reads the existing `AuraProject.stepStates` / `blockers` / `recommendedNextAction` — all three already computed and largely unseen. | A spec walks four pages with one project open and finds the same stage, hash state, and next action on each; with no project open the spine stays absent (the existing contract). |
+| **SP02** | `/projects` becomes a real dashboard: each project with its stage, last-edited, blocker count, design hash, thumbnail, and one-click open / duplicate / export / archive. | Spec: a project created in intake appears with its true stage and survives a reload. |
+| **SP03** | **Storage truth.** "Your project lives only in this browser" said plainly at first run and in `/projects`; one-click encrypted export; a restore path that names what it will overwrite; and graceful behaviour when IndexedDB is full, blocked (private mode), or cleared — each with a distinct, honest message and a way out. | Spec drives the quota-exceeded and storage-blocked paths with a stubbed store and asserts no silent data loss and no dead end. |
+| **SP04** | First-run clarity: an optional guided tour, and "start from the questionnaire → auto-populate the editor" as a real path rather than a redirect. | Spec: completing intake lands in the builder with the answers already reflected in the document. |
+
+### U2 — the viewer is first-class
+
+| ID | Job | Gate |
+|---|---|---|
+| **VW01** | A persistent, live massing/plan preview beside every guided step — shell, rooms, openings, site, performance, materials all update geometry and dimensions immediately. The canvas already never unmounts (it is the export root); this is about never hiding it. | Spec: an edit in each guided step changes the rendered geometry without a remount, and `data-load-epoch` does not move (the anti-yank contract). |
+| **VW02** | Viewer tools: orbit (exists), section cuts, floor isolation, and quick material/glazing switches. | Spec + a proof screenshot per tool. |
+| **VW03** | Mobile/tablet: a clean read-only viewer plus a dimensioned plan export for site visits — no editing affordances that a thumb cannot honestly drive. | The existing mobile spec extends: no horizontal overflow, no automatic 3D, plan export reachable. |
+
+### U3 — Guided gets smarter without getting louder
+
+| ID | Job | Gate |
+|---|---|---|
+| **GQ01** | Defaults driven by the intake answers and Alberta constraints (NBC Part 9, climate zone 7A, district minimum dwelling size, FDWR), with progressive disclosure so a beginner sees one decision and an expert can open the rest. | Anchor: a defaulted design must satisfy the constraints it claims; any constraint shown must name its source. |
+| **GQ02** | Inline "why": why this room layout, why this glazing ratio is under target — one sentence, sourced, at the control it explains. | No claim without a source pointer; spec greps for unsourced constraint language. |
+| **GQ03** | "Apply this suggestion" writes through the SAME document APIs as the buttons, after an explicit human confirmation. Never autonomous. | Equivalence spec: an applied suggestion produces a byte-identical document to the manual edit. |
+
+### U4 — Pro becomes a precision workspace
+
+| ID | Job | Gate |
+|---|---|---|
+| **PR01** | Direct canvas manipulation on the BuildingGraph: select and move vertices, extrude walls, place openings, assign rooms — with form fields as the precise secondary input, not the only input. | Deterministic: a drag and an equivalent typed edit produce the same graph and the same hash. |
+| **PR02** | Measurement tools, live dimensions, collision/adjacency feedback, multi-storey graph visualisation, undo/redo already hash-snapshotted. | Spec: an invalid move is refused with a reason, never silently clamped. |
+| **PR03** | Side-by-side 2D plan + 3D massing + a plain performance panel (daylight, rough energy, cost-band sensitivity), each labelled for what it is and is not. | Every panel figure traces to its module; nothing modelled is presented as measured. |
+
+### U5 — live feedback and honest readiness
+
+| ID | Job | Gate |
+|---|---|---|
+| **LF01** | LOW/MID/HIGH Alberta cost bands, setbacks, FDWR and minimum-dwelling checks update as the design changes — the numbers move while you work, not on a submit. | The money anchor still reconciles; live bands derive from the same model, never a parallel calculation. |
+| **LF02** | One readiness reading that separates **design intent only** from **ready for professional review**, with the specific gaps named. | The reading must be falsifiable: a design missing a required input cannot read as ready. |
+
+### U6 — export and handoff
+
+| ID | Job | Gate |
+|---|---|---|
+| **EX01** | Live previews of the drawings, DXF, IFC and glTF before download — see it, then decide. | Preview and downloaded artifact are the same bytes. |
+| **EX02** | One-click professional handoff package: project JSON + drawings + cost snapshot + evidence notes, carrying the canonical hash. | The package's hash matches the document it was built from, and re-importing it round-trips. |
+| **EX03** | Close the remaining graph-geometry ↔ export-adapter gaps, keeping the honest per-exporter labelling until each one genuinely consumes the graph. | An exporter may not claim graph fidelity it does not have. |
+
+### U7 — the bounded co-pilot
+
+| ID | Job | Gate |
+|---|---|---|
+| **AI01** | A sidebar over the existing deterministic brain / MCP tools that can read the current document and journey state, propose changes, explain trade-offs, and apply them only through `PreparedAction` confirmations. Evidence-grounded; never autonomous on anything consequential. | Every proposed write is a confirm-before-act card; a spec asserts no code path applies a suggestion without one. |
+
+### U8 — polish, linkage, resilience
+
+| ID | Job | Gate |
+|---|---|---|
+| **MI01** | One motion system: 150–250 ms damped transitions, soft focus states, restrained hover. Applied through tokens so "premium" is a setting, not a hundred hand-tuned durations. | Spec pins the token values and greps for out-of-band durations; reduced-motion still wins. |
+| **LC01** | `/land` and `/contractors` score against the CURRENT design's exact footprint and height, so a fit score is about *this* home. | The fit shown must change when the design changes — pinned. |
+| **PF01** | Aggressive lazy-loading of the heavy 3D and map bundles; IndexedDB quota edge cases handled where they occur. | Measured against `perf/PB01-baseline`; no LCP regression. |
+
+### What this stream must never do
+
+- Require an account, or make cloud backup anything but opt-in later. Local-first is the product, not a stage of it.
+- Let crypto surface deeper than one layer. X Layer stays plumbing behind the payment and proof moments where it earns its complexity.
+- Trade calm for density. Every addition above has to survive the question *does a person who has never built a house feel more capable, or more surrounded?*
 
 ---
 

@@ -13,6 +13,19 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { PNG } from "pngjs";
+/* The built world's footprints come from the same module the runtime mask
+   reads. Node type-strips this .ts import directly; the module is pure data
+   for exactly that reason. */
+import {
+  BENCH_CENTER,
+  DECK_RECT,
+  FIREPIT_CENTER,
+  HOUSE_RECT,
+  PATH,
+  STEPS_RECT_WIDE,
+  TUB_CENTER,
+  WALKWAY_SEGMENT,
+} from "../lib/three/meadow/geometry.ts";
 
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const sourcePath = fileURLToPath(import.meta.url);
@@ -353,27 +366,26 @@ function segmentDistance(x, z, ax, az, bx, bz) {
   return Math.hypot(x - (ax + vx * t), z - (az + vz * t));
 }
 
-const PATH = [
-  [-2.4, 33], [-2.1, 31.2], [-1.6, 29.2], [-0.6, 27.4], [0.3, 25.6], [0.9, 23.8],
-  [0.6, 21.8], [-0.4, 19.6], [-1.4, 17.2], [-2, 14.8], [-1.9, 12.4], [-1.3, 10.4],
-  [-0.5, 8.9], [0.1, 7.7],
-];
+const rectDistanceTo = (x, z, rect) => rectangleDistance(x, z, rect.x0, rect.z0, rect.x1, rect.z1);
+const segmentDistanceTo = (x, z, run) => segmentDistance(x, z, run.ax, run.az, run.bx, run.bz);
 
 /* MUST mirror sampleMeadowClearance(x, z, tight = false) in
    lib/three/meadow/field.ts exactly — meadow-progressive.spec.ts asserts
-   point-for-point parity. The tight variant this briefly copied omits the
-   deck rect and glass walkway because it was sized for 9–18 cm filler
-   blades; these atlas cards stand up to 1.40 m and pierced the deck. */
+   point-for-point parity. The footprints are now shared (geometry.ts), so
+   only the pads and feathers below can drift. The tight variant this briefly
+   copied omits the deck rect and glass walkway because it was sized for 9–18
+   cm filler blades; these atlas cards stand up to 1.40 m and pierced the
+   deck. */
 export function clearance(x, z) {
   const fade = (distance, pad, feather) => clamp01((distance - pad) / feather);
   let value = 1;
-  value = Math.min(value, fade(rectangleDistance(x, z, -4.3, -3.4, 4.3, 3.4), 0.3, 1.2));
-  value = Math.min(value, fade(rectangleDistance(x, z, -3.9, 2.95, 3.6, 6.3), 0.28, 0.95));
-  value = Math.min(value, fade(segmentDistance(x, z, 3.45, 4.65, 5.9, 5.35), 0.85, 0.8));
-  value = Math.min(value, fade(rectangleDistance(x, z, -1.45, 6.3, 1.55, 8.7), 0.24, 0.7));
-  value = Math.min(value, fade(Math.hypot(x - 5.9, z - 5.4), 1.4, 0.9));
-  value = Math.min(value, fade(Math.hypot(x + 4.7, z - 6.5), 1.3, 0.8));
-  value = Math.min(value, fade(Math.hypot(x - 8.6, z - 18), 0.95, 0.8));
+  value = Math.min(value, fade(rectDistanceTo(x, z, HOUSE_RECT), 0.3, 1.2));
+  value = Math.min(value, fade(rectDistanceTo(x, z, DECK_RECT), 0.28, 0.95));
+  value = Math.min(value, fade(segmentDistanceTo(x, z, WALKWAY_SEGMENT), WALKWAY_SEGMENT.halfWidth, 0.8));
+  value = Math.min(value, fade(rectDistanceTo(x, z, STEPS_RECT_WIDE), 0.24, 0.7));
+  value = Math.min(value, fade(Math.hypot(x - TUB_CENTER.x, z - TUB_CENTER.z), 1.4, 0.9));
+  value = Math.min(value, fade(Math.hypot(x - FIREPIT_CENTER.x, z - FIREPIT_CENTER.z), 1.3, 0.8));
+  value = Math.min(value, fade(Math.hypot(x - BENCH_CENTER.x, z - BENCH_CENTER.z), 0.95, 0.8));
   let pathDistance = Number.POSITIVE_INFINITY;
   for (let index = 0; index < PATH.length - 1; index += 1) {
     pathDistance = Math.min(
@@ -546,6 +558,24 @@ async function buildArtifacts() {
   };
 }
 
+/* `files.source` fingerprints THIS FILE, so it necessarily moves whenever the
+   generator is edited — FD1 moved the scene footprints out to
+   lib/three/meadow/geometry.ts and every byte of the atlas stayed identical.
+   Folding that fingerprint into the artifact equality check would report
+   every honest source edit as an artifact change and, worse, tempt whoever
+   hits it to regenerate and mask a real one. So it is compared separately and
+   REPORTED (see sourceFingerprint in the --verify output): the atlas bytes
+   are the contract, the fingerprint is provenance that re-anchors on the next
+   `generate` run. Everything else in the JSON, formatting included, stays
+   pinned byte-for-byte. */
+const withoutSourceFingerprint = (metadata) => {
+  const { files, ...rest } = metadata;
+  const { source: _source, ...remainingFiles } = files;
+  return { ...rest, files: remainingFiles };
+};
+
+const canonicalJson = (value) => `${JSON.stringify(value, null, 2)}\n`;
+
 async function verify() {
   const expected = await buildArtifacts();
   const [actualImage, actualBinary, actualMetadata] = await Promise.all([
@@ -556,8 +586,15 @@ async function verify() {
   const failures = [];
   if (!actualImage.equals(expected.image)) failures.push("meadow-atlas.png differs from deterministic output");
   if (!actualBinary.equals(expected.binary)) failures.push("meadow-atlas.bin differs from deterministic output");
-  if (!actualMetadata.equals(expected.metadata)) failures.push("meadow-atlas.json differs from deterministic output");
   const metadata = JSON.parse(actualMetadata.toString("utf8"));
+  if (!actualMetadata.equals(Buffer.from(canonicalJson(metadata)))) {
+    failures.push("meadow-atlas.json is not the generator's canonical 2-space serialization");
+  }
+  if (canonicalJson(withoutSourceFingerprint(metadata)) !== canonicalJson(withoutSourceFingerprint(expected.parsedMetadata))) {
+    failures.push("meadow-atlas.json differs from deterministic output");
+  }
+  const recordedSource = metadata.files.source.sha256;
+  const currentSource = expected.parsedMetadata.files.source.sha256;
   if (metadata.schema !== SCHEMA) failures.push(`schema must be ${SCHEMA}`);
   if (metadata.alphaMode !== "MASK" || metadata.draws !== 1) failures.push("atlas must use one alpha-tested draw");
   if (metadata.files.image.alphaOccupancy < 0.08 || metadata.files.image.alphaOccupancy > 0.65) {
@@ -579,7 +616,12 @@ async function verify() {
     schema: metadata.schema,
     imageSha256: metadata.files.image.sha256,
     instancesSha256: metadata.files.instances.sha256,
-    sourceSha256: metadata.files.source.sha256,
+    sourceSha256: recordedSource,
+    sourceFingerprint: {
+      recorded: recordedSource,
+      current: currentSource,
+      state: recordedSource === currentSource ? "anchored" : "stale - run generate to re-anchor",
+    },
     alphaOccupancy: metadata.files.image.alphaOccupancy,
     instances: metadata.instances,
   }, null, 2)}\n`);

@@ -71,6 +71,76 @@ export const MISSING_PRICE_SENTENCE =
 
 export const NOT_IN_RECORD = "Not in the research record — ask the maker.";
 
+/* --------------------------------------------- visual, price, geography */
+
+export type HomeVisualVariant = "steel-kit" | "folding-modular" | "printed-earth";
+
+/** The caption every Aura drawing carries. Held once so the words a card
+ *  prints and the words a licence-lapse fallback produces cannot drift. */
+export const ILLUSTRATIVE_VISUAL_LABEL = "Aura illustrative visual — not a product photo";
+
+export interface AuraIllustrativeVisual {
+  kind: "aura-illustrative";
+  variant: HomeVisualVariant;
+  label: string;
+}
+
+/** A photograph a maker granted us in writing, under a licence we can name.
+ *
+ *  It carries its own provenance AND the drawing it sits in front of:
+ *  `variant` and `label` mean exactly what they mean on the illustrative
+ *  member, so a card reads them off either without narrowing, and a photo
+ *  whose permission lapses always has somewhere honest to land. There is no
+ *  member for a photo without provenance — an unattributed photo is
+ *  unspellable in the type, and validateHomeVisual refuses one that arrives
+ *  from JSON anyway. */
+export interface LicensedPhotoVisual {
+  kind: "licensed-photo";
+  variant: HomeVisualVariant;
+  label: string;
+  /** Where the file lives once it is ours to serve. Hotlinking a maker's
+   *  server is not a licence. */
+  url: string;
+  /** The credit line the licence obliges us to print, verbatim. */
+  credit: string;
+  /** The licence itself, named: "CC BY 4.0", "Aura maker photo licence v1". */
+  license: string;
+  /** Where the signed one-pager lives, so a reader can be shown the
+   *  permission rather than told about it. */
+  permissionRef: string;
+  collectedAtISO: string;
+  /** When the permission lapses. Past this instant the photo stops
+   *  rendering — see resolveHomeVisual. */
+  expiresAtISO: string;
+}
+
+export type HomeVisual = AuraIllustrativeVisual | LicensedPhotoVisual;
+
+export type PriceBasis = "maker-published" | "written-quote" | "public-record";
+
+/** A price as a number rather than a sentence, so a filter or a total can
+ *  use it. `asOfISO` and `basis` are mandatory: an undated number with no
+ *  stated origin is a rumour, and a rumour must not be filterable. */
+export interface NumericPrice {
+  amount: number;
+  /** ISO 4217 alphabetic code, uppercase. No symbols — "$" names several
+   *  different currencies. */
+  currency: string;
+  asOfISO: string;
+  basis: PriceBasis;
+}
+
+/** Where a home sits. Optional throughout: a record that knows only the
+ *  country states only the country, and half a coordinate is refused
+ *  outright rather than completed by guesswork. */
+export interface HomeGeography {
+  /** ISO 3166-1 alpha-2, uppercase. */
+  country: string;
+  provinceState: string | null;
+  lat: number | null;
+  lng: number | null;
+}
+
 /* ------------------------------------------------------------- the model */
 
 export interface HomeFact {
@@ -101,11 +171,7 @@ export interface FinishedHomeModel {
   makerCountry: string;
   makerUrl: string;
   marketStatus: "current-maker-model" | "announced-concept";
-  visual: {
-    kind: "aura-illustrative";
-    variant: "steel-kit" | "folding-modular" | "printed-earth";
-    label: string;
-  };
+  visual: HomeVisual;
   sizeSqFt: HomeFact;
   bedrooms: HomeFact;
   constructionType: HomeConstructionType;
@@ -116,6 +182,12 @@ export interface FinishedHomeModel {
     includes: string[];
     excludes: string[];
     note: string;
+    /** OPTIONAL, by the builder document's site-slot precedent: absent from
+     *  every record written before it existed, so those records serialize
+     *  to the same bytes as before. When present it is the ONE source for
+     *  the amount — amountText must read exactly formatNumericPrice(numeric)
+     *  or stay null, so the figure is never retyped into prose. */
+    numeric?: NumericPrice;
   };
   delivery: {
     confirmed: CatalogRegion[];
@@ -130,8 +202,190 @@ export interface FinishedHomeModel {
   unresolved: string[];
   caveat: string;
   quotedClaim: string;
+  /** OPTIONAL, same precedent as price.numeric: a record that carries no
+   *  located evidence carries no geography rather than a placeholder. */
+  geography?: HomeGeography;
   /** Name key back into the legacy research record in data.ts. */
   legacyProviderName: string;
+}
+
+/* -------------------------------------------------- provenance validation
+
+   The rights policy in data/listings/README.md, enforced. A photo without
+   a credit, a named licence and a recorded permission cannot be built here
+   and cannot be loaded from JSON either — the refusal is the mechanism, not
+   a guideline someone is asked to remember. */
+
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const filled = (value: unknown): value is string =>
+  typeof value === "string" && value.trim().length > 0;
+
+/* Date.parse alone is not a date check: V8's fallback parser reads
+   "sometime in 2026" as a real instant, which would let an undated price or
+   an open-ended permission through. The shape is checked first, then the
+   value, so only an ISO-8601 date or timestamp counts. */
+const ISO_INSTANT =
+  /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})?)?$/;
+
+const validISO = (value: unknown): value is string =>
+  filled(value) && ISO_INSTANT.test(value.trim()) && Number.isFinite(Date.parse(value));
+
+const VISUAL_VARIANTS: readonly HomeVisualVariant[] = [
+  "steel-kit",
+  "folding-modular",
+  "printed-earth",
+];
+
+const PRICE_BASES: readonly PriceBasis[] = [
+  "maker-published",
+  "written-quote",
+  "public-record",
+];
+
+/** The drawing that stands in for each construction type. Used only when a
+ *  JSON-sourced visual names a variant this build does not draw, so a lapsed
+ *  or malformed photo still resolves to something the card can render. */
+const VARIANT_FOR_CONSTRUCTION: Record<HomeConstructionType, HomeVisualVariant> = {
+  kit: "steel-kit",
+  modular: "folding-modular",
+  "3d-printed": "printed-earth",
+};
+
+export type Refusal = { ok: false; problem: string };
+
+export function validateHomeVisual(value: unknown): { ok: true; visual: HomeVisual } | Refusal {
+  if (!isObject(value)) return { ok: false, problem: "visual is not a record." };
+  if (!VISUAL_VARIANTS.includes(value.variant as HomeVisualVariant))
+    return { ok: false, problem: "visual.variant does not name an Aura drawing." };
+  if (!filled(value.label)) return { ok: false, problem: "visual.label is missing." };
+  if (value.kind === "aura-illustrative")
+    return { ok: true, visual: value as unknown as AuraIllustrativeVisual };
+  if (value.kind !== "licensed-photo")
+    return { ok: false, problem: "visual.kind is not a supported visual." };
+  if (!filled(value.url))
+    return { ok: false, problem: "visual.url is missing — a licensed photo needs a file we serve." };
+  if (!filled(value.credit))
+    return { ok: false, problem: "visual.credit is missing — a photo with no credit cannot ship." };
+  if (!filled(value.license))
+    return { ok: false, problem: "visual.license is missing — name the licence or do not publish the photo." };
+  if (!filled(value.permissionRef))
+    return {
+      ok: false,
+      problem: "visual.permissionRef is missing — a photo with no recorded permission cannot ship.",
+    };
+  const collectedAt = value.collectedAtISO;
+  const expiresAt = value.expiresAtISO;
+  if (!validISO(collectedAt))
+    return { ok: false, problem: "visual.collectedAtISO is missing or unparseable." };
+  if (!validISO(expiresAt))
+    return {
+      ok: false,
+      problem: "visual.expiresAtISO is missing or unparseable — a permission with no end is not a permission.",
+    };
+  if (Date.parse(expiresAt) <= Date.parse(collectedAt))
+    return { ok: false, problem: "visual.expiresAtISO is not after visual.collectedAtISO." };
+  return { ok: true, visual: value as unknown as LicensedPhotoVisual };
+}
+
+export function validateNumericPrice(value: unknown): { ok: true; price: NumericPrice } | Refusal {
+  if (!isObject(value)) return { ok: false, problem: "price.numeric is not a record." };
+  const amount = value.amount;
+  if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0)
+    return { ok: false, problem: "price.numeric.amount is not a positive finite number." };
+  if (typeof value.currency !== "string" || !/^[A-Z]{3}$/.test(value.currency))
+    return { ok: false, problem: "price.numeric.currency is not an ISO 4217 code." };
+  if (!validISO(value.asOfISO))
+    return { ok: false, problem: "price.numeric.asOfISO is missing — an undated price is a rumour." };
+  if (!PRICE_BASES.includes(value.basis as PriceBasis))
+    return { ok: false, problem: "price.numeric.basis does not say where the number came from." };
+  return { ok: true, price: value as unknown as NumericPrice };
+}
+
+export function validateHomeGeography(
+  value: unknown,
+): { ok: true; geography: HomeGeography } | Refusal {
+  if (!isObject(value)) return { ok: false, problem: "geography is not a record." };
+  if (typeof value.country !== "string" || !/^[A-Z]{2}$/.test(value.country))
+    return { ok: false, problem: "geography.country is not an ISO 3166-1 alpha-2 code." };
+  if (value.provinceState !== null && !filled(value.provinceState))
+    return { ok: false, problem: "geography.provinceState must be a name or an explicit null." };
+  if (!("lat" in value) || !("lng" in value))
+    return { ok: false, problem: "geography must state lat and lng, using null where unknown." };
+  const lat = value.lat;
+  const lng = value.lng;
+  if ((lat === null) !== (lng === null))
+    return { ok: false, problem: "geography needs both lat and lng or neither — half a coordinate is a guess." };
+  if (lat !== null) {
+    if (typeof lat !== "number" || !Number.isFinite(lat) || Math.abs(lat) > 90)
+      return { ok: false, problem: "geography.lat is outside -90..90." };
+    if (typeof lng !== "number" || !Number.isFinite(lng) || Math.abs(lng) > 180)
+      return { ok: false, problem: "geography.lng is outside -180..180." };
+  }
+  return { ok: true, geography: value as unknown as HomeGeography };
+}
+
+/** The whole record, checked at its evidence-bearing seams. It does not
+ *  re-parse the legacy prose fields — those are authored in this module and
+ *  covered by the catalog spec — it refuses the ways a rights or pricing
+ *  claim can arrive unsupported. */
+export function validateFinishedHomeModel(
+  value: unknown,
+): { ok: true; home: FinishedHomeModel } | Refusal {
+  if (!isObject(value)) return { ok: false, problem: "home model is not a record." };
+  if (!filled(value.id) || !filled(value.model) || !filled(value.maker))
+    return { ok: false, problem: "home model identity is incomplete." };
+  const visual = validateHomeVisual(value.visual);
+  if (!visual.ok) return visual;
+  const price = value.price;
+  if (!isObject(price)) return { ok: false, problem: "home model price is missing." };
+  if ("numeric" in price) {
+    const numeric = validateNumericPrice(price.numeric);
+    if (!numeric.ok) return numeric;
+    const derived = formatNumericPrice(numeric.price);
+    if (price.amountText !== null && price.amountText !== derived)
+      return {
+        ok: false,
+        problem: `price.amountText retypes the amount; it must read "${derived}" or be null.`,
+      };
+  }
+  if ("geography" in value) {
+    const geography = validateHomeGeography(value.geography);
+    if (!geography.ok) return geography;
+  }
+  return { ok: true, home: value as unknown as FinishedHomeModel };
+}
+
+/** The one place a numeric price becomes words. */
+export function formatNumericPrice(price: NumericPrice): string {
+  return `${price.currency} ${price.amount.toLocaleString("en-CA", {
+    maximumFractionDigits: 2,
+  })} as of ${price.asOfISO.slice(0, 10)}`;
+}
+
+export function permissionIsCurrent(visual: LicensedPhotoVisual, now: Date): boolean {
+  const expiresAt = Date.parse(visual.expiresAtISO);
+  return Number.isFinite(expiresAt) && expiresAt > now.getTime();
+}
+
+/** What the card must draw. A licensed photo renders only while its written
+ *  permission both validates and is unexpired; on a lapse — or on a record
+ *  that never carried provenance — this falls back to the drawing the photo
+ *  stood in front of. A photo cannot outlive the permission that allowed it,
+ *  and no caller has to remember to check. */
+export function resolveHomeVisual(home: FinishedHomeModel, now: Date): HomeVisual {
+  const visual = home.visual;
+  if (visual.kind === "aura-illustrative") return visual;
+  const checked = validateHomeVisual(visual);
+  if (checked.ok && permissionIsCurrent(visual, now)) return visual;
+  return {
+    kind: "aura-illustrative",
+    variant: VISUAL_VARIANTS.includes(visual.variant)
+      ? visual.variant
+      : VARIANT_FOR_CONSTRUCTION[home.constructionType],
+    label: ILLUSTRATIVE_VISUAL_LABEL,
+  };
 }
 
 /* -------------------------------------------------- mapping from research */
@@ -192,7 +446,7 @@ export function buildFinishedHomeModels(): FinishedHomeModel[] {
       visual: {
         kind: "aura-illustrative",
         variant: "folding-modular",
-        label: "Aura illustrative visual — not a product photo",
+        label: ILLUSTRATIVE_VISUAL_LABEL,
       },
       sizeSqFt: { value: null, note: NOT_IN_RECORD },
       bedrooms: { value: null, note: NOT_IN_RECORD },
@@ -229,7 +483,7 @@ export function buildFinishedHomeModels(): FinishedHomeModel[] {
       visual: {
         kind: "aura-illustrative",
         variant: "printed-earth",
-        label: "Aura illustrative visual — not a product photo",
+        label: ILLUSTRATIVE_VISUAL_LABEL,
       },
       sizeSqFt: { value: null, note: NOT_IN_RECORD },
       bedrooms: { value: null, note: NOT_IN_RECORD },
@@ -278,9 +532,12 @@ export const HOME_CARD_SLOTS = [
 ] as const;
 
 export function priceLine(home: FinishedHomeModel): string {
-  return home.price.state === "published" && home.price.amountText
-    ? home.price.amountText
-    : MISSING_PRICE_SENTENCE;
+  if (home.price.state !== "published") return MISSING_PRICE_SENTENCE;
+  /* The numeric price is the anchored source when one exists, so the line a
+     reader sees is derived rather than retyped. Records without one keep
+     rendering their authored amountText exactly as before. */
+  if (home.price.numeric) return formatNumericPrice(home.price.numeric);
+  return home.price.amountText ? home.price.amountText : MISSING_PRICE_SENTENCE;
 }
 
 export function deliveryStateFor(home: FinishedHomeModel, region: TargetRegion): DeliveryState {

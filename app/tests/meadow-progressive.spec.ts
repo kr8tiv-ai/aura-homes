@@ -12,6 +12,13 @@ import {
 import { buildMeadowPage, meadowTransferList } from "@/lib/three/meadow/generator";
 import { MeadowPromotionGovernor } from "@/lib/three/meadow/governor";
 import { sampleMeadowClearance, sampleTerrainHeight } from "@/lib/three/meadow/field";
+import {
+  DECK_RECT,
+  HOUSE_RECT,
+  STEPS_RECT_WIDE,
+  STEPS_TREAD_FOOTPRINT,
+  WALKWAY_SEGMENT,
+} from "@/lib/three/meadow/geometry";
 import { buildFlowerField, flowerVisibilityAtDistance } from "@/components/story/flora";
 import { pathToFileURL } from "node:url";
 
@@ -500,16 +507,48 @@ test("constrained desktop capability reaches the low-power meadow plan", async (
    how grass shipped through the deck: the generator's copy silently dropped
    the deck rectangle and glass walkway. The offline generator must sample
    the SAME field the live meadow samples, point for point. */
-/* Audit #7 finding 1 tripwire: the deck MESH and the clearance rect are
-   independent literals; whoever moves one must meet this test and move the
-   other. (The structural fix — one shared geometry-constants module — is
-   scaffolded as FD1.) */
-test("the deck rectangle literal exists in both mask sources and the proof carries its commit", async () => {
+/* FD1 retired the grep tripwire this replaces. That test pinned the string
+   "-3.9, 2.95, 3.6, 6.3" in SceneDetail.tsx and field.ts so a hand edit to one
+   copy of the deck rect could not pass without the other — a guard that only
+   ever caught a rect it already knew the value of, and said nothing about the
+   generator, the step rects, or the meshes. The structural fix is
+   lib/three/meadow/geometry.ts: one set of footprints, four consumers, and no
+   copy left to drift. What is asserted below is that the copies are actually
+   gone.
+   The two meadow-proof assertions travelled with the old test and are kept
+   here because nothing else pins them. */
+test("the built world's footprints live in one module and no consumer retypes them", async () => {
   const detail = await readFile(path.join(appRoot, "components/story/SceneDetail.tsx"), "utf8");
   const field = await readFile(path.join(appRoot, "lib/three/meadow/field.ts"), "utf8");
+  const generator = await readFile(path.join(appRoot, "scripts/generate-meadow-atlas.mjs"), "utf8");
   const proof = await readFile(path.join(appRoot, "scripts/meadow-proof.mjs"), "utf8");
-  expect(detail).toContain("-3.9, 2.95, 3.6, 6.3");
-  expect(field).toContain("-3.9, 2.95, 3.6, 6.3");
+
+  expect(detail).toContain('from "@/lib/three/meadow/geometry"');
+  expect(field).toContain('from "./geometry"');
+  expect(generator).toContain('from "../lib/three/meadow/geometry.ts"');
+
+  /* The deck rect and the wide steps rect are the two that drifted and shipped
+     grass through solid geometry. Neither literal may reappear in any
+     consumer. */
+  for (const source of [detail, field, generator]) {
+    expect(source).not.toContain("-3.9, 2.95, 3.6, 6.3");
+    expect(source).not.toContain("-1.45, 6.3, 1.55, 8.7");
+  }
+
+  /* The mask rect has to cover the flight it is masking. This is the
+     invariant the steps bug actually violated: the tight rect stops at 7.3
+     while the treads run to 8.53. */
+  expect(STEPS_RECT_WIDE.x0).toBeLessThanOrEqual(STEPS_TREAD_FOOTPRINT.x0);
+  expect(STEPS_RECT_WIDE.z0).toBeLessThanOrEqual(STEPS_TREAD_FOOTPRINT.z0);
+  expect(STEPS_RECT_WIDE.x1).toBeGreaterThanOrEqual(STEPS_TREAD_FOOTPRINT.x1);
+  expect(STEPS_RECT_WIDE.z1).toBeGreaterThanOrEqual(STEPS_TREAD_FOOTPRINT.z1);
+  expect(STEPS_TREAD_FOOTPRINT.z1).toBeCloseTo(8.53, 10);
+
+  /* The deck's walking surface is what every rail, newel and step nosing
+     lands on; Scene.tsx still carries it as its own literal, so the number
+     is pinned here until that mesh is wired to the module too. */
+  expect(DECK_RECT.surfaceY).toBe(0.485);
+
   expect(proof).toContain("sourceCommit");
   expect(proof).toContain("mobileWindMotion >= 0.006");
 });
@@ -542,8 +581,16 @@ test("no baked atlas card stands on the deck, the walkway, the entrance steps, o
     const t = lengthSquared > 0 ? Math.min(1, Math.max(0, ((x - ax) * vx + (z - az) * vz) / lengthSquared)) : 0;
     return Math.hypot(x - (ax + vx * t), z - (az + vz * t));
   };
-  const insideRect = (x: number, z: number, x0: number, z0: number, x1: number, z1: number) =>
-    x >= x0 && x <= x1 && z >= z0 && z <= z1;
+  /* Every rect below is the SHARED footprint, not a retyped copy: move the
+     deck or the flight in lib/three/meadow/geometry.ts and this test follows
+     it. The old literals ran x -1.10..1.20, z 6.55..8.60 for the steps, which
+     STEPS_RECT_WIDE strictly contains — so this reads slightly stricter than
+     what it replaces, not looser. */
+  const insideRect = (
+    x: number,
+    z: number,
+    rect: { x0: number; z0: number; x1: number; z1: number },
+  ) => x >= rect.x0 && x <= rect.x1 && z >= rect.z0 && z <= rect.z1;
 
   let onDeck = 0;
   let onWalkway = 0;
@@ -553,13 +600,22 @@ test("no baked atlas card stands on the deck, the walkway, the entrance steps, o
     const offset = headerBytes + index * stride;
     const x = view.getFloat32(offset, true);
     const z = view.getFloat32(offset + 8, true);
-    if (insideRect(x, z, -3.9, 2.95, 3.6, 6.3)) onDeck += 1;
-    if (segmentDistance(x, z, 3.45, 4.65, 5.9, 5.35) <= 0.85) onWalkway += 1;
-    /* The five treads span x -1.10..1.20, z 6.73..8.53 (EntranceSteps group
-       at 6.55, five 0.36 m treads); the founder's screenshot showed cards
-       standing through the LOWER treads that the tight rect left exposed. */
-    if (insideRect(x, z, -1.1, 6.55, 1.2, 8.6)) onSteps += 1;
-    if (insideRect(x, z, -4.3, -3.4, 4.3, 3.4)) inHouse += 1;
+    if (insideRect(x, z, DECK_RECT)) onDeck += 1;
+    const walkway = segmentDistance(
+      x,
+      z,
+      WALKWAY_SEGMENT.ax,
+      WALKWAY_SEGMENT.az,
+      WALKWAY_SEGMENT.bx,
+      WALKWAY_SEGMENT.bz,
+    );
+    if (walkway <= WALKWAY_SEGMENT.halfWidth) onWalkway += 1;
+    /* The five treads run x -1.10..1.20, z 6.73..8.53 (STEPS_TREADS: group at
+       6.55, five 0.36 m treads); the founder's screenshot showed cards
+       standing through the LOWER treads that the tight rect left exposed, so
+       the assertion takes the WIDE rect that covers the whole flight. */
+    if (insideRect(x, z, STEPS_RECT_WIDE)) onSteps += 1;
+    if (insideRect(x, z, HOUSE_RECT)) inHouse += 1;
   }
   expect(onDeck).toBe(0);
   expect(onWalkway).toBe(0);

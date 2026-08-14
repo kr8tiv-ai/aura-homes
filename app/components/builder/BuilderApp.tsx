@@ -442,7 +442,17 @@ function reducer(state: EditorState, action: Action): EditorState {
         return commit(state, withoutSite, action.label);
       }
       if (action.site === state.doc.site) return state;
-      return commit(state, { ...state.doc, site: action.site }, action.label);
+      /* ONE SLOPE, not two. The spec has always carried siting.slope (it
+         drives the pile schedule on sheet A2) and the parcel now carries its
+         own answer. Left alone they diverge — the site-proof caught A1
+         printing FLAT while the Site step said gentle. The parcel's answer
+         is the design's answer, reconciled inside this one commit so it
+         stays one undo step. */
+      const slope = action.site.parcel?.slope;
+      const doc = slope && slope !== state.doc.spec.siting.slope
+        ? withSpec(state.doc, { ...state.doc.spec, siting: { ...state.doc.spec.siting, slope } })
+        : state.doc;
+      return commit(state, { ...doc, site: action.site }, action.label);
     }
     case "load": {
       // A house off a link or off somebody's disk is untrusted in exactly the

@@ -1,14 +1,25 @@
 # Roadmap
 
 > [!IMPORTANT]
-> **Current release framing — August 12, 2026.** The older escrow-led roadmap
+> **Current release framing — August 14, 2026.** The older escrow-led roadmap
 > below is retained as product history, not as the active plan. Aura's ordinary
 > journey is Requirements → Design → Land or Delivery → Team → Costs →
 > Handoff. Escrow and refunds are isolated in `/labs/xlayer-proof`; they are not
 > the product or the core hackathon demo. `docs/SUBMISSION.md` is the canonical
 > demo script and `docs/MAINNET-DECISION-BRIEF.md` records the mainnet hold.
+>
+> Since the August 12 framing, one arc boundary moved: **the $HOMES token
+> launched on X Layer mainnet 196** on August 13 through the third-party
+> XLaunch venue, so the token itself is a Now item. Everything designed around
+> it — trust, staking, property fund, distributions, launchpad — stayed in
+> Future and renders as a declared zero. Aura-authored contracts did not move
+> to mainnet; the hold stands.
 
 ## Active three-arc plan
+
+*This is the long-form, dated version of the three arcs the public
+[`/roadmap`](https://aurahomes.fun/roadmap) page shows. The two must agree; when
+they diverge, the claim registry decides.*
 
 ### Now — stabilize the project workspace
 
@@ -18,32 +29,67 @@
   disclose when steel or polycarbonate is represented by a planning proxy.
 - Demonstration land-fit and contractor-evidence tools that cannot satisfy real
   project progress or claim a live listing, permit decision, or vetted provider.
-- Alberta-first scenario budgets, hash-bound quotes, and professional handoff.
+- Alberta-first scenario budgets that reconcile to `data/alberta/cost-model.json`
+  to the dollar, hash-bound quotes, and professional handoff. Atmospheric water
+  generation is recommended on every home rather than mandatory
+  (`D-2026-08-14-awg-recommended`); the reference configuration keeps it, so the
+  anchored ex-land triplet is unchanged.
 - An optional X Layer testnet proof lab, clearly separated from purchasing.
+- **The $HOMES token, live on X Layer mainnet 196** through the XLaunch venue
+  since August 13, 2026: contract, pool, locker, and creator fee-claim wallet
+  published, mint verified against the public RPC, and the venue's risks stated
+  beside the buy path on `/homes`. It is a micro-cap experiment on a venue
+  factory Aura did not write, not the audited token architecture in the design
+  docs.
 
 ### Next — locality data and project guidance
 
 - Rights-safe manufacturer research and permissioned listing adapters.
 - Compliant land adapters that distinguish sale offers from parcel context.
+- Plot-of-land import: a real parcel's setbacks, slope, and services inside the
+  editor, and a site plan on sheet A1.
 - Authority-verifiable contractor case files and dated supplier leads.
 - Regional cost factors only where a sourced local basis exists.
-- A bounded project concierge that proposes typed actions for user confirmation.
+- A bounded project concierge that reads the actual project and proposes typed
+  actions for user confirmation. It never acts alone.
 - A hardened Hostinger VPS API only after session, quota, retention, artifact,
   logging, and spend controls are implemented.
 
-### Future — HOMES, only behind real gates
+### Future — the HOMES system, only behind real gates
 
-- HOMES remains planned with no connected ledger source: no token, trust, property,
-  staking, payout, sale, exchange listing, or launchpad is live.
+The token is live; the system designed around it is not. Nothing in this
+section is an offer, and every line renders as a declared zero on `/homes`
+until its own receipt exists.
+
+- No trust, staking position, property, fund balance, distribution, payout,
+  exchange listing, or launchpad exists. The venue's creator fees accrue but
+  count on the ledger only after claim receipts are published —
+  `reconcileHomesFeeLedger` fails the build on any unreceipted number.
+- The 30/10/10/20/30 supply split is a design target. The live mint is a
+  launchpad curve, verified on-chain and rendered beside the design split
+  rather than in place of it.
 - The legal vehicle, participant rights, eligibility, accounting, custody,
   liquidity, wind-down policy, and security model must be decided and reviewed
   before any value-bearing deployment.
 - The current registry is testnet provenance only and must not be deployed to
-  mainnet unchanged.
+  mainnet unchanged (`D-2026-08-12-mainnet-hold`). The August 13 venue launch
+  did not touch that hold.
 
 ---
 
 ## Archived roadmap — August 10 snapshot
+
+> [!CAUTION]
+> **Everything below is a dated snapshot, kept as product history. Four of its
+> status facts are no longer true:** the escrow and registry are now deployed on
+> X Layer testnet 1952 and their constructor state has been re-read live (they
+> were "not yet deployed" on Aug 10); the contract suite is 25 tests, not 10;
+> the @AuraHomes_fun X account is live; and the HOMES token launched on X Layer
+> mainnet 196 on Aug 13 through a third-party venue, which the Aug 10 and Aug 12
+> text below could not know. The active plan above supersedes this section. It
+> is retained rather than rewritten because the sequencing reasoning, the
+> Locality Hub research, and the founder's own words are still the best record
+> of why the product is shaped this way.
 
 *The rollout is a designed three-arc story, settled by the founder Aug 10, 2026: ship the hackathon MVP, grow it into the Locality Hub, and announce the HOMES token now while deliberately defining it later. Every earlier verified line item survives below, reorganized under the arc it serves — nothing was deleted, only re-homed.*
 
@@ -122,6 +168,19 @@ The full agent: watches land listings and flags underpriced suitable parcels; ne
 which supersedes the earlier "announced now, defined later" posture. The prior
 text said "the working direction remains burn-on-usage app credit, invisible
 to users" — that direction is retired.*
+
+> [!CAUTION]
+> **Superseded in one specific way on Aug 13, 2026** (`D-2026-08-13-token-launch`):
+> the token is no longer "never live." The founder launched $HOMES on X Layer
+> mainnet 196 through the XLaunch venue, so the Aug 12 sentence below — and the
+> "no token contract" zero-state it describes — applies to everything on this
+> list *except* the token itself. The pairing intention also resolved
+> differently: the live pair is HOMES/wSPCXx on XLaunch, not the arrangement
+> described at the end of this list. Every mechanic below (fund split, supply
+> split, staking, distributions, trust, launchpad) remains a design target with
+> no deployment, and the live mint is a launchpad curve rather than the supply
+> split shown here. See
+> [the mainnet brief addendum](MAINNET-DECISION-BRIEF.md#addendum--august-13-2026-the-founder-launched-homes-on-a-third-party-venue).
 
 **HOMES is a planned X Layer token with a defined shape, presented on the
 site's crypto journey and always labelled planned — Today / Next / Future —

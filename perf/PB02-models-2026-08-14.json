@@ -1,0 +1,139 @@
+{
+  "schema": "PerfDeltaV1",
+  "node": "PB02",
+  "measuredAt": "2026-08-14T17:06:23.191Z",
+  "against": "PB01-baseline-2026-08-14.json",
+  "baselineTotalStaticAssetBytes": 4896223,
+  "method": "gltf-transform@4.4.2 optimize --compress meshopt --meshopt-level high --palette false --join false --flatten false --simplify false --instance false --texture-compress false",
+  "decoderNote": "EXT_meshopt_compression needs no component change: @react-three/drei's useGLTF statically imports MeshoptDecoder from three-stdlib and registers it by default (useMeshopt defaults true). The decoder carries its wasm inline, so nothing is fetched.",
+  "modelBytesBefore": 604128,
+  "modelBytesAfter": 296020,
+  "modelBytesSaved": 308108,
+  "modelReductionPct": 51,
+  "projectedTotalStaticAssetBytes": 4588115,
+  "projectionIsUnverified": true,
+  "models": [
+    {
+      "file": "cabin.glb",
+      "beforeBytes": 279376,
+      "afterBytes": 88264,
+      "savedBytes": 191112,
+      "reductionPct": 68.4,
+      "triangles": 4355,
+      "trianglesUnchanged": true,
+      "vertexBefore": 7050,
+      "vertexAfter": 6519,
+      "materials": [
+        "lambert3SG"
+      ],
+      "materialsUnchanged": true,
+      "relativeBboxDrift": 0.0000318,
+      "extensionsRequired": [
+        "EXT_meshopt_compression",
+        "KHR_mesh_quantization"
+      ]
+    },
+    {
+      "file": "campfire.glb",
+      "beforeBytes": 168428,
+      "afterBytes": 144300,
+      "savedBytes": 24128,
+      "reductionPct": 14.3,
+      "triangles": 500,
+      "trianglesUnchanged": true,
+      "vertexBefore": 1048,
+      "vertexAfter": 1048,
+      "materials": [
+        "None"
+      ],
+      "materialsUnchanged": true,
+      "relativeBboxDrift": 0.000033,
+      "extensionsRequired": [
+        "EXT_meshopt_compression",
+        "KHR_mesh_quantization"
+      ]
+    },
+    {
+      "file": "lantern.glb",
+      "beforeBytes": 29616,
+      "afterBytes": 21572,
+      "savedBytes": 8044,
+      "reductionPct": 27.2,
+      "triangles": 264,
+      "trianglesUnchanged": true,
+      "vertexBefore": 338,
+      "vertexAfter": 338,
+      "materials": [
+        "HalloweenBits"
+      ],
+      "materialsUnchanged": true,
+      "relativeBboxDrift": 0.0000189,
+      "extensionsRequired": [
+        "EXT_meshopt_compression",
+        "KHR_mesh_quantization"
+      ]
+    },
+    {
+      "file": "pine-teal.glb",
+      "beforeBytes": 21164,
+      "afterBytes": 8340,
+      "savedBytes": 12824,
+      "reductionPct": 60.6,
+      "triangles": 264,
+      "trianglesUnchanged": true,
+      "vertexBefore": 720,
+      "vertexAfter": 720,
+      "materials": [
+        "mat11",
+        "mat20"
+      ],
+      "materialsUnchanged": true,
+      "relativeBboxDrift": 0.0000166,
+      "extensionsRequired": [
+        "EXT_meshopt_compression",
+        "KHR_mesh_quantization"
+      ]
+    },
+    {
+      "file": "pines.glb",
+      "beforeBytes": 99604,
+      "afterBytes": 30188,
+      "savedBytes": 69416,
+      "reductionPct": 69.7,
+      "triangles": 3666,
+      "trianglesUnchanged": true,
+      "vertexBefore": 3118,
+      "vertexAfter": 3118,
+      "materials": [
+        "Wood",
+        "Green"
+      ],
+      "materialsUnchanged": true,
+      "relativeBboxDrift": 0.0000304,
+      "extensionsRequired": [
+        "EXT_meshopt_compression",
+        "KHR_mesh_quantization"
+      ]
+    },
+    {
+      "file": "rocks.glb",
+      "beforeBytes": 5940,
+      "afterBytes": 3356,
+      "savedBytes": 2584,
+      "reductionPct": 43.5,
+      "triangles": 84,
+      "trianglesUnchanged": true,
+      "vertexBefore": 156,
+      "vertexAfter": 156,
+      "materials": [
+        "Stone_Dark"
+      ],
+      "materialsUnchanged": true,
+      "relativeBboxDrift": 0.0000323,
+      "extensionsRequired": [
+        "EXT_meshopt_compression",
+        "KHR_mesh_quantization"
+      ]
+    }
+  ]
+}

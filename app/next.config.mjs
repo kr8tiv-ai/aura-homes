@@ -44,4 +44,15 @@ const nextConfig = {
     : {}),
 };
 
-export default nextConfig;
+// PB03: the treemap analyzer is a build-time diagnostic, not a runtime
+// dependency. Resolving it unconditionally would make EVERY ordinary build —
+// local, CI, and the GH_PAGES static export — hard-fail whenever
+// devDependencies are absent or not yet installed, which is a steep price for
+// a tool that runs a few times a year. Gating the import behind the same flag
+// that enables it keeps the default path from ever touching the package.
+const withBundleAnalyzer =
+  process.env.ANALYZE === "1"
+    ? (await import("@next/bundle-analyzer")).default({ enabled: true })
+    : (config) => config;
+
+export default withBundleAnalyzer(nextConfig);

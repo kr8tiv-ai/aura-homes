@@ -37,6 +37,24 @@ import {
   type FloraSample,
 } from "./flora";
 import type { MeadowPage } from "@/lib/three/meadow/contract";
+/* The deck, walkway, steps, tub, fire pit, bench and walked route are ONE set
+   of numbers shared by the meshes that draw them and the masks that keep
+   grass out of them. Divergent copies of these rects are what put blades
+   through the deck and, later, through the lower treads. */
+import {
+  BENCH_CENTER,
+  DECK_RECT,
+  FIREPIT_CENTER,
+  HOUSE_RECT,
+  PATH,
+  STEPS_RECT_TIGHT,
+  STEPS_RECT_WIDE,
+  STEPS_TREADS,
+  TUB_CENTER,
+  WALKWAY_SEGMENT,
+  type GroundRect,
+  type GroundSegment,
+} from "@/lib/three/meadow/geometry";
 import { useProgressiveMeadow } from "@/lib/three/meadow/runtime";
 import { withBase } from "@/lib/basePath";
 
@@ -731,12 +749,15 @@ function segDist(x: number, z: number, ax: number, az: number, bx: number, bz: n
   return Math.hypot(x - (ax + vx * t), z - (az + vz * t));
 }
 
+/** Distance from (x,z) to a shared ground rect. */
+const rectDistTo = (x: number, z: number, r: GroundRect) => rectDist(x, z, r.x0, r.z0, r.x1, r.z1);
+
+/** Distance from (x,z) to a shared ground run's centreline. */
+const segDistTo = (x: number, z: number, s: GroundSegment) => segDist(x, z, s.ax, s.az, s.bx, s.bz);
+
 /* The walked route. Grass thins toward it rather than stopping at it —
    a mown verge, not a cut-out. Mirrors PATH_STONES in Scene.tsx. */
-const G_PATH: [number, number][] = [
-  [-2.4, 33.0], [-2.1, 31.2], [-1.6, 29.2], [-0.6, 27.4], [0.3, 25.6], [0.9, 23.8], [0.6, 21.8],
-  [-0.4, 19.6], [-1.4, 17.2], [-2.0, 14.8], [-1.9, 12.4], [-1.3, 10.4], [-0.5, 8.9], [0.1, 7.7],
-];
+const G_PATH = PATH;
 
 /**
  * Height multiplier 0..1 for the built world. Everything feathers, so grass
@@ -778,7 +799,7 @@ function clearance(
   let c = 1;
   // the home
   let p = P(0.3, 1.2, 0.12, 0.4);
-  c = Math.min(c, fade(rectDist(x, z, -4.3, -3.4, 4.3, 3.4), p[0], p[1]));
+  c = Math.min(c, fade(rectDistTo(x, z, HOUSE_RECT), p[0], p[1]));
   /* Deck + glass walkway: the deck FLOATS at 0.44 on point posts, skirt
      bottom 0.17, plank underside 0.395; the walkway glass rides at 0.40.
      From the beat-3/4 cameras the open south slot shows the ground UNDER
@@ -789,24 +810,27 @@ function clearance(
      features simply do not clear grass at all: the slot fills with sward.
      The hero layer keeps its wide pads (0.5 m blades would poke through). */
   if (!tight) {
-    c = Math.min(c, fade(rectDist(x, z, -3.9, 2.95, 3.6, 6.3), 0.28, 0.95));
-    c = Math.min(c, fade(segDist(x, z, 3.45, 4.65, 5.9, 5.35), 0.85, 0.8));
+    c = Math.min(c, fade(rectDistTo(x, z, DECK_RECT), 0.28, 0.95));
+    c = Math.min(c, fade(segDistTo(x, z, WALKWAY_SEGMENT), WALKWAY_SEGMENT.halfWidth, 0.8));
   }
-  /* Entrance steps: the wide rect ran z to 8.7, but the lowest tread ends at
-     z=7.2 — the extra 1.5 m was the bald strip at the foot of the steps in
-     s02. Tight hugs the real boxes (x -1.0..1.1, z 6.18..7.2, lowest tread
-     3 cm off the ground, so grass through the treads is a real risk INSIDE
-     the rect — keep the cut, just make it honest). */
+  /* Entrance steps. STEPS_TREADS says the five treads actually run z 6.73 to
+     8.53, so the wide rect's reach to 8.7 is the flight plus a hand's-width
+     of apron, not the 1.5 m of surplus an earlier note claimed. The tight
+     rect stops at 7.3 and covers only the top two treads; it is safe only for
+     the 8-18 cm filler, and handing it to a tall consumer is what stood 1.4 m
+     cards through the lower treads. Both rects and the tread run come from
+     lib/three/meadow/geometry.ts — check STEPS_RECT_WIDE still covers
+     STEPS_TREAD_FOOTPRINT before moving either. */
   p = tight ? ([0.12, 0.4] as const) : ([0.24, 0.7] as const);
   c = Math.min(
     c,
     tight
-      ? fade(rectDist(x, z, -1.1, 6.15, 1.2, 7.3), p[0], p[1])
-      : fade(rectDist(x, z, -1.45, 6.3, 1.55, 8.7), p[0], p[1])
+      ? fade(rectDistTo(x, z, STEPS_RECT_TIGHT), p[0], p[1])
+      : fade(rectDistTo(x, z, STEPS_RECT_WIDE), p[0], p[1])
   );
   // tub pad
   p = P(1.4, 0.9, 0.92, 0.5);
-  c = Math.min(c, fade(Math.hypot(x - 5.9, z - 5.4), p[0], p[1]));
+  c = Math.min(c, fade(Math.hypot(x - TUB_CENTER.x, z - TUB_CENTER.z), p[0], p[1]));
   // fire-pit lounge — the founder's "remove object borders" note: the old
   // tight disc (1.05+0.6 ~= 1.65 m) bared the whole lounge and ringed the
   // chairs. Short filler now grows under and between the chairs and right to
@@ -814,10 +838,10 @@ function clearance(
   // ring) stays clear. Hero blades keep a wider berth so a 0.5 m blade never
   // pokes through a chair seat.
   p = P(1.3, 0.8, 0.5, 0.45);
-  c = Math.min(c, fade(Math.hypot(x + 4.7, z - 6.5), p[0], p[1]));
+  c = Math.min(c, fade(Math.hypot(x - FIREPIT_CENTER.x, z - FIREPIT_CENTER.z), p[0], p[1]));
   // the bench out in the east meadow
   p = P(0.95, 0.8, 0.6, 0.5);
-  c = Math.min(c, fade(Math.hypot(x - 8.6, z - 18.0), p[0], p[1]));
+  c = Math.min(c, fade(Math.hypot(x - BENCH_CENTER.x, z - BENCH_CENTER.z), p[0], p[1]));
   // the stepping-stone route
   let pd = Infinity;
   for (let i = 0; i < G_PATH.length - 1; i++) {
@@ -1533,19 +1557,22 @@ function GrassField({
 function EntranceSteps({ glassRail }: { glassRail: THREE.Material }) {
   const cedar = ["#a97e57", "#9b7350", "#b0855e"];
   const grain = useMemo(() => makeWoodGrain(), []);
-  const N = 5;
+  /* The flight's footprint is shared with the clearance mask: move a tread
+     here and the rect that keeps grass off it moves with it. */
+  const N = STEPS_TREADS.count;
   return (
-    <group position={[0.05, 0, 6.55]}>
+    <group position={[STEPS_TREADS.originX, 0, STEPS_TREADS.originZ]}>
       {Array.from({ length: N }, (_, i) => {
         const y = 0.42 - (i + 1) * 0.082;
-        const z = (i + 1) * 0.36;
+        const z = (i + 1) * STEPS_TREADS.treadDepth;
         return (
           <group key={i}>
             <mesh castShadow receiveShadow position={[0, y, z]}>
-              <boxGeometry args={[2.3, 0.1, 0.36]} />
+              <boxGeometry args={[STEPS_TREADS.width, 0.1, STEPS_TREADS.treadDepth]} />
               <meshStandardMaterial map={grain} color={cedar[i % 3]} roughness={0.85} flatShading />
             </mesh>
             <mesh position={[0, y - 0.09, z]} castShadow>
+              {/* the riser board under each tread carries its own inset size */}
               <boxGeometry args={[2.2, 0.08, 0.3]} />
               <meshStandardMaterial color="#6d523c" roughness={0.9} flatShading />
             </mesh>
@@ -1816,9 +1843,9 @@ function TubSteam({ frozen }: { frozen: boolean }) {
       const rate = i % 2 === 0 ? 0.17 : 0.115;
       const life = (t * rate + i / N) % 1;
       s.position.set(
-        5.9 + Math.sin(t * 0.6 + i * 1.7) * 0.26 * life * 2.2,
+        TUB_CENTER.x + Math.sin(t * 0.6 + i * 1.7) * 0.26 * life * 2.2,
         1.02 + life * 1.9,
-        5.4 + Math.cos(t * 0.44 + i * 1.1) * 0.22 * life * 2
+        TUB_CENTER.z + Math.cos(t * 0.44 + i * 1.1) * 0.22 * life * 2
       );
       const sc = 0.3 + life * 1.5;
       s.scale.set(sc, sc, 1);
@@ -1833,7 +1860,7 @@ function TubSteam({ frozen }: { frozen: boolean }) {
           ref={(el) => {
             refs.current[i] = el;
           }}
-          position={[5.9, 1.02, 5.4]}
+          position={[TUB_CENTER.x, 1.02, TUB_CENTER.z]}
         >
           <spriteMaterial map={tex} transparent opacity={0.3} depthWrite={false} />
         </sprite>
