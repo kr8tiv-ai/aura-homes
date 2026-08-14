@@ -51,6 +51,7 @@ import {
   feetInches,
   fixtureSchedule,
   floorRegions,
+  isFurnitureKind,
   kindsByMount,
   morph,
   removeFixture,
@@ -94,6 +95,7 @@ const SURFACES: Record<FixtureSurface, SurfaceStyle> = {
   cabinet: { color: "#b9bdb6", roughness: 0.72, metalness: 0.14 },
   wood: { color: "#a97e57", roughness: 0.88, metalness: 0 },
   fabric: { color: "#9aa294", roughness: 0.96, metalness: 0 },
+  porcelain: { color: "#e4e6e1", roughness: 0.24, metalness: 0.04, smooth: true },
   water: { color: "#4f8d86", roughness: 0.2, metalness: 0.1, opacity: 0.88, smooth: true, noShadow: true },
   pv: { color: "#1b2634", roughness: 0.18, metalness: 0.42 },
   glass: { color: "#a8cfd4", roughness: 0.08, metalness: 0.15, opacity: 0.4, noShadow: true },
@@ -318,27 +320,52 @@ export default function FixturePalette({
         }
       >
         <div className="space-y-5">
-          {(["floor", "wall", "roof"] as FixtureMount[]).map((mount) => (
-            <div key={mount}>
-              <p className="aura-label">{MOUNT_LABEL[mount]}</p>
-              <p className="mt-1.5 text-xs leading-snug text-aura-text/55">{MOUNT_HINT[mount]}</p>
-              <div className="mt-2.5 flex flex-wrap gap-1.5">
-                {kindsByMount(mount).map((k) => (
-                  <button
-                    key={k.id}
-                    type="button"
-                    onClick={() => add(k.id)}
-                    title={k.blurb}
-                    data-cursor="Select"
-                    className="rounded-md border aura-hairline px-3 py-2 text-left text-xs text-aura-text/70 transition-colors hover:border-aura-teal hover:text-aura-text"
-                  >
-                    <span className="font-mono text-[0.6rem] uppercase tracking-label text-aura-emerald">{k.tag}</span>
-                    <span className="ml-2">{k.label}</span>
-                  </button>
-                ))}
+          {(["floor", "wall", "roof"] as FixtureMount[]).map((mount) => {
+            /* Split by `isFurnitureKind` rather than appending. The catalogue is
+               mostly plant and mostly furniture at the same time, and a single
+               flat wrap of twenty-odd buttons is a wall a person reads past —
+               the two sub-lists below are the whole reason the grouping exists.
+               Nothing is filtered OUT here: every kind of this mount lands in
+               one of the two groups, so a new kind can never fall through. */
+            const kinds = kindsByMount(mount);
+            const groups: { key: string; label: string; items: FixtureKind[] }[] = [
+              { key: "furniture", label: "Furniture", items: kinds.filter((k) => isFurnitureKind(k.id)) },
+              { key: "systems", label: "Systems and equipment", items: kinds.filter((k) => !isFurnitureKind(k.id)) },
+            ];
+            return (
+              <div key={mount}>
+                <p className="aura-label">{MOUNT_LABEL[mount]}</p>
+                <p className="mt-1.5 text-xs leading-snug text-aura-text/55">{MOUNT_HINT[mount]}</p>
+                {groups
+                  .filter((g) => g.items.length > 0)
+                  .map((g) => (
+                    <div key={g.key} className="mt-3">
+                      {/* Only worth a heading when there is something to tell apart. */}
+                      {groups.every((other) => other.items.length > 0) ? (
+                        <p className="font-mono text-[0.6rem] uppercase tracking-label text-aura-text/45">{g.label}</p>
+                      ) : null}
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {g.items.map((k) => (
+                          <button
+                            key={k.id}
+                            type="button"
+                            onClick={() => add(k.id)}
+                            title={k.blurb}
+                            data-cursor="Select"
+                            className="rounded-md border aura-hairline px-3 py-2 text-left text-xs text-aura-text/70 transition-colors hover:border-aura-teal hover:text-aura-text"
+                          >
+                            <span className="font-mono text-[0.6rem] uppercase tracking-label text-aura-emerald">
+                              {k.tag}
+                            </span>
+                            <span className="ml-2">{k.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </Panel>
 

@@ -40,5 +40,15 @@
     "note": "the orchestrator runs test:ui and re-checks the PB01 byte baseline"
   },
   "sideEffect": "local",
-  "status": "ready"
+  "status": "verified-with-open-finding",
+  "evidence": {
+    "verifiedAt": "2026-08-14",
+    "delivered": "lib/builder/exportPdf.ts writes the eight sheets as one multi-page vector PDF at 1224x792 pt, returning the same ExportArtifact shape as every other export so it drops into the existing UI with no special case. The per-sheet SVG downloads were kept.",
+    "hardGateMet": "Two generations are byte-identical. Streams are left uncompressed with the reason written at the code — byte-identical output across environments beats a smaller file, for a product whose stated rule is that a diffable export is how somebody notices the house changed.",
+    "gapTheVerifierFoundAndTheOrchestratorClosed": "Rejection gate 3 (the PDF carries the same design hash as every other export) was met by the LIBRARY and not by the PRODUCT: BuilderApp passed only the set, the name and the date, so every PDF a user actually downloaded printed 'DESIGN HASH NOT SUPPLIED TO THIS EXPORT'. True, and useless. DrawingSheets is right to refuse to invent one — it never sees a BuilderDocument, and a second hash on a permit-office document that no other export agrees with is worse than none — so the caller that holds the document now passes hashBuilderDocument(drawn.document), taken over the document the SET was generated from rather than the live one.",
+    "openFindingMedium": "THE COMPLETENESS ASSERTION HAS A CONSTRUCTIBLE BYPASS. Test 7 ('every mark the sheet draws reaches the PDF as a painted path') counts only paint operators and no geometry operators, so a converter that emitted geometry without painting it, or painted in the wrong place, would satisfy the count. It is the assertion the node leans on hardest and the one most worth strengthening.",
+    "openFindingLow": "Cross-engine byte identity is asserted rather than proven — the arc and transform paths route through floating-point code that was not tested across engines. And test 11's import-shape regex requires a `from` clause, so a bare side-effect import would pull the converter and its 256-entry metric table into the main bundle without the guard noticing.",
+    "reportCorrection": "One of the node's own open findings was factually wrong: it claimed app/test-results/ is unignored, having read only the root .gitignore. app/.gitignore already ignores it.",
+    "gates": "tsc clean; export-pdf.spec.ts 12/12; PB01 first-load bytes unchanged (the library is loaded by dynamic import inside the download handler, matching exportSpec.ts's treatment of GLTFExporter)."
+  }
 }

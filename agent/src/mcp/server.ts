@@ -1,8 +1,12 @@
 #!/usr/bin/env node
 // aura-brain — the Aura Homes journey brain as an MCP server over stdio
-// (docs/AI-BRAIN.md "Interface: MCP-first"). Ten typed tools wrap the existing
-// aura-architect pipeline (LAND/DESIGN/BUDGET/ESCROW) and brain modules
-// (journey state, guidance, slip detection, digest).
+// (docs/AI-BRAIN.md "Interface: MCP-first"). Typed tools wrap the existing
+// aura-architect pipeline (LAND/DESIGN/BUDGET/ESCROW), the brain modules
+// (journey state, guidance, slip detection, digest), the concierge order
+// machine, and the contributed-model authoring pair. The count is TOOLS.length
+// in ./tools and is printed by the startup banner below — this comment said
+// "Ten typed tools" for four tools longer than it was true, which is what a
+// hand-maintained number in a comment always does.
 //
 // Modes:
 //   free (default)         — every tool call runs ungated.

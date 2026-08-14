@@ -47,5 +47,14 @@
     "note": "the orchestrator runs test:ui (rule 3). Do not run npm install — adding a dependency is out of scope for this node."
   },
   "sideEffect": "local",
-  "status": "ready"
+  "status": "verified",
+  "evidence": {
+    "verifiedAt": "2026-08-14",
+    "shippedIn": "6e3d597",
+    "delivered": "applyVertexMove holds the file's ONLY call to moveGraphVertex — the pointer drag, the arrow keys, the X/Z fields and the wall-length field all route through it, separated by intent: 'preview' | 'commit'. GRID_SNAP_FT is now the single grid constant (moveDrag's hard-coded 0.5 is gone) and COARSE_STEP_FT = GRID_SNAP_FT * 5 was taken from Plan2D rather than picked, so the two plan editors agree about what Shift means. NumberField holds no state: the DOM input is the browser's editing buffer while focused and the graph's own number is written back over it on commit, so a refused entry snaps back to the number the building actually has. Typed values use EXACT_SNAP_FT = 0, because the half-foot grid exists for pointers, not buildings.",
+    "correctedTheAuditTwice": "The parent <svg> carries role='img', which is children-presentational, so the vertex aria-labels were never announced to a screen reader — the stops were inert AND silent, worse than reported. And refusals were NOT swallowed: the problem paragraph already carried role='alert'. What was silent was every SUCCESS. There is now one role='status' region with exactly two exits, refuse() and report(), so the visible notice and the spoken sentence cannot come apart.",
+    "scopeCorrection": "The manifest asked for a numeric inspector AND an object tree. The triage recommended deferring the tree. What shipped is a labelled object list enumerating the storey's vertices, walls and openings as real buttons carrying live dimensions — which is what frees the arrow keys to mean 'move the selected vertex' rather than 'move focus'. Spatial tabbing across dozens of SVG primitives was rejected with the reason written at the code.",
+    "falsifiability": "Ten mutations. NINE went red as designed — including giving the arrow keys their own mutator call (the one-implementation assertion caught it by finding two moveGraphVertex call sites), retyping the history label instead of calling vertexEditLabel, moving COARSE_STEP_FT off the lattice, and shifting the spec's drag point (which failed on the graph AND, once execution reached it, on hashBuilderDocument with two different hashes — so the hash equality is not vacuous). ONE went green and exposed an assertion that proved nothing; it was rebuilt rather than deleted.",
+    "gates": "tsc clean; graph-keyboard.spec.ts 9/9; interface-motion and css-tokens re-run because globals.css was temporarily mutated during the falsifiability work, both green including 'focus is one visible ring from the tokens, and it never glows'."
+  }
 }

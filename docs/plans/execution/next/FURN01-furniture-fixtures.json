@@ -1,0 +1,53 @@
+{
+  "node": "FURN01",
+  "graphVersion": "1.2",
+  "job": "Actual furniture. The fixture system is excellent and almost entirely off-grid equipment — a person furnishing a home has a bed, a sofa, an island and a hot tub, and nothing else.",
+  "origin": "Founder ask, 2026-08-14: 'you should be able to add furniture too'.",
+  "context": [
+    "THE SYSTEM IS ALREADY BUILT AND IT IS GOOD. Do not redesign it; populate it. lib/builder/fixtures.ts (~3260 lines) has snapping (snapFloor :1933, snapWall :2090, snapRoof :2242, reSnap :2411), OBB conflict detection (Obb :1827, obbOverlap :1872), clearance rules with provenance, and resolveFixtures(spec, set): FixtureResolution (:2536). All of that works for anything you add.",
+    "WHAT A FIXTURE IS — parameters plus a build function, NOT stored geometry and NOT an asset reference. FixtureKind at fixtures.ts:280-299: { id: FixtureKindId; mount: FixtureMount; label; tag (two characters, and this repo does not use emoji); blurb; dimensions: readonly FixtureDimension[]; options: readonly FixtureOption[]; extents(d, o) -> {widthFt, depthFt, heightFt}; baseHeightFt?(d, o); clearances(d, o) -> ClearanceRule[]; facts(d, o) -> FixtureFact[]; build(d, o, ctx) -> FixturePart[] }.",
+    "THE DESIGN RULE, stated at fixtures.ts:40-45 and non-negotiable: MORPH, NOT SCALE. Resizing changes named dimensions and rebuilds the object; detail thicknesses stay constant. A table that gets longer does not get a thicker top.",
+    "TODAY THERE ARE 14 KINDS and only four are furniture in the ordinary sense — kitchen-island, bed, sofa, hot-tub. The rest are wood-stove, cistern, battery-bank, hrv, awg, electrical-panel, thermostat, greywater-valve, wall-heater, solar-array. FixtureKindId is the union at :224-241; FIXTURE_CATALOG at :1519-1534; display order FIXTURE_KIND_IDS at :1537-1552 (deliberately a different order from the union).",
+    "THE ONLY TAXONOMY IS MOUNT — FixtureMount = 'floor' | 'wall' | 'roof' (:222), surfaced by kindsByMount (:1554). There is NO room taxonomy, and fixtures have no room binding: FixtureHost is { kind: 'volume'; volumeId } | { kind: 'deck' } (:1590-1592). Do not add a room binding in this node — GraphRoomFace lives in buildingGraph.ts and touching it collides with the graph editor work.",
+    "CLEARANCES CARRY PROVENANCE AND MUST STAY HONEST. ClearanceRule (:168-201) has zone (ClearanceZone :144-156: combustible | working-space | service | floor-pad | circulation | airflow), basis (ClearanceBasis :158-166: code | guideline | manufacturer | indicative), and verifiedAgainstSource TYPED AS THE LITERAL false (:193-199) with the comment 'Typed as the literal so a future edit cannot flip one to true without also changing the type.' Furniture clearances are mostly 'circulation' and 'indicative' — a dining chair pull-out is a guideline, not a code, and must say so.",
+    "RENDERING: FixtureLayer and useFixtureGeometry are both exported from components/builder/FixturePalette.tsx (:181 and :201). SURFACES at FixturePalette.tsx:91-102 maps FixtureSurface (fixtures.ts:311-331: stove | steel | cabinet | wood | fabric | water | pv | glass | clearance | clearance-alert) to styles — ANY new FixtureSurface value needs a matching key there or it renders untyped."
+  ],
+  "writeSet": [
+    "app/lib/builder/fixtures.ts",
+    "app/components/builder/FixturePalette.tsx",
+    "app/tests/furniture-fixtures.spec.ts (new)"
+  ],
+  "doNotTouch": [
+    "app/lib/builder/document.ts — validateFixtures lives there and is shared with other in-flight work. Adding a KIND does not require it; the union and the catalogue are both in fixtures.ts. If you conclude you need it, STOP and report.",
+    "app/lib/builder/share.ts — the fixture share codec (encodeFixtureSet/decodeFixtureSet). Adding kinds must not change the wire format; if it does, you have designed something wrong.",
+    "app/components/builder/BuilderApp.tsx — the palette and layer are already mounted. New kinds appear automatically.",
+    "README.md, docs/SUBMISSION.md, app/package.json, app/playwright.ui.config.ts, app/tests/gate-coverage.spec.ts — the orchestrator owns these."
+  ],
+  "rejectionGates": [
+    "EVERY NEW KIND NEEDS A REASON TO EXIST IN AN AURA HOME. The `blurb` field is documented as 'one sentence: what it is, and why an Aura home has one'. A generic furniture dump fails that. Think about small, cold-climate, off-grid-capable homes: where does firewood go, where do boots and coats dry, where does a person eat when the table is also the desk.",
+    "MORPH, NOT SCALE, ASSERTED. Add a spec that resizes a piece and proves a detail thickness did not change with it. That is the rule the whole system is built on and it currently has no test naming it.",
+    "NO INVENTED CLEARANCE AUTHORITY. verifiedAgainstSource stays the literal false. A clearance you reasoned out is `indicative`; a clearance from a published guideline is `guideline` and names it. Nothing furniture-related is `code` unless you can cite the clause.",
+    "THE SHARE CODEC AND THE DOCUMENT FORMAT MUST NOT CHANGE. Adding kinds is additive: an existing saved project with existing fixtures must load byte-identically. Assert it.",
+    "every new FixtureSurface value has a SURFACES entry, or you have shipped an object that renders in the wrong material."
+  ],
+  "instructions": [
+    "1. Read three existing kinds end to end — bed, sofa and kitchen-island — before writing anything. Match their dimension naming, their option vocabulary, their facts, and the density of their build functions.",
+    "2. Add furniture worth having. Strong candidates: dining table, dining chair, desk, wardrobe, shelving/bookcase, chest of drawers, bunk, armchair, entry bench with boot storage, firewood store, drying rack, washer-dryer stack, refrigerator, range/cooktop, kitchen sink run, bathroom vanity, toilet, shower, freestanding bath. Cover the rooms a person actually furnishes.",
+    "3. Give each one honest clearances: a range needs combustible clearance and a working space; a dining table needs chair pull-out and a circulation route; a wardrobe needs its door swing; a bunk needs headroom above the top mattress.",
+    "4. Keep the palette legible. FIXTURE_KIND_IDS is display order — group furniture sensibly rather than appending.",
+    "5. Spec (furniture-fixtures.spec.ts): every catalogue entry has a non-empty blurb, dimensions with sane min/max/default, extents that agree with the built geometry's bounding box, clearances whose verifiedAgainstSource is false, and the morph-not-scale assertion. Prove at least two assertions falsifiable by mutation."
+  ],
+  "verify": {
+    "commands": ["npx tsc --noEmit", "npm test"],
+    "note": "the orchestrator runs test:ui and wires the new spec into a gate"
+  },
+  "sideEffect": "local",
+  "status": "verified-with-open-finding",
+  "evidence": {
+    "verifiedAt": "2026-08-14",
+    "delivered": "The catalogue now covers the rooms a person actually furnishes rather than being 14 kinds of which four were furniture. Clearances carry their basis honestly — a dining chair pull-out is a circulation guideline, not a code — and verifiedAgainstSource stays the literal false throughout.",
+    "openFindingHigh": "THE HEADLINE GATE IS NEAR-VACUOUS AND THE VERIFIER PROVED IT BY CONSTRUCTION. Test 8, named after the file's own MORPH-NOT-SCALE design rule, rests on scalesUniformly(), which reports 'this is scaling' only if EVERY part changes on ALL THREE axes between a dimension's min and max — so it bails to false the moment any single part keeps any single axis. The verifier built a vanity whose countertop slab thickness is proportional to width (a real violation of the rule) and it shipped green through all 17 tests. The rule this whole subsystem is built on therefore still has no gate that can catch a realistic breach. That is the next piece of work here and it is more valuable than more kinds.",
+    "openFindingMedium": "Test 5 ('extents agree with the geometry that actually gets built') runs only over FURNITURE_KIND_IDS and only at defaultOpts; the verifier found two NEW kinds violating the extents contract under an option a user can select. And the bed-overhang pin has 25% slack — the allowance is 0.25 ft against a measured 0.20 ft, so the very defect it pins could grow a quarter and stay green.",
+    "gates": "tsc clean; furniture-fixtures.spec.ts 17/17. Write set clean — the verifier confirmed the only repo files written in this node's window were the three declared ones."
+  }
+}

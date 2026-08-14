@@ -238,7 +238,10 @@ function defineTool<T extends z.ZodObject<z.ZodRawShape>>(
   return { name, description, schema, handler: handler as ToolDef["handler"] };
 }
 
-// ---------------------------------------------------------------- the 10 tools
+// ---------------------------------------------------------------- the tool set
+// (TOOLS at the bottom of this file is the authority on how many there are;
+//  the server's startup banner prints TOOLS.length. This header used to say
+//  "the 10 tools" long after there were fourteen.)
 
 const checkParcel = defineTool(
   "check_parcel",
@@ -692,6 +695,485 @@ const conciergeState = defineTool(
   }
 );
 
+// ------------------------------------------------------- contributed models
+
+/* WHY THIS LIVES HERE, DUPLICATED.
+
+   agent/ has ZERO imports from app/lib/builder/ and cannot construct a
+   PlanTemplate — it cannot even name the type. So an agent cannot contribute a
+   home model by calling the app's code. The only format that crosses that line
+   is plain JSON that BOTH sides produce and validate independently, which is
+   also exactly what a human contributor writes by hand.
+
+   These checks therefore mirror app/lib/builder/contributedModel.ts's
+   `collectContributedModelProblems` message for message. Mirrored logic drifts,
+   so the drift is made loud rather than trusted: app/tests/contributed-model.
+   spec.ts runs the SAME bad records through both implementations and asserts
+   the two problem lists are identical, string for string.
+
+   NOTHING HERE SELLS ANYTHING. These tools emit and check data. They write no
+   file, touch no repository source, and make no claim that a model can be
+   bought, sold, paid for, or that a contributor will be paid. */
+
+const CONTRIBUTED_MODEL_CONTRACT = "aura.contributed-model/v1";
+const CONTRIBUTED_ID_PREFIX = "contributed-";
+const CATALOG_MINIMUM_FLOOR_AREA_SQFT = 100;
+
+const CM_ROOF_FORMS = ["gable", "a-frame", "shed", "flat", "saltbox"] as const;
+const CM_WALLS = ["n", "s", "e", "w"] as const;
+const CM_MATERIALS = ["sip", "rammed_earth", "clt", "timber_frame"] as const;
+const CM_CLIMATE_ZONES = ["4", "5", "6", "7A", "7B", "8"] as const;
+const CM_SLOPES = ["flat", "gentle", "steep"] as const;
+const CM_RELATIONSHIPS = ["dimensional-adaptation", "system-informed-study"] as const;
+
+const CM_NONCOMMERCIAL = /\bNC\b|non-?commercial/i;
+const CM_NO_DERIVATIVES = /\bND\b|no-?derivat/i;
+const CM_PUBLIC_DOMAIN_BASIS = /17 USC 105|public domain|not in copyright/i;
+const CM_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+type CmRecord = Record<string, unknown>;
+
+const cmIsObject = (value: unknown): value is CmRecord =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const cmFilled = (value: unknown): value is string =>
+  typeof value === "string" && value.trim().length > 0;
+
+const cmFinite = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value);
+
+const cmIncludes = (list: readonly string[], value: unknown): boolean =>
+  typeof value === "string" && list.indexOf(value) >= 0;
+
+function cmRightsProblems(value: unknown): string[] {
+  if (!cmIsObject(value))
+    return ["rights is missing — a model with no stated provenance cannot be accepted."];
+  const problems: string[] = [];
+  const kind = value.kind;
+
+  if (kind === "aura-authored") {
+    return [
+      'rights.kind is "aura-authored", which only Aura Homes may sign. Contribute under ' +
+        '"licensed-adaptation" (naming a share-alike licence) or "public-domain-adaptation" ' +
+        "(naming a public-domain dedication).",
+    ];
+  }
+  if (kind !== "licensed-adaptation" && kind !== "public-domain-adaptation") {
+    return ['rights.kind must be "licensed-adaptation" or "public-domain-adaptation".'];
+  }
+
+  if (!cmFilled(value.name)) problems.push("rights.name does not say whose work this is.");
+  if (!cmFilled(value.url) || !/^https:\/\//.test(value.url))
+    problems.push("rights.url must be an https:// link to the source that can be opened and checked.");
+  if (!cmFilled(value.licenseUrl) || !/^https:\/\//.test(value.licenseUrl))
+    problems.push("rights.licenseUrl must be an https:// link to the licence or rights statement itself.");
+  if (!cmFilled(value.license)) {
+    problems.push("rights.license does not name the terms this work is offered under.");
+  } else {
+    if (CM_NONCOMMERCIAL.test(value.license))
+      problems.push("rights.license is noncommercial; this catalog permits commercial use and cannot carry it.");
+    if (CM_NO_DERIVATIVES.test(value.license))
+      problems.push("rights.license forbids derivatives; every non-Aura entry in this catalog is an adaptation.");
+  }
+  if (!cmFilled(value.attribution) || value.attribution.trim().length <= 20)
+    problems.push("rights.attribution must be a real credit line of more than 20 characters, not a placeholder.");
+  if (!cmFilled(value.changes) || value.changes.trim().length <= 20)
+    problems.push("rights.changes must state, in more than 20 characters, what was changed from the source.");
+  if (!cmIncludes(CM_RELATIONSHIPS, value.relationship))
+    problems.push('rights.relationship must be "dimensional-adaptation" or "system-informed-study".');
+
+  if (kind === "licensed-adaptation" && value.shareAlike !== true)
+    problems.push(
+      "rights.shareAlike must be true on a licensed-adaptation. PlanSource has no arm for " +
+        "third-party original work under a permissive, non-share-alike licence, and recording " +
+        "true for a permissive licence would be a false legal claim — offer the work under a " +
+        "share-alike licence or a public-domain dedication instead."
+    );
+  if (kind === "public-domain-adaptation") {
+    if (value.shareAlike !== false)
+      problems.push(
+        "rights.shareAlike must be false on a public-domain-adaptation — no licence survives to pass on."
+      );
+    if (cmFilled(value.license) && !CM_PUBLIC_DOMAIN_BASIS.test(value.license))
+      problems.push(
+        'rights.license must name the public-domain basis (for example "17 USC 105", ' +
+          '"CC0 1.0 public domain dedication", or "not in copyright").'
+      );
+  }
+  return problems;
+}
+
+function cmOpeningProblems(volumeIndex: number, volume: CmRecord): string[] {
+  const problems: string[] = [];
+  const openings = volume.openings;
+  const at = `envelope.volumes[${volumeIndex}]`;
+  if (!Array.isArray(openings)) {
+    problems.push(`${at}.openings must be an array (an empty array is allowed).`);
+    return problems;
+  }
+  const widthFt = cmFinite(volume.widthFt) ? volume.widthFt : 0;
+  const depthFt = cmFinite(volume.depthFt) ? volume.depthFt : 0;
+  const storeys = volume.storeys === 2 ? 2 : 1;
+  const wallHeightFt = cmFinite(volume.wallHeightFt) ? volume.wallHeightFt : 0;
+  const seen = new Set<string>();
+  openings.forEach((raw: unknown, index: number) => {
+    const where = `${at}.openings[${index}]`;
+    if (!cmIsObject(raw)) {
+      problems.push(`${where} is not a record.`);
+      return;
+    }
+    if (!cmFilled(raw.id)) problems.push(`${where}.id is missing.`);
+    else if (seen.has(raw.id)) problems.push(`${where}.id "${raw.id}" is used twice in the same volume.`);
+    else seen.add(raw.id);
+    if (!cmIncludes(CM_WALLS, raw.wall)) problems.push(`${where}.wall must be one of n, s, e, w.`);
+    if (raw.kind !== "window" && raw.kind !== "door" && raw.kind !== "glazing-wall")
+      problems.push(`${where}.kind must be window, door or glazing-wall.`);
+    if (!cmFinite(raw.widthFt) || raw.widthFt <= 0) problems.push(`${where}.widthFt must be a positive number.`);
+    if (!cmFinite(raw.heightFt) || raw.heightFt <= 0) problems.push(`${where}.heightFt must be a positive number.`);
+    if (!cmFinite(raw.offsetFt) || raw.offsetFt < 0) problems.push(`${where}.offsetFt must be zero or greater.`);
+    if (!cmFinite(raw.sillFt) || raw.sillFt < 0) problems.push(`${where}.sillFt must be zero or greater.`);
+    if (cmFinite(raw.widthFt) && cmFinite(raw.offsetFt)) {
+      const run = raw.wall === "n" || raw.wall === "s" ? widthFt : depthFt;
+      if (raw.offsetFt + raw.widthFt > run + 1e-9)
+        problems.push(
+          `${where} runs past the end of its wall: offsetFt ${raw.offsetFt} + widthFt ${raw.widthFt} exceeds the ${run} ft wall.`
+        );
+    }
+    if (cmFinite(raw.heightFt) && cmFinite(raw.sillFt)) {
+      const available = wallHeightFt * storeys;
+      if (raw.sillFt + raw.heightFt > available + 0.01)
+        problems.push(
+          `${where} is taller than its wall: sillFt ${raw.sillFt} + heightFt ${raw.heightFt} exceeds the ${available} ft available.`
+        );
+    }
+  });
+  return problems;
+}
+
+function cmEnvelopeProblems(value: unknown): string[] {
+  if (!cmIsObject(value)) return ["envelope is missing — a model with no dimensions is not a model."];
+  const problems: string[] = [];
+
+  if (!cmIncludes(CM_MATERIALS, value.material))
+    problems.push(`envelope.material must be one of ${CM_MATERIALS.join(", ")}.`);
+  if (!cmIncludes(CM_CLIMATE_ZONES, value.climateZone))
+    problems.push(`envelope.climateZone must be one of ${CM_CLIMATE_ZONES.join(", ")}.`);
+
+  const siting = value.siting;
+  if (!cmIsObject(siting)) {
+    problems.push("envelope.siting is missing.");
+  } else {
+    if (!cmFinite(siting.frontFacesDeg) || siting.frontFacesDeg < 0 || siting.frontFacesDeg > 360)
+      problems.push("envelope.siting.frontFacesDeg must be a compass bearing between 0 and 360.");
+    if (!cmIncludes(CM_SLOPES, siting.slope))
+      problems.push("envelope.siting.slope must be flat, gentle or steep.");
+  }
+
+  const deck = value.deck;
+  if (deck !== null) {
+    if (!cmIsObject(deck)) {
+      problems.push("envelope.deck must be a deck record or an explicit null.");
+    } else {
+      if (!cmIncludes(CM_WALLS, deck.wall)) problems.push("envelope.deck.wall must be one of n, s, e, w.");
+      if (!cmFinite(deck.widthFt) || deck.widthFt <= 0)
+        problems.push("envelope.deck.widthFt must be a positive number.");
+      if (!cmFinite(deck.depthFt) || deck.depthFt <= 0)
+        problems.push("envelope.deck.depthFt must be a positive number.");
+      if (typeof deck.hotTub !== "boolean") problems.push("envelope.deck.hotTub must be true or false.");
+    }
+  }
+
+  const volumes = value.volumes;
+  if (!Array.isArray(volumes) || volumes.length === 0) {
+    problems.push("envelope.volumes must contain at least one volume.");
+    return problems;
+  }
+  const ids = new Set<string>();
+  volumes.forEach((raw: unknown, index: number) => {
+    const at = `envelope.volumes[${index}]`;
+    if (!cmIsObject(raw)) {
+      problems.push(`${at} is not a record.`);
+      return;
+    }
+    if (!cmFilled(raw.id)) problems.push(`${at}.id is missing.`);
+    else if (ids.has(raw.id)) problems.push(`${at}.id "${raw.id}" is used twice.`);
+    else ids.add(raw.id);
+    if (!cmFilled(raw.name)) problems.push(`${at}.name is missing.`);
+    if (!cmFinite(raw.widthFt) || raw.widthFt <= 0) problems.push(`${at}.widthFt must be a positive number.`);
+    if (!cmFinite(raw.depthFt) || raw.depthFt <= 0) problems.push(`${at}.depthFt must be a positive number.`);
+    if (!cmFinite(raw.x)) problems.push(`${at}.x must be a number.`);
+    if (!cmFinite(raw.z)) problems.push(`${at}.z must be a number.`);
+    if (!cmFinite(raw.rotationDeg)) problems.push(`${at}.rotationDeg must be a number.`);
+    if (raw.storeys !== 1 && raw.storeys !== 2) problems.push(`${at}.storeys must be 1 or 2.`);
+    if (!cmFinite(raw.wallHeightFt) || raw.wallHeightFt <= 0)
+      problems.push(`${at}.wallHeightFt must be a positive number.`);
+    const roof = raw.roof;
+    if (!cmIsObject(roof)) {
+      problems.push(`${at}.roof is missing.`);
+    } else {
+      if (!cmIncludes(CM_ROOF_FORMS, roof.form))
+        problems.push(`${at}.roof.form must be one of ${CM_ROOF_FORMS.join(", ")}.`);
+      if (!cmFinite(roof.pitchDeg) || roof.pitchDeg < 0 || roof.pitchDeg >= 90)
+        problems.push(`${at}.roof.pitchDeg must be between 0 and 90 degrees.`);
+      if (!cmFinite(roof.overhangFt) || roof.overhangFt < 0)
+        problems.push(`${at}.roof.overhangFt must be zero or greater.`);
+      if (roof.facing !== undefined && !cmIncludes(CM_WALLS, roof.facing))
+        problems.push(`${at}.roof.facing, when present, must be one of n, s, e, w.`);
+    }
+    problems.push(...cmOpeningProblems(index, raw));
+  });
+
+  if (problems.length === 0) {
+    const area = (volumes as Array<{ widthFt: number; depthFt: number; storeys: number }>).reduce(
+      (sum, item) => sum + item.widthFt * item.depthFt * item.storeys,
+      0
+    );
+    if (area <= CATALOG_MINIMUM_FLOOR_AREA_SQFT)
+      problems.push(
+        `envelope.volumes total ${area} sq ft of floor area; the catalog contract requires more than ` +
+          `${CATALOG_MINIMUM_FLOOR_AREA_SQFT} sq ft.`
+      );
+  }
+  return problems;
+}
+
+/** Every reason this record cannot be accepted, in one pass. Mirrors
+ *  app/lib/builder/contributedModel.ts message for message. */
+function contributedModelProblems(value: unknown): string[] {
+  if (!cmIsObject(value)) return ["A contributed model must be a JSON object."];
+  const problems: string[] = [];
+
+  if (value.contract !== CONTRIBUTED_MODEL_CONTRACT)
+    problems.push(`contract must be "${CONTRIBUTED_MODEL_CONTRACT}".`);
+  if (!cmFilled(value.id)) {
+    problems.push("id is missing.");
+  } else {
+    const id = value.id;
+    if (id.indexOf(CONTRIBUTED_ID_PREFIX) !== 0)
+      problems.push(
+        `id must start with "${CONTRIBUTED_ID_PREFIX}" so it can never collide with a catalog plan id.`
+      );
+    if (!CM_SLUG.test(id)) problems.push("id must be a lower-case slug: letters, digits and single hyphens.");
+  }
+  for (const field of ["title", "kicker", "summary", "bestFor", "sleeping", "notes"] as const) {
+    if (!cmFilled(value[field])) problems.push(`${field} is missing.`);
+  }
+  if (!cmFinite(value.bedrooms) || value.bedrooms < 0 || !Number.isInteger(value.bedrooms))
+    problems.push("bedrooms must be a whole number of zero or more.");
+  if (!cmFinite(value.bathrooms) || value.bathrooms <= 0)
+    problems.push("bathrooms must be greater than zero — every home in this catalog has one.");
+  if (value.storeys !== 1 && value.storeys !== 2) problems.push("storeys must be 1 or 2.");
+  for (const field of ["tags", "features"] as const) {
+    const list = value[field];
+    if (!Array.isArray(list) || list.length === 0) {
+      problems.push(`${field} must be a non-empty array of strings.`);
+    } else if (!list.every((entry: unknown) => cmFilled(entry))) {
+      problems.push(`${field} contains an empty entry.`);
+    }
+  }
+  if ("costBasis" in value && value.costBasis !== undefined) {
+    const basis = value.costBasis;
+    if (!cmIsObject(basis)) {
+      problems.push("costBasis, when present, must be a record.");
+    } else {
+      if (basis.status !== "modelled" && basis.status !== "proxy")
+        problems.push('costBasis.status must be "modelled" or "proxy".');
+      if (!cmFilled(basis.label)) problems.push("costBasis.label is missing.");
+      if (!cmFilled(basis.note)) problems.push("costBasis.note is missing.");
+    }
+  }
+  problems.push(...cmRightsProblems(value.rights));
+  problems.push(...cmEnvelopeProblems(value.envelope));
+  return problems;
+}
+
+const contributedRightsSchema = z
+  .discriminatedUnion("kind", [
+    z.object({
+      kind: z.literal("licensed-adaptation"),
+      name: z.string().describe("Whose work this is — never Aura Homes"),
+      url: z.string().describe("https:// link to the source that can be opened and checked"),
+      license: z.string().describe('Named share-alike terms, e.g. "CC BY-SA 4.0". Never NC or ND.'),
+      licenseUrl: z.string().describe("https:// link to the licence text itself"),
+      attribution: z.string().describe("The credit line, more than 20 characters"),
+      changes: z.string().describe("What was changed from the source, more than 20 characters"),
+      shareAlike: z.literal(true),
+      relationship: z.enum(["dimensional-adaptation", "system-informed-study"]),
+    }),
+    z.object({
+      kind: z.literal("public-domain-adaptation"),
+      name: z.string(),
+      url: z.string().describe("https:// link to where the rights statement was read"),
+      license: z
+        .string()
+        .describe('Must name the basis: "17 USC 105", "CC0 1.0 public domain dedication", "not in copyright"'),
+      licenseUrl: z.string(),
+      attribution: z.string().describe("Credit is recorded even though none is owed"),
+      changes: z.string(),
+      shareAlike: z.literal(false),
+      relationship: z.enum(["dimensional-adaptation", "system-informed-study"]),
+    }),
+  ])
+  .describe(
+    'The rights block, mirroring the app\'s PlanSource. The third arm, "aura-authored", is ' +
+      "refused on a contribution: only Aura Homes may sign as Aura Homes."
+  );
+
+const draftContributedModel = defineTool(
+  "draft_contributed_model",
+  "CONTRIBUTE: turns a short brief plus a rights block into a complete contributed-model JSON " +
+    "record (contract aura.contributed-model/v1) and checks it. Returns the record as DATA — it " +
+    "writes no file and edits no application source, so an agent can author a home model without " +
+    "a clone of the repository and without a pull request. The same JSON is what a human " +
+    "contributor writes by hand. Nothing here is an offer, a sale or a payment: Aura Homes " +
+    "facilitates and is not a party to any agreement about the model.",
+  z.object({
+    slug: z.string().describe('Short lower-case slug; the "contributed-" prefix is added for you'),
+    title: z.string(),
+    summary: z.string().describe("One sentence a reader sees on the card"),
+    notes: z.string().describe("Your own note, carried into the design brief beside the provenance notice"),
+    rights: contributedRightsSchema,
+    bedrooms: z.number().int().min(0),
+    bathrooms: z.number().min(0.5).optional().describe("Default 1"),
+    storeys: z.union([z.literal(1), z.literal(2)]).optional().describe("Default 1"),
+    widthFt: z.number().min(8).describe("Main volume width in feet"),
+    depthFt: z.number().min(8).describe("Main volume depth in feet"),
+    wallHeightFt: z.number().min(8.5).optional().describe("Default 9.5"),
+    roof: z.enum(["gable", "a-frame", "shed", "flat", "saltbox"]).optional().describe("Default gable"),
+    pitchDeg: z.number().min(0).max(89).optional().describe("Default 35 (18 for shed, 2 for flat)"),
+    material: z.enum(["sip", "rammed_earth", "clt", "timber_frame"]).optional().describe("Default sip"),
+    climateZone: z.enum(["4", "5", "6", "7A", "7B", "8"]).optional().describe("Default 7A"),
+    frontFacesDeg: z.number().min(0).max(360).optional().describe("Default 180 (due south)"),
+    slope: z.enum(["flat", "gentle", "steep"]).optional().describe("Default flat"),
+    deck: z
+      .object({ widthFt: z.number(), depthFt: z.number(), hotTub: z.boolean().optional() })
+      .optional()
+      .describe("Omit for no deck"),
+    kicker: z.string().optional().describe("Default: computed area and storey count"),
+    bestFor: z.string().optional(),
+    sleeping: z.string().optional(),
+    tags: z.array(z.string()).optional(),
+    features: z.array(z.string()).optional(),
+  }),
+  (args) => {
+    const storeys = args.storeys ?? 1;
+    const widthFt = args.widthFt;
+    const depthFt = args.depthFt;
+    const wallHeightFt = args.wallHeightFt ?? 9.5;
+    const roofForm = args.roof ?? "gable";
+    const areaSqFt = widthFt * depthFt * storeys;
+    const slug = args.slug.replace(/^contributed-/, "");
+    const volumeId = "main";
+
+    /* The same opening pattern the curated catalog's private helper draws, so
+       a drafted model reads as a house rather than as a blank box. A
+       contributor who cares about their elevations replaces `openings`
+       wholesale — the contract carries them explicitly for that reason. */
+    const glassWidth = Math.max(3, Math.min(widthFt * 0.42, 14));
+    const glassOffset = Math.max(0.6, widthFt * 0.08);
+    const doorOffset = Math.min(Math.max(glassOffset + glassWidth + 0.5, widthFt - 3.8), widthFt - 3.1);
+    const sideOffset = Math.max(1, depthFt / 2 - 2);
+    const sideWidth = Math.min(4, depthFt * 0.35);
+
+    const record = {
+      contract: CONTRIBUTED_MODEL_CONTRACT,
+      id: `${CONTRIBUTED_ID_PREFIX}${slug}`,
+      title: args.title,
+      kicker:
+        args.kicker ??
+        `${Math.round(areaSqFt).toLocaleString("en-CA")} sq ft · ${storeys === 1 ? "one level" : "two levels"}`,
+      summary: args.summary,
+      bestFor: args.bestFor ?? "A contributed concept to review against your own site and program",
+      bedrooms: args.bedrooms,
+      bathrooms: args.bathrooms ?? 1,
+      sleeping:
+        args.sleeping ??
+        (args.bedrooms === 0 ? "Studio / Murphy bed" : `${args.bedrooms} enclosed bedroom${args.bedrooms === 1 ? "" : "s"}`),
+      storeys,
+      tags: args.tags ?? ["contributed"],
+      features: args.features ?? ["Contributed concept", "Editable in the Aura builder"],
+      envelope: {
+        material: args.material ?? "sip",
+        climateZone: args.climateZone ?? "7A",
+        volumes: [
+          {
+            id: volumeId,
+            name: "Main house",
+            widthFt,
+            depthFt,
+            x: 0,
+            z: 0,
+            rotationDeg: 0,
+            storeys,
+            wallHeightFt,
+            roof: {
+              form: roofForm,
+              pitchDeg: args.pitchDeg ?? (roofForm === "shed" ? 18 : roofForm === "flat" ? 2 : 35),
+              overhangFt: 1.5,
+              ...(roofForm === "shed" || roofForm === "saltbox" ? { facing: "s" } : {}),
+            },
+            openings: [
+              { id: `${volumeId}-glass`, wall: "s", kind: "glazing-wall", widthFt: glassWidth, heightFt: 8, offsetFt: glassOffset, sillFt: 0 },
+              { id: `${volumeId}-door`, wall: "s", kind: "door", widthFt: Math.min(3, widthFt * 0.28), heightFt: 6.8, offsetFt: doorOffset, sillFt: 0 },
+              { id: `${volumeId}-east`, wall: "e", kind: "window", widthFt: sideWidth, heightFt: 4, offsetFt: sideOffset, sillFt: 3 },
+              { id: `${volumeId}-west`, wall: "w", kind: "window", widthFt: sideWidth, heightFt: 4, offsetFt: sideOffset, sillFt: 3 },
+            ],
+          },
+        ],
+        deck: args.deck
+          ? { wall: "s", widthFt: args.deck.widthFt, depthFt: args.deck.depthFt, hotTub: args.deck.hotTub ?? false }
+          : null,
+        siting: { frontFacesDeg: args.frontFacesDeg ?? 180, slope: args.slope ?? "flat" },
+      },
+      notes: args.notes,
+      rights: args.rights,
+    };
+
+    const problems = contributedModelProblems(record);
+    return {
+      contract: CONTRIBUTED_MODEL_CONTRACT,
+      record,
+      valid: problems.length === 0,
+      problems,
+      floorAreaSqFt: areaSqFt,
+      whatHappensNext:
+        problems.length === 0
+          ? "This record validates. Hand the JSON to Aura Homes to be listed with its rights and its " +
+            "evidence state. Aura records what you declare and checks none of it; listing is not a " +
+            "sale and Aura is not a party to any agreement about the model."
+          : "This record does not validate yet. Fix every problem above and draft it again.",
+      writes: "none — this tool returns data and changes no file",
+    };
+  }
+);
+
+const validateContributedModelTool = defineTool(
+  "validate_contributed_model",
+  "CONTRIBUTE: checks a contributed-model JSON record against the contract and returns EVERY " +
+    "reason it would be refused, named field by field — not just the first. A record without " +
+    "provenance (missing attribution, missing licence, a non-https source, or an " +
+    '"aura-authored" claim, which only Aura Homes may sign) is refused, not merely discouraged. ' +
+    "Refusals are also refused for geometry: an opening that runs past the end of its wall or a " +
+    "home under the catalog's floor-area minimum comes back by name. Returns data only.",
+  z.object({
+    model: z.unknown().describe("The contributed-model JSON record, exactly as it would be submitted"),
+  }),
+  (args) => {
+    const problems = contributedModelProblems(args.model);
+    return {
+      contract: CONTRIBUTED_MODEL_CONTRACT,
+      ok: problems.length === 0,
+      problemCount: problems.length,
+      problems,
+      note:
+        problems.length === 0
+          ? "The record is well-formed and its rights claims are present. Aura has NOT checked that " +
+            "they are true — every claim on a contributed model is the contributor's own declaration."
+          : "Every problem above must be fixed. A record with unstated provenance cannot be accepted.",
+    };
+  }
+);
+
 export const TOOLS: ToolDef[] = [
   checkParcel,
   generateDesignBrief,
@@ -707,4 +1189,6 @@ export const TOOLS: ToolDef[] = [
   conciergeStart,
   conciergeSend,
   conciergeState,
+  draftContributedModel,
+  validateContributedModelTool,
 ];

@@ -26,6 +26,11 @@ const EXPECTED_TOOLS = [
   "concierge_start",
   "concierge_send",
   "concierge_state",
+  /* MK01, 2026-08-14. This list is asserted against TOOLS.length, so adding a
+     tool without adding it here turns the smoke run red — which is the point,
+     and is how these two were caught before they reached a commit. */
+  "draft_contributed_model",
+  "validate_contributed_model",
 ];
 
 let failures = 0;

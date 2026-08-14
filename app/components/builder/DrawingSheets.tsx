@@ -34,6 +34,22 @@ import {
 } from "@/lib/builder/drawings";
 import { Notice } from "./ui";
 
+/* THE WHOLE SET, AS ONE PDF.
+
+   Nothing about the PDF writer is imported at the top of this file. It is
+   pulled in with `await import()` inside the handler, exactly the bargain
+   `lib/builder/exportSpec.ts` makes with GLTFExporter: a page that merely
+   OFFERS the download does not pay for the converter until somebody presses
+   the button. A static import here would put the whole SVG-to-PDF pass, and
+   the Helvetica metric table, into the builder's first load for every visitor
+   who never downloads anything — which the PB01 byte baseline would catch. */
+
+type PdfState =
+  | { kind: "idle" }
+  | { kind: "working" }
+  | { kind: "done"; note: string; warnings: string[] }
+  | { kind: "failed"; problem: string };
+
 /** Filesystem-safe download name. Deliberately simpler than the exporters'
  *  slug in `exportSpec.ts` — that one strips accents to keep the base letter,
  *  which needs a combining-mark range written into the source; here an accent
@@ -50,18 +66,51 @@ export default function DrawingSheets({
   set,
   name,
   dateISO,
+  designHash = null,
 }: {
   set: DrawingSetResult;
   name: string;
   /** the issue date printed in every title block, passed in so the set is
    *  reproducible — the drawing module refuses to read a clock itself */
   dateISO: string;
+  /**
+   * The canonical design hash, for the PDF's footer.
+   *
+   * OPTIONAL, and null is printed on the sheet as "NOT SUPPLIED TO THIS
+   * EXPORT" rather than quietly omitted. It is optional because this component
+   * is handed a finished `DrawingSetResult` and a name — it never sees the
+   * BuilderDocument the hash is taken over, and inventing a second hash here
+   * would put a number on a permit-office document that no other export
+   * agrees with. The caller that holds the document passes it in.
+   */
+  designHash?: string | null;
 }) {
   const [current, setCurrent] = useState(0);
+  const [pdf, setPdf] = useState<PdfState>({ kind: "idle" });
   const sheet = set.sheets[current] ?? set.sheets[0];
   if (!sheet) return null;
 
   const href = drawingDataUrl(sheet.svg);
+
+  const downloadPdf = async (): Promise<void> => {
+    setPdf({ kind: "working" });
+    try {
+      const [{ exportDrawingSetPdf }, { downloadArtifact }] = await Promise.all([
+        import("@/lib/builder/exportPdf"),
+        import("@/lib/builder/exportSpec"),
+      ]);
+      const artifact = await exportDrawingSetPdf(set, { projectName: name, dateISO, designHash });
+      downloadArtifact(artifact);
+      setPdf({ kind: "done", note: artifact.note, warnings: artifact.warnings });
+    } catch (err) {
+      /* Named rather than swallowed. A download button that does nothing is
+         the failure mode people report as "the site is broken". */
+      setPdf({
+        kind: "failed",
+        problem: err instanceof Error ? err.message : String(err),
+      });
+    }
+  };
 
   return (
     <section className="aura-panel mt-6 p-6">
@@ -107,15 +156,49 @@ export default function DrawingSheets({
           {sheet.number} · {sheet.title}
           <span className="ml-3 font-mono text-xs text-aura-text/55">{sheet.scale}</span>
         </p>
-        <a
-          href={href}
-          download={`aura-${slug(name)}-${sheet.number}.svg`}
-          data-cursor="Download"
-          className="rounded-full border border-aura-teal px-4 py-1.5 font-mono text-xs uppercase tracking-label text-aura-teal transition-colors hover:bg-aura-teal/5"
-        >
-          Download {sheet.number}
-        </a>
+        {/* TWO DOORS, AND THE NARROW ONE STAYS. A drafter who wants one sheet
+            should not have to take the whole multi-megabyte set, so the
+            per-sheet .svg link is not replaced by the PDF — it sits beside it.
+            Removing a working affordance to add a new one is not an upgrade. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <a
+            href={href}
+            download={`aura-${slug(name)}-${sheet.number}.svg`}
+            data-cursor="Download"
+            className="rounded-full border border-aura-teal px-4 py-1.5 font-mono text-xs uppercase tracking-label text-aura-teal transition-colors hover:bg-aura-teal/5"
+          >
+            Download {sheet.number}
+          </a>
+          <button
+            type="button"
+            onClick={() => {
+              void downloadPdf();
+            }}
+            disabled={pdf.kind === "working"}
+            data-cursor="Download"
+            className="rounded-full border border-aura-emerald px-4 py-1.5 font-mono text-xs uppercase tracking-label text-aura-emerald transition-colors hover:bg-aura-emerald/5 disabled:opacity-50"
+          >
+            {pdf.kind === "working" ? "Writing the PDF…" : "Download the set (.pdf)"}
+          </button>
+        </div>
       </div>
+
+      {pdf.kind === "done" ? (
+        <p className="mt-3 font-mono text-[0.65rem] leading-relaxed text-aura-text/55">{pdf.note}</p>
+      ) : null}
+      {pdf.kind === "done" && pdf.warnings.length > 0 ? (
+        <div className="mt-3">
+          <Notice
+            title={`${pdf.warnings.length} thing${pdf.warnings.length === 1 ? "" : "s"} in the sheets the PDF converter could not draw`}
+            items={pdf.warnings}
+          />
+        </div>
+      ) : null}
+      {pdf.kind === "failed" ? (
+        <div className="mt-3">
+          <Notice title="The PDF was not written" items={[pdf.problem]} />
+        </div>
+      ) : null}
 
       <div className="mt-4 overflow-x-auto rounded-lg border aura-hairline">
         {/* The sheet is a DOCUMENT — white paper, black ink — so it is shown as

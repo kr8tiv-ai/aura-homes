@@ -17,7 +17,7 @@ export default defineConfig({
     command: "node scripts/build-and-serve-export.mjs out 4331",
     url: "http://127.0.0.1:4331/build",
     reuseExistingServer: false,
-    /* The export build precedes serving; at 25 plans + the roadmap page it
+    /* The export build precedes serving; at 55 plans + the roadmap page it
        runs ~4 minutes cold on the reference machine, so the old 240s ceiling
        was killing healthy builds mid-generation. */
     timeout: 480_000,

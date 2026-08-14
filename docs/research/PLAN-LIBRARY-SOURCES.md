@@ -286,7 +286,96 @@ padding, not choice), Hexayurt (panel shelter reads as emergency architecture be
 homes), Open Source Tiny Home V2 (MIT link-back pinch, schema gap 2, still open).
 Candidates remain in `data/plans/candidates.json` for the next authoring round.
 
-## 9. Interaction-pattern inspirations (no code taken)
+## 9. The Nordic glass set — thirty Aura originals, Aug 14, 2026
+
+The founder asked for "thirty more modern Nordic looking models with lots of glass and cool modern
+features". § 6 already recorded the honest position: **no rights-cleared Nordic-modern dwelling plans
+exist** — the style-targets lane came back empty on SIP, steel+polycarbonate and courtyard, and nothing
+in the sweep covers contemporary Scandinavian houses. So all thirty are `kind: "aura-authored"`
+(`license: "MIT"`, `shareAlike: false`, `relationship: "original"`), authored from first principles.
+**No third-party plan geometry was copied, traced, or dimensionally adapted for any of them.** The
+library is now **55 templates: 44 aura-authored, 8 public-domain-adaptation, 3 licensed-adaptation.**
+
+### 9.1 The set
+
+| # | Template id | Idea it exists for | Storeys | Area |
+|---|---|---|---|---|
+| 1 | `glasrum-studio` | one glazed elevation, three blind walls | 1 | 308 |
+| 2 | `hjorne-perch` | corner glazing on a steep site | 1 | 320 |
+| 3 | `nordlys-atelier` | north clerestory studio light, minimal glass | 1 | 360 |
+| 4 | `vindfang-cabin` | airlock entry volume as the enabler of a glass room | 1 | 308 |
+| 5 | `takterrass-micro` | the outdoor room on the roof, not the yard | 1 | 256 |
+| 6 | `ljus-ribbon` | horizontal ribbon glazing instead of a wall | 1 | 476 |
+| 7 | `saltbox-nord` | the roof form IS the summer-shading answer | 1 | 528 |
+| 8 | `stegvis-slope` | two eave heights stepping down a grade | 1 | 572 |
+| 9 | `vinterhage-house` | glazed winter garden buffering the south face | 1 | 716 |
+| 10 | `vann-edge` | shallow water-edge bar, three glazed bays | 1 | 480 |
+| 11 | `nordvend-house` | view north, sun south — split light strategy | 1 | 480 |
+| 12 | `jordmur-house` | rammed-earth interior mass behind direct-gain glass | 1 | 560 |
+| 13 | `badstue-retreat` | the bathhouse as the main building | 1 | 648 |
+| 14 | `kompakt-passiv` | lowest-surface form; the argument against the rest | 1 | 676 |
+| 15 | `hytte-lodge` | glazed gallery + four bunk alcoves for group stays | 1 | 680 |
+| 16 | `galleri-bungalow` | six-bay glass colonnade, light into every room | 1 | 720 |
+| 17 | `drivhus-home` | attached growing room on the warm side | 1 | 728 |
+| 18 | `vindly-court` | L turned so its back takes the prevailing wind | 1 | 756 |
+| 19 | `gardstun-court` | three volumes, one court, glazed inward | 1 | 796 |
+| 20 | `verksted-house` | home + workshop with a 10 ft overhead door | 1 | 844 |
+| 21 | `bro-breezeway` | glazed link between living and sleeping volumes | 1 | 844 |
+| 22 | `atelje-house` | home + north-lit atelier with an 8 ft work door | 1 | 924 |
+| 23 | `slekt-house` | two front doors: multigenerational or rental | 1 | 944 |
+| 24 | `massiv-clt` | exposed mass timber, stacked south glazing | 2 | 960 |
+| 25 | `smalhus-infill` | 16 ft wide, lit only from its two ends | 2 | 1,024 |
+| 26 | `tarn-house` | single-storey bar + two-storey tower (mixed height) | 2 | 1,044 |
+| 27 | `trappetarn-house` | the stair pulled out into a glazed tower | 2 | 1,120 |
+| 28 | `hjornetomt-house` | corner lot: solid at street level, glass upstairs | 2 | 1,152 |
+| 29 | `gavl-lantern` | full-height glazed gable over a double-height room | 2 | 1,320 |
+| 30 | `skodde-cabin` | big south glass with insulated shutters | 1 | 396 |
+
+### 9.2 The glazing disclosure rule (and why it is a test, not a convention)
+
+`FDWR_MAX = 0.22` (`app/lib/design/materials.ts`) is the **NBC 9.36 prescriptive** fenestration-and-door-
+to-wall ceiling. It is not a legal maximum: the Python design-api trims windows above it, but the static
+app does not use that service, and the TypeScript builder deliberately **reports**
+`modelledGlazingRatio` without clamping it — `Readout.tsx` calls the number "a comparison, not a code
+check". So a glass-forward plan is a legitimate thing to draw here.
+
+What is not legitimate is drawing thirty and saying nothing. **Eight of the thirty model above 22%** and
+each names, in the `spec.notes` that survive save/share/export/edit: the ceiling, its own ratio, the
+compliance path it would take, and what the glass costs in a zone 7A winter.
+
+| Template | Modelled ratio | Compliance path named in `notes` |
+|---|---|---|
+| `hjorne-perch` | 33% | performance path |
+| `vann-edge` | 28% | performance path |
+| `vinterhage-house` | 28% | performance model, sunspace as a tempered buffer |
+| `drivhus-home` | 26% | performance model, growing room as unconditioned/tempered |
+| `badstue-retreat` | 24% | trade-off or performance path |
+| `gavl-lantern` | 24% | performance path |
+| `saltbox-nord` | 24% | trade-off path or full performance model |
+| `hytte-lodge` | 23% | trade-off path |
+
+`app/tests/plan-catalog.spec.ts` enforces this for the whole library, and the strongest part of the gate
+is that each disclosure must **state its own percentage within one point of the computed geometry** —
+edit the openings and forget the sentence, and the suite goes red. A second assertion catches the mirror
+failure: a plan **under** the ceiling that wears the disclosure anyway.
+
+**Two pre-existing records are exempt and named in the test file:** `fjell-cube` (29%) and `lys-lantern`
+(23%), both from the earlier Nordic square set, are over the ceiling with no disclosure. The PL01
+manifest forbade editing the existing 25 records, so they are grandfathered in a documented, closed list
+rather than silently fixed. **They still need one sentence each** — see the PL01 handoff.
+
+### 9.3 What was deliberately not done
+
+- **No a-frame was added.** The library already carries four (`ridge-a-frame`, `postcard-a-frame`,
+  `timberline-a-frame`, `lakeview-a-frame`). A fifth would be padding, not choice.
+- **No plan traces a real Nordic house.** Copying a built Scandinavian design would create exactly the
+  third-party redistribution question the `aura-authored` arm exists to avoid.
+- **Lofts, mezzanines, stairs and internal level changes are not modelled** by the legacy volume shell;
+  where a plan implies one, its `notes` say so.
+- **Two plans carry a `proxy` cost basis** (`vinterhage-house`, `drivhus-home`) because the Alberta BOM
+  prices a sunspace and a greenhouse as conditioned SIP shells, which they are not.
+
+## 10. Interaction-pattern inspirations (no code taken)
 
 - **salsita.ai** (Salsita Software's conversational 3D-configurator work) — named by the
   founder Aug 12, 2026 as inspiration for the build engine. Their public pattern:

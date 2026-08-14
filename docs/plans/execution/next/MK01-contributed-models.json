@@ -1,0 +1,57 @@
+{
+  "node": "MK01",
+  "graphVersion": "1.2",
+  "job": "A way for people AND agents to author a home model as data — validated, provenance-carrying, and listable — instead of a source-code pull request against one 987-line TypeScript file.",
+  "origin": "Founder ask, 2026-08-14: 'a module where agents can use mcp or people can build models to sell on the marketplace'.",
+  "context": [
+    "WHAT THE FOUNDER ASKED FOR INCLUDES THE WORD 'SELL', AND THIS NODE DOES NOT BUILD SETTLEMENT. That is a scope decision, not an oversight, and the reason is in the product's own copy: SiteShell.tsx:322 says 'Aura Homes facilitates. It does not sell homes, hold your funds, act as a party to...', the roadmap says the marketplace is arc 02 with the rule 'nothing unbuilt is written in the present tense' (roadmap/page.tsx:6-7), and Stripe is 'planned, not live' (faq/page.tsx:17). Build the authoring, validation, provenance and listing layer for real. Where money would change hands, say what is planned. If the founder later wants a payment rail, that is a separate node with its own decision record.",
+    "TODAY, CONTRIBUTING A PLAN IS A SOURCE-CODE PR. PLAN_TEMPLATES is a TypeScript `as const` array at planCatalog.ts:274-914 built with three MODULE-PRIVATE helpers — original() :221, adapted() :238, publicDomain() :257 — plus private volume() :156 and opening() :125. There is no JSON schema, no parsePlanTemplate, no validatePlanTemplate, no loader and no registry. That is the actual barrier this node removes.",
+    "THE RIGHTS MODEL IS THE ASSET — do not replace it. PlanSource (planCatalog.ts:25-64) is a three-arm discriminated union with LITERAL-typed fields per arm: aura-authored carries name: 'Aura Homes', license: 'MIT', shareAlike: false, relationship: 'original'; licensed-adaptation REQUIRES shareAlike: true; public-domain-adaptation has shareAlike: false. plan-catalog.spec.ts already enforces https urls, a non-NC licence, and >20-character attribution and changes strings on the non-Aura arms. Any contributed record must satisfy the same contract or be refused.",
+    "THE EVIDENCE DISCIPLINE TO REUSE: marketplace/discovery.ts:4-12 defines EvidenceStatus = 'verified' | 'declared' | 'unknown' and EvidenceFact<T> { value, status, sourceLabel, sourceUrl, checkedAtISO }, and finding() at :112-144 DOWNGRADES a declared fact to a check worth half points with the sentence 'This is listing/dealer-declared rather than authority-verified.' A contributed model's claims are declared until something verifies them. Note suppliers.ts has a SEPARATE SupplierEvidenceStatus (:46) — do not conflate the two.",
+    "MCP TODAY IS 14 TOOLS, NOT 13 OR 10. TOOLS at agent/src/mcp/tools.ts:695-710. Two source comments are stale and wrong — server.ts:3 says 'Ten typed tools' and tools.ts:241 says 'the 10 tools'. Correct them while you are there. ToolDef is { name; description; schema: z.ZodObject; handler } at :225-230.",
+    "THREE TOOLS ALREADY WRITE, all to agent/out/ only: journey_memory (saveMemory, :571), concierge_start (saveOrder, :630), concierge_send (:667). So a writing tool is not a new concept here.",
+    "THE HARD BOUNDARY: agent/ has ZERO imports from app/lib/builder/ and its own catalogue is an unrelated type (CatalogHome, agent/src/concierge/catalog.ts:39-54). The ONE existing bridge runs app->agent: app/lib/marketplace/discovery.ts:1 imports type { ParcelListing } from '@agent/types'. So an MCP tool cannot construct a PlanTemplate by importing it. The contribution format must be a plain JSON contract that BOTH sides can produce and validate independently — which is the right design anyway, because it is also what a human contributor writes.",
+    "Payment metering already exists and is honest about itself: agent/src/mcp/payment.ts:10-13 states 'No wallet is contacted, no signature is verified, and no on-chain transfer occurs' and the receipt carries settlement: 'simulated'. Do not build on top of it as though it settled."
+  ],
+  "writeSet": [
+    "app/lib/builder/contributedModel.ts (new — the JSON contract, its validator, and the conversion to PlanTemplate)",
+    "app/lib/marketplace/modelListings.ts (new — listing a contributed model with its provenance and evidence state)",
+    "app/tests/contributed-model.spec.ts (new)",
+    "agent/src/mcp/tools.ts",
+    "agent/src/mcp/server.ts"
+  ],
+  "doNotTouch": [
+    "app/lib/builder/planCatalog.ts — PL01 is authoring thirty records in it RIGHT NOW in this same checkout. You may READ it for the type and the helpers. Writing to it is silent data loss. If your validator needs the helpers exported, say so in your report and the orchestrator will do it after PL01 lands.",
+    "app/lib/builder/document.ts, app/components/builder/** — other nodes own these.",
+    "README.md, docs/SUBMISSION.md, app/package.json, app/playwright.ui.config.ts, app/tests/gate-coverage.spec.ts — the orchestrator owns these."
+  ],
+  "rejectionGates": [
+    "A CONTRIBUTED RECORD WITHOUT PROVENANCE MUST BE IMPOSSIBLE TO ACCEPT, not merely discouraged. Make it a type-level requirement and a validator refusal, and prove the refusal with a spec that feeds it a record missing attribution, missing licence, or with a non-https source, and asserts each is rejected by name.",
+    "NO CLAIM OF SETTLEMENT. Nothing in this node may state or imply that a model can be bought, sold, paid for, or that a creator will be paid. A price may be RECORDED the way homeModels.ts records one — with a PriceBasis and an as-of date, because 'an undated number with no stated origin is a rumour' (homeModels.ts:122-123) — but a recorded asking price is not a transaction and the copy must not blur that.",
+    "THE JSON CONTRACT MUST ROUND-TRIP. A contributed record converted to a PlanTemplate and back must be identical. Pin it, because this format is the thing outside contributors will write against and a lossy format is a broken promise.",
+    "THE MCP TOOL MUST NOT WRITE INTO app/. Emit the contributed record as data, the way every other tool emits data. A tool that edits the application's source is not a tool, it is a deploy.",
+    "reuse EvidenceStatus semantics exactly — a contributor's own claim is 'declared', never 'verified'. Aura verifying its own contributors would be the 'vetted' failure this repo already bans in suppliers.ts."
+  ],
+  "instructions": [
+    "1. lib/builder/contributedModel.ts: define the JSON contract for a contributed model — identity, description, the dimensional envelope, and a rights block mirroring PlanSource's three arms. Write validateContributedModel(value: unknown): { ok: true; model } | { ok: false; problem: string } in the same shape as the repo's other validators. Then contributedModelToPlanTemplate(model) producing a record that satisfies the existing plan-catalog contract.",
+    "2. lib/marketplace/modelListings.ts: list contributed models with their rights, their evidence state, and an honest status. Reuse the EvidenceFact discipline rather than inventing a parallel one.",
+    "3. agent/src/mcp/tools.ts: add a tool that PRODUCES a contributed-model record from a brief and returns it as JSON, and a tool that VALIDATES one and returns the refusals in full. That pair is what lets an agent author a model without ever touching this repository's source. Fix the two stale tool-count comments.",
+    "4. Spec: the round trip; every refusal path by name; an agent-produced record passing the same validator a human-written one does; and the absence of any settlement claim in the strings this node adds."
+  ],
+  "verify": {
+    "commands": ["npx tsc --noEmit", "npm test", "cd ../agent && npx tsc --noEmit"],
+    "note": "agent/ has its own tsconfig — typecheck both sides"
+  },
+  "sideEffect": "local",
+  "status": "verified-with-open-finding",
+  "evidence": {
+    "verifiedAt": "2026-08-14",
+    "delivered": "lib/builder/contributedModel.ts defines the aura.contributed-model/v1 JSON contract with a validator that returns every refusal by name, plus conversion into a record satisfying the existing plan-catalog contract. lib/marketplace/modelListings.ts lists a contributed model with its rights and evidence state, reusing EvidenceFact rather than inventing a parallel vocabulary. Two MCP tools — draft_contributed_model and validate_contributed_model — let an agent author a model without ever touching this repository's source, which was the point.",
+    "settlementGateHeld": "The verifier searched every string the node added for anything implying a completed sale or a creator being paid, and found none. A price is recorded the way homeModels.ts records one, with a basis and an as-of date.",
+    "redGateItCausedAndTheFixIt": "agent/src/mcp/smoke.ts asserts its EXPECTED_TOOLS list against TOOLS.length. Two new tools made that 16 against 14 and `npm run mcp:smoke` went red. The list is updated — and that assertion catching an addition is it working, not failing.",
+    "openFindingHigh": "THE ROUND-TRIP GATE HAS A DEMONSTRATED HOLE. collectContributedModelProblems never rejects unknown keys and the converter builds its output from an explicit field list, so a top-level field a contributor adds is silently dropped — and the round-trip assertion does not catch it because both sides go through the same lossy path. The manifest called a lossy format a broken promise; it is currently lossy for unknown keys. Fix: reject unknown keys at validation, which is also the safer behaviour for a format outside contributors write against.",
+    "openFindingMedium": "AN 80%-GLAZED CONTRIBUTION VALIDATES CLEAN and would break plan-catalog.spec.ts the moment it landed. contributedModel.ts deliberately pre-enforces the floor-area assertion 'rather than after it lands in the catalog' but does not pre-enforce the glazing-disclosure gate PL01 added in the same wave. Two nodes in one wave, one aware of the other's gate and not the reverse.",
+    "openFindingLow": "contributedListingFromPlanTemplate contradicts listContributedModel's own docstring about refused submissions becoming refused listings; price refusals name fields a contributor never submitted, because they borrow messages written for homeModels' different shape; and 'returns every refusal in one pass' is overstated in two places where the validator returns early.",
+    "gates": "tsc clean both sides; contributed-model.spec.ts 19/19."
+  }
+}

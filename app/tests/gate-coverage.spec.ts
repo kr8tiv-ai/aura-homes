@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { expect, test } from "playwright/test";
+import { PLAN_TEMPLATES } from "@/lib/builder/planCatalog";
 
 /* Why this file exists.
 
@@ -146,8 +147,10 @@ test("the counter agrees with what the runners actually declare", () => {
   /* The counter is a regex over source, which is an approximation of what the
      runner does — and the first version of it was wrong by seven. So it is
      pinned against numbers OBSERVED from the runners themselves:
-       npm test        -> 333 declared (332 passed + the count assertion that
-                          was red while the number was being corrected)
+       npm test        -> 388 declared (387 passed + the count assertion that
+                          was red while the number was being corrected), after
+                          wave 7 added export-pdf, furniture-fixtures and
+                          contributed-model
        npm run test:ui -> 89 passed, on a full 6.7-minute run against a fresh
                           static export, up from 63 as landing-film,
                           plan-selection-visual and builder-viewer-tools
@@ -156,7 +159,7 @@ test("the counter agrees with what the runners actually declare", () => {
      re-running both suites and writing down what they said — which is the
      point. A counter nobody ever checked against the thing it counts is how
      the README got its numbers wrong in the first place. */
-  expect(UNIT_TESTS).toBe(333);
+  expect(UNIT_TESTS).toBe(388);
   expect(UI_TESTS).toBe(89);
 
   const readme = read(repoRoot, "README.md");
@@ -181,4 +184,53 @@ test("the counter agrees with what the runners actually declare", () => {
     readme.includes(String(UI_TESTS)),
     `README.md does not state the real UI spec count (${UI_TESTS}).`,
   ).toBe(true);
+
+  /* `includes` is satisfied by the right number appearing ANYWHERE, which is
+     not the same as the document being right — and this gate proved that on
+     itself. It went green while the README's own header badge still read
+     "gates-175_unit_+_58_UI", because the corrected numbers were sitting in
+     the verification table further down. A reader sees the badge first.
+
+     So the badge is asserted directly, by shape, not by presence. */
+  const badge = /badge\/gates-(\d+)_unit_%2B_(\d+)_UI/.exec(readme);
+  expect(badge, "README.md's gates badge is missing or has changed shape").not.toBeNull();
+  expect(
+    `${badge?.[1]}/${badge?.[2]}`,
+    "README.md's gates badge disagrees with the suites it is describing",
+  ).toBe(`${UNIT_TESTS}/${UI_TESTS}`);
 });
+
+test("the published plan count is the real plan count", () => {
+  /* Same class as the spec counts, and it drifted the same way: the library
+     went 25 -> 55 and the number was hardcoded in five places — README.md,
+     two rows and a post draft in SUBMISSION.md, the roadmap page, a comment in
+     the UI config, and a comment in plan-proof.mjs. A count that lives in six
+     files and is derived in none is a count that will be wrong again.
+
+     PLAN_TEMPLATES is the only authority here, so this cannot drift from it. */
+  const total = PLAN_TEMPLATES.length;
+  expect(total).toBeGreaterThan(50);
+
+  const readme = read(repoRoot, "README.md");
+  const submission = read(repoRoot, "docs", "SUBMISSION.md");
+  expect(
+    readme.includes(String(total)) || readme.toLowerCase().includes(spelled(total)),
+    `README.md does not state the real plan count (${total}).`,
+  ).toBe(true);
+  expect(
+    submission.includes(String(total)),
+    `docs/SUBMISSION.md does not state the real plan count (${total}) — it is the document a judge opens.`,
+  ).toBe(true);
+});
+
+/** The README writes the count in words ("Fifty-five-plan editable library"),
+ *  which is the house style and worth keeping, so the check accepts either
+ *  form rather than forcing digits into prose. */
+function spelled(n: number): string {
+  const tens = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
+  const ones = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+  if (n < 20) return String(n);
+  const t = tens[Math.floor(n / 10)];
+  const o = ones[n % 10];
+  return o ? `${t}-${o}` : t;
+}

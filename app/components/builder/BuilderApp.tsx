@@ -139,6 +139,7 @@ import {
   convertBuilderDocumentToGraph,
   defaultBuilderDocument,
   discardQuarantinedEntry,
+  hashBuilderDocument,
   reconcileBuilderDocumentSpec,
   restoreQuarantinedEntry,
   type BuilderDocument,
@@ -1885,10 +1886,19 @@ export default function BuilderApp() {
               {/* The account of the translation leads, then the plan engine's own
                   sheet, then the eight sheets drawn from the model itself. */}
               <PlanSheet handoff={drawn.handoff} />
+              {/* The hash is taken over the document the SET was generated
+                  from — `drawn.document`, not the live one — so a PDF saved
+                  after a later edit still identifies the design it actually
+                  draws. DrawingSheets deliberately refuses to invent this:
+                  it never sees a BuilderDocument, and a second hash on a
+                  permit-office document that no other export agrees with is
+                  worse than none. Without it every downloaded PDF printed
+                  "NOT SUPPLIED TO THIS EXPORT", which was true and useless. */}
               <DrawingSheets
                 set={drawn.set}
                 name={drawn.document.spec.name}
                 dateISO={drawn.dateISO}
+                designHash={hashBuilderDocument(drawn.document)}
               />
             </>
           ) : null}

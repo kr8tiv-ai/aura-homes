@@ -12,7 +12,7 @@ try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   await page.goto("http://127.0.0.1:4337/build/", { waitUntil: "networkidle" });
 
-  // 1 — the catalog grid: twenty-five diagrams that must read as DIFFERENT.
+  // 1 — the catalog grid: fifty-five diagrams that must read as DIFFERENT.
   await page.getByRole("heading", { name: "Start from a plan, then make it yours." }).waitFor({ timeout: 60_000 });
   await page.screenshot({ path: "shots/plan-proof-grid.png", timeout: 60_000, animations: "disabled" });
 

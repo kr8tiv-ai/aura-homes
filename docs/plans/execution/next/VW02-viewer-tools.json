@@ -41,5 +41,13 @@
     "note": "the orchestrator runs npm run test:ui and the meadow proof; do not run them (rule 3)"
   },
   "sideEffect": "local",
-  "status": "ready"
+  "status": "verified",
+  "evidence": {
+    "verifiedAt": "2026-08-14",
+    "shippedIn": "6e3d597",
+    "delivered": "Section cuts, floor isolation and material switches in the builder viewport, with the derivation kept pure in lib/three/viewerTools.ts so it is testable without a browser. The material half was WIRING, not building — lib/builder/surfaces.ts was already a complete system (MATERIALS, setSurfaceMaterial, materialForPart, buildSurfaceIndex, pruneOverrides, validateOverrides) that nothing had connected to a tool row. No second material path was written.",
+    "hardGatesMet": "The viewer tools are VIEW STATE by construction: they live in component state, never reach the reducer, never enter history, and therefore cannot move hashBuilderDocument — the same rule the heatmap toggle and the season already follow, and the comment at the state says so. The canvas is the export root and never remounts; the tool row is a sibling of a canvas that is still hidden by CSS rather than unmounted, which is spec-pinned. data-load-epoch is unchanged across every toggle.",
+    "honestRefusal": "Floor isolation refuses where it cannot answer. In graph mode a storey already IS a VolumeGeometry so elevation is re-derived from the BuildingGraph (never from VolumeGeometry, which carries no elevationFt); in legacy-spec mode there is no per-floor geometry at all and a two-storey legacy volume cannot reach graph mode, so the tool says which and why rather than rendering a control that appears to work and isolates nothing.",
+    "gates": "tsc clean; builder-viewer-tools.spec.ts 15/15 with the served-build case running in the UI gate rather than being permanently skipped in the pure one."
+  }
 }

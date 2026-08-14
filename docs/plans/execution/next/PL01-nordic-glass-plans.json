@@ -42,5 +42,15 @@
     "note": "the orchestrator runs test:ui and node scripts/plan-proof.mjs"
   },
   "sideEffect": "local",
-  "status": "ready"
+  "status": "verified-with-open-finding",
+  "evidence": {
+    "verifiedAt": "2026-08-14",
+    "delivered": "PLAN_TEMPLATES goes 25 -> 55, counted by the runner. All thirty are aura-authored MIT originals, so the sourced-adaptation counts are untouched at 8 public-domain and 3 licensed. No existing record was edited and no helper was exported. Eight of the thirty model above the 22% prescriptive ceiling and each discloses in its own spec.notes, which survive save, share, export and edit; the disclosure names the ceiling, its own ratio, the compliance path and the zone 7A cost. Three plans exist specifically to argue the other way, which is what makes the aggressive ones mean anything.",
+    "defectFoundByTheVerifierAndFixed": "bro-breezeway's link volume put a 4 ft glazing wall at offset 0.5 and a door at offset 4.2 on the same 7 ft south wall — a 0.3 ft overlap, a door set into a pane of glass. Every existing gate was green because they all check an opening against its WALL and none against its NEIGHBOUR. The opening is redrawn (3.6 at 0.4, door at 4.2, 0.3 ft return) and the missing gate now exists in plan-catalog.spec.ts.",
+    "theGateItselfTaughtSomething": "The first version of that gate compared horizontal spans only and immediately failed massiv-clt, which stacks a lower and an upper window on the same two-storey wall run — the same horizontal metres, ten feet apart vertically. That is a building, not a defect, and all six new two-storey plans do it. The gate now requires overlap in BOTH axes, treats a shared edge as clear (two panes meeting on a mullion), and was proven falsifiable by restoring the original overlap: it names 'bro-breezeway/link/s glass-s+door-s: overlap' exactly.",
+    "openFindingMedium": "THE ANTI-PADDING GATE IS NOT ONE. plan-catalog.spec.ts's 'no two plans are the same building wearing a different name' compares exact dimension strings, so the verifier added a 56th plan that was an existing one with widthFt 14 -> 15 and everything else identical, and it passed every gate. The manifest's first rejection gate — thirty real designs, not thirty permutations — is currently enforced by judgement rather than by a test. The verifier read six of the thirty and found them genuinely distinct, so the SET is sound; the GUARD is not.",
+    "openFindingLow": "gardstun-court's east and west wings each overlap the living bar by 12 sq ft in plan, double-counting footprint and area. Not a new class — the pre-existing lakeside-l overlaps 28 sq ft and wilson-court 42 — and SiteSummary already computes overlapAreaSqFt as 'how much groundFootprintSqFt over-reports', so the machinery to surface it exists and nothing consumes it. Worth one node.",
+    "reportCorrection": "The build report's household spread was wrong: 4 plans have bedrooms 0, not 6. The storeys claim (24 one-storey / 6 two-storey) is correct.",
+    "gates": "tsc clean; plan-catalog.spec.ts 13/13 including six new assertions; 388 unit specs."
+  }
 }
