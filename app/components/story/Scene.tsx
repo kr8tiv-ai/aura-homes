@@ -11,6 +11,7 @@ import { EffectComposer, Bloom, Vignette, Noise } from "@react-three/postprocess
 import { withBase } from "../../lib/basePath";
 import type { OpeningSceneStage, SceneQuality } from "@/lib/three/sceneQuality";
 import { NORDIC_MATERIALS } from "@/lib/three/nordicMaterials";
+import { MEADOW_SPARKLE_SPEED } from "@/lib/three/meadow/contract";
 import SceneDetail, { meadowShade, trailTrodden } from "./SceneDetail";
 
 /* ------------------------------------------------------------------ */
@@ -401,6 +402,43 @@ float terraFbm(vec2 p){
   float v = 0.0, a = 0.5;
   for (int k = 0; k < 3; k++) { v += a * terraNoise(p); p = p * 2.13 + 17.0; a *= 0.5; }
   return v;
+}
+/* A tiny authored tuft atlas evaluated directly in world space. Three
+   anti-aliased blades share one deterministic cell, so the terrain reads as
+   a planted surface before any progressive instances arrive. This is one
+   fragment-shader draw: no canvas upload and no synchronous field rebuild. */
+float terraBlade(vec2 p, float lean){
+  float stem = abs(p.x - lean * (p.y + 0.42));
+  float taper = mix(0.048, 0.012, smoothstep(-0.42, 0.42, p.y));
+  float aa = max(fwidth(stem) * 1.35, 0.006);
+  float body = 1.0 - smoothstep(taper, taper + aa, stem);
+  body *= smoothstep(-0.50, -0.34, p.y) * (1.0 - smoothstep(0.20, 0.48, p.y));
+  return body;
+}
+float terraTuft(vec2 p){
+  vec2 cell = floor(p);
+  vec2 q = fract(p) - 0.5;
+  float a = terraHash(cell + 19.7) * 6.2831853;
+  mat2 rot = mat2(cos(a), -sin(a), sin(a), cos(a));
+  q = rot * q;
+  float left = terraBlade(q + vec2(0.16, 0.02), -0.34);
+  float centre = terraBlade(q + vec2(0.00, -0.02), 0.02);
+  float right = terraBlade(q + vec2(-0.16, 0.04), 0.32);
+  return max(left, max(centre, right));
+}
+/* Low-poly botanical facets at the scale the opening camera can resolve.
+   The diagonal is derivative-antialiased, and the whole pattern is faded at
+   both close and far distances so it reads as sward variation rather than a
+   screen-space checker or distant shimmer. */
+float terraMeadowFacet(vec2 p){
+  vec2 cell = floor(p);
+  vec2 q = fract(p);
+  float diagonal = q.x - q.y;
+  float aa = max(fwidth(diagonal) * 1.35, 0.002);
+  float split = smoothstep(-aa, aa, diagonal);
+  float a = terraHash(cell + vec2(13.7, 31.1));
+  float b = terraHash(cell + vec2(79.3, 17.9));
+  return mix(a, b, split);
 }`
         )
         .replace(
@@ -417,6 +455,28 @@ float terraFbm(vec2 p){
   diffuseColor.rgb *= 1.0
     + (terraPatch - 0.47) * 0.14 * terraFadeP
     + (terraMicro - 0.5) * 0.06 * terraFadeM;
+
+  /* Cheap meadow understorey. The real hero blades still own silhouettes and
+     motion; this surface only closes the pale gaps that made the opening look
+     depleted while worker pages were still promoting. It fades before the
+     tuft cells become sub-pixel, preventing distant shimmer. */
+  float terraRadius = length(vTerraWorld.xz);
+  float terraRing = 1.0 - smoothstep(16.0, 46.0, terraRadius);
+  float terraCorridor =
+    (1.0 - smoothstep(9.0, 18.0, abs(vTerraWorld.x))) *
+    smoothstep(5.5, 11.0, vTerraWorld.z) *
+    (1.0 - smoothstep(33.0, 41.0, vTerraWorld.z));
+  float terraScatter = 0.34 * (1.0 - smoothstep(28.0, 48.0, terraRadius));
+  float terraBotanical = max(terraRing, max(terraCorridor, terraScatter));
+  terraBotanical *= 1.0 - smoothstep(6.0, 15.0, -vTerraWorld.z);
+  terraBotanical *= 1.0 - smoothstep(22.0, 52.0, terraD);
+  /* Smaller cells increase apparent density in the distant opening camera
+     while reading as finer, calmer ground texture close to the house. */
+  float terraUnderstory = terraTuft(vTerraWorld.xz * 3.25) * terraBotanical;
+  diffuseColor.rgb *= 1.0 - terraUnderstory * 0.27;
+  float terraFacetFade = 1.0 - smoothstep(46.0, 68.0, terraD);
+  float terraFacetDetail = (terraMeadowFacet(vTerraWorld.xz * 1.85) - 0.5) * terraFacetFade;
+  diffuseColor.rgb *= 1.0 + terraFacetDetail * terraBotanical * 0.48;
 }`
         );
     };
@@ -2573,6 +2633,8 @@ function Props({ dusk }: { dusk: Dusk }) {
 
 /* ------------------------------- rig -------------------------------- */
 
+const CAMERA_SETTLE_EPSILON = 0.0015;
+
 function CameraRig({ progressRef, reduced }: { progressRef: React.MutableRefObject<number>; reduced: boolean }) {
   const { camera } = useThree();
   const rig = useRef({ smooth: 0, mx: 0, my: 0, started: -1, lastDusk: -1 });
@@ -2660,6 +2722,28 @@ function CameraRig({ progressRef, reduced }: { progressRef: React.MutableRefObje
       r.lastDusk = dusk;
       document.documentElement.style.setProperty("--st-dusk", dusk.toFixed(3));
     }
+
+    /* Demand rendering must still let the damped camera reach its target.
+       Each active frame authorizes exactly one successor; convergence stops
+       the chain, so an idle landing submits no frames. */
+    const cameraSettled =
+      Math.abs(r.smooth - progressRef.current) <= CAMERA_SETTLE_EPSILON &&
+      Math.abs(r.mx - state.pointer.x) <= CAMERA_SETTLE_EPSILON &&
+      Math.abs(r.my - state.pointer.y) <= CAMERA_SETTLE_EPSILON &&
+      intro >= 1 - CAMERA_SETTLE_EPSILON;
+    const proofWindow = window as typeof window & { __AURA_CAMERA_PROOF_ACTIVE__?: boolean };
+    if (proofWindow.__AURA_CAMERA_PROOF_ACTIVE__) {
+      window.dispatchEvent(new CustomEvent("aura:camera-progress", {
+        detail: {
+          current: r.smooth,
+          target: progressRef.current,
+          pointerError: Math.max(Math.abs(r.mx - state.pointer.x), Math.abs(r.my - state.pointer.y)),
+          intro,
+          settled: cameraSettled,
+        },
+      }));
+    }
+    cameraSettled ? undefined : state.invalidate();
   });
   return null;
 }
@@ -2814,13 +2898,19 @@ export default function Scene({
   reduced,
   quality,
   stage,
+  lowPower,
+  releaseMeadowPromotion,
   night = false,
+  onMeadowReady,
 }: {
   progressRef: React.MutableRefObject<number>;
   reduced: boolean;
   quality: SceneQuality;
   stage: OpeningSceneStage;
+  lowPower: boolean;
+  releaseMeadowPromotion: boolean;
   night?: boolean;
+  onMeadowReady?: () => void;
 }) {
   const dusk = useDuskRegistry();
   const richMaterials = quality.tier === "full";
@@ -2913,6 +3003,9 @@ export default function Scene({
           qualityScale={quality.grassScale}
           includeMeadow={includeMeadow}
           lite={!richMaterials}
+          lowPower={lowPower}
+          releaseMeadowPromotion={releaseMeadowPromotion}
+          onMeadowReady={onMeadowReady}
         />
       ) : null}
       {includeSite ? <HotTub position={[5.9, 0, 5.4]} dusk={dusk} frozen={reduced} /> : null}
@@ -2972,7 +3065,7 @@ export default function Scene({
       {includeAtmosphere ? <Birds frozen={reduced} /> : null}
       {/* size 2.2 / opacity 0.4 read as UFO orbs once dusk emissives pushed
           them over the bloom threshold — dust motes, not fireflies */}
-      {includeAtmosphere ? <Sparkles count={quality.sparkleCount} scale={[28, 8, 28]} position={[0, 3.5, 2]} size={1.6} speed={reduced ? 0 : 0.25} opacity={0.28} color="#fff6dd" /> : null}
+      {includeAtmosphere ? <Sparkles count={quality.sparkleCount} scale={[28, 8, 28]} position={[0, 3.5, 2]} size={1.6} speed={reduced ? 0 : MEADOW_SPARKLE_SPEED} opacity={0.28} color="#fff6dd" /> : null}
       {includeAtmosphere ? <SunShafts progressRef={progressRef} night={nightAmt} reduced={reduced} /> : null}
 
       <CameraRig progressRef={progressRef} reduced={reduced} />

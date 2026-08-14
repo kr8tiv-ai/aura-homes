@@ -1,0 +1,91 @@
+{
+  "node": "R03F",
+  "parentNode": "R03E",
+  "graphVersion": "1.1",
+  "graphBlobSha256": "897147D8F5C3FBF065423A64601509B4B3C6FA9DFA1AA114BD32FA0A047144FD",
+  "approvalCommit": "7d6028667b2ae061df9504eb3a52df091f138207",
+  "job": "Recover natural opening texture by replacing broadened angular leaves with narrower, more finely segmented deterministic polygons while preserving the proven R03E runtime and schedule.",
+  "inputs": {
+    "failedProof": "app/shots/r03-meadow/meadow-proof.json",
+    "approvedBaseline": "C:/Users/lucid/Desktop/Kin/aura-r03-baseline-20260813",
+    "openingBaselineSha256": "506e6511fe9ffb41896f4db52e200775d5ed80866ad5d5355a4be5ba99e50702",
+    "closeBaselineSha256": "e891e91e5be3f820857c39213d9aed52357fb10d8db6c510b9b15a66501b3243",
+    "openingCoverageAtBroadWidth": 0.9281404218370465,
+    "openingCoverageAtOriginalAngularWidth": 0.9658177901366188,
+    "requiredCoverageRatio": 0.98,
+    "retainedDensePageCapacity": 2000,
+    "retainedPages": 44,
+    "retainedHeroInstances": 23213,
+    "retainedInstanceTableSha256": "b06dcc13192a147cdff84c42b9d24e0e5670fd1dde514a30815e53ca508d6446"
+  },
+  "outputs": {
+    "schema": "ProgressiveMeadowAngularAtlasV4",
+    "required": [
+      "offline angular leaf width returns to the original 1.24 scale",
+      "each leaf begins with seven to ten independently seeded diagonal polygon segments",
+      "no synchronized tonal bands, periodic barcode pattern or runtime rasterization",
+      "R03E worker schedule, placement, binary inventory, draw count and proof remain unchanged",
+      "opening and corrected close coverage reach at least 98 percent of pinned baselines",
+      "all performance, camera, interaction, flower and settled-demand gates remain green",
+      "fresh visual review confirms natural low-poly botanical silhouettes"
+    ]
+  },
+  "dependsOn": ["R00", "R01", "G00", "R03E failed proof"],
+  "rejectionGates": [
+    "baseline, ROI, vegetation classifier, threshold, camera mapping or proof changes",
+    "placement, instance inventory, worker schedule, page cap, draw count, alpha mode or runtime construction changes",
+    "synchronized tonal bands, barcode texture, neon colour or obvious repeated striping",
+    "atlas leaf width differs from 1.24 or the initial polygon segments fall outside the approved seven-to-ten range",
+    "opening or corrected close coverage is below 98 percent",
+    "camera convergence, flowers, interaction, active render or settled demand gate fails",
+    "actual R3F canvas uses software WebGL, full-run render p95 exceeds 16.7 ms or a causal task exceeds 50 ms"
+  ],
+  "work": {
+    "owner": "root",
+    "writeSet": [
+      "app/scripts/generate-meadow-atlas.mjs",
+      "app/public/textures/meadow-atlas.png",
+      "app/public/textures/meadow-atlas.json",
+      "app/tests/meadow-progressive.spec.ts",
+      "app/shots/r03-meadow/**",
+      "docs/plans/execution/r0/R03E-v1.1.json",
+      "docs/plans/execution/r0/R03F-v1.1.json"
+    ]
+  },
+  "verify": {
+    "owner": "fresh-context verifier",
+    "commands": [
+      "node scripts/generate-meadow-atlas.mjs --verify",
+      "npx playwright test tests/meadow-progressive.spec.ts --workers=1",
+      "npx tsc --noEmit --incremental false",
+      "$env:GH_PAGES='1'; npm run build",
+      "node scripts/meadow-proof.mjs"
+    ]
+  },
+  "repairLimit": 1,
+  "repairBoundary": "If and only if performance and all non-visual gates pass, adjust the deterministic polygon-segment range by at most two segments at either bound. Width, colour, count, placement, schedule, proof, baseline and threshold remain immutable.",
+  "sideEffect": "local",
+  "status": "blocked",
+  "failedEvidence": {
+    "report": "app/shots/r03-meadow/meadow-proof.json",
+    "createdAt": "2026-08-14T01:29:28.716Z",
+    "renderer": "ANGLE AMD Radeon 740M Direct3D11 hardware",
+    "state": "settled",
+    "pages": 44,
+    "liveHeroInstances": 23213,
+    "causalLongTaskMs": 0.29999999701976776,
+    "fullRunRenderP95Ms": 11.5,
+    "interactionMs": 80,
+    "cameraConvergence": { "opening": true, "close": true, "idleAfterClose": true },
+    "flowerPixelGate": true,
+    "initialOpeningCoverageRatio": 0.9636855236692569,
+    "repairedOpeningCoverageRatio": 0.971148456305024,
+    "closeCoverageRatio": 2.005772826481064,
+    "repairUsed": "Increase only the independently seeded polygon-segment range by the permitted two segments at each bound, from seven-to-ten to nine-to-twelve; width, placement, inventory, schedule, proof and thresholds remained unchanged.",
+    "finalPolygonSegments": [9, 12],
+    "atlasImageSha256": "10523c3076510f0bd62066dce48fdcb1d36f351ec1d834545f7f7c9de16de1ec",
+    "instanceTableSha256": "b06dcc13192a147cdff84c42b9d24e0e5670fd1dde514a30815e53ca508d6446",
+    "verdict": "R03F passes every non-visual gate but remains below the immutable 98 percent opening threshold after its single bounded repair. It is rejected; no further polygon-segment or leaf-width tuning is allowed."
+  },
+  "successor": "R03G"
+}

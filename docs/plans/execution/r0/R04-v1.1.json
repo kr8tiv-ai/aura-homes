@@ -5,7 +5,7 @@
   "approvalCommit": "7d6028667b2ae061df9504eb3a52df091f138207",
   "job": "Back up, integrate, push, publish append-only, and smoke-test the R0 release.",
   "inputs": {
-    "requiredNodeEvidence": ["R01VerificationV1", "R02VerificationV1", "ProgressiveMeadowV1", "ResponsiveLandingFilmV1"],
+    "requiredNodeEvidence": ["R01VerificationV1", "R02VerificationV1", "ProgressiveMeadowV1", "ResponsiveLandingFilmV1", "ResponsiveLandingHandoffV1"],
     "authorIdentity": "Matt-Aurora-Ventures <lucidbloks@gmail.com>"
   },
   "outputs": {
@@ -20,7 +20,7 @@
       "rollback coordinates"
     ]
   },
-  "dependsOn": ["R01", "R02", "R03", "R05", "G00"],
+  "dependsOn": ["R01", "R02", "R03H", "R05A", "G00"],
   "rejectionGates": [
     "any dependency is not independently verified",
     "working tree is dirty or remote main cannot be reconciled safely",
@@ -46,5 +46,5 @@
   },
   "repairLimit": 1,
   "sideEffect": "remote-write",
-  "status": "blocked"
+  "status": "ready"
 }

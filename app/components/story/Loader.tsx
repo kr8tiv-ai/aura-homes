@@ -105,21 +105,39 @@ export default function SceneLoader({
     return () => window.clearInterval(id);
   }, [active, gone]);
 
-  /* Completion: meadow painted → brief Ready hold → fade → unmount. */
+  /* Completion: meadow painted → brief Ready hold → fade → unmount.
+
+     This deliberately follows the browser's paint clock instead of chaining
+     two timers. While the progressive meadow is still submitting its final
+     bounded pages, a software or otherwise constrained renderer can delay
+     timer tasks for seconds even though animation frames continue. The old
+     timer chain could therefore show Ready and then strand the card over the
+     composed scene. One rAF deadline keeps the hold/fade ordering intact and
+     makes teardown independent of timer-queue starvation. */
   const complete = painted === "meadow";
   useEffect(() => {
-    if (!complete || fading) return;
-    const t = window.setTimeout(() => setFading(true), READY_HOLD_MS);
-    return () => window.clearTimeout(t);
-  }, [complete, fading]);
-  useEffect(() => {
-    if (!fading) return;
-    const t = window.setTimeout(() => {
-      setGone(true);
-      onDismissed?.();
-    }, FADE_MS);
-    return () => window.clearTimeout(t);
-  }, [fading, onDismissed]);
+    if (!active || !complete || gone) return;
+    const started = performance.now();
+    let frameId = 0;
+    let fadeStarted = false;
+
+    const advance = (now: number) => {
+      const elapsed = now - started;
+      if (!fadeStarted && elapsed >= READY_HOLD_MS) {
+        fadeStarted = true;
+        setFading(true);
+      }
+      if (elapsed >= READY_HOLD_MS + FADE_MS) {
+        setGone(true);
+        onDismissed?.();
+        return;
+      }
+      frameId = window.requestAnimationFrame(advance);
+    };
+
+    frameId = window.requestAnimationFrame(advance);
+    return () => window.cancelAnimationFrame(frameId);
+  }, [active, complete, gone, onDismissed]);
 
   if (!active || gone) return null;
 

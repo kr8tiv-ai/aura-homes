@@ -1,0 +1,89 @@
+{
+  "node": "R03D",
+  "parentNode": "R03C",
+  "graphVersion": "1.1",
+  "graphBlobSha256": "897147D8F5C3FBF065423A64601509B4B3C6FA9DFA1AA114BD32FA0A047144FD",
+  "approvalCommit": "7d6028667b2ae061df9504eb3a52df091f138207",
+  "job": "Restore natural low-poly opening texture with a seeded angular-polygon atlas, make demand-rendered camera motion converge, and strengthen the hardware proof.",
+  "inputs": {
+    "failedProof": "app/shots/r03-meadow/meadow-proof.json",
+    "approvedBaseline": "C:/Users/lucid/Desktop/Kin/aura-r03-baseline-20260813",
+    "openingBaselineSha256": "506e6511fe9ffb41896f4db52e200775d5ed80866ad5d5355a4be5ba99e50702",
+    "closeBaselineSha256": "e891e91e5be3f820857c39213d9aed52357fb10d8db6c510b9b15a66501b3243",
+    "openingCoverageRatio": 0.9656419331083829,
+    "requiredCoverageRatio": 0.98,
+    "activeRenderSubmissionP95Ms": 9.200000002980232,
+    "maxCausalTaskMs": 0.20000000298023224,
+    "atlasInstanceTableSha256": "b06dcc13192a147cdff84c42b9d24e0e5670fd1dde514a30815e53ca508d6446"
+  },
+  "outputs": {
+    "motionSchema": "DemandCameraSettlerV1",
+    "atlasSchema": "ProgressiveMeadowAngularAtlasV3",
+    "proofSchema": "MeadowHardwareProofV2",
+    "required": [
+      "camera converges through bounded demand invalidations and returns to zero idle renders",
+      "offline seeded angular leaf polygons with non-periodic diagonal facets and no barcode bands",
+      "unchanged instance table, instance inventory, one atlas draw, alpha mask and two botanical program ceiling",
+      "opening and corrected close coverage at or above 98 percent against pinned baselines",
+      "actual R3F canvas uses the required hardware renderer",
+      "full-run render submission p95, causal task and interaction timing pass",
+      "pixel-level flower clusters remain visible in both fixed views",
+      "fresh visual review confirms natural botanical silhouettes"
+    ]
+  },
+  "dependsOn": ["R00", "R01", "G00", "R03C failed proof"],
+  "rejectionGates": [
+    "coverage threshold, baseline, camera mapping, ROI or vegetation classifier changes",
+    "synchronized tonal bands, neon colour, barcode texture or noisy tiling",
+    "placement, instance inventory, draw count, alpha mode or runtime construction increases",
+    "camera does not converge to the current scroll target or continues rendering after convergence",
+    "opening or corrected close vegetation coverage is below 98 percent of the pinned baseline",
+    "near or mid flower pixel clusters are absent",
+    "actual R3F canvas uses software WebGL",
+    "full-run desktop render-submission p95 exceeds 16.7 ms, a causal task exceeds 50 ms, or measured interaction exceeds 160 ms"
+  ],
+  "work": {
+    "owner": "root",
+    "writeSet": [
+      "app/components/story/StoryCanvas.tsx",
+      "app/components/story/Scene.tsx",
+      "app/scripts/generate-meadow-atlas.mjs",
+      "app/public/textures/meadow-atlas.png",
+      "app/public/textures/meadow-atlas.json",
+      "app/scripts/meadow-proof.mjs",
+      "app/tests/meadow-progressive.spec.ts",
+      "app/shots/r03-meadow/**",
+      "docs/plans/execution/r0/R03D-v1.1.json"
+    ]
+  },
+  "verify": {
+    "owner": "fresh-context verifier",
+    "commands": [
+      "node scripts/generate-meadow-atlas.mjs --verify",
+      "npx playwright test tests/meadow-progressive.spec.ts --workers=1",
+      "npx tsc --noEmit --incremental false",
+      "$env:GH_PAGES='1'; npm run build",
+      "node scripts/meadow-proof.mjs"
+    ]
+  },
+  "repairLimit": 1,
+  "repairBoundary": "At most a 12 percent adjustment to offline polygon-leaf width; no contrast bands, placement, count, draw, proof, baseline or threshold changes.",
+  "sideEffect": "local",
+  "status": "blocked",
+  "failedEvidence": {
+    "report": "app/shots/r03-meadow/meadow-proof.json",
+    "createdAt": "2026-08-14T01:13:26.467Z",
+    "atlasImageSha256": "e37d499df4c8aca2310115d0ff4946ac03dab0fae7a71cc0d85d0937510689e0",
+    "instanceTableSha256": "b06dcc13192a147cdff84c42b9d24e0e5670fd1dde514a30815e53ca508d6446",
+    "cameraConvergence": { "opening": true, "close": true, "idleAfterClose": true },
+    "interactionMs": 64,
+    "fullRunRenderP95Ms": 10.200000002980232,
+    "causalLongTaskMs": 54,
+    "freeze": { "state": "frozen", "pages": 6, "liveHeroInstances": 19579, "reason": "long-task" },
+    "openingCoverageRatioAtFreeze": 0.9460778387171229,
+    "closeCoverageRatio": 1.9716121968732891,
+    "repairUsed": "Increase only offline angular-leaf width by the allowed 12 percent; a 54 ms dense-page integration task correctly froze promotion before the visual result could be evaluated at full composition.",
+    "verdict": "R03D is rejected after its one repair. Preserve its camera and angular-atlas improvements; split the dense integration pages in a materially distinct scheduling successor."
+  },
+  "successor": "R03E"
+}

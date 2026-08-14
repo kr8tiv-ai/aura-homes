@@ -20,7 +20,7 @@
      · every animated piece honours `frozen` (prefers-reduced-motion)
 --------------------------------------------------------------------- */
 
-import { useMemo, useRef, useLayoutEffect } from "react";
+import { useCallback, useEffect, useMemo, useRef, useLayoutEffect, useState } from "react";
 import * as THREE from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 import { terrainH, makeWoodGrain, sharpen, type Dusk } from "./Scene";
@@ -31,10 +31,14 @@ import {
   WIND_DIR,
   FROZEN_T,
   gustEnvelope,
+  flowerVisibilityAtDistance,
   buildFlowerField,
   makeFlowerMaterial,
   type FloraSample,
 } from "./flora";
+import type { MeadowPage } from "@/lib/three/meadow/contract";
+import { useProgressiveMeadow } from "@/lib/three/meadow/runtime";
+import { withBase } from "@/lib/basePath";
 
 /* --------------------------- small helpers -------------------------- */
 
@@ -695,6 +699,8 @@ export const G_HERO: GrassLayerCfg = { near: 16, far: 34, pmin: 0.04, band: 0.16
    the eye judges it (the first 8-18 m) quadruples; past that the hero
    layer, the darkened ground, and the fog were already carrying the field. */
 export const G_FILL: GrassLayerCfg = { near: 8, far: 16, pmin: 0.0, band: 0.16, tile: 6, segs: 1 };
+const G_MID: GrassLayerCfg = { near: 18, far: 42, pmin: 0.0, band: 0.18, tile: 16, segs: 1 };
+const G_FAR: GrassLayerCfg = { near: 30, far: 68, pmin: 0.0, band: 0.2, tile: 20, segs: 1 };
 
 const smooth01 = (a: number, b: number, x: number) => {
   const t = clamp01((x - a) / (b - a));
@@ -907,6 +913,15 @@ function grassBlade(segs: number) {
   const pos: number[] = [];
   const uvs: number[] = [];
   const idx: number[] = [];
+  if (segs === 1) {
+    /* The single-card filler closes ground, while full segmented hero blades
+       own the close silhouette. It is double-sided and deliberately wider in
+       the shared shader, avoiding three-times vertex cost on integrated GPUs. */
+    pos.push(-0.5, 0, 0, 0.5, 0, 0, 0, 1, 0);
+    uvs.push(0, 0, 1, 0, 0.5, 1);
+    idx.push(0, 1, 2);
+    return { pos: new Float32Array(pos), uvs: new Float32Array(uvs), idx: new Uint16Array(idx) };
+  }
   for (let i = 0; i <= segs; i++) {
     const t = i / segs;
     if (i === segs) {
@@ -926,7 +941,7 @@ function grassBlade(segs: number) {
   return { pos: new Float32Array(pos), uvs: new Float32Array(uvs), idx: new Uint16Array(idx) };
 }
 
-const grassVert = (cfg: GrassLayerCfg) => /* glsl */ `
+const grassVert = () => /* glsl */ `
 precision highp float;
 
 attribute vec3 aPos;    // world x, terrain y, z — planted on the real ground
@@ -934,6 +949,8 @@ attribute vec4 aRand;   // yaw, height, width, fade seed
 attribute float aClear; // clearance: how tall this blade is allowed to be
 
 uniform float uTime;
+uniform vec4 uLod;     // pmin, near, far, stochastic fade band
+uniform float uRichWind;
 uniform vec2  uWindDir;
 uniform vec3  uCamPos;
 uniform float uProjScale; // 1/tan(fov/2): turns metres into screen fraction
@@ -947,12 +964,6 @@ varying vec3  vGround;
 varying float vSpecies;
 
 float h21(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-float vnoise(vec2 p){
-  vec2 i = floor(p), f = fract(p);
-  vec2 u = f * f * (3.0 - 2.0 * f);
-  return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), u.x),
-             mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), u.x), u.y);
-}
 
 /* The EXACT terrain vertex-colour formula from Terrain() in Scene.tsx, in
    linear space. A blade's root is the colour of the ground it grows out of,
@@ -992,10 +1003,10 @@ void main(){
      Keep-fraction falls with distance; a blade survives if its seed is under
      it. The test is a smooth band, not a step, so blades dissolve instead of
      popping and no hysteresis state is needed. */
-  float p = mix(1.0, ${cfg.pmin.toFixed(3)}, smoothstep(${cfg.near.toFixed(1)}, ${cfg.far.toFixed(1)}, dist));
+  float p = mix(1.0, uLod.x, smoothstep(uLod.y, uLod.z, dist));
   float projH = (aRand.y * aClear) * uProjScale / max(dist, 0.001);
   p *= smoothstep(0.0040, 0.020, projH);
-  float vis = 1.0 - smoothstep(p - ${cfg.band.toFixed(3)}, p, aRand.w);
+  float vis = 1.0 - smoothstep(p - uLod.w, p, aRand.w);
   // never let a blade flash across the lens as the camera brushes past it
   vis *= smoothstep(0.18, 0.55, dist);
 
@@ -1064,43 +1075,26 @@ void main(){
   float stiff = 0.74 + 0.52 * h21(base.xz * 4.3 + 5.1);
   float ph = aRand.w * 6.2831853;
 
-  /* the GUST FIELD: ~18 m cells advected downwind at ~5.5 m/s, centred so a
-     gust pushes and then lets go. */
-  float gust = vnoise(base.xz * 0.055 + wd * uTime * 0.30) * 2.0 - 1.0;
-  /* the FRONT: a plane wave marching along the wind, 46 m between crests,
-     ~4.6 m/s. This is the wave you actually see roll across the field. */
-  float front = 0.5 + 0.5 * sin(uTime * 0.62 - dot(base.xz, wd) * 0.135);
-  // uGust is the weather envelope (ramp/hold/decay/lull) — gusts ARRIVE.
+  /* Three analytic waves replace the previous lattice-noise stack. They keep
+     the same travelling-front / lateral-return character while compiling as
+     one small program on integrated GPUs. No CPU work is added per blade. */
+  float travelling = sin(uTime * 0.62 - dot(base.xz, wd) * 0.135);
+  float crossWave = sin(uTime * 0.41 + base.x * 0.082 - base.z * 0.057 + ph);
+  float ripple = sin(uTime * 1.85 + base.x * 0.31 + base.z * 0.23 + ph * 0.5);
+  float front = 0.5 + 0.5 * travelling;
   float amp = (0.34 + 0.66 * front * uGust) / stiff;
-`
-  +
-  (cfg.segs >= 4
-    ? /* glsl */ `
-  /* SWIRL: the direction field. Slower, larger (~36 m), and advected AGAINST
-     the wind so lean angle and lean strength can never lock into a single
-     travelling pattern. This is the term that makes the meadow lean sideways
-     and come back rather than nodding along one axis. */
-  float swirl  = vnoise(base.xz * 0.028 - wd * uTime * 0.085 + 31.7) * 2.0 - 1.0;
-  /* RIPPLE: small-scale, fast, the visible texture of moving grass. */
-  float ripple = vnoise(base.xz * 0.34 + wd * uTime * 2.15) * 2.0 - 1.0;
-  float flutter = sin(uTime * 2.6 / stiff + ph) * 0.16;
-  float lean = (0.66 + 0.46 * gust + 0.30 * ripple + flutter) * amp;
-  /* the yaw is what makes this LATERAL. Measured over 200 frames x 120
-     blades: v6's wind push sat at exactly 35 degrees at every blade at every
-     instant (spread 0) — one axis, forever. This spans 14..68 degrees. */
-  float yaw = swirl * 0.62 + ripple * 0.16;
-  vec2 dir = wd * cos(yaw) + vec2(-wd.y, wd.x) * sin(yaw);
-`
-    : /* glsl */ `
-  /* Filler: the same gust field and the same front, so the wave that rolls
-     through the hero layer rolls through the carpet UNDER it in phase — two
-     weathers on one meadow is the one thing worse than none. It skips the
-     swirl and the ripple: at 8-18 cm and beyond 8 m, lateral lean and 30 cm
-     ripple cells are both under a pixel. */
-  float lean = (0.66 + 0.50 * gust + 0.14 * sin(uTime * 2.6 / stiff + ph)) * amp;
-  vec2 dir = wd;
-`) +
-  /* glsl */ `
+  float lean;
+  vec2 dir;
+  if (uRichWind > 0.5) {
+    float flutter = sin(uTime * 2.6 / stiff + ph) * 0.16;
+    lean = (0.66 + travelling * 0.30 + ripple * 0.18 + flutter) * amp;
+    float yaw = crossWave * 0.52 + ripple * 0.12;
+    dir = wd * cos(yaw) + vec2(-wd.y, wd.x) * sin(yaw);
+  } else {
+    /* Filler: the same gust field and front, without sub-pixel swirl work. */
+    lean = (0.66 + travelling * 0.34 + 0.14 * sin(uTime * 2.6 / stiff + ph)) * amp;
+    dir = wd;
+  }
 
   // a small static lean per blade, seeded from world position, so the field
   // is never uniform even when the air is still. Founder "smooth carpet"
@@ -1133,7 +1127,7 @@ void main(){
   float omt = 1.0 - t;
   vec3 curve = 2.0 * omt * t * midOff + t * t * tipOff;
 
-  vec3 wDir3 = vec3(cos(aRand.x), 0.0, sin(aRand.x));
+  vec3 wDir3 = vec3(cos(aRand.x + position.z), 0.0, sin(aRand.x + position.z));
   /* width profile per form: the blade tapers to a point, the tuft stays
      broad most of its length, and the stem is a thin shaft that SWELLS into
      a seed head near the top instead of tapering out. */
@@ -1255,7 +1249,92 @@ void main(){
 }
 `;
 
+function makeGrassMaterial(cfg: GrassLayerCfg) {
+  return new THREE.ShaderMaterial({
+    vertexShader: grassVert(),
+    fragmentShader: GRASS_FRAG,
+    side: THREE.DoubleSide,
+    uniforms: {
+      uTime: { value: 0 },
+      uLod: { value: new THREE.Vector4(cfg.pmin, cfg.near, cfg.far, cfg.band) },
+      uRichWind: { value: cfg.segs >= 4 ? 1 : 0 },
+      uWindDir: { value: WIND_DIR.clone() },
+      uCamPos: { value: new THREE.Vector3() },
+      uProjScale: { value: 2.7 },
+      uGust: { value: 0.4 },
+      uColTip: { value: new THREE.Color("#93b06a") },
+      uSunDir: { value: KEY.clone() },
+      uSunCol: { value: new THREE.Color("#fff3dd") },
+      uSunI: { value: 1.15 },
+      uHemiSky: { value: new THREE.Color("#dcecf4") },
+      uHemiGround: { value: new THREE.Color("#7a8b5e") },
+      uFogColor: { value: new THREE.Color("#e3ede7") },
+      uFogNear: { value: 30 },
+      uFogFar: { value: 88 },
+      uNight: { value: 0 },
+    },
+  });
+}
+
+function makeWarmGrassGeometry(cfg: GrassLayerCfg) {
+  const blade = grassBlade(cfg.segs);
+  const geo = new THREE.InstancedBufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(blade.pos, 3));
+  geo.setAttribute("uv", new THREE.BufferAttribute(blade.uvs, 2));
+  geo.setIndex(new THREE.BufferAttribute(blade.idx, 1));
+  geo.setAttribute("aPos", new THREE.InstancedBufferAttribute(new Float32Array([0, 0, 0]), 3));
+  geo.setAttribute("aRand", new THREE.InstancedBufferAttribute(new Float32Array([0, 1, 0.08, 0]), 4));
+  geo.setAttribute("aClear", new THREE.InstancedBufferAttribute(new Float32Array([1]), 1));
+  geo.instanceCount = 1;
+  return geo;
+}
+
+/** Compile the one shared grass program before progressive pages are allowed
+ * to arrive. On integrated GPUs the first material commit can otherwise turn
+ * a tiny page into a 100ms+ driver task. compileAsync lets the browser finish
+ * that work while the authored terrain is already the complete visual state. */
+function GrassProgramWarmup({ onReady }: { onReady: () => void }) {
+  const { gl, camera } = useThree();
+  const warmScene = useMemo(() => new THREE.Scene(), []);
+  const geometry = useMemo(() => makeWarmGrassGeometry(G_HERO), []);
+  const material = useMemo(() => makeGrassMaterial(G_HERO), []);
+  const mesh = useMemo(() => new THREE.Mesh(geometry, material), [geometry, material]);
+  const warmFlowerBuilt = useMemo(() => buildFlowerField(8, false, FLORA_SAMPLE), []);
+  const warmFlowerMaterial = useMemo(() => makeFlowerMaterial(), []);
+  const flowerMesh = useMemo(
+    () => warmFlowerBuilt ? new THREE.Mesh(warmFlowerBuilt.geo, warmFlowerMaterial) : null,
+    [warmFlowerBuilt, warmFlowerMaterial],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    warmScene.add(mesh);
+    if (flowerMesh) warmScene.add(flowerMesh);
+    void gl.compileAsync(warmScene, camera)
+      .catch(() => {
+        // A driver without parallel shader compilation still gets a bounded
+        // one-instance compile before any progressive meadow page is mounted.
+        gl.compile(warmScene, camera);
+      })
+      .finally(() => {
+        if (!cancelled) onReady();
+      });
+    return () => {
+      cancelled = true;
+      warmScene.remove(mesh);
+      if (flowerMesh) warmScene.remove(flowerMesh);
+      geometry.dispose();
+      material.dispose();
+      warmFlowerBuilt?.geo.dispose();
+      warmFlowerMaterial.dispose();
+    };
+  }, [camera, flowerMesh, geometry, gl, material, mesh, onReady, warmFlowerBuilt, warmFlowerMaterial, warmScene]);
+
+  return null;
+}
+
 type GrassTile = {
+  id: string;
   geo: THREE.InstancedBufferGeometry;
   cx: number;
   cy: number;
@@ -1264,242 +1343,33 @@ type GrassTile = {
   n: number;
 };
 
-/** Plant the meadow: rejection-sample the density mask, bucket into tiles,
- *  then sort each tile by fade seed so the LOD trim is invisible. */
-function buildGrassTiles(budget: number, cfg: GrassLayerCfg) {
+
+/** Materialise one already-planted worker page. The page contains at most
+ * 6,000 instances and arrives only after the prior page is acknowledged;
+ * this is deliberately not a whole-field builder. */
+function materializeMeadowPage(page: MeadowPage, cfg: GrassLayerCfg): GrassTile {
   const blade = grassBlade(cfg.segs);
-  const filler = cfg.segs < 4;
-  /* Different salt base per layer so the filler never replants the hero
-     layer's exact positions — coincident roots would z-fight at the base. */
-  const S = filler ? 60 : 0;
-  const cells = new Map<string, { pos: number[]; rnd: number[]; clr: number[] }>();
-
-  /* The filler samples a tighter box: its mask lives inside the ring plus
-     the corridor, and at ~1M planted blades the rejection loop's wasted
-     tries are real startup milliseconds. The hero keeps the full field. */
-  const X0 = filler ? -38 : -46, X1 = filler ? 38 : 46;
-  const Z0 = filler ? -16 : -22, Z1 = filler ? 44 : 54;
-  let placed = 0;
-
-  /* The filler exists to close the ground the CAMERA can see. Its blades
-     dissolve past ~24 m of camera distance anyway, and the journey runs
-     the trail corridor down into the r<35 ring — so filler planted in the
-     far scatter would be instances that never draw. Concentrate it, but
-     KEEP the corridor: the first cut of this mask was radial-only, and the
-     trailhead beat sits at r~33 — it deleted the filler from the exact
-     ground the opening frame stares at. */
-  /* v10 — the founder's "double it, just down around the house" round.
-     Two moves, budget-conserving by construction:
-     · YARD BOOST: density runs ABOVE one (up to x2) in the zone beats
-       01-06 actually frame — the ring around the home rect, the deck
-       aprons, the fire-pit lounge, the tub pad (centre ~(0, 3.6), full
-       inside ~7 m, feathered out by 15 m). The jittered grid spends it by
-       planting a SECOND candidate per cell with probability dens-1, so
-       the yard genuinely doubles while cell size stays uniform.
-     · FAR TRIM pays for it: the radial reach tightens 26-36 -> 20-30 m.
-       Past r~30 the story cameras resolve a 1-tri 8-18 cm blade as less
-       than a texel — the hero layer, the sward-toned ground, and Scrub
-       already carry that field. Removing it from the measured area E
-       shrinks the grid cell, which re-spends those instances near the
-       house instead of adding new ones. */
-  const density = (x: number, z: number) => {
-    let dens = meadowDensity(x, z);
-    if (filler) {
-      const corridor =
-        (1 - smooth01(9, 18, Math.abs(x))) * smooth01(5.5, 11, z) * (1 - smooth01(33, 41, z));
-      dens *= Math.max(1 - smooth01(18, 28, Math.hypot(x, z)), corridor);
-      /* Botanical pass (Aug 12): yard boost 1.25 -> 1.55 and its feather
-         widened 9-20 -> 10-21 m — the founder's "thicker grass" spent where
-         the close beats look, by the same budget-conserving construction as
-         v10: the boost raises E, E sizes the grid cell, so the far field
-         pays for the yard instead of new instances appearing. Peak dens is
-         now 2.55, which the third-candidate leg below spends exactly. */
-      const yard = 1 - smooth01(10, 21, Math.hypot(x, z - 3.6));
-      dens *= 1 + 1.55 * yard;
-    } else {
-      /* Hero far-trim (botanical pass): past ~26 m a 0.2-0.5 m hero blade is
-         a couple of texels and mostly LOD-dissolved anyway; rejection
-         sampling against a FIXED budget means every acceptance lost out
-         there is re-won inside the ring the camera lives in. Redistribution
-         toward the house, zero planted delta — the same doctrine as the
-         filler's v10 far trim. Never to zero: the far field keeps 68% so
-         the crest beat still reads meadow to the fog line (Scrub and the
-         sward-toned ground carry the rest). */
-      dens *= 1 - 0.32 * smooth01(26, 44, Math.hypot(x, z));
-    }
-    return dens;
+  const geo = new THREE.InstancedBufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(blade.pos, 3));
+  geo.setAttribute("uv", new THREE.BufferAttribute(blade.uvs, 2));
+  geo.setIndex(new THREE.BufferAttribute(blade.idx, 1));
+  geo.setAttribute("aPos", new THREE.InstancedBufferAttribute(page.positions, 3));
+  geo.setAttribute("aRand", new THREE.InstancedBufferAttribute(page.random, 4));
+  geo.setAttribute("aClear", new THREE.InstancedBufferAttribute(page.clearance, 1));
+  geo.instanceCount = page.count;
+  geo.boundingSphere = new THREE.Sphere(
+    new THREE.Vector3(page.bounds.cx, page.bounds.cy + 0.25, page.bounds.cz),
+    page.bounds.radius,
+  );
+  return {
+    id: page.id,
+    geo,
+    cx: page.bounds.cx,
+    cy: page.bounds.cy,
+    cz: page.bounds.cz,
+    radius: page.bounds.radius,
+    n: page.count,
   };
-
-  const place = (i: number, x: number, z: number) => {
-    const dens = density(x, z);
-    if (dens < 0.02 || rand(i, 43 + S) > dens) return;
-    /* Filler clearance rides a sqrt: the apron rims plant at clearance
-       0.2-0.5, which is 2-9 cm of blade — and the shader's projected-height
-       gate (projH < 0.0052 screen fraction) deletes exactly those blades at
-       the 8-12 m the story cameras sit at, which is why the v8 rims still
-       read as scattered cones on pale ground. sqrt keeps zero at zero (no
-       blades in the fire ring or through the deck) but lifts the mid-band
-       (0.3 -> 0.55) past the gate, so the rim closes instead of dissolving. */
-    const clr = filler ? Math.sqrt(clearance(x, z, 0.22, 0.5, true)) : clearance(x, z);
-    if (clr < 0.06) return;
-
-    const key = `${Math.floor(x / cfg.tile)},${Math.floor(z / cfg.tile)}`;
-    let c = cells.get(key);
-    if (!c) {
-      c = { pos: [], rnd: [], clr: [] };
-      cells.set(key, c);
-    }
-    /* Height spread is deliberately skewed rather than uniform: a real
-       sward is mostly medium with a few tall stems, and a flat 0.19-0.39
-       range is what made v1 read as one cloned object. Blades further out
-       also run taller, so the far field keeps mass at a fraction of the
-       instance count. */
-    const far = Math.min(1, Math.max(0, (Math.hypot(x, z) - 16) / 26));
-    c.pos.push(x, terrainH(x, z) - 0.02, z);
-    /* Width is baked FLAT here. It used to carry (1 + far * 0.55), which then
-       compounded with the shader's own distance widening, the tuft multiplier
-       and the edge-on term — up to 3.6x, i.e. 15 cm blades, the "fat
-       triangles". The reference widens in ONE place only (the shader, at
-       ~2%/m). Height keeps a mild far-boost so the far field holds mass. */
-    c.rnd.push(
-      rand(i, 44 + S) * Math.PI * 2, // yaw
-      /* Hero: the reference ~1:12 blade, then the founder's "a little less
-         tall" — the whole 0.22-0.62 band dropped 20% to 0.176-0.496.
-         Filler: 9-21 cm understorey whose only job is ground coverage. */
-      filler
-        ? 0.095 + Math.pow(rand(i, 45 + S), 1.3) * 0.13
-        : (0.176 + Math.pow(rand(i, 45 + S), 1.6) * 0.32) * (1 + far * 0.3), // height
-      filler
-        ? /* v8 went +15%, v9 another +24%, botanical pass another +13%
-             (0.071-0.125 m). Width is the one lever that closes ground for
-             ZERO extra triangles, and at the jittered-grid spacing (~5 cm
-             between filler roots in the core) the mean blade runs well past
-             its spacing — the definition of a closed sward. Overlap is
-             fine; bare ground is not. */
-          0.071 + rand(i, 46 + S) * 0.054
-        : 0.026 + rand(i, 46 + S) * 0.018, // width — reference range, no far term
-      rand(i, 47 + S) // fade seed
-    );
-    c.clr.push(clr);
-    placed++;
-  };
-
-  if (filler) {
-    /* v9: JITTERED GRID, not white noise. Uniform-random planting clumps —
-       Poisson spacing puts pairs of blades on top of each other and leaves
-       fist-sized voids at the same density, and those voids are exactly the
-       pale dots the founder read as patchiness. One candidate per grid cell,
-       jittered a full cell width, keeps the count and the randomness but
-       bounds the largest possible gap at ~2 cell diagonals — blue-noise-ish
-       spacing for free, no dart-throwing cost.
-
-       The grid is sized from the mask's measured effective area so the
-       planted count lands on the budget: E = integral of the density mask
-       (m^2 at full density), cell edge = sqrt(E / budget). Each candidate
-       then thins by its local density exactly like the old sampler, so the
-       fringes still feather. */
-    let E = 0;
-    const EST = 96;
-    for (let gx = 0; gx < EST; gx++) {
-      for (let gz = 0; gz < EST; gz++) {
-        const x = X0 + ((gx + 0.5) / EST) * (X1 - X0);
-        const z = Z0 + ((gz + 0.5) / EST) * (Z1 - Z0);
-        const dens = density(x, z);
-        if (dens < 0.02) continue;
-        if (Math.sqrt(clearance(x, z, 0.22, 0.5, true)) < 0.06) continue;
-        E += dens;
-      }
-    }
-    E *= ((X1 - X0) * (Z1 - Z0)) / (EST * EST);
-    const edge = Math.sqrt(Math.max(1e-6, E / budget));
-    const cols = Math.max(1, Math.round((X1 - X0) / edge));
-    const rows = Math.max(1, Math.round((Z1 - Z0) / edge));
-    for (let r = 0; r < rows; r++) {
-      for (let q = 0; q < cols; q++) {
-        const i = r * cols + q;
-        const x = X0 + ((q + rand(i, 141)) / cols) * (X1 - X0);
-        const z = Z0 + ((r + rand(i, 142)) / rows) * (Z1 - Z0);
-        place(i, x, z);
-        /* v10 yard boost: where the boosted mask exceeds one, this cell owes
-           a second blade. An independent jitter inside the same cell keeps
-           the blue-noise spacing; place() re-thins at the new position, so
-           the boost feathers exactly like the mask that created it. */
-        const d = density(x, z);
-        if (d > 1 && rand(i, 143) < d - 1) {
-          place(
-            i + 9000017,
-            X0 + ((q + rand(i, 144)) / cols) * (X1 - X0),
-            Z0 + ((r + rand(i, 145)) / rows) * (Z1 - Z0)
-          );
-        }
-        /* Botanical pass: the 1.55 yard boost peaks at dens 2.55, past what
-           two candidates can spend (the second's probability clamps at 1).
-           A third leg keeps the E-integral construction exact for dens up
-           to 3 — expected spend per cell is 1 + min(1, d-1) + max(0, d-2)
-           = d — so the yard core genuinely receives the density the far
-           trim paid for instead of silently under-planting. */
-        if (d > 2 && rand(i, 146) < d - 2) {
-          place(
-            i + 17000023,
-            X0 + ((q + rand(i, 147)) / cols) * (X1 - X0),
-            Z0 + ((r + rand(i, 148)) / rows) * (Z1 - Z0)
-          );
-        }
-      }
-    }
-  } else {
-    /* Hero keeps rejection sampling: it is the sparse silhouette layer, its
-       blades are tall enough to read individually, and a little clumping
-       reads as natural tussock there. */
-    const MAX_TRIES = budget * 9;
-    for (let i = 0; i < MAX_TRIES && placed < budget; i++) {
-      place(i, X0 + rand(i, 41 + S) * (X1 - X0), Z0 + rand(i, 42 + S) * (Z1 - Z0));
-    }
-  }
-
-  const tiles: GrassTile[] = [];
-  cells.forEach((c) => {
-    const n = c.clr.length;
-    if (n < 4) return;
-    // sort by fade seed so truncating instanceCount removes exactly the
-    // blades the shader has already faded out
-    const order = Array.from({ length: n }, (_, k) => k).sort((a, b) => c.rnd[a * 4 + 3] - c.rnd[b * 4 + 3]);
-
-    const pos = new Float32Array(n * 3);
-    const rnd = new Float32Array(n * 4);
-    const clr = new Float32Array(n);
-    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, maxY = -Infinity, minY = Infinity;
-    order.forEach((src, dst) => {
-      pos[dst * 3] = c.pos[src * 3];
-      pos[dst * 3 + 1] = c.pos[src * 3 + 1];
-      pos[dst * 3 + 2] = c.pos[src * 3 + 2];
-      for (let k = 0; k < 4; k++) rnd[dst * 4 + k] = c.rnd[src * 4 + k];
-      clr[dst] = c.clr[src];
-      minX = Math.min(minX, pos[dst * 3]); maxX = Math.max(maxX, pos[dst * 3]);
-      minY = Math.min(minY, pos[dst * 3 + 1]); maxY = Math.max(maxY, pos[dst * 3 + 1]);
-      minZ = Math.min(minZ, pos[dst * 3 + 2]); maxZ = Math.max(maxZ, pos[dst * 3 + 2]);
-    });
-
-    const geo = new THREE.InstancedBufferGeometry();
-    geo.setAttribute("position", new THREE.BufferAttribute(blade.pos, 3));
-    geo.setAttribute("uv", new THREE.BufferAttribute(blade.uvs, 2));
-    geo.setIndex(new THREE.BufferAttribute(blade.idx, 1));
-    geo.setAttribute("aPos", new THREE.InstancedBufferAttribute(pos, 3));
-    geo.setAttribute("aRand", new THREE.InstancedBufferAttribute(rnd, 4));
-    geo.setAttribute("aClear", new THREE.InstancedBufferAttribute(clr, 1));
-    geo.instanceCount = n;
-
-    const cx = (minX + maxX) / 2;
-    const cz = (minZ + maxZ) / 2;
-    const cy = (minY + maxY) / 2;
-    const radius = Math.hypot(maxX - cx, maxZ - cz) + 0.6;
-    // attributes are absolute world coords, so the mesh stays at the origin
-    // and the bounding sphere has to be given in those same coords
-    geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(cx, cy + 0.25, cz), radius);
-
-    tiles.push({ geo, cx, cy, cz, radius, n });
-  });
-  return tiles;
 }
 
 /* gustEnvelope and FROZEN_T moved to flora.ts (botanical pass): the flowers
@@ -1508,53 +1378,48 @@ function buildGrassTiles(budget: number, cfg: GrassLayerCfg) {
 
 function GrassField({
   frozen,
-  budget,
+  pages,
   night,
   dusk,
   cfg,
 }: {
   frozen: boolean;
-  budget: number;
+  pages: MeadowPage[];
   night: number;
   dusk: Dusk;
   cfg: GrassLayerCfg;
 }) {
   const { camera } = useThree();
   const group = useRef<THREE.Group>(null);
-  const meshes = useRef<THREE.Mesh[]>([]);
+  const meshes = useRef(new Map<string, THREE.Mesh>());
+  const cache = useRef(new WeakMap<MeadowPage, GrassTile>());
+  const ownedGeometries = useRef(new Set<THREE.InstancedBufferGeometry>());
 
-  const tiles = useMemo(() => buildGrassTiles(budget, cfg), [budget, cfg]);
-
-  const mat = useMemo(
+  const tiles = useMemo(
     () =>
-      new THREE.ShaderMaterial({
-        vertexShader: grassVert(cfg),
-        fragmentShader: GRASS_FRAG,
-        side: THREE.DoubleSide,
-        uniforms: {
-          uTime: { value: 0 },
-          uWindDir: { value: WIND_DIR.clone() },
-          uCamPos: { value: new THREE.Vector3() },
-          uProjScale: { value: 2.7 },
-          uGust: { value: 0.4 },
-          /* Greener and a shade deeper than the ground, not lighter: the
-             reference's tip sits BELOW its root in value, which is what reads
-             as depth in a sward. #c2d493 was lighter and yellower than the
-             terrain, so every blade lifted off the lawn as a pale spike. */
-          uColTip: { value: new THREE.Color("#93b06a") },
-          uSunDir: { value: KEY.clone() },
-          uSunCol: { value: new THREE.Color("#fff3dd") },
-          uSunI: { value: 1.15 },
-          uHemiSky: { value: new THREE.Color("#dcecf4") },
-          uHemiGround: { value: new THREE.Color("#7a8b5e") },
-          uFogColor: { value: new THREE.Color("#e3ede7") },
-          uFogNear: { value: 30 },
-          uFogFar: { value: 88 },
-          uNight: { value: 0 },
-        },
-      }),
-    [cfg]
+      pages
+        .filter((page) => page.count >= 4)
+        .map((page) => {
+          const cached = cache.current.get(page);
+          if (cached) return cached;
+          const tile = materializeMeadowPage(page, cfg);
+          cache.current.set(page, tile);
+          ownedGeometries.current.add(tile.geo);
+          return tile;
+        }),
+    [cfg, pages],
   );
+
+  useEffect(
+    () => () => {
+      ownedGeometries.current.forEach((geometry) => geometry.dispose());
+      ownedGeometries.current.clear();
+      meshes.current.clear();
+    },
+    [],
+  );
+
+  const mat = useMemo(() => makeGrassMaterial(cfg), [cfg]);
 
   /* The light arc owns the sun; grass just follows it, so the meadow warms
      with everything else instead of staying stuck at noon. */
@@ -1616,7 +1481,7 @@ function GrassField({
     const cz = camera.position.z;
     for (let i = 0; i < tiles.length; i++) {
       const t = tiles[i];
-      const m = meshes.current[i];
+      const m = meshes.current.get(t.id);
       if (!m) continue;
       const dx = cx - t.cx;
       const dy = cy - t.cy;
@@ -1644,14 +1509,15 @@ function GrassField({
 
   return (
     <group ref={group}>
-      {tiles.map((t, i) => (
+      {tiles.map((t) => (
         <mesh
-          key={i}
+          key={t.id}
           geometry={t.geo}
           material={mat}
           frustumCulled
           ref={(el) => {
-            if (el) meshes.current[i] = el;
+            if (el) meshes.current.set(t.id, el);
+            else meshes.current.delete(t.id);
           }}
         />
       ))}
@@ -2123,24 +1989,238 @@ function ScrubBucket({
   );
 }
 
-/* ============================== FLOWERS =============================
-   The botanical pass ("...and add some flowers" — founder). The system —
-   geometry tiers, deterministic drift placement, shaders — lives in
-   flora.ts; this component is the mounting: it hands flora the meadow's
-   own masks (density, clearance, terrain) so flowers grow exactly where
-   grass grows and never inside a clearance apron, and it drives the
-   material from the same clock, envelope, dusk registry and fog the two
-   GrassField layers use. ONE instanced draw call for every flower.
-
-   Reduced motion: uTime holds FROZEN_T like the grass, so the single
-   rendered frame catches the drifts mid-nod in the same gust the blades
-   are leaning to — a composed still, not a dead lull.
+/* ======================== OFFLINE MEADOW ATLAS ======================
+   Hero blades stay live geometry because their silhouettes matter close to
+   the camera. Everything else is authored offline into alpha-cut clumps and
+   flowers. Thousands of botanical clusters therefore remain one draw call,
+   one material program, and zero runtime canvas rasterisation.
 =================================================================== */
 
-/* Module-level so the sample object is referentially stable across renders
-   — it keys the useMemo that plants the field. Flowers use HERO-width
-   clearance: they never shorten into an apron the way filler grass does,
-   they stand back from it. */
+const MEADOW_ATLAS_ALPHA_TEST = 0.42;
+const MEADOW_ATLAS_MAGIC = "AURAMDW1";
+const MEADOW_ATLAS_HEADER_BYTES = 24;
+const MEADOW_ATLAS_STRIDE_BYTES = 48;
+
+type MeadowAtlasResource = {
+  geometry: THREE.InstancedBufferGeometry;
+  material: THREE.MeshBasicMaterial;
+  texture: THREE.Texture;
+};
+
+function meadowAtlasBaseGeometry(): {
+  positions: Float32Array;
+  uvs: Float32Array;
+  indices: Uint16Array;
+} {
+  /* Two crossed cards keep a cluster legible from every story camera. They
+     remain one indexed geometry and therefore one draw/program. */
+  return {
+    positions: new Float32Array([
+      -0.5, 0, 0, 0.5, 0, 0, 0.5, 1, 0, -0.5, 1, 0,
+      0, 0, -0.5, 0, 0, 0.5, 0, 1, 0.5, 0, 1, -0.5,
+    ]),
+    uvs: new Float32Array([
+      0, 0, 1, 0, 1, 1, 0, 1,
+      0, 0, 1, 0, 1, 1, 0, 1,
+    ]),
+    indices: new Uint16Array([
+      0, 1, 2, 0, 2, 3,
+      4, 5, 6, 4, 6, 7,
+    ]),
+  };
+}
+
+function decodeMeadowAtlas(buffer: ArrayBuffer, texture: THREE.Texture): MeadowAtlasResource {
+  const view = new DataView(buffer);
+  const magic = new TextDecoder().decode(new Uint8Array(buffer, 0, 8));
+  const version = view.getUint32(8, true);
+  const count = view.getUint32(12, true);
+  const stride = view.getUint32(16, true);
+  if (magic !== MEADOW_ATLAS_MAGIC || version !== 1 || stride !== MEADOW_ATLAS_STRIDE_BYTES) {
+    throw new Error("Unsupported Aura meadow atlas");
+  }
+  if (buffer.byteLength !== MEADOW_ATLAS_HEADER_BYTES + count * stride) {
+    throw new Error("Aura meadow atlas length mismatch");
+  }
+
+  const positions = new Float32Array(count * 3);
+  const sizes = new Float32Array(count * 2);
+  const yaws = new Float32Array(count);
+  const uvRects = new Float32Array(count * 4);
+  const seeds = new Float32Array(count);
+  let renderedCount = 0;
+
+  for (let index = 0; index < count; index += 1) {
+    const offset = MEADOW_ATLAS_HEADER_BYTES + index * stride;
+    const x = view.getFloat32(offset, true);
+    const y = view.getFloat32(offset + 4, true);
+    const z = view.getFloat32(offset + 8, true);
+    const width = view.getFloat32(offset + 12, true);
+    const height = view.getFloat32(offset + 16, true);
+    const sourceKind = view.getFloat32(offset + 40, true);
+    const seed = view.getFloat32(offset + 44, true);
+    /* Version-one mixed atlases may remain in an HTTP cache during an atomic
+       release. Preserve every proven placement, but deterministically remap
+       legacy flower slots onto one of the six grass cells. The real instanced
+       FlowerField below is therefore the only rendered flower source. */
+    const mappedGrassCell = Math.min(5, Math.floor(seed * 6));
+    const mappedColumn = mappedGrassCell % 4;
+    const mappedRow = Math.floor(mappedGrassCell / 4);
+    positions.set([x, y, z], renderedCount * 3);
+    sizes.set([width, height], renderedCount * 2);
+    yaws[renderedCount] = view.getFloat32(offset + 20, true);
+    uvRects.set([
+      sourceKind === 0 ? view.getFloat32(offset + 24, true) : mappedColumn / 4,
+      sourceKind === 0 ? view.getFloat32(offset + 28, true) : mappedRow / 2,
+      view.getFloat32(offset + 32, true),
+      view.getFloat32(offset + 36, true),
+    ], renderedCount * 4);
+    seeds[renderedCount] = seed;
+    renderedCount += 1;
+  }
+
+  const base = meadowAtlasBaseGeometry();
+  const geometry = new THREE.InstancedBufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(base.positions, 3));
+  geometry.setAttribute("uv", new THREE.BufferAttribute(base.uvs, 2));
+  geometry.setIndex(new THREE.BufferAttribute(base.indices, 1));
+  geometry.setAttribute("aAtlasPos", new THREE.InstancedBufferAttribute(positions, 3));
+  geometry.setAttribute("aAtlasSize", new THREE.InstancedBufferAttribute(sizes, 2));
+  geometry.setAttribute("aAtlasYaw", new THREE.InstancedBufferAttribute(yaws, 1));
+  geometry.setAttribute("aAtlasUv", new THREE.InstancedBufferAttribute(uvRects, 4));
+  geometry.setAttribute("aAtlasSeed", new THREE.InstancedBufferAttribute(seeds, 1));
+  geometry.instanceCount = renderedCount;
+  geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 1.6, 22), 76);
+
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.generateMipmaps = true;
+  texture.needsUpdate = true;
+
+  const material = new THREE.MeshBasicMaterial({
+    map: texture,
+    alphaTest: MEADOW_ATLAS_ALPHA_TEST,
+    transparent: false,
+    depthWrite: true,
+    side: THREE.DoubleSide,
+    fog: true,
+    toneMapped: true,
+  });
+  material.name = "aura-meadow-atlas-material";
+  material.customProgramCacheKey = () => "aura-meadow-atlas-v1";
+  material.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", `#include <common>
+attribute vec3 aAtlasPos;
+attribute vec2 aAtlasSize;
+attribute float aAtlasYaw;
+attribute vec4 aAtlasUv;
+attribute float aAtlasSeed;`)
+      .replace("#include <uv_vertex>", `#ifdef USE_MAP
+  vMapUv = ( mapTransform * vec3( aAtlasUv.xy + uv * aAtlasUv.zw, 1 ) ).xy;
+#endif`)
+      .replace("#include <begin_vertex>", `vec3 atlasLocal = position;
+atlasLocal.xz *= aAtlasSize.x;
+atlasLocal.y *= aAtlasSize.y;
+float atlasTurn = aAtlasYaw + (aAtlasSeed - 0.5) * 0.08;
+float atlasCos = cos(atlasTurn);
+float atlasSin = sin(atlasTurn);
+vec3 transformed = vec3(
+  atlasLocal.x * atlasCos - atlasLocal.z * atlasSin,
+  atlasLocal.y,
+  atlasLocal.x * atlasSin + atlasLocal.z * atlasCos
+) + aAtlasPos;`);
+  };
+
+  return {
+    geometry,
+    material,
+    texture,
+  };
+}
+
+function MeadowAtlasField({
+  night,
+  dusk,
+  onReady,
+}: {
+  night: number;
+  dusk: Dusk;
+  onReady: () => void;
+}) {
+  const { gl, invalidate } = useThree();
+  const [resource, setResource] = useState<MeadowAtlasResource | null>(null);
+  const [failed, setFailed] = useState(false);
+  const readySent = useRef(false);
+
+  useEffect(() => {
+    let disposed = false;
+    let next: MeadowAtlasResource | null = null;
+    Promise.all([
+      fetch(withBase("/textures/meadow-atlas.bin")).then((response) => {
+        if (!response.ok) throw new Error(`Meadow atlas data ${response.status}`);
+        return response.arrayBuffer();
+      }),
+      new THREE.TextureLoader().loadAsync(withBase("/textures/meadow-atlas.png")),
+    ])
+      .then(([buffer, texture]) => {
+        next = decodeMeadowAtlas(buffer, texture);
+        texture.anisotropy = Math.min(8, gl.capabilities.getMaxAnisotropy());
+        if (disposed) {
+          next.geometry.dispose();
+          next.material.dispose();
+          next.texture.dispose();
+          return;
+        }
+        setResource(next);
+        invalidate();
+      })
+      .catch(() => {
+        if (!disposed) setFailed(true);
+      });
+    return () => {
+      disposed = true;
+      next?.geometry.dispose();
+      next?.material.dispose();
+      next?.texture.dispose();
+    };
+  }, [gl, invalidate]);
+
+  useEffect(() => {
+    if ((!resource && !failed) || readySent.current) return;
+    readySent.current = true;
+    onReady();
+  }, [failed, onReady, resource]);
+
+  useLayoutEffect(() => {
+    if (!resource) return undefined;
+    return dusk.add((amount: number) => {
+      resource.material.color
+        .setHex(0xffffff)
+        .lerp(new THREE.Color("#d7cfaa"), amount * 0.28)
+        .multiplyScalar(1 - night * 0.32);
+    });
+  }, [dusk, night, resource]);
+
+  if (!resource) return null;
+  return (
+    <group name="aura-grass-atlas-field">
+      <mesh
+        name="aura-meadow-atlas"
+        geometry={resource.geometry}
+        material={resource.material}
+        frustumCulled
+        renderOrder={1}
+      />
+    </group>
+  );
+}
+
+/* The real, one-draw wildflower field from the last known-good botanical
+   release. Its patch sampler, coarse-cell species clustering, clearance and
+   wind clock are intentionally kept separate from the grass atlas. */
 const FLORA_SAMPLE: FloraSample = {
   ground: terrainH,
   density: meadowDensity,
@@ -2163,41 +2243,86 @@ function FlowerField({
   const { camera } = useThree();
   const built = useMemo(() => buildFlowerField(count, rich, FLORA_SAMPLE), [count, rich]);
   const mat = useMemo(() => makeFlowerMaterial(), []);
+  const lastVisibility = useRef(-1);
+  const lastVisibilityAt = useRef(-1);
 
-  /* The light arc owns the sun; flowers follow it with the SAME lerp the
-     grass runs, so petals warm at dusk in step with the blades under them. */
+  useEffect(() => () => {
+    built?.geo.dispose();
+    mat.dispose();
+  }, [built, mat]);
+
   useLayoutEffect(
     () =>
-      dusk.add((d: number) => {
-        const u = mat.uniforms;
-        (u.uSunCol.value as THREE.Color).setHex(0xfff3dd).lerp(new THREE.Color("#ffc48c"), d);
-        (u.uSunDir.value as THREE.Vector3)
+      dusk.add((amount: number) => {
+        const uniforms = mat.uniforms;
+        (uniforms.uSunCol.value as THREE.Color)
+          .setHex(0xfff3dd)
+          .lerp(new THREE.Color("#ffc48c"), amount);
+        (uniforms.uSunDir.value as THREE.Vector3)
           .copy(KEY)
-          .lerp(new THREE.Vector3(-18, 7, 18).normalize(), d)
+          .lerp(new THREE.Vector3(-18, 7, 18).normalize(), amount)
           .normalize();
-        u.uSunI.value = 1.15 - d * 0.3;
+        uniforms.uSunI.value = 1.15 - amount * 0.3;
       }),
-    [dusk, mat]
+    [dusk, mat],
   );
 
+  const countVisibleFlowerHeads = useCallback(() => {
+    if (!built) return 0;
+    const roots = built.geo.getAttribute("aPos") as THREE.InstancedBufferAttribute;
+    const instances = built.geo.getAttribute("aInst") as THREE.InstancedBufferAttribute;
+    const root = new THREE.Vector3();
+    const head = new THREE.Vector3();
+    let visible = 0;
+    for (let index = 0; index < built.placed; index += 1) {
+      root.set(roots.getX(index), roots.getY(index), roots.getZ(index));
+      const distance = root.distanceTo(camera.position);
+      const renderedHeight = flowerVisibilityAtDistance(distance, instances.getW(index));
+      if (renderedHeight <= 0.01) continue;
+      head.copy(root);
+      head.y += instances.getY(index) * renderedHeight;
+      head.project(camera);
+      if (head.z >= -1 && head.z <= 1 && Math.abs(head.x) <= 1 && Math.abs(head.y) <= 1) visible += 1;
+    }
+    return visible;
+  }, [built, camera]);
+
   useFrame(({ clock, scene }) => {
-    const u = mat.uniforms;
-    // the meadow's clock and envelope, verbatim — one weather
-    const t = frozen ? FROZEN_T : clock.elapsedTime;
-    u.uTime.value = t;
-    u.uGust.value = gustEnvelope(t);
-    (u.uCamPos.value as THREE.Vector3).copy(camera.position);
-    u.uNight.value = night;
+    if (!built) return;
+    const time = frozen ? FROZEN_T : clock.elapsedTime;
+    const uniforms = mat.uniforms;
+    uniforms.uTime.value = time;
+    uniforms.uGust.value = gustEnvelope(time);
+    (uniforms.uCamPos.value as THREE.Vector3).copy(camera.position);
+    uniforms.uNight.value = night;
     const fog = scene.fog as THREE.Fog | null;
     if (fog) {
-      (u.uFogColor.value as THREE.Color).copy(fog.color);
-      u.uFogNear.value = fog.near;
-      u.uFogFar.value = fog.far;
+      (uniforms.uFogColor.value as THREE.Color).copy(fog.color);
+      uniforms.uFogNear.value = fog.near;
+      uniforms.uFogFar.value = fog.far;
     }
+
+    if (clock.elapsedTime - lastVisibilityAt.current < 0.2) return;
+    lastVisibilityAt.current = clock.elapsedTime;
+    const visible = countVisibleFlowerHeads();
+    if (visible === lastVisibility.current) return;
+    lastVisibility.current = visible;
+    window.dispatchEvent(new CustomEvent("aura:flower-visibility", {
+      detail: { visible, planted: built.placed, source: "instanced-flower-field" },
+    }));
   });
 
   if (!built) return null;
-  return <mesh geometry={built.geo} material={mat} frustumCulled />;
+  return (
+    <group name="aura-flower-field">
+      <mesh
+        name="aura-instanced-flower-field"
+        geometry={built.geo}
+        material={mat}
+        frustumCulled
+      />
+    </group>
+  );
 }
 
 /* ============================ THE LAYER ============================= */
@@ -2210,6 +2335,9 @@ export default function SceneDetail({
   qualityScale = 1,
   includeMeadow = true,
   lite = false,
+  lowPower = false,
+  releaseMeadowPromotion = false,
+  onMeadowReady,
 }: {
   frozen: boolean;
   night: number;
@@ -2224,6 +2352,11 @@ export default function SceneDetail({
    * automatic landing path. Rich snow terrain and amenities remain reserved
    * for deliberate high-quality rendering. */
   lite?: boolean;
+  /** Capability-derived constraint, distinct from the temporary balanced
+   * opening shader cap used even on capable desktops. */
+  lowPower?: boolean;
+  releaseMeadowPromotion?: boolean;
+  onMeadowReady?: () => void;
 }) {
   /* Blade budget by device. A phone draws the whole meadow a few centimetres
      across, so blades past a few thousand are texels it physically cannot
@@ -2255,7 +2388,7 @@ export default function SceneDetail({
      blades/m2; this ring is ~660 m2, so 34k desktop lands in the same place.
      Mobile draws the meadow a few centimetres across, so a third of that is
      indistinguishable and much kinder to the GPU. */
-  const { size } = useThree();
+  const { size, invalidate } = useThree();
   /* The footprint grew from ~660 m2 to a feathered field that reaches the
      fog line, so the count grew with it — but only by half. The rest of the
      coverage comes from taller far blades and from Scrub, which is far
@@ -2291,15 +2424,27 @@ export default function SceneDetail({
      the BASE density back at v9 levels — the doubling stays where it was
      aimed (the yard), paid for by the far field, not by new instances. */
   const mobile = size.width < 820;
-  const meadowScale = lite ? qualityScale * 0.4 : qualityScale;
-  const heroCount = Math.max(lite ? 6000 : 12000, Math.round((mobile ? 42000 : 120000) * meadowScale));
+  const [grassProgramReady, setGrassProgramReady] = useState(false);
+  const [meadowAtlasReady, setMeadowAtlasReady] = useState(false);
+  const handleGrassProgramReady = useCallback(() => setGrassProgramReady(true), []);
+  const handleMeadowAtlasReady = useCallback(() => setMeadowAtlasReady(true), []);
+  const meadow = useProgressiveMeadow({
+    enabled: includeMeadow && grassProgramReady,
+    width: size.width,
+    reducedMotion: frozen,
+    lowPower: mobile || lowPower,
+    releaseAfterReady: releaseMeadowPromotion,
+    invalidate,
+  });
+  useEffect(() => {
+    if (meadow.ready && meadowAtlasReady) onMeadowReady?.();
+  }, [meadow.ready, meadowAtlasReady, onMeadowReady]);
   /* Founder "ridiculously good and smooth, no spacing" round: the filler
      count climbs (desktop 715k -> 980k, mobile 250k -> 340k) AND the far
      reach tightens (below) so the extra blades all land where the eye judges
      coverage — the first ~22 m the story cameras sit in. Paired with wider
      blades, a relaxed near-field height gate, and a deeper ground shade, the
      near field reads as one closed sward instead of separable spikes. */
-  const fillCount = Math.max(lite ? 28000 : 80000, Math.round((mobile ? 340000 : 980000) * meadowScale));
   /* Flowers (botanical pass): rounding error next to the grass — ~1,000
      instances x 18 tris on the rich tier is ~18k triangles in ONE draw
      call, ~1.3% of the worst-beat budget. Rich petal geometry is reserved
@@ -2308,18 +2453,25 @@ export default function SceneDetail({
      flower, and reduced motion holds them at the composed FROZEN_T
      instant. The floor keeps the drifts legible even at the opening
      stage's 0.14 scale — 200 static flowers cost nothing. */
-  const richFlora = !lite && !mobile && qualityScale >= 0.99;
-  const flowerCount = Math.max(200, Math.round((mobile ? 380 : 1000) * Math.min(1, meadowScale * 2)));
+  const heroPages = meadow.pages.filter((page) => page.layer === "hero");
+  const botanicalFrozen = frozen || !meadow.plan.animated;
 
   return (
     <group>
+      <GrassProgramWarmup onReady={handleGrassProgramReady} />
       {lite ? <MountainRange /> : <SnowRange night={night} dusk={dusk} />}
       <Clouds frozen={frozen} night={night} />
       {includeMeadow ? (
         <>
-          <GrassField frozen={frozen} budget={heroCount} night={night} dusk={dusk} cfg={G_HERO} />
-          <GrassField frozen={frozen} budget={fillCount} night={night} dusk={dusk} cfg={G_FILL} />
-          <FlowerField frozen={frozen} night={night} dusk={dusk} rich={richFlora} count={flowerCount} />
+          <GrassField frozen={botanicalFrozen} pages={heroPages} night={night} dusk={dusk} cfg={G_HERO} />
+          <MeadowAtlasField night={night} dusk={dusk} onReady={handleMeadowAtlasReady} />
+          <FlowerField
+            frozen={botanicalFrozen}
+            night={night}
+            dusk={dusk}
+            rich={meadow.plan.richFlowers && !lite && qualityScale >= 0.99}
+            count={meadow.plan.flowerCount}
+          />
           <Scrub />
         </>
       ) : null}

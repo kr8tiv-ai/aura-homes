@@ -1,0 +1,120 @@
+{
+  "node": "R03G",
+  "parentNode": "R03F",
+  "graphVersion": "1.1",
+  "graphBlobSha256": "897147D8F5C3FBF065423A64601509B4B3C6FA9DFA1AA114BD32FA0A047144FD",
+  "approvalCommit": "7d6028667b2ae061df9504eb3a52df091f138207",
+  "job": "Restore the last known-good real instanced wildflower field and a grass-only asymmetric fan atlas inside the proven progressive runtime, without restoring the synchronous million-instance meadow.",
+  "inputs": {
+    "failedProof": "app/shots/r03-meadow/meadow-proof.json",
+    "approvedBaseline": "C:/Users/lucid/Desktop/Kin/aura-r03-baseline-20260813",
+    "openingBaselineSha256": "506e6511fe9ffb41896f4db52e200775d5ed80866ad5d5355a4be5ba99e50702",
+    "closeBaselineSha256": "e891e91e5be3f820857c39213d9aed52357fb10d8db6c510b9b15a66501b3243",
+    "openingCoverageRatio": 0.971148456305024,
+    "requiredCoverageRatio": 0.98,
+    "knownGoodBotanicalCommit": "5a8f323",
+    "knownGoodBotanicalDeployment": "98e13d2",
+    "coreFlowerImplementationCommit": "21034ac",
+    "retainedKnownGoodRules": [
+      "four-segment hero blades plus a much shorter one-segment filler layer",
+      "continuous clearance feathering around path, deck, stairs and props",
+      "density concentrated in the camera and house yard while the far field pays the budget",
+      "blade roots share the terrain palette and ground-darkening model",
+      "flowers share the meadow wind and remain one instanced draw",
+      "desktop, mobile and minimum flower populations are 1000, 380 and 200",
+      "flower drifts use the proven 0.13-frequency patch mask, 0.52-to-0.72 threshold, 8-to-24-metre yard weighting and 0.45 clearance gate",
+      "flower species remain clustered by coarse three-metre world cells and fade individually from 18 to 30 metres"
+    ],
+    "retainedAtlasDimensions": [1024, 512],
+    "retainedInstanceTableSha256": "b06dcc13192a147cdff84c42b9d24e0e5670fd1dde514a30815e53ca508d6446",
+    "sourceCards": { "total": 3600, "grass": 2800, "legacyFlowerSlots": 800, "nearLegacySlots": 500, "midLegacySlots": 300 },
+    "renderedCards": { "total": 3600, "grass": 3600, "flowers": 0 },
+    "retainedRuntime": { "pageCap": 2000, "pages": 44, "liveHeroInstances": 23213, "draws": 1 }
+  },
+  "outputs": {
+    "schema": "ProgressiveMeadowMappedAtlasV6",
+    "required": [
+      "six grass cells are deterministic shorter, broader asymmetric multi-fan clumps with irregular negative space",
+      "each grass cell has no more than two deliberately placed tall seed stems",
+      "subtle independently seeded longitudinal midribs remain inside existing leaf silhouettes and change RGB only",
+      "the exact proven 3600-position binary is retained and its 800 legacy flower slots are deterministically remapped to grass UV cells at decode time",
+      "the rendered offline atlas contains 3600 grass clumps and no billboard flower cards",
+      "the real geometry FlowerField from the known-good source is mounted as one bounded instanced draw with the proven patch, species, clearance, fade and shared-wind rules",
+      "the progressive worker, ACK pacing, schedule, page cap, governor and zero-idle demand loop remain unchanged",
+      "the atlas remains one alpha-masked draw; the restored real FlowerField is the only additional botanical draw and program",
+      "opening and corrected close texture coverage reach at least 98 percent against pinned baselines",
+      "full-run render p95, causal integration, interaction, camera convergence, flower pixels and settled demand remain green",
+      "fresh visual review confirms calm meadow mass, architectural hierarchy and no reed wall, confetti, barcode or wireframe effect"
+    ]
+  },
+  "dependsOn": ["R00", "R01", "G00", "R03F failed proof"],
+  "rejectionGates": [
+    "baseline, ROI, classifier, threshold, proof, camera mapping, progressive schedule or page cap change",
+    "synchronous whole-field generation, runtime texture rasterization, or more than one real flower draw",
+    "the retained instance-table SHA changes or any billboard flower card remains in the rendered atlas",
+    "synchronized bands, repeated striping, wireframe, neon colour, rigid reed wall or home-obscuring overgrowth",
+    "any grass cell has more than two tall seed stems or loses asymmetric fan spacing",
+    "real instanced flower inventory differs from the proven 1000 desktop, 380 mobile and 200 minimum populations",
+    "visible near/mid flower evidence regresses",
+    "opening or corrected close coverage is below 98 percent",
+    "hardware, performance, camera, interaction or zero-idle-demand gate fails"
+  ],
+  "work": {
+    "owner": "root",
+    "writeSet": [
+      "app/scripts/generate-meadow-atlas.mjs",
+      "app/components/story/SceneDetail.tsx",
+      "app/components/story/flora.ts",
+      "app/lib/three/meadow/contract.ts",
+      "app/public/textures/meadow-atlas.png",
+      "app/public/textures/meadow-atlas.json",
+      "app/tests/meadow-progressive.spec.ts",
+      "app/shots/r03-meadow/**",
+      "docs/plans/execution/r0/R03F-v1.1.json",
+      "docs/plans/execution/r0/R03G-v1.1.json"
+    ]
+  },
+  "verify": {
+    "owner": "fresh-context verifier",
+    "commands": [
+      "node scripts/generate-meadow-atlas.mjs --verify",
+      "npx playwright test tests/meadow-progressive.spec.ts --workers=1",
+      "npx tsc --noEmit --incremental false",
+      "$env:GH_PAGES='1'; npm run build",
+      "node scripts/meadow-proof.mjs"
+    ]
+  },
+  "repairLimit": 1,
+  "repairBoundary": "If all runtime and non-visual gates pass, adjust either offline grass-card height by at most eight percent or real flower stem height by at most eight percent, never both. No count, patch distribution, schedule, proof, baseline or threshold changes.",
+  "sideEffect": "local",
+  "status": "blocked",
+  "failedEvidence": {
+    "report": "app/shots/r03-meadow/meadow-proof.json",
+    "createdAt": "2026-08-14T02:32:33.228Z",
+    "renderer": "ANGLE AMD Radeon 740M Direct3D11 hardware",
+    "desktop": {
+      "state": "frozen",
+      "pages": 10,
+      "instances": 16541,
+      "activeFrameP95Ms": 0,
+      "causalLongTaskMaxMs": 57,
+      "openingCoverageRatio": 0.9944165393535056,
+      "closeCoverageRatio": 1.9136351033350159,
+      "flowers": { "planted": 1000, "openingVisible": 362, "closeVisible": 362 }
+    },
+    "mobile": {
+      "state": "settled",
+      "pages": 44,
+      "instances": 22255,
+      "activeFrameP95Ms": 5.200000002980232,
+      "fullRunRenderP95Ms": 7.199999995529652,
+      "causalLongTaskMaxMs": 0.20000000298023224,
+      "flowers": { "planted": 380, "visible": 54 },
+      "settledDemand": true,
+      "verdict": "pass"
+    },
+    "verdict": "The restored visual and mobile plan pass, but desktop worker ACKs can overlap a 57 ms task. R03G cannot change its expressly retained ACK pacing, so it is rejected without weakening any threshold.",
+    "freshReview": "block: pacing change requires an explicit successor rather than an undocumented R03G exception"
+  },
+  "successor": "R03H"
+}

@@ -2,7 +2,7 @@
 
 import { Component, Suspense, startTransition, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import * as THREE from "three";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useProgress } from "@react-three/drei";
 import {
   nextOpeningSceneStage,
@@ -77,13 +77,64 @@ function runtimeQuality(reduced: boolean): SceneQuality {
  *  was the bug that shipped a 14%-density meadow with dwarf flowers. */
 function runtimeFullQuality(reduced: boolean): SceneQuality {
   const nav = navigator as NavigatorWithMemory;
-  return selectSceneQuality({
-    width: window.innerWidth,
-    devicePixelRatio: window.devicePixelRatio || 1,
-    deviceMemoryGb: nav.deviceMemory,
-    hardwareConcurrency: nav.hardwareConcurrency,
-    reducedMotion: reduced,
-  });
+  return {
+    ...selectSceneQuality({
+      width: window.innerWidth,
+      devicePixelRatio: window.devicePixelRatio || 1,
+      deviceMemoryGb: nav.deviceMemory,
+      hardwareConcurrency: nav.hardwareConcurrency,
+      reducedMotion: reduced,
+    }),
+    frameloop: "demand",
+  };
+}
+
+/** Measure CPU time spent submitting an actual R3F render. A raw rAF delta
+ * measures the monitor/browser cadence (20.8 ms on a 48 Hz surface), not the
+ * active work Aura controls, and previously froze healthy promotion. */
+function SceneRenderDurationSignal() {
+  const gl = useThree((state) => state.gl);
+  useEffect(() => {
+    const originalRender = gl.render;
+    const measuredRender: typeof gl.render = (scene, camera) => {
+      const startedAt = performance.now();
+      originalRender.call(gl, scene, camera);
+      window.dispatchEvent(new CustomEvent("aura:render-duration", {
+        detail: { startedAt, duration: performance.now() - startedAt },
+      }));
+    };
+    gl.render = measuredRender;
+    return () => {
+      if (gl.render === measuredRender) gl.render = originalRender;
+    };
+  }, [gl]);
+  return null;
+}
+
+/** Once the authored opening has settled, draw only for real input or state
+ * changes. Scroll still invalidates every story-camera update, while an idle
+ * scene stops burning GPU frames on an unchanged image. */
+function StoryDemandInvalidator({ enabled }: { enabled: boolean }) {
+  const invalidate = useThree((state) => state.invalidate);
+  useEffect(() => {
+    if (!enabled) return undefined;
+    let pendingFrame = 0;
+    const requestFrame = () => {
+      if (pendingFrame) window.cancelAnimationFrame(pendingFrame);
+      pendingFrame = window.requestAnimationFrame(() => {
+        pendingFrame = 0;
+        invalidate();
+      });
+    };
+    window.addEventListener("scroll", requestFrame, { passive: true });
+    window.addEventListener("resize", requestFrame, { passive: true });
+    return () => {
+      if (pendingFrame) window.cancelAnimationFrame(pendingFrame);
+      window.removeEventListener("scroll", requestFrame);
+      window.removeEventListener("resize", requestFrame);
+    };
+  }, [enabled, invalidate]);
+  return null;
 }
 
 /** Signal each progressive phase only after R3F has completed a real frame.
@@ -91,9 +142,11 @@ function runtimeFullQuality(reduced: boolean): SceneQuality {
  * more idle-scheduled layer. */
 function SceneFrameSignal({
   stage,
+  armed,
   onPainted,
 }: {
   stage: OpeningSceneStage;
+  armed: boolean;
   onPainted: (stage: OpeningSceneStage) => void;
 }) {
   const sent = useRef(false);
@@ -101,7 +154,7 @@ function SceneFrameSignal({
   callback.current = onPainted;
 
   useFrame(() => {
-    if (sent.current) return;
+    if (sent.current || !armed) return;
     sent.current = true;
     window.requestAnimationFrame(() => callback.current(stage));
   });
@@ -115,6 +168,7 @@ export default function StoryCanvas({
   reduced,
   night = false,
   allowFullQuality = false,
+  releaseMeadowPromotion = false,
   onReady,
   onUnavailable,
   onStagePainted,
@@ -125,6 +179,9 @@ export default function StoryCanvas({
   night?: boolean;
   /** The DOM handoff has completed its Ready hold, fade, and unmount. */
   allowFullQuality?: boolean;
+  /** Continue beyond the composed ten-page meadow only after the DOM loader
+   * has completed its visible Ready hold, fade, and unmount. */
+  releaseMeadowPromotion?: boolean;
   onReady?: () => void;
   onUnavailable?: () => void;
   /** Reports each progressive stage's first committed frame up to the DOM
@@ -136,11 +193,13 @@ export default function StoryCanvas({
 }) {
   const [webgl, setWebgl] = useState<boolean | null>(probeWebGL);
   const [quality, setQuality] = useState<SceneQuality>(() => runtimeQuality(reduced));
+  const [lowPower, setLowPower] = useState(() => runtimeFullQuality(reduced).tier !== "full");
   const [stage, setStage] = useState<OpeningSceneStage>("core");
   const [paintedStage, setPaintedStage] = useState<OpeningSceneStage | null>(null);
   /** true once the LAST opening stage has painted — the moment the opening
    *  caps have done their job and the meadow may grow to full density. */
   const [settled, setSettled] = useState(false);
+  const [meadowReady, setMeadowReady] = useState(false);
   const fullQualityPromoted = useRef(false);
   const openingReadySent = useRef(false);
 
@@ -153,6 +212,7 @@ export default function StoryCanvas({
     }
     if (painted === "meadow") setSettled(true);
   }, [onReady, onStagePainted]);
+  const handleMeadowReady = useCallback(() => setMeadowReady(true), []);
 
   /* useProgress is a global zustand store wired to THREE.DefaultLoadingManager
      at module scope; Scene.tsx preloads the GLBs at module scope, so it is
@@ -176,12 +236,15 @@ export default function StoryCanvas({
 
   useEffect(() => {
     const refreshQuality = () => {
-      setQuality(fullQualityPromoted.current ? runtimeFullQuality(reduced) : runtimeQuality(reduced));
+      const full = runtimeFullQuality(reduced);
+      setLowPower(full.tier !== "full");
+      const next = fullQualityPromoted.current ? full : runtimeQuality(reduced);
+      setQuality(settled ? { ...next, frameloop: "demand" } : next);
     };
     refreshQuality();
     window.addEventListener("resize", refreshQuality, { passive: true });
     return () => window.removeEventListener("resize", refreshQuality);
-  }, [reduced]);
+  }, [reduced, settled]);
 
   /* The promotion. Once the meadow stage has painted at the opening scale
      AND the DOM loader has completed its Ready hold/fade, lift the caps
@@ -256,6 +319,7 @@ export default function StoryCanvas({
       <div
         data-scene-quality={quality.tier}
         data-scene-phase={stage}
+        data-meadow-ready={stage === "meadow" ? String(meadowReady) : undefined}
         className="story-scene-root"
       >
         <SceneErrorBoundary onUnavailable={onUnavailable}>
@@ -292,9 +356,19 @@ export default function StoryCanvas({
             reduced={reduced}
             night={night}
             quality={quality}
+            lowPower={lowPower}
+            releaseMeadowPromotion={releaseMeadowPromotion}
             stage={stage}
+            onMeadowReady={handleMeadowReady}
           />
-          <SceneFrameSignal key={stage} stage={stage} onPainted={handleStagePainted} />
+          <SceneFrameSignal
+            key={stage}
+            stage={stage}
+            armed={stage !== "meadow" || meadowReady}
+            onPainted={handleStagePainted}
+          />
+          <SceneRenderDurationSignal />
+          <StoryDemandInvalidator enabled={settled} />
         </Suspense>
         </Canvas>
         </SceneErrorBoundary>

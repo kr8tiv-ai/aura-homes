@@ -72,5 +72,21 @@
   },
   "repairLimit": 1,
   "sideEffect": "local",
-  "status": "ready"
+  "failedEvidence": {
+    "verifiedAt": "2026-08-14T00:33:33.567Z",
+    "verdict": "blocked",
+    "renderer": "ANGLE AMD Radeon 740M Direct3D11",
+    "state": "settled",
+    "pages": 40,
+    "instances": 22845,
+    "maxCausalTaskMs": 0.3,
+    "activeFrameP95Ms": 10.8,
+    "settledDemandRendered": true,
+    "requiredCoverageRatio": 0.98,
+    "visibleFlowerHeads": { "opening": 321, "close": 309 },
+    "vegetationCoverageRatio": { "opening": 0.8954, "close": 1.4225 },
+    "artifact": "app/shots/r03-meadow/meadow-proof.json",
+    "decision": "Do not ship or weaken the gate. The one bounded R03A repair improved the opening ratio from 0.8178 to 0.8954 but did not meet 0.98. A materially distinct successor or rollback is required."
+  },
+  "status": "blocked"
 }

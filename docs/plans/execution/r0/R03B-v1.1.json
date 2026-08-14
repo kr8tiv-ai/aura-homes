@@ -1,0 +1,79 @@
+{
+  "node": "R03B",
+  "parentNode": "R03A",
+  "graphVersion": "1.1",
+  "graphBlobSha256": "897147D8F5C3FBF065423A64601509B4B3C6FA9DFA1AA114BD32FA0A047144FD",
+  "approvalCommit": "7d6028667b2ae061df9504eb3a52df091f138207",
+  "job": "Restore the missing opening-camera botanical microtexture through the existing terrain program without adding geometry, textures, draws, or weakening proof gates.",
+  "inputs": {
+    "failedProof": "app/shots/r03-meadow/meadow-proof.json",
+    "approvedBaseline": "C:/Users/lucid/Desktop/Kin/aura-r03-baseline-20260813",
+    "retainedSystem": "R03A hero blades, owned atlas, flowers, active-render governor and settled demand loop",
+    "openingCoverageRatio": 0.8954
+  },
+  "outputs": {
+    "schema": "ProgressiveMeadowSurfaceV1",
+    "required": [
+      "anti-aliased deterministic botanical microfacets in the existing terrain shader",
+      "no additional draw call, sampler, instance, network asset or runtime rasterization",
+      "unchanged 98 percent opening and close visual threshold",
+      "unchanged flower, causal-task, active-frame and demand-render gates"
+    ]
+  },
+  "dependsOn": ["R00", "R01", "G00", "R03A failed proof"],
+  "rejectionGates": [
+    "coverage threshold, baseline, camera, ROI or vegetation classifier changes",
+    "a new texture fetch, draw program, live instance stream or runtime rasterizer is added",
+    "terrain microdetail appears outside the existing botanical mask or aliases at distance",
+    "opening or close vegetation coverage is below 98 percent of the approved baseline",
+    "opening or close flower-head visibility is zero",
+    "desktop active-frame p95 exceeds 16.7 ms or a causal task exceeds 50 ms",
+    "the settled scene submits frames without input"
+  ],
+  "work": {
+    "owner": "root",
+    "writeSet": [
+      "app/components/story/Scene.tsx",
+      "app/scripts/meadow-proof.mjs",
+      "app/tests/meadow-progressive.spec.ts",
+      "app/shots/r03-meadow/**"
+    ]
+  },
+  "verify": {
+    "owner": "fresh-context verifier",
+    "commands": [
+      "node scripts/generate-meadow-atlas.mjs --verify",
+      "npx playwright test tests/meadow-progressive.spec.ts --workers=1",
+      "npx tsc --noEmit --incremental false",
+      "$env:GH_PAGES='1'; npm run build",
+      "node scripts/meadow-proof.mjs"
+    ],
+    "anchors": [
+      "immutable fixed-camera vegetation baseline",
+      "hardware renderer identity",
+      "projected flower-head telemetry",
+      "causal long tasks and active-frame p95",
+      "settled demand-rendered state"
+    ]
+  },
+  "repairLimit": 1,
+  "sideEffect": "local",
+  "failedEvidence": {
+    "verifiedAt": "2026-08-14T00:44:32.008Z",
+    "verdict": "blocked",
+    "renderer": "ANGLE AMD Radeon 740M Direct3D11",
+    "state": "settled",
+    "pages": 40,
+    "instances": 22845,
+    "maxCausalTaskMs": 0.4,
+    "activeFrameP95Ms": 8.7,
+    "settledDemandRendered": true,
+    "requiredCoverageRatio": 0.98,
+    "visibleFlowerHeads": { "opening": 321, "close": 309 },
+    "vegetationCoverageRatio": { "opening": 0.9094, "close": 1.4328 },
+    "artifact": "app/shots/r03-meadow/meadow-proof.json",
+    "decision": "Do not ship or weaken the gate. The one terrain-microfacet repair improved opening coverage only from 0.8954 to 0.9094. The surface-only representation is rejected."
+  },
+  "successor": "R03C",
+  "status": "blocked"
+}

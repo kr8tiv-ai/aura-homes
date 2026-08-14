@@ -1,0 +1,69 @@
+{
+  "node": "R05A",
+  "parentNode": "R05",
+  "graphVersion": "1.1",
+  "graphBlobSha256": "897147D8F5C3FBF065423A64601509B4B3C6FA9DFA1AA114BD32FA0A047144FD",
+  "approvalCommit": "7d6028667b2ae061df9504eb3a52df091f138207",
+  "job": "Make the staged landing loader dismiss on the browser paint clock and integrate its completed handoff with progressive-meadow release without regressing focus, fallbacks, or Core Web Vitals.",
+  "inputs": {
+    "verifiedParent": "ResponsiveLandingFilmV1",
+    "integratedMeadowSuccessor": "R03H",
+    "loaderContract": "Ready hold and fade remain visible; meadow promotion beyond the composed opening waits for loader dismissal"
+  },
+  "outputs": {
+    "schema": "ResponsiveLandingHandoffV1",
+    "required": [
+      "Ready hold and fade advance on requestAnimationFrame deadlines rather than a starvable timer chain",
+      "loader unmounts within three seconds of the meadow-ready state",
+      "progressive meadow release begins only after loader dismissal",
+      "poster, focus containment, focus restoration, media fallbacks, and static fallbacks remain intact",
+      "five cold contexts remain within LCP, INP, and CLS gates"
+    ]
+  },
+  "dependsOn": ["R05", "R03H", "G00"],
+  "rejectionGates": [
+    "the loader disappears before the composed meadow is ready",
+    "the loader remains mounted more than three seconds after readiness",
+    "a fixed sleep is used to conceal meadow work",
+    "focus restoration or focus-before-WebGL regresses",
+    "LCP exceeds 2000 ms, INP exceeds 160 ms, or CLS exceeds 0.08 at p75",
+    "reduced-motion, media-error, media-timeout, WebGL-error, or asset-error fallback regresses"
+  ],
+  "work": {
+    "owner": "root",
+    "writeSet": [
+      "app/components/story/Loader.tsx",
+      "app/shots/r05-film/cwv-proof.json",
+      "docs/plans/execution/r0/R05A-v1.1.json"
+    ]
+  },
+  "verify": {
+    "owner": "fresh-context verifier",
+    "commands": [
+      "npx playwright test --config=playwright.r0.config.ts tests/landing-film.spec.ts tests/landing-vitals.spec.ts tests/visual-system-ui.spec.ts --workers=1",
+      "node scripts/video-proof.mjs --json",
+      "npx tsc --noEmit --incremental false"
+    ],
+    "anchors": [
+      "19-test landing integration matrix",
+      "loader-ready-to-detached timing",
+      "focus-before-WebGL trace",
+      "five-context CWV artifact"
+    ]
+  },
+  "repairLimit": 1,
+  "sideEffect": "local",
+  "evidence": {
+    "verifiedAt": "2026-08-14T03:03:43.857Z",
+    "verdict": "pass",
+    "browserTests": "19/19",
+    "coldContexts": 5,
+    "p75LcpMs": 288,
+    "p75InpMs": 160,
+    "p75Cls": 0.004287394607606738,
+    "mediaProof": "pass",
+    "typescript": "pass",
+    "artifact": "app/shots/r05-film/cwv-proof.json"
+  },
+  "status": "verified"
+}

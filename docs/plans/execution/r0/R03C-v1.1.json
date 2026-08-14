@@ -1,0 +1,73 @@
+{
+  "node": "R03C",
+  "parentNode": "R03B",
+  "graphVersion": "1.1",
+  "graphBlobSha256": "897147D8F5C3FBF065423A64601509B4B3C6FA9DFA1AA114BD32FA0A047144FD",
+  "approvalCommit": "7d6028667b2ae061df9504eb3a52df091f138207",
+  "job": "Match the approved opening's low-poly botanical facet contrast inside the existing one-draw offline atlas without increasing runtime work.",
+  "inputs": {
+    "failedProof": "app/shots/r03-meadow/meadow-proof.json",
+    "approvedBaseline": "C:/Users/lucid/Desktop/Kin/aura-r03-baseline-20260813",
+    "retainedSystem": "R03A progressive hero and one-draw atlas plus R03B performance and demand-render controls",
+    "openingCoverageRatio": 0.9094
+  },
+  "outputs": {
+    "schema": "ProgressiveMeadowAtlasV2",
+    "required": [
+      "offline Aura-authored atlas with coarse matte blade facets that survive opening-camera mipmapping",
+      "unchanged instance inventory, one alpha-tested draw and two-program botanical ceiling",
+      "unchanged 98 percent visual baseline and all performance gates"
+    ]
+  },
+  "dependsOn": ["R00", "R01", "G00", "R03B failed proof"],
+  "rejectionGates": [
+    "coverage threshold, baseline, camera, ROI or vegetation classifier changes",
+    "instance inventory, draw count, alpha mode or runtime construction increases",
+    "atlas colour facets become neon, noisy, non-botanical, or lose the Aura palette",
+    "opening or close vegetation coverage is below 98 percent of the approved baseline",
+    "opening or close flower-head visibility is zero",
+    "desktop active-frame p95 exceeds 16.7 ms or a causal task exceeds 50 ms",
+    "the settled scene submits frames without input"
+  ],
+  "work": {
+    "owner": "root",
+    "writeSet": [
+      "app/scripts/generate-meadow-atlas.mjs",
+      "app/public/textures/meadow-atlas.*",
+      "app/tests/meadow-progressive.spec.ts",
+      "app/shots/r03-meadow/**"
+    ]
+  },
+  "verify": {
+    "owner": "fresh-context verifier",
+    "commands": [
+      "node scripts/generate-meadow-atlas.mjs --verify",
+      "npx playwright test tests/meadow-progressive.spec.ts --workers=1",
+      "npx tsc --noEmit --incremental false",
+      "$env:GH_PAGES='1'; npm run build",
+      "node scripts/meadow-proof.mjs"
+    ]
+  },
+  "repairLimit": 1,
+  "sideEffect": "local",
+  "status": "blocked",
+  "failedEvidence": {
+    "report": "app/shots/r03-meadow/meadow-proof.json",
+    "createdAt": "2026-08-14T00:52:45.762Z",
+    "renderer": "ANGLE AMD Radeon 740M Direct3D11",
+    "settled": true,
+    "pages": 40,
+    "liveHeroInstances": 22845,
+    "atlasInstances": 3600,
+    "atlasImageSha256": "3d14b93fb1410ceb127e99a555cc4624feacda9d1ae8499abaf6aa7b91074b78",
+    "openingCoverageRatio": 0.9656419331083829,
+    "closeCoverageRatio": 1.5260097114297697,
+    "requiredCoverageRatio": 0.98,
+    "activeFrameP95Ms": 9.200000002980232,
+    "maxCausalTaskMs": 0.20000000298023224,
+    "visibleFlowers": { "opening": 321, "close": 309 },
+    "settledDemandFrames": { "start": 466, "end": 466 },
+    "repairUsed": "Increase deterministic matte facet bands from 9 to 13 inside the existing one-draw atlas; opening improved from 0.9448578305837354 to 0.9656419331083829 but remained below the immutable gate.",
+    "verdict": "The performance, flowers and demand-render gates pass; the immutable opening visual gate fails after the one allowed repair. R03C is rejected without threshold weakening."
+  }
+}

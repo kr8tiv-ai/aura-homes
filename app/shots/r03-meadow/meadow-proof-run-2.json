@@ -1,0 +1,1693 @@
+{
+  "schema": "MeadowHardwareProofV2",
+  "createdAt": "2026-08-14T03:02:43.931Z",
+  "screenshotPaths": {
+    "open": "C:\\Users\\lucid\\Desktop\\Kin\\aura-graph-v1-1\\app\\shots\\r03-meadow\\meadow-proof-open.png",
+    "close": "C:\\Users\\lucid\\Desktop\\Kin\\aura-graph-v1-1\\app\\shots\\r03-meadow\\meadow-proof-close.png",
+    "report": "C:\\Users\\lucid\\Desktop\\Kin\\aura-graph-v1-1\\app\\shots\\r03-meadow\\meadow-proof.json"
+  },
+  "approvedBaselineHashes": {
+    "open": "506e6511fe9ffb41896f4db52e200775d5ed80866ad5d5355a4be5ba99e50702",
+    "close": "e891e91e5be3f820857c39213d9aed52357fb10d8db6c510b9b15a66501b3243"
+  },
+  "renderer": "ANGLE (AMD, AMD Radeon 740M Graphics (0x00001901) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "rendererIsSoftware": false,
+  "progress": {
+    "state": "settled",
+    "tier": "near",
+    "pages": 44,
+    "instances": 23213,
+    "governor": {
+      "frozen": false,
+      "reason": null,
+      "lastHealthyTier": "near",
+      "p95FrameMs": 10.899999998509884,
+      "maxLongTaskMs": 1
+    }
+  },
+  "promotionEvents": [
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 1,
+      "instances": 1442,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 0,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 2,
+      "instances": 2944,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 38.80000000447035,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 3,
+      "instances": 4451,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 38.80000000447035,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 4,
+      "instances": 5990,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 38.80000000447035,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 5,
+      "instances": 7492,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 38.80000000447035,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 6,
+      "instances": 9021,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 38.80000000447035,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 7,
+      "instances": 10894,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 38.80000000447035,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 8,
+      "instances": 12771,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 38.80000000447035,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 9,
+      "instances": 14648,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 38.80000000447035,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 10,
+      "instances": 16541,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 0,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 11,
+      "instances": 18425,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 9.099999994039536,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 12,
+      "instances": 20309,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 12.399999998509884,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 13,
+      "instances": 20325,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 12.399999998509884,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 14,
+      "instances": 20339,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 12.399999998509884,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 15,
+      "instances": 20354,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 12.399999998509884,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 16,
+      "instances": 20367,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 12.399999998509884,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 17,
+      "instances": 20393,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 12.399999998509884,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 18,
+      "instances": 20432,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 12.399999998509884,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 19,
+      "instances": 20470,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 10.399999998509884,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 20,
+      "instances": 20505,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 11.900000005960464,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 21,
+      "instances": 20612,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 11.900000005960464,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 22,
+      "instances": 20700,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 11.900000005960464,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 23,
+      "instances": 20795,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 11.900000005960464,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 24,
+      "instances": 20891,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 12.399999998509884,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 25,
+      "instances": 21030,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 12.399999998509884,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 26,
+      "instances": 21169,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 12.399999998509884,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 27,
+      "instances": 21308,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 12.100000001490116,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 28,
+      "instances": 21450,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 12.100000001490116,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 29,
+      "instances": 21453,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 12.100000001490116,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 30,
+      "instances": 21455,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 12.100000001490116,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 31,
+      "instances": 21459,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 12.100000001490116,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 32,
+      "instances": 21465,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 12.100000001490116,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 33,
+      "instances": 21634,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 12.100000001490116,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 34,
+      "instances": 21794,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 11.900000005960464,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 35,
+      "instances": 21965,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 11.900000005960464,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 36,
+      "instances": 22120,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 11.600000001490116,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 37,
+      "instances": 22260,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 11.600000001490116,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 38,
+      "instances": 22402,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 11.600000001490116,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 39,
+      "instances": 22541,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 11.600000001490116,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 40,
+      "instances": 22677,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 11.600000001490116,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 41,
+      "instances": 22805,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 11.600000001490116,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 42,
+      "instances": 22942,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 11.600000001490116,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 43,
+      "instances": 23068,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 10.899999998509884,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "promoting",
+      "tier": "near",
+      "pages": 44,
+      "instances": 23213,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 10.899999998509884,
+        "maxLongTaskMs": 1
+      }
+    },
+    {
+      "state": "settled",
+      "tier": "near",
+      "pages": 44,
+      "instances": 23213,
+      "governor": {
+        "frozen": false,
+        "reason": null,
+        "lastHealthyTier": "near",
+        "p95FrameMs": 10.899999998509884,
+        "maxLongTaskMs": 1
+      }
+    }
+  ],
+  "activeFrameP95Ms": 10.899999998509884,
+  "fullRunRenderP95Ms": 13.5,
+  "fullRunMaxLongTaskMs": 2184,
+  "fullRunLongTasks": [
+    {
+      "startTime": 78.79999999701977,
+      "duration": 78
+    },
+    {
+      "startTime": 361.69999999552965,
+      "duration": 82
+    },
+    {
+      "startTime": 501.6000000014901,
+      "duration": 624
+    },
+    {
+      "startTime": 1459.1999999955297,
+      "duration": 306
+    },
+    {
+      "startTime": 2118.39999999851,
+      "duration": 161
+    },
+    {
+      "startTime": 2290.5,
+      "duration": 185
+    },
+    {
+      "startTime": 2477.2999999970198,
+      "duration": 1564
+    },
+    {
+      "startTime": 4600.69999999553,
+      "duration": 149
+    },
+    {
+      "startTime": 4750.69999999553,
+      "duration": 451
+    },
+    {
+      "startTime": 5926.19999999553,
+      "duration": 115
+    },
+    {
+      "startTime": 6809.79999999702,
+      "duration": 58
+    },
+    {
+      "startTime": 6868.29999999702,
+      "duration": 2184
+    },
+    {
+      "startTime": 11278.10000000149,
+      "duration": 55
+    },
+    {
+      "startTime": 11554.79999999702,
+      "duration": 71
+    },
+    {
+      "startTime": 18740.29999999702,
+      "duration": 90
+    },
+    {
+      "startTime": 19159.39999999851,
+      "duration": 64
+    },
+    {
+      "startTime": 19302,
+      "duration": 59
+    },
+    {
+      "startTime": 19373.39999999851,
+      "duration": 50
+    },
+    {
+      "startTime": 19487.10000000149,
+      "duration": 59
+    },
+    {
+      "startTime": 19555.39999999851,
+      "duration": 67
+    },
+    {
+      "startTime": 19634.5,
+      "duration": 53
+    },
+    {
+      "startTime": 19742.69999999553,
+      "duration": 51
+    }
+  ],
+  "fullRunLongAnimationFrames": [
+    {
+      "startTime": 39.399999998509884,
+      "duration": 413.3999999985099,
+      "blockingDuration": 63.6,
+      "renderStart": 450.19999999552965,
+      "styleAndLayoutStart": 450.5,
+      "scripts": [
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/043a2f4d-e825b9611a512db3.js",
+          "invokerType": "classic-script",
+          "duration": 46.69999999552965,
+          "executionStart": 165,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/e66bbdc3-b2ac50230d7e5a88.js",
+          "invokerType": "classic-script",
+          "duration": 39.600000001490116,
+          "executionStart": 213.79999999701977,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9313-23237dbd99c10bb7.js",
+          "invokerType": "event-listener",
+          "duration": 5.399999998509884,
+          "executionStart": 253.60000000149012,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9313-23237dbd99c10bb7.js",
+          "invokerType": "event-listener",
+          "duration": 6.200000002980232,
+          "executionStart": 443.8999999985099,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        }
+      ]
+    },
+    {
+      "startTime": 462.5,
+      "duration": 667.1999999955297,
+      "blockingDuration": 577.7,
+      "renderStart": 1126.8999999985099,
+      "styleAndLayoutStart": 1127.5,
+      "scripts": [
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9313-23237dbd99c10bb7.js",
+          "invokerType": "event-listener",
+          "duration": 5.0999999940395355,
+          "executionStart": 463.1000000014901,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9313-23237dbd99c10bb7.js",
+          "invokerType": "event-listener",
+          "duration": 5.200000002980232,
+          "executionStart": 468.8999999985099,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9313-23237dbd99c10bb7.js",
+          "invokerType": "event-listener",
+          "duration": 5.5,
+          "executionStart": 475.5,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9313-23237dbd99c10bb7.js",
+          "invokerType": "event-listener",
+          "duration": 5,
+          "executionStart": 481.1000000014901,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9313-23237dbd99c10bb7.js",
+          "invokerType": "event-listener",
+          "duration": 5,
+          "executionStart": 486.19999999552965,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9313-23237dbd99c10bb7.js",
+          "invokerType": "event-listener",
+          "duration": 10.200000002980232,
+          "executionStart": 491.29999999701977,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9313-23237dbd99c10bb7.js",
+          "invokerType": "event-listener",
+          "duration": 624.7000000029802,
+          "executionStart": 501.69999999552965,
+          "forcedStyleAndLayoutDuration": 11.2,
+          "pauseDuration": 0
+        }
+      ]
+    },
+    {
+      "startTime": 1287,
+      "duration": 55.899999998509884,
+      "blockingDuration": 0,
+      "renderStart": 1335.6000000014901,
+      "styleAndLayoutStart": 1342,
+      "scripts": [
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/4668.30278794bd14987b.js",
+          "invokerType": "classic-script",
+          "duration": 34.399999998509884,
+          "executionStart": 1293.6000000014901,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        }
+      ]
+    },
+    {
+      "startTime": 1454.5,
+      "duration": 315.5,
+      "blockingDuration": 260.8,
+      "renderStart": 1765.7999999970198,
+      "styleAndLayoutStart": 1769.3999999985099,
+      "scripts": [
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/app/page-f198a9b3d9a33341.js",
+          "invokerType": "user-callback",
+          "duration": 306.5,
+          "executionStart": 1459.1999999955297,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        }
+      ]
+    },
+    {
+      "startTime": 1999.1999999955297,
+      "duration": 53.100000001490116,
+      "blockingDuration": 0,
+      "renderStart": 2047.3999999985099,
+      "styleAndLayoutStart": 2051.39999999851,
+      "scripts": [
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9313-23237dbd99c10bb7.js",
+          "invokerType": "event-listener",
+          "duration": 45,
+          "executionStart": 2002.2999999970198,
+          "forcedStyleAndLayoutDuration": 0.9,
+          "pauseDuration": 0
+        }
+      ]
+    },
+    {
+      "startTime": 2114.7999999970198,
+      "duration": 172.10000000149012,
+      "blockingDuration": 118.4,
+      "renderStart": 2280,
+      "styleAndLayoutStart": 2285.7999999970198,
+      "scripts": [
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9313-23237dbd99c10bb7.js",
+          "invokerType": "event-listener",
+          "duration": 161.39999999850988,
+          "executionStart": 2118.5,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/app/page-f198a9b3d9a33341.js",
+          "invokerType": "user-callback",
+          "duration": 5.299999997019768,
+          "executionStart": 2280.39999999851,
+          "forcedStyleAndLayoutDuration": 4.8,
+          "pauseDuration": 0
+        }
+      ]
+    },
+    {
+      "startTime": 2288.10000000149,
+      "duration": 1749.3999999985099,
+      "blockingDuration": 1696,
+      "renderStart": 2477.2999999970198,
+      "styleAndLayoutStart": 4015.5,
+      "scripts": [
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "event-listener",
+          "duration": 185.79999999701977,
+          "executionStart": 2290.5,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "user-callback",
+          "duration": 1534.3999999985099,
+          "executionStart": 2481,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        }
+      ]
+    },
+    {
+      "startTime": 4600.69999999553,
+      "duration": 598.3000000044703,
+      "blockingDuration": 547.9,
+      "renderStart": 4750.79999999702,
+      "styleAndLayoutStart": 5198.69999999553,
+      "scripts": [
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "event-listener",
+          "duration": 149.60000000149012,
+          "executionStart": 4600.79999999702,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "user-callback",
+          "duration": 447.3999999985099,
+          "executionStart": 4751.29999999702,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        }
+      ]
+    },
+    {
+      "startTime": 5913.5,
+      "duration": 127.89999999850988,
+      "blockingDuration": 76.2,
+      "renderStart": 5926.29999999702,
+      "styleAndLayoutStart": 6041.29999999702,
+      "scripts": [
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "event-listener",
+          "duration": 11.099999994039536,
+          "executionStart": 5915.10000000149,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "user-callback",
+          "duration": 114.60000000149012,
+          "executionStart": 5926.69999999553,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        }
+      ]
+    },
+    {
+      "startTime": 6808.60000000149,
+      "duration": 2243.5,
+      "blockingDuration": 2192.1,
+      "renderStart": 6868.5,
+      "styleAndLayoutStart": 9051.89999999851,
+      "scripts": [
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "event-listener",
+          "duration": 58.5,
+          "executionStart": 6809.79999999702,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "user-callback",
+          "duration": 2182.89999999851,
+          "executionStart": 6869,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        }
+      ]
+    },
+    {
+      "startTime": 11276.69999999553,
+      "duration": 93.70000000298023,
+      "blockingDuration": 42.2,
+      "renderStart": 11333.39999999851,
+      "styleAndLayoutStart": 11370,
+      "scripts": [
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "event-listener",
+          "duration": 55.099999994039536,
+          "executionStart": 11278.10000000149,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "user-callback",
+          "duration": 35.899999998509884,
+          "executionStart": 11334,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        }
+      ]
+    },
+    {
+      "startTime": 11538.39999999851,
+      "duration": 87.29999999701977,
+      "blockingDuration": 37,
+      "renderStart": 11554.79999999702,
+      "styleAndLayoutStart": 11625.5,
+      "scripts": [
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "event-listener",
+          "duration": 15.899999998509884,
+          "executionStart": 11538.5,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "user-callback",
+          "duration": 70,
+          "executionStart": 11555.5,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        }
+      ]
+    },
+    {
+      "startTime": 12074.79999999702,
+      "duration": 52.80000000447035,
+      "blockingDuration": 0,
+      "renderStart": 12116.39999999851,
+      "styleAndLayoutStart": 12127.19999999553,
+      "scripts": [
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "user-callback",
+          "duration": 10.100000001490116,
+          "executionStart": 12117,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        }
+      ]
+    },
+    {
+      "startTime": 18667.39999999851,
+      "duration": 50.29999999701977,
+      "blockingDuration": 0.1,
+      "renderStart": 18674.60000000149,
+      "styleAndLayoutStart": 18697.79999999702,
+      "scripts": [
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "event-listener",
+          "duration": 6.899999998509884,
+          "executionStart": 18667.5,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/app/page-f198a9b3d9a33341.js",
+          "invokerType": "user-callback",
+          "duration": 17.69999999552965,
+          "executionStart": 18675.10000000149,
+          "forcedStyleAndLayoutDuration": 17.3,
+          "pauseDuration": 0
+        }
+      ]
+    },
+    {
+      "startTime": 18720.29999999702,
+      "duration": 108.39999999850988,
+      "blockingDuration": 46.1,
+      "renderStart": 18740.39999999851,
+      "styleAndLayoutStart": 18810.69999999553,
+      "scripts": [
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "event-listener",
+          "duration": 7.899999998509884,
+          "executionStart": 18720.60000000149,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/app/page-f198a9b3d9a33341.js",
+          "invokerType": "user-callback",
+          "duration": 11.200000002980232,
+          "executionStart": 18740.89999999851,
+          "forcedStyleAndLayoutDuration": 10.8,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "user-callback",
+          "duration": 58.5,
+          "executionStart": 18752.10000000149,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        }
+      ]
+    },
+    {
+      "startTime": 18879.39999999851,
+      "duration": 54.899999998509884,
+      "blockingDuration": 4,
+      "renderStart": 18888.69999999553,
+      "styleAndLayoutStart": 18912.5,
+      "scripts": [
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "event-listener",
+          "duration": 8.300000004470348,
+          "executionStart": 18880.19999999553,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/app/page-f198a9b3d9a33341.js",
+          "invokerType": "user-callback",
+          "duration": 13.199999995529652,
+          "executionStart": 18890.10000000149,
+          "forcedStyleAndLayoutDuration": 12.7,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "user-callback",
+          "duration": 9.100000001490116,
+          "executionStart": 18903.39999999851,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        }
+      ]
+    },
+    {
+      "startTime": 18937.29999999702,
+      "duration": 54.5,
+      "blockingDuration": 4.1,
+      "renderStart": 18946.89999999851,
+      "styleAndLayoutStart": 18973.29999999702,
+      "scripts": [
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "event-listener",
+          "duration": 9.100000001490116,
+          "executionStart": 18937.5,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/app/page-f198a9b3d9a33341.js",
+          "invokerType": "user-callback",
+          "duration": 17.5,
+          "executionStart": 18948.10000000149,
+          "forcedStyleAndLayoutDuration": 16.8,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "user-callback",
+          "duration": 7.299999997019768,
+          "executionStart": 18965.89999999851,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        }
+      ]
+    },
+    {
+      "startTime": 18994.39999999851,
+      "duration": 56.70000000298023,
+      "blockingDuration": 6.2,
+      "renderStart": 19005.39999999851,
+      "styleAndLayoutStart": 19032.69999999553,
+      "scripts": [
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "event-listener",
+          "duration": 10.600000001490116,
+          "executionStart": 18994.5,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/app/page-f198a9b3d9a33341.js",
+          "invokerType": "user-callback",
+          "duration": 15.700000002980232,
+          "executionStart": 19005.79999999702,
+          "forcedStyleAndLayoutDuration": 15,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "user-callback",
+          "duration": 11.100000001490116,
+          "executionStart": 19021.5,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        }
+      ]
+    },
+    {
+      "startTime": 19053.29999999702,
+      "duration": 55.899999998509884,
+      "blockingDuration": 3.1,
+      "renderStart": 19066.79999999702,
+      "styleAndLayoutStart": 19090.29999999702,
+      "scripts": [
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "event-listener",
+          "duration": 10.799999997019768,
+          "executionStart": 19054.5,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/app/page-f198a9b3d9a33341.js",
+          "invokerType": "user-callback",
+          "duration": 13.699999995529652,
+          "executionStart": 19067.5,
+          "forcedStyleAndLayoutDuration": 13.3,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "user-callback",
+          "duration": 9,
+          "executionStart": 19081.19999999553,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        }
+      ]
+    },
+    {
+      "startTime": 19149.60000000149,
+      "duration": 65.39999999850988,
+      "blockingDuration": 14.6,
+      "renderStart": 19159.39999999851,
+      "styleAndLayoutStart": 19181.39999999851,
+      "scripts": [
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "event-listener",
+          "duration": 9,
+          "executionStart": 19149.69999999553,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/app/page-f198a9b3d9a33341.js",
+          "invokerType": "user-callback",
+          "duration": 15.299999997019768,
+          "executionStart": 19159.89999999851,
+          "forcedStyleAndLayoutDuration": 15,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "user-callback",
+          "duration": 6.200000002980232,
+          "executionStart": 19175.19999999553,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        }
+      ]
+    },
+    {
+      "startTime": 19224.19999999553,
+      "duration": 55.20000000298023,
+      "blockingDuration": 4.7,
+      "renderStart": 19233.39999999851,
+      "styleAndLayoutStart": 19260.5,
+      "scripts": [
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "event-listener",
+          "duration": 8.800000004470348,
+          "executionStart": 19224.19999999553,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/app/page-f198a9b3d9a33341.js",
+          "invokerType": "user-callback",
+          "duration": 18.599999994039536,
+          "executionStart": 19234.10000000149,
+          "forcedStyleAndLayoutDuration": 18.1,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "user-callback",
+          "duration": 7.700000002980232,
+          "executionStart": 19252.69999999553,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        }
+      ]
+    },
+    {
+      "startTime": 19282.39999999851,
+      "duration": 75.29999999701977,
+      "blockingDuration": 22.2,
+      "renderStart": 19302.10000000149,
+      "styleAndLayoutStart": 19336,
+      "scripts": [
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "event-listener",
+          "duration": 16.600000001490116,
+          "executionStart": 19285.19999999553,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/app/page-f198a9b3d9a33341.js",
+          "invokerType": "user-callback",
+          "duration": 23.30000000447035,
+          "executionStart": 19304.69999999553,
+          "forcedStyleAndLayoutDuration": 22,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "user-callback",
+          "duration": 7.899999998509884,
+          "executionStart": 19328,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        }
+      ]
+    },
+    {
+      "startTime": 19361.60000000149,
+      "duration": 60.29999999701977,
+      "blockingDuration": 8.6,
+      "renderStart": 19373.39999999851,
+      "styleAndLayoutStart": 19402.79999999702,
+      "scripts": [
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "event-listener",
+          "duration": 9.899999998509884,
+          "executionStart": 19361.89999999851,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/app/page-f198a9b3d9a33341.js",
+          "invokerType": "user-callback",
+          "duration": 19.899999998509884,
+          "executionStart": 19375.5,
+          "forcedStyleAndLayoutDuration": 19.1,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "user-callback",
+          "duration": 7.399999998509884,
+          "executionStart": 19395.39999999851,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        }
+      ]
+    },
+    {
+      "startTime": 19424.10000000149,
+      "duration": 52.29999999701977,
+      "blockingDuration": 1.8,
+      "renderStart": 19432.69999999553,
+      "styleAndLayoutStart": 19458.89999999851,
+      "scripts": [
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "event-listener",
+          "duration": 8,
+          "executionStart": 19424.39999999851,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/app/page-f198a9b3d9a33341.js",
+          "invokerType": "user-callback",
+          "duration": 20.299999997019768,
+          "executionStart": 19433.10000000149,
+          "forcedStyleAndLayoutDuration": 19.5,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "user-callback",
+          "duration": 5.399999998509884,
+          "executionStart": 19453.39999999851,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        }
+      ]
+    },
+    {
+      "startTime": 19479.5,
+      "duration": 64.10000000149012,
+      "blockingDuration": 13.7,
+      "renderStart": 19487.10000000149,
+      "styleAndLayoutStart": 19518,
+      "scripts": [
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "event-listener",
+          "duration": 7,
+          "executionStart": 19479.89999999851,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/app/page-f198a9b3d9a33341.js",
+          "invokerType": "user-callback",
+          "duration": 22.599999994039536,
+          "executionStart": 19487.60000000149,
+          "forcedStyleAndLayoutDuration": 22.2,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "user-callback",
+          "duration": 7.700000002980232,
+          "executionStart": 19510.19999999553,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        }
+      ]
+    },
+    {
+      "startTime": 19546.10000000149,
+      "duration": 73.79999999701977,
+      "blockingDuration": 23.5,
+      "renderStart": 19555.39999999851,
+      "styleAndLayoutStart": 19590.5,
+      "scripts": [
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "event-listener",
+          "duration": 8.799999997019768,
+          "executionStart": 19546.10000000149,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/app/page-f198a9b3d9a33341.js",
+          "invokerType": "user-callback",
+          "duration": 26,
+          "executionStart": 19555.60000000149,
+          "forcedStyleAndLayoutDuration": 25.4,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "user-callback",
+          "duration": 8.899999998509884,
+          "executionStart": 19581.60000000149,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        }
+      ]
+    },
+    {
+      "startTime": 19622.79999999702,
+      "duration": 61.5,
+      "blockingDuration": 11.2,
+      "renderStart": 19634.5,
+      "styleAndLayoutStart": 19661.29999999702,
+      "scripts": [
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "event-listener",
+          "duration": 11.299999997019768,
+          "executionStart": 19623.10000000149,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/app/page-f198a9b3d9a33341.js",
+          "invokerType": "user-callback",
+          "duration": 18.799999997019768,
+          "executionStart": 19635,
+          "forcedStyleAndLayoutDuration": 18.2,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "user-callback",
+          "duration": 7.300000004470348,
+          "executionStart": 19653.79999999702,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        }
+      ]
+    },
+    {
+      "startTime": 19733,
+      "duration": 59.79999999701977,
+      "blockingDuration": 8.8,
+      "renderStart": 19742.79999999702,
+      "styleAndLayoutStart": 19766.69999999553,
+      "scripts": [
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "event-listener",
+          "duration": 8.699999995529652,
+          "executionStart": 19733.60000000149,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "user-callback",
+          "duration": 21.80000000447035,
+          "executionStart": 19744.69999999553,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        }
+      ]
+    },
+    {
+      "startTime": 19794.5,
+      "duration": 64.79999999701977,
+      "blockingDuration": 14.4,
+      "renderStart": 19828.5,
+      "styleAndLayoutStart": 19839.69999999553,
+      "scripts": [
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "event-listener",
+          "duration": 33.600000001490116,
+          "executionStart": 19794.69999999553,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "user-callback",
+          "duration": 8.799999997019768,
+          "executionStart": 19830.89999999851,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        }
+      ]
+    },
+    {
+      "startTime": 19954.60000000149,
+      "duration": 52.899999998509884,
+      "blockingDuration": 0,
+      "renderStart": 19970.29999999702,
+      "styleAndLayoutStart": 19981.79999999702,
+      "scripts": [
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "event-listener",
+          "duration": 10.299999997019768,
+          "executionStart": 19959.89999999851,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        },
+        {
+          "sourceURL": "http://127.0.0.1:4336/_next/static/chunks/9052.3de4b9d267de0b1b.js",
+          "invokerType": "user-callback",
+          "duration": 10.5,
+          "executionStart": 19971.29999999702,
+          "forcedStyleAndLayoutDuration": 0,
+          "pauseDuration": 0
+        }
+      ]
+    }
+  ],
+  "interactionMs": 96,
+  "settledDemand": {
+    "start": 523,
+    "end": 523,
+    "passes": true
+  },
+  "cameraSettledDemand": {
+    "start": 640,
+    "end": 640,
+    "passes": true
+  },
+  "camera": {
+    "open": {
+      "current": 0,
+      "target": 0,
+      "pointerError": 0,
+      "intro": 0.9995895264016716,
+      "settled": true
+    },
+    "close": {
+      "current": 0.551916274020904,
+      "target": 0.5533596837944664,
+      "pointerError": 0,
+      "intro": 1,
+      "settled": true
+    }
+  },
+  "coverage": {
+    "open": {
+      "current": 0.38311314606836666,
+      "baseline": 0.38500892879812454,
+      "ratio": 0.9950760032093907,
+      "botanicalCurrent": 0.9802720109684572,
+      "botanicalBaseline": 0.9996318457645337,
+      "passes": true
+    },
+    "close": {
+      "current": 0.6768931135868153,
+      "baseline": 0.351668600116007,
+      "ratio": 1.924803958509587,
+      "botanicalCurrent": 0.81503890233414,
+      "botanicalBaseline": 0.9124247454847291,
+      "passes": true
+    }
+  },
+  "flowerVisibility": {
+    "open": {
+      "visible": 362,
+      "planted": 1000,
+      "source": "instanced-flower-field"
+    },
+    "close": {
+      "visible": 362,
+      "planted": 1000,
+      "source": "instanced-flower-field"
+    }
+  },
+  "flowerPixelClusters": {
+    "open": {
+      "candidatePixels": 46515,
+      "pixels": 4288,
+      "clusters": 187,
+      "passes": true
+    },
+    "close": {
+      "candidatePixels": 23895,
+      "pixels": 20381,
+      "clusters": 1605,
+      "passes": true
+    }
+  },
+  "mobile": {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "renderer": "ANGLE (AMD, AMD Radeon 740M Graphics (0x00001901) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "rendererIsSoftware": false,
+    "qualityTier": "balanced",
+    "state": "settled",
+    "pages": 44,
+    "instances": 22255,
+    "activeFrameP95Ms": 7,
+    "causalLongTaskMaxMs": 0.20000000298023224,
+    "fullRunRenderP95Ms": 6.799999997019768,
+    "settledDemand": {
+      "start": 669,
+      "end": 669,
+      "passes": true
+    },
+    "camera": {
+      "current": 0,
+      "target": 0,
+      "pointerError": 0,
+      "intro": 0.9985361072509915,
+      "settled": true
+    },
+    "flowerVisibility": {
+      "visible": 54,
+      "planted": 380,
+      "source": "instanced-flower-field"
+    },
+    "passes": true
+  },
+  "passes": true
+}

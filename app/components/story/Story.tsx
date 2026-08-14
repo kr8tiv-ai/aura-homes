@@ -489,6 +489,7 @@ export default function Story() {
              integrated GPUs. Keep automatic entry on the composed opening
              tier; a future explicit quality control may opt in. */
           allowFullQuality={false}
+          releaseMeadowPromotion={loaderDismissed}
           onReady={handleCanvasReady}
           onUnavailable={handleCanvasUnavailable}
           onStagePainted={handleStagePainted}

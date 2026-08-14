@@ -88,6 +88,16 @@ export function gustEnvelope(t: number) {
   return 0;
 }
 
+/** Mirror the vertex shader's per-instance distance fade for diagnostics.
+ *  Keeping this pure helper next to the shader makes release telemetry count
+ *  flowers that still have rendered height, rather than every planted root
+ *  that merely falls inside the camera frustum. */
+export function flowerVisibilityAtDistance(distance: number, fadeSeed: number) {
+  const keep = 1 - smooth01(18, 30, distance);
+  const visible = 1 - smooth01(keep - 0.16, keep, fadeSeed);
+  return visible * smooth01(0.25, 0.6, distance);
+}
+
 /* THE FROZEN INSTANT. prefers-reduced-motion sets frameloop="demand": the
    canvas renders exactly one frame and stops, so whatever the wind uniforms
    hold at that moment is the picture forever. t=0 is the worst possible
@@ -249,7 +259,7 @@ export function buildFlowerField(count: number, rich: boolean, sample: FloraSamp
     posA.push(x, sample.ground(x, z) - 0.01, z);
     instA.push(
       rand(i, 214) * Math.PI * 2, // yaw
-      0.16 + Math.pow(rand(i, 215), 1.4) * 0.16, // stem height, metres — inside the hero sward, above the filler
+      0.16 + Math.pow(rand(i, 215), 1.4) * 0.16, // stem height, metres — the proven clustered field range
       hash2(Math.floor(x * 0.35), Math.floor(z * 0.35)), // species, clumped per ~3 m cell
       rand(i, 216) // fade seed + sway phase
     );
@@ -272,6 +282,17 @@ export function buildFlowerField(count: number, rich: boolean, sample: FloraSamp
   geo.setAttribute("aInst", new THREE.InstancedBufferAttribute(new Float32Array(instA), 4));
   geo.instanceCount = placed;
 
+  /* Keep a compact CPU-side head list for the release proof and accessible
+     diagnostics. It is derived from the exact planted roots and stem heights,
+     never from a second sampler, so visibility evidence cannot drift from the
+     geometry on screen. */
+  const heads = new Float32Array(placed * 3);
+  for (let index = 0; index < placed; index += 1) {
+    heads[index * 3] = posA[index * 3];
+    heads[index * 3 + 1] = posA[index * 3 + 1] + instA[index * 4 + 1];
+    heads[index * 3 + 2] = posA[index * 3 + 2];
+  }
+
   // attributes are absolute world coords, so the mesh stays at the origin
   // and the bounding sphere is given in those coords; +1 m of margin covers
   // stem height plus the deepest wind lean
@@ -283,7 +304,7 @@ export function buildFlowerField(count: number, rich: boolean, sample: FloraSamp
     Math.hypot(maxX - cx, maxZ - cz) + 1
   );
 
-  return { geo, placed, tris: placed * base.tris };
+  return { geo, heads, placed, tris: placed * base.tris };
 }
 
 /* ----------------------------- shaders ------------------------------ */
@@ -336,25 +357,28 @@ void main(){
   lp.xz *= 1.0 + dist * 0.014;
 
   /* ---- WIND: the meadow's field, not a private one ----
-     Same gust cells (0.055, advected at 0.30), same 46 m front (0.135,
-     0.62 rad/s), same envelope uniform, same clock. Flowers are stiffer
-     than grass — a stem is a column, not a ribbon — so the response
-     amplitude is about half a blade's and there is no ripple term: a 4 cm
-     head showing 30 cm ripple cells would read as jitter, not wind. */
+     Use the hero grass's exact three analytic travelling/cross/ripple
+     phases. Flowers remain stiffer and respond at lower amplitude, but a
+     gust now reaches every planted layer at the same world position and
+     time instead of crossing two different procedural weather fields. */
   vec2 wd = normalize(uWindDir);
   float stiff = 1.15 + 0.55 * h21(aPos.xz * 4.3 + 5.1);
   float ph = aInst.w * 6.2831853;
-  float gust = vnoise(aPos.xz * 0.055 + wd * uTime * 0.30) * 2.0 - 1.0;
-  float front = 0.5 + 0.5 * sin(uTime * 0.62 - dot(aPos.xz, wd) * 0.135);
+  float travelling = sin(uTime * 0.62 - dot(aPos.xz, wd) * 0.135);
+  float crossWave = sin(uTime * 0.41 + aPos.x * 0.082 - aPos.z * 0.057 + ph);
+  float ripple = sin(uTime * 1.85 + aPos.x * 0.31 + aPos.z * 0.23 + ph * 0.5);
+  float front = 0.5 + 0.5 * travelling;
   float amp = (0.34 + 0.66 * front * uGust) / stiff;
   float flutter = sin(uTime * 2.6 / stiff + ph) * 0.14;
-  float lean = (0.55 + 0.45 * gust + flutter) * amp * 0.5;
+  float lean = (0.55 + travelling * 0.30 + ripple * 0.10 + flutter) * amp * 0.5;
+  float windYaw = crossWave * 0.30 + ripple * 0.06;
+  vec2 windDir = wd * cos(windYaw) + vec2(-wd.y, wd.x) * sin(windYaw);
 
   // a small static lean per flower, seeded from world position, so the
   // drift is never a grid of verticals even in still air — the grass's
   // rest-arch idea at flower stiffness
   float la = h21(floor(aPos.xz * 3.7)) * 6.2831853;
-  vec2 sway = vec2(cos(la), sin(la)) * (0.04 + 0.10 * h21(aPos.xz * 1.9 + 7.0)) + wd * lean;
+  vec2 sway = vec2(cos(la), sin(la)) * (0.04 + 0.10 * h21(aPos.xz * 1.9 + 7.0)) + windDir * lean;
 
   /* root-pinned quadratic bend: the base stays planted, travel grows with
      the square of height, and the head drops slightly as it leans — a stem

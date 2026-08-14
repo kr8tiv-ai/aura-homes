@@ -1,0 +1,123 @@
+{
+  "node": "R03H",
+  "parentNode": "R03G",
+  "graphVersion": "1.1",
+  "graphBlobSha256": "897147D8F5C3FBF065423A64601509B4B3C6FA9DFA1AA114BD32FA0A047144FD",
+  "approvalCommit": "7d6028667b2ae061df9504eb3a52df091f138207",
+  "job": "Replace estimated ACK timers with commit-aware progressive-meadow backpressure, and certify the unchanged rich meadow on desktop and entered mobile 3D without hidden delay.",
+  "inputs": {
+    "failedParentEvidence": "R03G desktop causal task 57 ms at 2026-08-14T02:32:33.228Z",
+    "retainedVisualImplementation": "ProgressiveMeadowMappedAtlasV6 plus the known-good real instanced FlowerField",
+    "approvedBaseline": "C:/Users/lucid/Desktop/Kin/aura-r03-baseline-20260813",
+    "openingBaselineSha256": "506e6511fe9ffb41896f4db52e200775d5ed80866ad5d5355a4be5ba99e50702",
+    "closeBaselineSha256": "e891e91e5be3f820857c39213d9aed52357fb10d8db6c510b9b15a66501b3243",
+    "atlasImageSha256": "29544b58f9bc9bd8599ce6b60eec2ec091f0b9ff6824e08a125c5917e37d60ec",
+    "instanceTableSha256": "b06dcc13192a147cdff84c42b9d24e0e5670fd1dde514a30815e53ca508d6446",
+    "desktopFlowers": 1000,
+    "mobileFlowers": 380,
+    "pageCap": 2000,
+    "pageCount": 44
+  },
+  "outputs": {
+    "schema": "ProgressiveMeadowV1",
+    "implementationSchema": "ProgressiveMeadowCommitBackpressureV1",
+    "required": [
+      "the worker cannot unlock the next bounded page until React commits the current pages array and two real browser frames paint",
+      "no arbitrary ACK timer delays the composed opening or full meadow",
+      "the causal measurement window follows the real accept-to-commit-and-paint boundary",
+      "desktop and entered mobile hardware ledgers are reported together and must both pass",
+      "desktop keeps 1000 real instanced flowers and mobile keeps 380 real instanced flowers",
+      "the retained atlas bytes, instance table, page schedule, counts, density, flower geometry, baselines, masks, and thresholds remain unchanged",
+      "two consecutive combined hardware proofs pass on the target AMD D3D11 renderer",
+      "the loader remains central, staged, alive, and removable; the landing CWV matrix remains green",
+      "settled desktop and mobile scenes submit zero idle frames"
+    ]
+  },
+  "dependsOn": ["R00", "R01", "R05", "G00", "R03G failed proof"],
+  "rejectionGates": [
+    "any visual asset, geometry, placement, inventory, baseline, ROI, classifier, or threshold changes",
+    "a fixed delay is substituted for commit-aware backpressure",
+    "the worker ACKs before the committed page has painted",
+    "desktop or mobile state freezes or settles with an incomplete page schedule",
+    "desktop active-frame p95 exceeds 16.7 ms or mobile active-frame p95 exceeds 33.3 ms",
+    "any causal meadow integration task exceeds 50 ms",
+    "desktop or mobile continues rendering after camera and meadow settlement",
+    "desktop planted flowers differ from 1000 or mobile planted flowers differ from 380",
+    "opening or close coverage is below the immutable 98 percent gate",
+    "loader, focus, media fallback, LCP, INP, or CLS regresses"
+  ],
+  "work": {
+    "owner": "root",
+    "writeSet": [
+      "app/components/story/Story.tsx",
+      "app/components/story/StoryCanvas.tsx",
+      "app/components/story/Scene.tsx",
+      "app/components/story/SceneDetail.tsx",
+      "app/lib/three/meadow/runtime.ts",
+      "app/scripts/meadow-proof.mjs",
+      "app/tests/meadow-progressive.spec.ts",
+      "app/shots/r03-meadow/**",
+      "docs/plans/execution/r0/R03G-v1.1.json",
+      "docs/plans/execution/r0/R03H-v1.1.json"
+    ]
+  },
+  "verify": {
+    "owner": "fresh-context verifier",
+    "commands": [
+      "npx playwright test tests/meadow-progressive.spec.ts --workers=1",
+      "npx tsc --noEmit --incremental false",
+      "node scripts/generate-meadow-atlas.mjs --verify",
+      "$env:GH_PAGES='1'; npm run build",
+      "node scripts/meadow-proof.mjs (twice consecutively)",
+      "npx playwright test --config=playwright.r0.config.ts tests/landing-film.spec.ts tests/landing-vitals.spec.ts tests/visual-system-ui.spec.ts --workers=1",
+      "npm test"
+    ],
+    "anchors": [
+      "commit-aware ACK source and RED/GREEN test",
+      "MeadowHardwareProofV2 desktop and mobile ledgers",
+      "pinned botanical screenshots and hashes",
+      "R05 cold-context CWV artifact",
+      "fresh-context source and evidence review"
+    ]
+  },
+  "repairLimit": 1,
+  "repairBoundary": "Only the commit-aware ACK boundary and proof sequencing may change. Visual representation, counts, page schedule, assets, baselines, classifiers, thresholds, and product quality are immutable.",
+  "sideEffect": "local",
+  "evidence": {
+    "verifiedAt": "2026-08-14T03:09:43.6221407Z",
+    "verdict": "pass",
+    "focusedTests": "31/31",
+    "productTests": "141/141",
+    "staticBuildRoutes": "24/24",
+    "hardwareRenderer": "ANGLE AMD Radeon 740M Direct3D11",
+    "consecutiveHardwareProofs": 2,
+    "desktop": {
+      "pages": 44,
+      "instances": 23213,
+      "flowersPlanted": 1000,
+      "flowersVisible": 362,
+      "activeFrameP95Ms": [9.2, 10.9],
+      "causalMaxMs": [0.4, 1.0],
+      "openingCoverageRatio": [0.9946693338315948, 0.9950760032093907],
+      "closeCoverageRatio": [1.9258419297734235, 1.924803958509587],
+      "zeroIdleFrames": true
+    },
+    "mobile": {
+      "pages": 44,
+      "instances": 22255,
+      "flowersPlanted": 380,
+      "flowersVisible": 54,
+      "activeFrameP95Ms": [10.5, 7.0],
+      "causalMaxMs": [0.3, 0.2],
+      "zeroIdleFrames": true
+    },
+    "artifacts": [
+      "app/shots/r03-meadow/meadow-proof-run-1.json",
+      "app/shots/r03-meadow/meadow-proof-run-2.json",
+      "app/shots/r03-meadow/meadow-proof-open.png",
+      "app/shots/r03-meadow/meadow-proof-close.png"
+    ],
+    "freshReview": "pass: zero R03H blockers"
+  },
+  "status": "verified"
+}

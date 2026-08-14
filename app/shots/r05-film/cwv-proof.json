@@ -1,6 +1,6 @@
 {
   "schema": "AuraLandingVitalsProofV1",
-  "measuredAt": "2026-08-13T23:52:50.237Z",
+  "measuredAt": "2026-08-14T03:03:43.857Z",
   "method": {
     "environment": "local static export, unthrottled Chromium",
     "runs": 5,
@@ -25,9 +25,9 @@
   "runs": [
     {
       "run": 1,
-      "lcpMs": 360,
+      "lcpMs": 268,
       "lcpElement": "h1.story-display.story-gate-title",
-      "inpMs": 120,
+      "inpMs": 160,
       "cls": 0.004287394607606738,
       "interactionCount": 3,
       "observerSupport": {
@@ -39,9 +39,9 @@
     },
     {
       "run": 2,
-      "lcpMs": 372,
+      "lcpMs": 268,
       "lcpElement": "h1.story-display.story-gate-title",
-      "inpMs": 120,
+      "inpMs": 216,
       "cls": 0.004287394607606738,
       "interactionCount": 3,
       "observerSupport": {
@@ -53,7 +53,7 @@
     },
     {
       "run": 3,
-      "lcpMs": 368,
+      "lcpMs": 272,
       "lcpElement": "h1.story-display.story-gate-title",
       "inpMs": 120,
       "cls": 0.004287394607606738,
@@ -67,9 +67,9 @@
     },
     {
       "run": 4,
-      "lcpMs": 324,
+      "lcpMs": 312,
       "lcpElement": "h1.story-display.story-gate-title",
-      "inpMs": 96,
+      "inpMs": 88,
       "cls": 0.004287394607606738,
       "interactionCount": 3,
       "observerSupport": {
@@ -81,10 +81,10 @@
     },
     {
       "run": 5,
-      "lcpMs": 280,
+      "lcpMs": 288,
       "lcpElement": "h1.story-display.story-gate-title",
-      "inpMs": 152,
-      "cls": 0.004814831065739133,
+      "inpMs": 96,
+      "cls": 0.004287394607606738,
       "interactionCount": 3,
       "observerSupport": {
         "lcp": true,
@@ -95,8 +95,8 @@
     }
   ],
   "p75": {
-    "lcpMs": 368,
-    "inpMs": 120,
+    "lcpMs": 288,
+    "inpMs": 160,
     "cls": 0.004287394607606738
   }
 }
