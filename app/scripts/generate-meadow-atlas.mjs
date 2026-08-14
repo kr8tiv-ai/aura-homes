@@ -328,7 +328,7 @@ function makeAtlas() {
   };
 }
 
-function terrainHeight(x, z) {
+export function terrainHeight(x, z) {
   const radius = Math.hypot(x, z);
   const ridge = 4.6 * Math.exp(-((z - 25) ** 2) / (2 * 5.5 * 5.5)) *
     (1 - clamp01((Math.abs(x) - 16) / 24) * 0.75);
@@ -359,14 +359,21 @@ const PATH = [
   [-0.5, 8.9], [0.1, 7.7],
 ];
 
-function clearance(x, z) {
+/* MUST mirror sampleMeadowClearance(x, z, tight = false) in
+   lib/three/meadow/field.ts exactly — meadow-progressive.spec.ts asserts
+   point-for-point parity. The tight variant this briefly copied omits the
+   deck rect and glass walkway because it was sized for 9–18 cm filler
+   blades; these atlas cards stand up to 1.40 m and pierced the deck. */
+export function clearance(x, z) {
   const fade = (distance, pad, feather) => clamp01((distance - pad) / feather);
   let value = 1;
-  value = Math.min(value, fade(rectangleDistance(x, z, -4.3, -3.4, 4.3, 3.4), 0.12, 0.4));
+  value = Math.min(value, fade(rectangleDistance(x, z, -4.3, -3.4, 4.3, 3.4), 0.3, 1.2));
+  value = Math.min(value, fade(rectangleDistance(x, z, -3.9, 2.95, 3.6, 6.3), 0.28, 0.95));
+  value = Math.min(value, fade(segmentDistance(x, z, 3.45, 4.65, 5.9, 5.35), 0.85, 0.8));
   value = Math.min(value, fade(rectangleDistance(x, z, -1.1, 6.15, 1.2, 7.3), 0.12, 0.4));
-  value = Math.min(value, fade(Math.hypot(x - 5.9, z - 5.4), 0.92, 0.5));
-  value = Math.min(value, fade(Math.hypot(x + 4.7, z - 6.5), 0.5, 0.45));
-  value = Math.min(value, fade(Math.hypot(x - 8.6, z - 18), 0.6, 0.5));
+  value = Math.min(value, fade(Math.hypot(x - 5.9, z - 5.4), 1.4, 0.9));
+  value = Math.min(value, fade(Math.hypot(x + 4.7, z - 6.5), 1.3, 0.8));
+  value = Math.min(value, fade(Math.hypot(x - 8.6, z - 18), 0.95, 0.8));
   let pathDistance = Number.POSITIVE_INFINITY;
   for (let index = 0; index < PATH.length - 1; index += 1) {
     pathDistance = Math.min(
@@ -374,7 +381,7 @@ function clearance(x, z) {
       segmentDistance(x, z, PATH[index][0], PATH[index][1], PATH[index + 1][0], PATH[index + 1][1]),
     );
   }
-  return Math.min(value, fade(pathDistance, 0.22, 0.5));
+  return Math.min(value, fade(pathDistance, 0.3, 0.75));
 }
 
 function density(x, z) {
@@ -597,5 +604,11 @@ async function generate() {
   }, null, 2)}\n`);
 }
 
-if (process.argv.includes("--verify")) await verify();
-else await generate();
+/* Only build when run as a CLI. The parity spec imports clearance() and
+   terrainHeight() from this module; an import must never write textures. */
+const invokedAsScript = process.argv[1]
+  && path.resolve(process.argv[1]) === path.resolve(sourcePath);
+if (invokedAsScript) {
+  if (process.argv.includes("--verify")) await verify();
+  else await generate();
+}

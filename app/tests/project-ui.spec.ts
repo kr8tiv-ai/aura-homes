@@ -67,9 +67,13 @@ test("the editor defaults to Guided mode and keeps the precision workspace in Pr
   await page.goto("/build");
   await expect(page.getByRole("group", { name: "Editor mode" })).toBeVisible({ timeout: 60_000 });
   await expect(page.getByRole("button", { name: "Guided" })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByRole("navigation", { name: "Guided design steps" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Plans" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Review" })).toBeVisible();
+  /* Scoped + exact: role-name matching is substring, and the catalog's
+     "3D preview" toggle contains "review" — unscoped {name:"Review"} is a
+     strict-mode violation, the same trap as "Pro"/"Continue in Pro". */
+  const guidedNav = page.getByRole("navigation", { name: "Guided design steps" });
+  await expect(guidedNav).toBeVisible();
+  await expect(guidedNav.getByRole("button", { name: "Plans", exact: true })).toBeVisible();
+  await expect(guidedNav.getByRole("button", { name: "Review", exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Pro", exact: true }).click();
   await expect(page.getByRole("tablist", { name: "Builder workspaces" })).toBeVisible();
@@ -124,8 +128,9 @@ test("the camera reframes per loaded document and never per edit", async ({ page
   const viewport = page.locator(".builder-viewport");
   await expect(viewport).toHaveAttribute("data-load-epoch", "0", { timeout: 60_000 });
 
-  await page.getByRole("button", { name: /Fjell Cube/ }).click();
-  await page.getByRole("button", { name: "Use Fjell Cube" }).click();
+  await page.getByRole("button", { name: /Fjell Cube/ }).first().click();
+  /* The commit affordance is the explicit "Open <plan> in editor" flow. */
+  await page.getByRole("button", { name: "Open Fjell Cube in editor" }).click();
   await expect(viewport).toHaveAttribute("data-load-epoch", "1");
 
   // An ordinary edit must NOT move the epoch — that is the anti-yank

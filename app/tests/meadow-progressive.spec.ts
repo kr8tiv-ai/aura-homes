@@ -11,7 +11,21 @@ import {
 } from "@/lib/three/meadow/contract";
 import { buildMeadowPage, meadowTransferList } from "@/lib/three/meadow/generator";
 import { MeadowPromotionGovernor } from "@/lib/three/meadow/governor";
+import { sampleMeadowClearance, sampleTerrainHeight } from "@/lib/three/meadow/field";
 import { buildFlowerField, flowerVisibilityAtDistance } from "@/components/story/flora";
+import { pathToFileURL } from "node:url";
+
+/* The generator is real ESM (import.meta); Playwright transpiles specs to
+   CJS, so a static import cannot load it. This indirection keeps the dynamic
+   import out of the transpiler's reach and Node loads the module natively.
+   Its entry guard makes importing side-effect free. */
+const importAtlasGenerator = () =>
+  (new Function("specifier", "return import(specifier)")(
+    pathToFileURL(path.join(__dirname, "..", "scripts", "generate-meadow-atlas.mjs")).href,
+  )) as Promise<{
+    clearance: (x: number, z: number) => number;
+    terrainHeight: (x: number, z: number) => number;
+  }>;
 
 const appRoot = path.resolve(__dirname, "..");
 
@@ -41,7 +55,7 @@ test("the built proof measures botanical texture and visible flowers at fixed ca
   expect(proof).toContain("vegetationTextureCoverage");
   expect(proof).toContain("flowerVisibility");
   expect(proof).toContain("activeFrameP95Ms");
-  expect(proof).toContain("settledDemand");
+  expect(proof).toContain("livingWind");
   expect(proof).toContain("fullRunRenderP95Ms <= 16.7");
   expect(proof).toContain("waitForCameraSettled(page, FIXED_CAMERAS.close.scrollY)");
   expect(proof).toContain("current >= baseline * 0.98");
@@ -179,7 +193,7 @@ test("legacy source slots are deterministically remapped to grass at render time
   expect(metadata.instances.grass).toBe(2_800);
   expect(metadata.instances.flowers).toBe(800);
   expect(metadata.renderedInstances).toEqual({ total: 3_600, grass: 3_600, flowers: 0 });
-  expect(metadata.files.instances.sha256).toBe("b06dcc13192a147cdff84c42b9d24e0e5670fd1dde514a30815e53ca508d6446");
+  expect(metadata.files.instances.sha256).toBe("c197eb688e13f0d7f103b0fb41ca00fd3c035e07044cfece6f372075a0e412d9");
   expect(detail).toContain('name="aura-meadow-atlas"');
   expect(detail).not.toContain("flowerHeads: Float32Array");
   expect(detail).toContain("mappedGrassCell");
@@ -245,12 +259,16 @@ test("a worker load failure keeps a bounded static meadow fallback", async () =>
   expect(runtime).toContain('maxTier: "mid"');
 });
 
-test("landing sparkles use the approved quarter-speed value", async () => {
+test("landing sparkles drift at the approved dust-mote speed", async () => {
   const scene = await readFile(path.join(appRoot, "components/story/Scene.tsx"), "utf8");
 
+  /* 0.25 is the approved 3D dust-mote drift. The quarter-speed rule belongs
+     to the DOM border-star tracer (CARD_TRACER_SPEED_PX_PER_SECOND), which
+     scene-quality.spec.ts pins separately — misapplying it here shipped
+     near-motionless motes. The literal stays banned so the constant rules. */
   expect(scene).toContain("MEADOW_SPARKLE_SPEED");
   expect(scene).not.toContain("speed={reduced ? 0 : 0.25}");
-  expect(MEADOW_SPARKLE_SPEED).toBe(0.0625);
+  expect(MEADOW_SPARKLE_SPEED).toBe(0.25);
 });
 
 test("the schedule makes the opening meadow first and keeps every page bounded", () => {
@@ -375,20 +393,50 @@ test("runtime frame sampling is scoped to an active meadow integration window", 
   expect(runtime).not.toContain("time - priorFrame");
 });
 
-test("the settled landing becomes demand rendered without losing scroll invalidation", async () => {
+test("the module frameloop contract stands: motion tiers render always, only the still tier is demand-driven", async () => {
   const canvas = await readFile(path.join(appRoot, "components/story/StoryCanvas.tsx"), "utf8");
   const scene = await readFile(path.join(appRoot, "components/story/Scene.tsx"), "utf8");
   const proof = await readFile(path.join(appRoot, "scripts/meadow-proof.mjs"), "utf8");
+  /* StoryCanvas may never override the frameloop sceneQuality.ts declares:
+     forcing "demand" on balanced/full froze the wind, clouds, steam and
+     wildlife whenever the visitor stopped scrolling. The invalidator stays,
+     scoped to the reduced-motion still tier that genuinely wants stills. */
   expect(canvas).toContain("function SceneRenderDurationSignal");
   expect(canvas).toContain("function StoryDemandInvalidator");
   expect(canvas).toContain('window.addEventListener("scroll", requestFrame');
-  expect(canvas).toContain('frameloop: "demand"');
-  expect(canvas).toContain("enabled={settled}");
+  expect(canvas).not.toContain('frameloop: "demand"');
+  expect(canvas).toContain('enabled={settled && quality.frameloop === "demand"}');
   expect(scene).toContain("CAMERA_SETTLE_EPSILON");
   expect(scene).toContain("cameraSettled ? undefined : state.invalidate()");
   expect(scene).toContain('CustomEvent("aura:camera-progress"');
   expect(proof).toContain("waitForCameraSettled");
   expect(proof).toContain("__AURA_CAMERA_PROOF__");
+  expect(proof).toContain("livingWind");
+  expect(proof).toContain("motionPixelRatio");
+});
+
+test("the baked atlas cards share the live meadow's wind clock", async () => {
+  const detail = await readFile(path.join(appRoot, "components/story/SceneDetail.tsx"), "utf8");
+  const atlas = detail.slice(
+    detail.indexOf("OFFLINE MEADOW ATLAS"),
+    detail.indexOf("THE LAYER", detail.indexOf("OFFLINE MEADOW ATLAS")),
+  );
+  /* The dominant visible grass is the 3,600-card atlas. A static
+     MeshBasicMaterial with no time uniform can never move under ANY
+     frameloop fix — the wind must be injected into its program and driven
+     from the same flora.ts clock as the hero blades and flowers. */
+  expect(atlas).toContain("windUniforms");
+  expect(atlas).toContain("uniform float uTime;");
+  expect(atlas).toContain("uniform vec2 uWindDir;");
+  expect(atlas).toContain("uniform float uGust;");
+  expect(atlas).toContain('"aura-meadow-atlas-v2"');
+  expect(atlas).toContain("sin(uTime * 0.62 - dot(aAtlasPos.xz, uWindDir) * 0.135)");
+  expect(atlas).toContain("resource.windUniforms.uTime.value = t");
+  expect(atlas).toContain("gustEnvelope(t)");
+  /* Motion is a reduced-motion preference, never a capability fallback:
+     the freeze folds in prefers-reduced-motion ONLY. */
+  expect(detail).toContain("const botanicalFrozen = frozen;");
+  expect(detail).not.toContain("frozen || !meadow.plan.animated");
 });
 
 test("the hardware proof pins its evidence and measures the real scene canvas", async () => {
@@ -433,4 +481,56 @@ test("constrained desktop capability reaches the low-power meadow plan", async (
   expect(canvas).toContain("lowPower={lowPower}");
   expect(scene).toContain("lowPower={lowPower}");
   expect(detail).toContain("lowPower: mobile || lowPower");
+});
+
+/* THE MASK IS ONE FUNCTION. Three divergent copies of the clearance field
+   (runtime field.ts, SceneDetail, the offline atlas generator) is exactly
+   how grass shipped through the deck: the generator's copy silently dropped
+   the deck rectangle and glass walkway. The offline generator must sample
+   the SAME field the live meadow samples, point for point. */
+test("the atlas generator's clearance and terrain match the runtime meadow field exactly", async () => {
+  const { clearance: atlasClearance, terrainHeight: atlasTerrainHeight } = await importAtlasGenerator();
+  let samples = 0;
+  for (let z = -30; z <= 56; z += 1.7) {
+    for (let x = -50; x <= 50; x += 1.7) {
+      expect(atlasClearance(x, z)).toBeCloseTo(sampleMeadowClearance(x, z, false), 10);
+      expect(atlasTerrainHeight(x, z)).toBeCloseTo(sampleTerrainHeight(x, z), 10);
+      samples += 1;
+    }
+  }
+  expect(samples).toBeGreaterThan(2_000);
+});
+
+test("no baked atlas card stands on the deck, the glass walkway, or inside the house", async () => {
+  const bytes = await readFile(path.join(appRoot, "public/textures/meadow-atlas.bin"));
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const count = view.getUint32(12, true);
+  const stride = view.getUint32(16, true);
+  const headerBytes = 24;
+  expect(count).toBe(3_600);
+
+  const segmentDistance = (x: number, z: number, ax: number, az: number, bx: number, bz: number) => {
+    const vx = bx - ax;
+    const vz = bz - az;
+    const lengthSquared = vx * vx + vz * vz;
+    const t = lengthSquared > 0 ? Math.min(1, Math.max(0, ((x - ax) * vx + (z - az) * vz) / lengthSquared)) : 0;
+    return Math.hypot(x - (ax + vx * t), z - (az + vz * t));
+  };
+  const insideRect = (x: number, z: number, x0: number, z0: number, x1: number, z1: number) =>
+    x >= x0 && x <= x1 && z >= z0 && z <= z1;
+
+  let onDeck = 0;
+  let onWalkway = 0;
+  let inHouse = 0;
+  for (let index = 0; index < count; index += 1) {
+    const offset = headerBytes + index * stride;
+    const x = view.getFloat32(offset, true);
+    const z = view.getFloat32(offset + 8, true);
+    if (insideRect(x, z, -3.9, 2.95, 3.6, 6.3)) onDeck += 1;
+    if (segmentDistance(x, z, 3.45, 4.65, 5.9, 5.35) <= 0.85) onWalkway += 1;
+    if (insideRect(x, z, -4.3, -3.4, 4.3, 3.4)) inHouse += 1;
+  }
+  expect(onDeck).toBe(0);
+  expect(onWalkway).toBe(0);
+  expect(inHouse).toBe(0);
 });

@@ -1,21 +1,36 @@
 import { expect, test } from "playwright/test";
 
-/* Automatic full-quality promotion is deliberately disabled. Coarse memory
-   and core hints do not prove enough main-thread headroom for the million-
-   instance meadow; the opening-safe tier remains composed after handoff. */
+/* The opening's 0.14 grass cap exists to protect the first paint, never to
+   hold the scene forever. Once the last opening stage has painted, capable
+   hardware must be promoted to the full tier — post-processing, PCSS
+   shadows, IBL, rich props and flowers all live behind it. Holding
+   "balanced" indefinitely was the shipped regression that stripped the
+   scene of every effect; this spec exists so that cannot return silently. */
 
-test("the automatic landing keeps its opening-safe quality budget after meadow", async ({ page }) => {
+test("the meadow's opening quality cap is lifted after the last stage paints", async ({ page }) => {
   test.setTimeout(180_000);
-  await page.goto("/");
 
-  // Without WebGL the site deliberately shows its still fallback and the
-  // promotion is unobservable — skipping is the honest verdict there, and
-  // the environment check below keeps the pass falsifiable where it runs.
-  const hasWebgl = await page.evaluate(() => {
+  /* The promotion target depends on real hardware hints: only environments
+     that would earn the full tier can assert it. Chromium in this harness
+     reports deviceMemory/hardwareConcurrency, so locally this runs; a
+     constrained CI box skips with an honest reason instead of passing. */
+  await page.goto("/");
+  const capability = await page.evaluate(() => {
     const canvas = document.createElement("canvas");
-    return Boolean(canvas.getContext("webgl2") ?? canvas.getContext("webgl"));
+    const webgl = Boolean(canvas.getContext("webgl2") ?? canvas.getContext("webgl"));
+    const nav = navigator as Navigator & { deviceMemory?: number };
+    return {
+      webgl,
+      earnsFull:
+        window.innerWidth >= 1100 &&
+        nav.deviceMemory !== undefined &&
+        nav.deviceMemory >= 8 &&
+        navigator.hardwareConcurrency !== undefined &&
+        navigator.hardwareConcurrency >= 8,
+    };
   });
-  test.skip(!hasWebgl, "no WebGL in this environment — the scene cannot mount at all");
+  test.skip(!capability.webgl, "no WebGL in this environment — the scene cannot mount at all");
+  test.skip(!capability.earnsFull, "this environment does not earn the full tier — promotion is unobservable");
 
   // The scene mounts only after a journey is chosen at the gate.
   const gatePaths = page.locator(".story-gate-paths");
@@ -28,9 +43,6 @@ test("the automatic landing keeps its opening-safe quality budget after meadow",
   // The stage machine must walk to its final stage...
   await expect(root).toHaveAttribute("data-scene-phase", "meadow", { timeout: 120_000 });
 
-  // ...and the automatic journey must remain on its known-safe tier. Richer
-  // density belongs behind a measured or explicit quality control.
-  await expect(root).toHaveAttribute("data-scene-quality", "balanced", { timeout: 30_000 });
-  await page.waitForTimeout(3_000);
-  await expect(root).toHaveAttribute("data-scene-quality", "balanced");
+  // ...and after the loader's Ready hold releases, the earned tier arrives.
+  await expect(root).toHaveAttribute("data-scene-quality", "full", { timeout: 60_000 });
 });

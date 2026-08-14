@@ -74,19 +74,21 @@ function runtimeQuality(reduced: boolean): SceneQuality {
 /** The quality the hardware actually earns, with the opening's caps lifted.
  *  Applied only after the last opening stage has painted a real frame — the
  *  0.14 grass cap exists to protect the first paint, and holding it forever
- *  was the bug that shipped a 14%-density meadow with dwarf flowers. */
+ *  was the bug that shipped a 14%-density meadow with dwarf flowers.
+ *
+ *  The frameloop is the module contract's, never overridden here: forcing
+ *  "demand" on balanced/full froze the wind, clouds, steam and wildlife the
+ *  moment the visitor stopped scrolling. The still tier already declares
+ *  "demand" for the reduced-motion path that actually wants a still. */
 function runtimeFullQuality(reduced: boolean): SceneQuality {
   const nav = navigator as NavigatorWithMemory;
-  return {
-    ...selectSceneQuality({
-      width: window.innerWidth,
-      devicePixelRatio: window.devicePixelRatio || 1,
-      deviceMemoryGb: nav.deviceMemory,
-      hardwareConcurrency: nav.hardwareConcurrency,
-      reducedMotion: reduced,
-    }),
-    frameloop: "demand",
-  };
+  return selectSceneQuality({
+    width: window.innerWidth,
+    devicePixelRatio: window.devicePixelRatio || 1,
+    deviceMemoryGb: nav.deviceMemory,
+    hardwareConcurrency: nav.hardwareConcurrency,
+    reducedMotion: reduced,
+  });
 }
 
 /** Measure CPU time spent submitting an actual R3F render. A raw rAF delta
@@ -239,7 +241,7 @@ export default function StoryCanvas({
       const full = runtimeFullQuality(reduced);
       setLowPower(full.tier !== "full");
       const next = fullQualityPromoted.current ? full : runtimeQuality(reduced);
-      setQuality(settled ? { ...next, frameloop: "demand" } : next);
+      setQuality(next);
     };
     refreshQuality();
     window.addEventListener("resize", refreshQuality, { passive: true });
@@ -253,6 +255,12 @@ export default function StoryCanvas({
      cannot starve the loader's teardown or land inside its final frame. */
   useEffect(() => {
     if (!settled || !allowFullQuality || fullQualityPromoted.current) return;
+    /* Promote only where the hardware earns the FULL tier. On balanced-tier
+       devices promotion would lift almost nothing (sparkles 30→45; rich
+       flowers need full), yet its re-render lands mid page-integration on
+       slower hardware and trips the meadow governor — a measured 197 ms
+       long task froze the mobile meadow at its opening floor. */
+    if (lowPower) return;
     let idleHandle: number | null = null;
     const idleWindow = window as unknown as {
       requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
@@ -275,7 +283,7 @@ export default function StoryCanvas({
         idleWindow.cancelIdleCallback(idleHandle);
       }
     };
-  }, [settled, allowFullQuality, reduced]);
+  }, [settled, allowFullQuality, lowPower, reduced]);
 
   /* Progress only after the current stage has produced a real frame. Each
      addition is scheduled through an idle boundary, so model cloning,
@@ -368,7 +376,9 @@ export default function StoryCanvas({
             onPainted={handleStagePainted}
           />
           <SceneRenderDurationSignal />
-          <StoryDemandInvalidator enabled={settled} />
+          {/* Only the still tier renders on demand; keep its scroll/resize
+              invalidation so the reduced-motion still tracks the camera. */}
+          <StoryDemandInvalidator enabled={settled && quality.frameloop === "demand"} />
         </Suspense>
         </Canvas>
         </SceneErrorBoundary>

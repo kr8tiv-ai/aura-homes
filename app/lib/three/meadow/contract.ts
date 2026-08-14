@@ -43,7 +43,10 @@ export interface MeadowPage {
 }
 
 export const MEADOW_MAX_PAGE_INSTANCES = 2_000;
-export const MEADOW_SPARKLE_SPEED = 0.0625;
+/* 0.25 is the approved drift for the 3D dust motes. The quarter-speed rule
+   that briefly landed here belongs to the DOM border-star tracer
+   (CARD_TRACER_SPEED_PX_PER_SECOND in CardFX) — a different surface. */
+export const MEADOW_SPARKLE_SPEED = 0.25;
 
 const TIER_ORDER: MeadowTier[] = ["near", "mid", "far"];
 

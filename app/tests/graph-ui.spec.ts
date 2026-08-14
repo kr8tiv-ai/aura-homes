@@ -28,7 +28,9 @@ test("planar conversion drives the visible plan, 3D model and honest exports", a
   await expect(page.getByText("Nothing changed yet.", { exact: false })).toHaveCount(0);
   await expect(page.getByText("799 sq ft", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Model" }).click();
-  await expect(page.locator("#main canvas")).toBeVisible();
+  /* The plan catalog's live 3D preview adds a second canvas inside #main;
+     the assertion targets the actual builder viewport. */
+  await expect(page.locator(".builder-viewport canvas")).toBeVisible();
 
   await page.getByRole("tab", { name: /^Export/ }).click();
   await expect(page.getByText("This project uses planar graph geometry", { exact: false })).toBeVisible();
@@ -72,5 +74,5 @@ test("an aligned upper floor and explicit stair are edited from the same graph p
   await expect(page.getByText("1 service shaft", { exact: false })).toBeVisible();
 
   await page.getByRole("button", { name: "Model" }).click();
-  await expect(page.locator("#main canvas")).toBeVisible();
+  await expect(page.locator(".builder-viewport canvas")).toBeVisible();
 });

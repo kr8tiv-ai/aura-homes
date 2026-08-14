@@ -485,10 +485,13 @@ export default function Story() {
           progressRef={progressRef}
           reduced={reduced}
           night={night}
-          /* The million-instance full meadow caused a measured long task on
-             integrated GPUs. Keep automatic entry on the composed opening
-             tier; a future explicit quality control may opt in. */
-          allowFullQuality={false}
+          /* The long task the old false-lock guarded against is gone: the
+             full meadow no longer rebuilds ~1M instances on promotion — live
+             blades are bounded worker pages (~15–20k) and the atlas carries
+             the density. Promotion now only lifts post-processing, PCSS
+             shadows, IBL, rich materials/props and dpr, so the earned tier
+             returns after the meadow's first painted frame. */
+          allowFullQuality
           releaseMeadowPromotion={loaderDismissed}
           onReady={handleCanvasReady}
           onUnavailable={handleCanvasUnavailable}

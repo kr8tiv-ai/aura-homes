@@ -162,6 +162,40 @@ function percentile95(values) {
   return ordered[Math.max(0, Math.ceil(ordered.length * 0.95) - 1)];
 }
 
+/** The wind is a product promise: two frames of an untouched scene, captured
+ * ~1.2 s apart, must DIFFER inside the meadow ROI. A frozen clock (demand
+ * frameloop, a stilled uniform, a static material) makes this ratio collapse
+ * to ~0 — the failure mode that shipped a motionless meadow passes no more. */
+function motionPixelRatio(bufferA, bufferB, roi) {
+  const a = PNG.sync.read(bufferA);
+  const b = PNG.sync.read(bufferB);
+  const x0 = Math.max(1, Math.floor(roi.x * a.width));
+  const y0 = Math.max(1, Math.floor(roi.y * a.height));
+  const x1 = Math.min(a.width - 1, Math.ceil((roi.x + roi.width) * a.width));
+  const y1 = Math.min(a.height - 1, Math.ceil((roi.y + roi.height) * a.height));
+  let moved = 0;
+  let pixels = 0;
+  for (let y = y0; y < y1; y += 1) {
+    for (let x = x0; x < x1; x += 1) {
+      const index = (y * a.width + x) * 4;
+      pixels += 1;
+      const delta =
+        Math.abs(a.data[index] - b.data[index]) +
+        Math.abs(a.data[index + 1] - b.data[index + 1]) +
+        Math.abs(a.data[index + 2] - b.data[index + 2]);
+      if (delta >= 24) moved += 1;
+    }
+  }
+  return pixels > 0 ? moved / pixels : 0;
+}
+
+async function captureWindMotion(page, roi) {
+  const first = await page.screenshot({ timeout: 90_000 });
+  await page.waitForTimeout(1_200);
+  const second = await page.screenshot({ timeout: 90_000 });
+  return motionPixelRatio(first, second, roi);
+}
+
 async function compareVegetation(currentPath, baselinePath, roi) {
   const [currentBuffer, baselineBuffer] = await Promise.all([readFile(currentPath), readFile(baselinePath)]);
   const currentMetric = vegetationTextureCoverage(currentBuffer, roi);
@@ -308,7 +342,9 @@ async function runMobileProof(browser) {
     activeFrameP95Ms: ledger.final?.governor.p95FrameMs ?? null,
     causalLongTaskMaxMs: ledger.final?.governor.maxLongTaskMs ?? null,
     fullRunRenderP95Ms: percentile95(ledger.renderDurations),
-    settledDemand: { start: idleRenderStart, end: idleRenderEnd, passes: idleRenderEnd === idleRenderStart },
+    /* An untouched scene keeps rendering: the wind never sleeps. Zero new
+       frames during idle is the frozen-meadow failure, not a pass. */
+    livingWind: { start: idleRenderStart, end: idleRenderEnd, passes: idleRenderEnd > idleRenderStart },
     camera: mobileCamera,
     flowerVisibility: ledger.flowerVisibility,
   };
@@ -319,7 +355,7 @@ async function runMobileProof(browser) {
     mobile.activeFrameP95Ms <= 33.3 &&
     mobile.fullRunRenderP95Ms <= 33.3 &&
     mobile.causalLongTaskMaxMs <= 50 &&
-    mobile.settledDemand.passes &&
+    mobile.livingWind.passes &&
     mobile.camera?.settled === true &&
     mobile.flowerVisibility?.planted === 380 &&
     mobile.flowerVisibility?.visible > 0 &&
@@ -355,13 +391,22 @@ try {
   await page.waitForFunction(() => (globalThis.__AURA_FLOWER_PROOF__ ?? []).some((entry) => entry.visible > 0), undefined, { timeout: 30_000 });
   const openingCamera = await waitForCameraSettled(page, FIXED_CAMERAS.open.scrollY);
 
-  /* Demand rendering is a product constraint, not a source-code claim. Once
-     promotion is terminal, an untouched scene must stop submitting frames. */
+  /* Living wind is a product constraint, not a source-code claim. Once
+     promotion is terminal, an untouched scene must KEEP submitting frames and
+     the meadow pixels must actually move — the same measurement that would
+     have caught the frozen atlas, the demand-frameloop override, and the
+     lowPower motion kill-switch. */
   await page.waitForTimeout(500);
   const idleRenderStart = await page.evaluate(() => (globalThis.__AURA_RENDER_PROOF__ ?? []).length);
   await page.waitForTimeout(1_500);
   const idleRenderEnd = await page.evaluate(() => (globalThis.__AURA_RENDER_PROOF__ ?? []).length);
-  const settledDemand = { start: idleRenderStart, end: idleRenderEnd, passes: idleRenderEnd === idleRenderStart };
+  const windMotionRatio = await captureWindMotion(page, FIXED_CAMERAS.open.roi);
+  const livingWind = {
+    start: idleRenderStart,
+    end: idleRenderEnd,
+    motionPixelRatio: Number(windMotionRatio.toFixed(6)),
+    passes: idleRenderEnd > idleRenderStart && windMotionRatio >= 0.004,
+  };
 
   /* Meadow promotion evidence is captured before proof-driven camera motion,
      while the full render ledger below intentionally includes that motion. */
@@ -387,7 +432,7 @@ try {
   const closeIdleStart = await page.evaluate(() => (globalThis.__AURA_RENDER_PROOF__ ?? []).length);
   await page.waitForTimeout(1_500);
   const closeIdleEnd = await page.evaluate(() => (globalThis.__AURA_RENDER_PROOF__ ?? []).length);
-  const cameraSettledDemand = { start: closeIdleStart, end: closeIdleEnd, passes: closeIdleStart === closeIdleEnd };
+  const postInteractionWind = { start: closeIdleStart, end: closeIdleEnd, passes: closeIdleEnd > closeIdleStart };
 
   const runtime = await page.evaluate(() => {
     const canvas = document.querySelector(".story-scene-root canvas");
@@ -425,7 +470,7 @@ try {
   };
   const mobile = await runMobileProof(browser);
   const report = {
-    schema: "MeadowHardwareProofV2",
+    schema: "MeadowHardwareProofV3",
     createdAt: new Date().toISOString(),
     screenshotPaths,
     approvedBaselineHashes,
@@ -439,8 +484,8 @@ try {
     fullRunLongTasks: runtime.longTasks,
     fullRunLongAnimationFrames: runtime.longAnimationFrames,
     interactionMs,
-    settledDemand,
-    cameraSettledDemand,
+    livingWind,
+    postInteractionWind,
     camera: { open: openingCamera, close: closeCamera },
     coverage,
     flowerVisibility,
@@ -454,8 +499,8 @@ try {
       fullRunRenderP95Ms <= 16.7 &&
       final.governor.maxLongTaskMs <= 50 &&
       interactionMs <= 160 &&
-      settledDemand.passes &&
-      cameraSettledDemand.passes &&
+      livingWind.passes &&
+      postInteractionWind.passes &&
       openingCamera?.settled === true &&
       closeCamera?.settled === true &&
       coverage.open.passes &&

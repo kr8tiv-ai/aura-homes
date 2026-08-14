@@ -2005,6 +2005,14 @@ type MeadowAtlasResource = {
   geometry: THREE.InstancedBufferGeometry;
   material: THREE.MeshBasicMaterial;
   texture: THREE.Texture;
+  /* MeshBasicMaterial exposes no uniforms handle; these are the objects
+     merged into the compiled program via onBeforeCompile, shared by
+     reference so MeadowAtlasField can drive the wind clock per frame. */
+  windUniforms: {
+    uTime: { value: number };
+    uWindDir: { value: THREE.Vector2 };
+    uGust: { value: number };
+  };
 };
 
 function meadowAtlasBaseGeometry(): {
@@ -2109,15 +2117,31 @@ function decodeMeadowAtlas(buffer: ArrayBuffer, texture: THREE.Texture): MeadowA
     toneMapped: true,
   });
   material.name = "aura-meadow-atlas-material";
-  material.customProgramCacheKey = () => "aura-meadow-atlas-v1";
+  /* The atlas cards share the live meadow's ONE wind clock (flora.ts):
+     same travelling/crossWave/ripple phases, same gust envelope, phase
+     keyed on each card's world position so a gust front crosses baked and
+     live blades together. Root stays planted (bend ∝ y², y is 0..1 in the
+     base card); a slight arc-down keeps swaying tips from stretching. */
+  const windUniforms = {
+    uTime: { value: FROZEN_T },
+    uWindDir: { value: WIND_DIR.clone() },
+    uGust: { value: gustEnvelope(FROZEN_T) },
+  };
+  material.customProgramCacheKey = () => "aura-meadow-atlas-v2";
   material.onBeforeCompile = (shader) => {
+    shader.uniforms.uTime = windUniforms.uTime;
+    shader.uniforms.uWindDir = windUniforms.uWindDir;
+    shader.uniforms.uGust = windUniforms.uGust;
     shader.vertexShader = shader.vertexShader
       .replace("#include <common>", `#include <common>
 attribute vec3 aAtlasPos;
 attribute vec2 aAtlasSize;
 attribute float aAtlasYaw;
 attribute vec4 aAtlasUv;
-attribute float aAtlasSeed;`)
+attribute float aAtlasSeed;
+uniform float uTime;
+uniform vec2 uWindDir;
+uniform float uGust;`)
       .replace("#include <uv_vertex>", `#ifdef USE_MAP
   vMapUv = ( mapTransform * vec3( aAtlasUv.xy + uv * aAtlasUv.zw, 1 ) ).xy;
 #endif`)
@@ -2131,21 +2155,33 @@ vec3 transformed = vec3(
   atlasLocal.x * atlasCos - atlasLocal.z * atlasSin,
   atlasLocal.y,
   atlasLocal.x * atlasSin + atlasLocal.z * atlasCos
-) + aAtlasPos;`);
+) + aAtlasPos;
+float windPh = aAtlasSeed * 6.2831853;
+float windTravelling = sin(uTime * 0.62 - dot(aAtlasPos.xz, uWindDir) * 0.135);
+float windCross = sin(uTime * 0.41 + aAtlasPos.x * 0.082 - aAtlasPos.z * 0.057 + windPh);
+float windRipple = sin(uTime * 1.85 + aAtlasPos.x * 0.31 + aAtlasPos.z * 0.23 + windPh * 0.5);
+float windSway = windTravelling * 0.62 + windCross * 0.30 + windRipple * 0.08;
+float windBendT = position.y * position.y;
+float windAmp = (0.34 + 0.66 * uGust) * aAtlasSize.y * 0.16;
+transformed.xz += uWindDir * windBendT * windSway * windAmp;
+transformed.y -= windBendT * abs(windSway) * windAmp * 0.18;`);
   };
 
   return {
     geometry,
     material,
     texture,
+    windUniforms,
   };
 }
 
 function MeadowAtlasField({
+  frozen,
   night,
   dusk,
   onReady,
 }: {
+  frozen: boolean;
   night: number;
   dusk: Dusk;
   onReady: () => void;
@@ -2203,6 +2239,15 @@ function MeadowAtlasField({
         .multiplyScalar(1 - night * 0.32);
     });
   }, [dusk, night, resource]);
+
+  /* One clock for the whole meadow: reduced motion holds the baked cards at
+     the same art-directed FROZEN_T instant as the live blades and flowers. */
+  useFrame(({ clock }) => {
+    if (!resource) return;
+    const t = frozen ? FROZEN_T : clock.elapsedTime;
+    resource.windUniforms.uTime.value = t;
+    resource.windUniforms.uGust.value = gustEnvelope(t);
+  });
 
   if (!resource) return null;
   return (
@@ -2454,7 +2499,11 @@ export default function SceneDetail({
      instant. The floor keeps the drifts legible even at the opening
      stage's 0.14 scale — 200 static flowers cost nothing. */
   const heroPages = meadow.pages.filter((page) => page.layer === "hero");
-  const botanicalFrozen = frozen || !meadow.plan.animated;
+  /* Motion is gated on prefers-reduced-motion ONLY. plan.animated is a
+     density/budget signal from chooseMeadowPlan; folding it into the freeze
+     stilled every browser that hides deviceMemory (Firefox, Safari) — a
+     capability hint must never read as a motion preference. */
+  const botanicalFrozen = frozen;
 
   return (
     <group>
@@ -2464,7 +2513,7 @@ export default function SceneDetail({
       {includeMeadow ? (
         <>
           <GrassField frozen={botanicalFrozen} pages={heroPages} night={night} dusk={dusk} cfg={G_HERO} />
-          <MeadowAtlasField night={night} dusk={dusk} onReady={handleMeadowAtlasReady} />
+          <MeadowAtlasField frozen={botanicalFrozen} night={night} dusk={dusk} onReady={handleMeadowAtlasReady} />
           <FlowerField
             frozen={botanicalFrozen}
             night={night}
