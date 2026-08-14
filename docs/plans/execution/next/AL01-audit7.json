@@ -20,5 +20,28 @@
     "note": "the audit IS the verification artifact; commit as Matt-Aurora-Ventures"
   },
   "sideEffect": "local",
-  "status": "ready"
+  "status": "verified",
+  "evidence": {
+    "verifiedAt": "2026-08-14",
+    "auditor": "fresh-context checker (did not author any code under audit)",
+    "entry": "docs/AUDIT-LOG.md ## Audit #7 — 2026-08-14",
+    "anchors": {
+      "appTsc": "exit 0",
+      "appUnit": "175/175 passed",
+      "agentDemo": "LOW $199,100 / MID $301,280 / HIGH $443,900 ex-land — equals cost-model.json totalsExLand to the dollar; Lakeside REJECT intact",
+      "contracts": "25 passing (deposit/refund-window suite, registry, mainnet hard-stop)",
+      "heavyweight": "test:ui and meadow-proof.mjs NOT re-run (CPU contention poisons the measurement); recorded evidence audited: meadow-proof.json passes:true on real hardware, desktop livingWind 0.278 vs 0.004 gate"
+    },
+    "findings": 7,
+    "findingsSummary": [
+      "1 MEDIUM: deck mesh uncoupled from clearance field - a moved deck passes every R03I gate",
+      "2 LOW-MEDIUM: mobile livingWind gate proves rendering, not motion",
+      "3 PASS: all /homes live-token claims map to claims.json rows (one row stale pending VT03 commit)",
+      "4 MEDIUM-HIGH: homes launch-policy section claims the unbuilt trust in present tense, violating claims.json's own locker-owns-liquidity gate",
+      "5 LOW-MEDIUM: R03I evidence numbers match a superseded proof run; proof JSON carries no commit stamp",
+      "6 PROCESS: Aug 10->14 cadence lapse coincided with the regression window; R03A-H repair-limit evasion confirmed, new rule is prose-only",
+      "7 LOW-MEDIUM: AWG recommended-not-mandatory decision not propagated to cost-model.json:18 label or materials.ts"
+    ],
+    "nextAuditDue": "2026-08-16"
+  }
 }
