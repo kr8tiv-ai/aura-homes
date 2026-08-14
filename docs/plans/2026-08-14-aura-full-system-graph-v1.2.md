@@ -46,13 +46,16 @@ their relative ranges):
 | Date | Outcome | Nodes |
 |---|---|---|
 | Aug 13 (done) | R0 deployed to aurahomes.fun (`92da6b7`), R04 record closed post-hoc | R00–R05A |
-| Aug 14 | Scene restoration deployed (wind, deck mask, full-tier promotion; new motion/deck/parity gates) — R03's regressions repaired | R03I (new) |
-| Aug 14 | HOMES token-live truth flips + buy/bridge guide deployed | VT01–VT04 (new) |
-| Aug 15–16 | X06 README + submission copy from the corrected claim registry; X07 deck refresh; X08 cards exist (v3 set delivered Aug 13) | X06–X08 |
-| Aug 16–18 | 90-second video against the LIVE site (X12); Audit #7 (AL01); perf baseline + fixes with before/after proof (PB01–PB04) | X12, AL01, PB* |
+| Aug 14 (done) | Scene restored + polished (wind, deck+steps masks, full tier, NetLounge retired; falsifiable motion/deck/parity gates) — releases `3e00c66`, `33e2b3e` | R03I |
+| Aug 14 (done) | Token-live truth flips + buy/bridge guide; mint verified on-chain and surfaced; fee-claim wallet published; README + governance registries; 9 hand-off scaffolds | VT01–VT03, X06 (README half) |
+| Aug 14 (done) | Audit #7 (fresh context) + all actionable findings fixed; AWG decision propagated + budget toggle; data-bake workflow parked (token lacks workflow scope — founder enables); voice calibration; D-1 dashboard sections — releases `2ee4ee5`, `fe5eb9e` | AL01, BQ-AWG, DB01, D-1 |
+| Aug 14 (in flight) | B-P1: schema half shipped (`8ee3ce4`, optional site slot, byte-stability pinned — v3 migration superseded, see the node); UI half executing (Site step, A1 sheet, terrain) | B-P1 |
+| Aug 15–16 | Submission copy refresh from the claim registry; X07 deck; NW01 attribution + warmup; PB02–PB04 with before/after vs the PB01 baseline | X06 (submission half), X07, NW01, PB* |
+| Aug 16–18 | 90-second video against the LIVE site (founder decided: video AFTER the build waves); Audit #8 due Aug 16 per the resumed cadence | X12, AL02 |
 | Aug 19–20 | Full gate sweep; founder reviews video/copy; buffer for repairs | §4 anchors |
 | Aug 21 | Founder-only: form submission + X post + KYC gates | X13–X15 |
-| Aug 22+ | W1 builder wave (B-stream), then v1.1 W2–W8 unchanged | — |
+| Aug 22+ | C-1 listings schema, FD1 shared geometry, remaining B-stream, then v1.1 W2–W8 unchanged | — |
+| Standing | VT04 receipts: the fee-claim wallet is published; recognition still waits on the founder's first claim tx | VT04 |
 
 ### 1.2 The frozen money anchor returns (v1.1's most dangerous omission)
 
