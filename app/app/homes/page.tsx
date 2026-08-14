@@ -12,6 +12,7 @@ import {
   allocateHomesTradingFees,
   currentHomesSnapshot,
   reconcileHomesFeeLedger,
+  reconcileHomesProfitLedger,
 } from "@/lib/homes/fund";
 import {
   HOMES_CREATOR_WALLET,
@@ -33,6 +34,7 @@ export const metadata = {
 
 const snapshot = currentHomesSnapshot();
 const feeLedger = reconcileHomesFeeLedger(snapshot);
+reconcileHomesProfitLedger(snapshot);
 const serviceAllocation = allocateHomesFees(feeLedger.serviceUsdc);
 const tradingAllocation = allocateHomesTradingFees(feeLedger.tradingUsdc);
 
@@ -87,6 +89,7 @@ export default function HomesPage() {
           <p>
             The token trades on XLaunch. No staking contract, exchange listing, property, or
             payout is live; venue fees accrue but no claim receipt is published yet.
+            Last verified on-chain at block {snapshot.chain.lastVerifiedBlock?.toLocaleString("en-US")}.
           </p>
         </aside>
       </header>
@@ -249,6 +252,63 @@ export default function HomesPage() {
             instead of trust.
           </p>
         </div>
+      </section>
+
+      <section className="homes-section" aria-labelledby="pipeline-heading">
+        <div className="homes-section-heading">
+          <div><p className="aura-label">From fund to keys</p><h2 id="pipeline-heading">Property pipeline.</h2></div>
+          <p>Each property moves candidate → due diligence → acquired → building → operating, carrying its blockers and dated evidence at every step.</p>
+        </div>
+        {snapshot.properties.length ? (
+          <dl className="homes-proof">
+            {snapshot.properties.map((property) => (
+              <div key={property.id}><dt>{property.location}</dt><dd>{property.status} · {property.blockers.length ? `blockers: ${property.blockers.join("; ")}` : "no open blockers"} · evidence: {property.evidence.length || "none"}</dd></div>
+            ))}
+          </dl>
+        ) : (
+          <p className="homes-budget-note">
+            No candidate properties yet. The first entry appears when the fund can actually move
+            on one — with its diligence evidence and blockers shown, not just an address.
+          </p>
+        )}
+      </section>
+
+      <section className="homes-section" aria-labelledby="profit-ledger-heading">
+        <div className="homes-section-heading">
+          <div><p className="aura-label">Operating money, receipted</p><h2 id="profit-ledger-heading">Profit reconciliation ledger.</h2></div>
+          <p>Gross → expenses → reserves → net → community pool ({HOMES_PROPERTY_OWNERSHIP.community}% of net), per property per period. The build fails on any row whose math or receipts do not reconcile.</p>
+        </div>
+        {snapshot.profitLedger.length ? (
+          <dl className="homes-proof">
+            {snapshot.profitLedger.map((row) => (
+              <div key={`${row.period}-${row.propertyId}`}><dt>{row.period} · {row.propertyId}</dt><dd>gross {usdc(row.grossUsdc)} · net {usdc(row.netUsdc)} · pool {usdc(row.communityPoolUsdc)} · {row.receiptHashes.length} receipts</dd></div>
+            ))}
+          </dl>
+        ) : (
+          <p className="homes-budget-note">
+            Empty until the first property operates. Every future row carries its receipt hashes —
+            a number without a receipt cannot render here by construction.
+          </p>
+        )}
+      </section>
+
+      <section className="homes-section" aria-labelledby="distribution-proof-heading">
+        <div className="homes-section-heading">
+          <div><p className="aura-label">Payouts you can recompute</p><h2 id="distribution-proof-heading">Distribution proof.</h2></div>
+          <p>Each epoch publishes its snapshot block, eligible-holder count, claim transactions, and the unclaimed remainder — enough to recompute every payout independently.</p>
+        </div>
+        {snapshot.distributions.length ? (
+          <dl className="homes-proof">
+            {snapshot.distributions.map((distribution) => (
+              <div key={distribution.period}><dt>{distribution.period}</dt><dd>pool {usdc(distribution.communityPoolUsdc)} · paid {usdc(distribution.paidUsdc)} · unclaimed {usdc(distribution.unclaimedUsdc)} · block {distribution.snapshotBlock?.toString() ?? "not set"} · {distribution.eligibleCount} eligible</dd></div>
+            ))}
+          </dl>
+        ) : (
+          <p className="homes-budget-note">
+            No distributions have occurred. The first epoch renders here with its snapshot block
+            and claim transactions the day one exists — paid + unclaimed must equal the pool.
+          </p>
+        )}
       </section>
 
       <section className="homes-section" aria-labelledby="launch-budget-heading">

@@ -27,5 +27,9 @@
     "note": "run from app/"
   },
   "sideEffect": "local",
-  "status": "ready"
+  "status": "verified",
+  "evidence": {
+    "verifiedAt": "2026-08-14",
+    "delivered": "HomesSnapshot gains chain.lastVerifiedBlock/verifiedAtISO (wired to the mint-verification artifact - real block on day one, rendered in the status aside), properties blockers/evidence, profitLedger[], distribution snapshotBlock/eligibleCount/claimTxHashes/unclaimedUsdc. reconcileHomesProfitLedger throws at module scope on money-without-receipts, net != gross-expenses-reserves, pool != 60% net, paid+unclaimed != pool, or money without a snapshot block - a lying dashboard fails the build. Three /homes sections render declared zero states. Specs: 8 invariant assertions incl. every throw path, UI presence of all three sections + the verified-block line."
+  }
 }

@@ -49,6 +49,17 @@ test("the live token ships its receipts, buy path, and risk labels together", as
   await expect(page.getByText("a DEX pool is not an exchange listing", { exact: false })).toBeVisible();
 });
 
+test("the pipeline, profit-ledger, and distribution sections render their declared zero states", async ({ page }) => {
+  await page.goto("/homes");
+  await expect(page.getByRole("heading", { name: "Property pipeline." })).toBeVisible();
+  await expect(page.getByText("No candidate properties yet.", { exact: false })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Profit reconciliation ledger." })).toBeVisible();
+  await expect(page.getByText("a number without a receipt cannot render here", { exact: false })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Distribution proof." })).toBeVisible();
+  await expect(page.getByText("paid + unclaimed must equal the pool", { exact: false })).toBeVisible();
+  await expect(page.getByText("Last verified on-chain at block", { exact: false })).toBeVisible();
+});
+
 /* Renegotiated Aug 12: the founder's two-journey rewrite replaced the old
    "One home can prove a wider model." beat by DESIGN — the eco journey now
    mentions HOMES exactly once, at the very end, as the long-term framing.

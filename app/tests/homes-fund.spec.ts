@@ -12,6 +12,7 @@ import {
   homesWindDownPayouts,
   homesProfitPayouts,
   reconcileHomesFeeLedger,
+  reconcileHomesProfitLedger,
   currentHomesSnapshot,
 } from "@/lib/homes/fund";
 import { HOMES_TOKEN_ADDRESS, HOMES_TOKEN_CHAIN_ID } from "@/lib/homes/token";
@@ -127,6 +128,51 @@ test("fee ledgers reconcile source receipts without double allocating trading an
     ...snapshot,
     fees: { ...snapshot.fees, totalUsdc: BigInt(6_000_000) },
   })).toThrow(/does not reconcile/i);
+});
+
+/* D-1: a fabricated dashboard number is a BUILD failure, not a review
+   comment. Money without receipts, broken arithmetic, or a distribution
+   without its snapshot block all throw. */
+test("the profit ledger and distributions make fabricated numbers structurally impossible", () => {
+  const base = currentHomesSnapshot();
+  expect(() => reconcileHomesProfitLedger(base)).not.toThrow();
+
+  const row = {
+    period: "2027-Q1", propertyId: "pilot-1",
+    grossUsdc: BigInt(10_000_000_000), expensesUsdc: BigInt(4_000_000_000),
+    reservesUsdc: BigInt(1_000_000_000), netUsdc: BigInt(5_000_000_000),
+    communityPoolUsdc: BigInt(3_000_000_000),
+    receiptHashes: [`0x${"a".repeat(64)}`] as `0x${string}`[],
+  };
+  expect(() => reconcileHomesProfitLedger({ ...base, profitLedger: [row] })).not.toThrow();
+  expect(() => reconcileHomesProfitLedger({ ...base, profitLedger: [{ ...row, receiptHashes: [] }] }))
+    .toThrow(/without a receipt hash/i);
+  expect(() => reconcileHomesProfitLedger({ ...base, profitLedger: [{ ...row, netUsdc: BigInt(6_000_000_000), communityPoolUsdc: BigInt(3_600_000_000) }] }))
+    .toThrow(/net .+ gross/i);
+  expect(() => reconcileHomesProfitLedger({ ...base, profitLedger: [{ ...row, communityPoolUsdc: BigInt(2_000_000_000) }] }))
+    .toThrow(/community pool/i);
+
+  const distribution = {
+    period: "2027-Q1", netProfitUsdc: BigInt(5_000_000_000),
+    communityPoolUsdc: BigInt(3_000_000_000), paidUsdc: BigInt(2_500_000_000),
+    unclaimedUsdc: BigInt(500_000_000), snapshotBlock: BigInt(70_000_000),
+    eligibleCount: 120, claimTxHashes: [`0x${"b".repeat(64)}`] as `0x${string}`[],
+    transactionHash: null,
+  };
+  expect(() => reconcileHomesProfitLedger({ ...base, distributions: [distribution] })).not.toThrow();
+  expect(() => reconcileHomesProfitLedger({ ...base, distributions: [{ ...distribution, unclaimedUsdc: BigInt(600_000_000) }] }))
+    .toThrow(/paid \+ unclaimed/i);
+  expect(() => reconcileHomesProfitLedger({ ...base, distributions: [{ ...distribution, claimTxHashes: [], transactionHash: null }] }))
+    .toThrow(/without a transaction hash/i);
+  expect(() => reconcileHomesProfitLedger({ ...base, distributions: [{ ...distribution, snapshotBlock: null }] }))
+    .toThrow(/without a snapshot block/i);
+});
+
+test("the snapshot carries its last independently verified block", () => {
+  const snapshot = currentHomesSnapshot();
+  expect(snapshot.chain.lastVerifiedBlock).toBe(67_921_152);
+  expect(typeof snapshot.chain.verifiedAtISO).toBe("string");
+  expect(snapshot.profitLedger).toEqual([]);
 });
 
 test("unclassified addresses fail closed instead of entering holder distributions", () => {

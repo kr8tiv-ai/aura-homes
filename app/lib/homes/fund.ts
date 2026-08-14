@@ -3,6 +3,7 @@ import {
   HOMES_TOKEN_ADDRESS,
   HOMES_TOKEN_CHAIN_ID,
 } from "./token";
+import mintVerification from "@data/homes/mint-verification.json";
 
 export const HOMES_FEE_ALLOCATION = {
   propertyFund: 60,
@@ -56,6 +57,10 @@ export interface HomesSnapshot {
     stakingAddress: `0x${string}` | null;
     treasuryAddress: `0x${string}` | null;
     snapshotBlock: bigint | null;
+    /** The newest block at which ANY on-chain fact on this dashboard was
+     * independently read (today: the mint verification artifact). */
+    lastVerifiedBlock: number | null;
+    verifiedAtISO: string | null;
   };
   fees: {
     totalUsdc: bigint;
@@ -85,11 +90,32 @@ export interface HomesSnapshot {
     location: string;
     status: "candidate" | "due-diligence" | "acquired" | "building" | "operating";
     acquisitionReceiptHash: `0x${string}` | null;
+    /** What still stands between this property and its next status. */
+    blockers: string[];
+    /** Dated evidence pointers (title docs, appraisals, inspection hashes). */
+    evidence: string[];
+  }>;
+  /** Per-period operating money, gross to community pool, every non-zero
+   * figure backed by receipt hashes — enforced by reconcileHomesProfitLedger. */
+  profitLedger: Array<{
+    period: string;
+    propertyId: string;
+    grossUsdc: bigint;
+    expensesUsdc: bigint;
+    reservesUsdc: bigint;
+    netUsdc: bigint;
+    communityPoolUsdc: bigint;
+    receiptHashes: `0x${string}`[];
   }>;
   distributions: Array<{
     period: string;
     netProfitUsdc: bigint;
     communityPoolUsdc: bigint;
+    paidUsdc: bigint;
+    unclaimedUsdc: bigint;
+    snapshotBlock: bigint | null;
+    eligibleCount: number;
+    claimTxHashes: `0x${string}`[];
     transactionHash: `0x${string}` | null;
   }>;
   windDown: {
@@ -222,6 +248,40 @@ export function reconcileHomesFeeLedger(snapshot: HomesSnapshot): {
  * has its own receipt. Venue fees accrue at XLaunch but are recognized only
  * after claim receipts are published — `reconcileHomesFeeLedger` makes a
  * half-recognized number a build failure, not a silent lie. */
+/** Fabricated numbers are structurally impossible: any non-zero USDC figure
+ * in the profit ledger or a distribution must carry at least one receipt
+ * hash, the arithmetic must reconcile (net = gross − expenses − reserves;
+ * community pool = 60% of net; paid + unclaimed = pool), and violations
+ * throw at module scope — a lying dashboard fails the BUILD. */
+export function reconcileHomesProfitLedger(snapshot: HomesSnapshot): void {
+  const zero = BigInt(0);
+  for (const row of snapshot.profitLedger) {
+    const anyMoney = row.grossUsdc > zero || row.expensesUsdc > zero || row.reservesUsdc > zero || row.netUsdc > zero || row.communityPoolUsdc > zero;
+    if (anyMoney && row.receiptHashes.length === 0) {
+      throw new Error(`Profit row ${row.period}/${row.propertyId} carries money without a receipt hash.`);
+    }
+    if (row.netUsdc !== row.grossUsdc - row.expensesUsdc - row.reservesUsdc) {
+      throw new Error(`Profit row ${row.period}/${row.propertyId} does not reconcile: net ≠ gross − expenses − reserves.`);
+    }
+    const pool = row.netUsdc > zero ? row.netUsdc * BigInt(HOMES_PROPERTY_OWNERSHIP.community) / BigInt(100) : zero;
+    if (row.communityPoolUsdc !== pool) {
+      throw new Error(`Profit row ${row.period}/${row.propertyId} community pool is not ${HOMES_PROPERTY_OWNERSHIP.community}% of net.`);
+    }
+  }
+  for (const distribution of snapshot.distributions) {
+    const anyMoney = distribution.communityPoolUsdc > zero || distribution.paidUsdc > zero || distribution.unclaimedUsdc > zero;
+    if (anyMoney && distribution.claimTxHashes.length === 0 && distribution.transactionHash === null) {
+      throw new Error(`Distribution ${distribution.period} carries money without a transaction hash.`);
+    }
+    if (distribution.paidUsdc + distribution.unclaimedUsdc !== distribution.communityPoolUsdc) {
+      throw new Error(`Distribution ${distribution.period} does not reconcile: paid + unclaimed ≠ community pool.`);
+    }
+    if (anyMoney && distribution.snapshotBlock === null) {
+      throw new Error(`Distribution ${distribution.period} carries money without a snapshot block.`);
+    }
+  }
+}
+
 export function currentHomesSnapshot(): HomesSnapshot {
   return {
     status: "live",
@@ -233,6 +293,8 @@ export function currentHomesSnapshot(): HomesSnapshot {
       stakingAddress: null,
       treasuryAddress: null,
       snapshotBlock: null,
+      lastVerifiedBlock: mintVerification.block,
+      verifiedAtISO: mintVerification.verifiedAt,
     },
     fees: {
       totalUsdc: BigInt(0),
@@ -253,6 +315,7 @@ export function currentHomesSnapshot(): HomesSnapshot {
     },
     holders: { stakedCount: 0, eligibleCount: 0, cutoffStake: null },
     properties: [],
+    profitLedger: [],
     distributions: [],
     windDown: {
       status: "not-configured",
