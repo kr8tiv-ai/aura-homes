@@ -1,0 +1,30 @@
+{
+  "node": "FD1",
+  "graphVersion": "1.2",
+  "job": "One shared scene-geometry constants module so the deck/steps/walkway MESHES and the meadow clearance MASK can never diverge again (Audit #7 finding 1 - the divergent-copies class that shipped grass through the deck and the steps twice).",
+  "context": "Today the deck mesh (app/components/story/SceneDetail.tsx ~L782-794), the entrance steps (EntranceSteps, ~L1533), the runtime mask (app/lib/three/meadow/field.ts sampleMeadowClearance), the generator mask (app/scripts/generate-meadow-atlas.mjs clearance), and the placement test (app/tests/meadow-progressive.spec.ts) each carry their own numeric literals. A grep tripwire pins the deck rect today; the structural fix is one module.",
+  "writeSet": [
+    "app/lib/three/meadow/geometry.ts (new)",
+    "app/lib/three/meadow/field.ts",
+    "app/scripts/generate-meadow-atlas.mjs",
+    "app/components/story/SceneDetail.tsx",
+    "app/tests/meadow-progressive.spec.ts"
+  ],
+  "rejectionGates": [
+    "the atlas .bin must remain BYTE-IDENTICAL after the refactor (same constants, moved not changed): run `node scripts/generate-meadow-atlas.mjs --verify` before AND after - if the sha changes, you changed a value, stop",
+    "the mask parity spec must stay green untouched"
+  ],
+  "instructions": [
+    "1. Create app/lib/three/meadow/geometry.ts exporting plain-number consts: HOUSE_RECT, DECK_RECT {x0:-3.9,z0:2.95,x1:3.6,z1:6.3, surfaceY:0.485}, WALKWAY_SEGMENT, STEPS_RECT_WIDE {-1.45,6.3,1.55,8.7}, STEPS_RECT_TIGHT, STEPS_TREADS {originZ:6.55, treadDepth:0.36, count:5, width:2.3, originX:0.05}, TUB_CENTER, FIREPIT_CENTER, BENCH_CENTER, PATH points. Pure data, no three imports (the generator script imports it from node).",
+    "2. field.ts + the generator script import the consts and derive their fade() calls from them (pads/feathers stay local per consumer).",
+    "3. SceneDetail: EntranceSteps and the deck mesh derive their positions/sizes from the same consts (the deck group position/box args, the steps group origin/tread loop).",
+    "4. The placement test derives its rects from the module instead of literals; the grep tripwire test is then retired IN THE SAME COMMIT with a comment pointing here.",
+    "5. Verify byte-identity of the atlas, then the full chain."
+  ],
+  "verify": {
+    "commands": ["node scripts/generate-meadow-atlas.mjs --verify", "npx tsc --noEmit", "npm test", "npm run test:ui", "AURA_MEADOW_BASELINE=<baseline-dir> node scripts/meadow-proof.mjs"],
+    "note": "byte-identical atlas is the proof the refactor changed structure, not values"
+  },
+  "sideEffect": "local",
+  "status": "ready"
+}

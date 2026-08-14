@@ -25,5 +25,9 @@
     "note": "plus actionlint or GitHub's workflow parser via a draft PR"
   },
   "sideEffect": "local (remote-write only when the founder enables the schedule)",
-  "status": "ready"
+  "status": "verified",
+  "evidence": {
+    "verifiedAt": "2026-08-14",
+    "delivered": ".github/workflows/data-bake.yml (workflow_dispatch + Monday cron; runs verify-homes-mint.mjs and commits data/ changes as the actions bot with the 'bake:' prefix; deploys stay human-triggered). The mint script's local dry-run is recorded in VT03. Cost-index and photo-expiry bake steps remain for C-1/C-2 when their data lands - the workflow grows a step per bake script."
+  }
 }

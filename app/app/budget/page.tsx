@@ -187,6 +187,12 @@ export default function BudgetPage() {
                 <option value="full-service">Full service</option>
               </select>
             </label>
+            <label>AWG summer water
+              <select aria-label="AWG summer water module" value={scenario.awgIncluded !== false ? "included" : "descoped"} onChange={(event) => select("awgIncluded", event.target.value === "included")}>
+                <option value="included">Included (recommended)</option>
+                <option value="descoped">Descoped</option>
+              </select>
+            </label>
             <label>Delivery distance (km)
               <input aria-label="Delivery distance (km)" type="number" min="0" max="20000" step="10" value={scenario.shippingDistanceKm} onChange={(event) => select("shippingDistanceKm", Number(event.target.value))} />
             </label>

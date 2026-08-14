@@ -25,8 +25,12 @@
     "note": "run from app/"
   },
   "sideEffect": "local",
-  "status": "ready",
+  "status": "verified",
   "evidence": {
+    "surfaceHalf": {
+      "verifiedAt": "2026-08-14",
+      "delivered": "supply design-note renders block/supply/pool/creator from the artifact; proof-register row 'Live mint verification' with reproduce link; FAQ supply answer interpolates the same artifact; README updated; homes-ui.spec pins the rendered verification. Voice calibrated per D-2026-08-14-voice-calibration (facts once, near the action)."
+    },
     "readHalf": {
       "verifiedAt": "2026-08-14T06:49:45.480Z",
       "block": 67921152,

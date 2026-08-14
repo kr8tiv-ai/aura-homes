@@ -39,7 +39,7 @@
     },
     {
       "claim": "The 30/10/10/20/30 supply split is a design target, not the live mint",
-      "proof": "Labelled on /homes and in the FAQ; live distribution verification pending (VT03)",
+      "proof": "Labelled on /homes and in the FAQ; VT03 on-chain verification COMPLETE (data/homes/mint-verification.json, read 2026-08-14): block 67,921,152, total supply 1,000,000,000 HOMES, 94.63% venue pool / 0.8% creator wallet — a launchpad curve, rendered on /homes beside the design split and reproducible via app/scripts/verify-homes-mint.mjs",
       "gate": "VT03 on-chain verification before any design number reads as live"
     },
     {

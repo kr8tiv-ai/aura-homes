@@ -9,6 +9,7 @@ import { Reveal, Stagger, StaggerItem, GrowBar, Counter } from "@/components/Rev
    aura-panel so the hover glow and border tracer apply here too. */
 
 const REPO = "https://github.com/kr8tiv-ai/aura-homes";
+import mintVerification from "@data/homes/mint-verification.json";
 
 const faqs = [
   {
@@ -60,7 +61,7 @@ const faqs = [
   },
   {
     q: "How is the HOMES token supply allocated?",
-    a: "The design reserves 30 percent for labeled team vesting wallets, 10 percent for marketing, 10 percent for approved exchange-listing requirements, 20 percent for protocol-owned liquidity, and 30 percent for public market distribution. These percentages describe intended token inventory, not fee revenue — and not yet the live mint: the token was minted by XLaunch's factory, and its actual on-chain distribution is being verified before any design number is presented as the live one. Any unused listing allocation must remain visible rather than silently becoming team supply.",
+    a: `The design reserves 30 percent for labeled team vesting wallets, 10 percent for marketing, 10 percent for approved exchange-listing requirements, 20 percent for protocol-owned liquidity, and 30 percent for public market distribution. These percentages describe intended token inventory, not fee revenue — and not the live mint: the live distribution is verified on-chain (block ${mintVerification.block.toLocaleString("en-US")}: ${mintVerification.knownHolders.wspcxxPool.percentOfSupply} percent in the venue pool, ${mintVerification.knownHolders.creatorWallet.percentOfSupply} percent in the creator wallet — a launchpad curve). Any unused listing allocation must remain visible rather than silently becoming team supply.`,
   },
   {
     q: "How would HOMES payouts work?",

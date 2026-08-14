@@ -24,6 +24,7 @@ import {
   XLAUNCH_TOKEN_URL,
   shortHomesAddress,
 } from "@/lib/homes/token";
+import mintVerification from "@data/homes/mint-verification.json";
 
 export const metadata = {
   title: "HOMES on X Layer — Aura Homes",
@@ -96,13 +97,11 @@ export default function HomesPage() {
       <section className="homes-section" aria-label="HOMES in plain words">
         <p className="max-w-3xl text-base leading-relaxed text-aura-text/85">
           In plain words: HOMES is <strong>live</strong> — launched on XLaunch, a permissionless
-          launchpad on X Layer mainnet, where you can buy it today. The idea it funds is a
-          future owner-participating network of eco stays — think Airbnb, owned over time by its
-          guests and hosts once those rights actually exist — backed by a
-          transparent property trust. That part is still <strong>planned</strong>: no trust,
-          staking, property, or payout exists yet. It is a micro-cap experiment on an unaudited
-          venue factory; buy only what you can afford to lose. Every zero below is declared, and
-          every claim keeps its Today / Next / Future label until something is real.
+          launchpad on X Layer mainnet, and you can buy it today. It funds an idea we are
+          building in public: a future owner-participating network of eco stays — think Airbnb,
+          owned over time by its guests and hosts — backed by a transparent property trust.
+          The token is live; the trust, staking, and first property are still being
+          <strong> built</strong>, and every zero below is declared until its receipt exists.
         </p>
       </section>
 
@@ -129,9 +128,12 @@ export default function HomesPage() {
           ))}
         </div>
         <p className="homes-budget-note">
-          These percentages are design targets. The live token was minted by XLaunch&apos;s
-          factory; its actual on-chain distribution is being verified and will be published
-          as-is here before any design number is presented as the live one.
+          These percentages are design targets. The live mint is verified on-chain — block{" "}
+          {mintVerification.block.toLocaleString("en-US")}: total supply{" "}
+          {mintVerification.totalSupply.tokens.toLocaleString("en-US")} HOMES, with{" "}
+          {mintVerification.knownHolders.wspcxxPool.percentOfSupply}% in the venue pool and{" "}
+          {mintVerification.knownHolders.creatorWallet.percentOfSupply}% in the creator wallet —
+          a launchpad curve, not the design split. No design number is presented as the live one.
         </p>
         <h3 className="homes-subledger-title">Trading-fee revenue · proposed</h3>
         <div className="homes-allocation">
@@ -208,6 +210,7 @@ export default function HomesPage() {
           <div><dt>HOMES token contract</dt><dd>Live · <a href={HOMES_EXPLORER_URL} target="_blank" rel="noreferrer">{shortHomesAddress()} on the X Layer explorer ↗</a></dd></div>
           <div><dt>Venue market</dt><dd>XLaunch · HOMES/wSPCXx pool <a href={HOMES_GECKOTERMINAL_URL} target="_blank" rel="noreferrer">{shortHomesAddress(HOMES_POOL_ADDRESS)} ↗</a> · liquidity locked in the venue&apos;s locker, no withdraw path</dd></div>
           <div><dt>Creator fee-claim wallet</dt><dd>Published · <a href={HOMES_CREATOR_WALLET_EXPLORER_URL} target="_blank" rel="noreferrer">{shortHomesAddress(HOMES_CREATOR_WALLET)} ↗</a> · receives 60% of the venue&apos;s 1% swap fee; claims appear here with receipts before any amount is recognized</dd></div>
+          <div><dt>Live mint verification</dt><dd>Block {mintVerification.block.toLocaleString("en-US")} · {mintVerification.totalSupply.tokens.toLocaleString("en-US")} HOMES · pool {mintVerification.knownHolders.wspcxxPool.percentOfSupply}% · creator {mintVerification.knownHolders.creatorWallet.percentOfSupply}% · <a href="https://github.com/kr8tiv-ai/aura-homes/blob/main/app/scripts/verify-homes-mint.mjs" target="_blank" rel="noreferrer">reproduce this read ↗</a></dd></div>
           <div><dt>Property-fund vault</dt><dd>Not deployed</dd></div>
           <div><dt>Staking + distribution</dt><dd>Coming later · design only</dd></div>
           <div><dt>Property holding trust</dt><dd>Not formed; no legal title held</dd></div>
@@ -238,13 +241,12 @@ export default function HomesPage() {
           <li><span>04</span><strong>Verify what you bought</strong><p>Check the contract address against the one published here — {shortHomesAddress()} — and the pool on GeckoTerminal. If an address differs, it is not HOMES.</p></li>
         </ol>
         <div className="homes-micro-liquidity">
-          <strong>Read this before buying.</strong>
+          <strong>The facts, once.</strong>
           <p>
-            Transactions are irreversible. HOMES is a micro-cap experiment launched through a
-            permissionless, unaudited venue factory; tokens like this routinely go to zero.
-            Locked liquidity is not a price floor. The quote asset is a wrapped-stock token
-            whose third-party issuer can pause transfers. Nothing here is investment advice or
-            an offer; buy only what you can afford to lose.
+            Swaps are irreversible. HOMES is a micro-cap on a permissionless venue — it can go
+            to zero, locked liquidity is not a price floor, and the wrapped-stock quote asset
+            can be paused by its issuer. We publish every address above so you can verify
+            instead of trust.
           </p>
         </div>
       </section>
@@ -259,7 +261,7 @@ export default function HomesPage() {
           <article><span>Credible small launch</span><strong>$25k–$100k</strong><p>$10k–$50k liquidity plus independent contract review, multisig/timelock operations, monitoring and entity/trust readiness.</p></article>
           <article><span>OKX exchange listing</span><strong>Not publicly priced</strong><p>Separate application and review with no approval guarantee. An X Layer DEX pool or OKX Wallet visibility does not equal an OKX exchange listing.</p></article>
         </div>
-        <p className="homes-budget-note">Recommended price path: HOMES/USDC as the auditable primary market. Any direct SPACEX pool remains blocked until its exact X Layer contract, ownership, liquidity, and lack of affiliation are verified.</p>
+        <p className="homes-budget-note">The launch happened at the Experiment tier: the founder chose XLaunch&apos;s wSPCXx-quoted market, superseding the earlier HOMES/USDC-first recommendation. The pool, locker, and wrapper risks are published in the register above; a deeper-liquidity market remains a later decision with its own receipts.</p>
         <div className="homes-micro-liquidity">
           <strong>$50 is micro-liquidity, not a public market.</strong>
           <p>At $25 USDC plus $25-equivalent HOMES, a $10 buy can move the AMM spot price by roughly 96% before fees. Aura would use that tier only for testnet or a clearly labeled experimental proof with no sale campaign, valuation claim, or broad distribution.</p>
@@ -273,13 +275,13 @@ export default function HomesPage() {
 
       <section className="homes-section" aria-labelledby="launch-policy-heading">
         <div className="homes-section-heading">
-          <div><p className="aura-label">Protocol-owned liquidity</p><h2 id="launch-policy-heading">A launch people can inspect.</h2></div>
-          <p>The decentralized property trust treasury supplies and owns the liquidity position. Team allocation, vesting, sale caps and administrative powers are visible before the first public transaction.</p>
+          <div><p className="aura-label">Launch policy — design vs live</p><h2 id="launch-policy-heading">A launch people can inspect.</h2></div>
+          <p>The DESIGN: a multisig trust treasury supplies and owns the liquidity, with allocation, vesting, caps and admin powers visible before the first transaction. The LIVE token took a different, simpler path — the venue locker holds the liquidity — and both are stated here side by side.</p>
         </div>
         <div className="homes-launch-policy">
-          <article><span>{HOMES_TEAM_ALLOCATION_PERCENT}%</span><h3>Team at genesis</h3><p>Mint to labeled vesting wallets with a proposed 12-month cliff and 36-month linear release. The team does not buy against public participants.</p></article>
-          <article><span>{HOMES_INITIAL_BUY_CAP_PERCENT}%</span><h3>Initial distribution cap</h3><p>Cap each participating address during the launch window. Do not embed a permanent max-wallet restriction in the ERC-20; address splitting defeats it and integrations can break.</p></article>
-          <article><span>Trust</span><h3>Own the liquidity</h3><p>A multisig-controlled trust treasury seeds HOMES/USDC and owns the Uniswap V3 position NFT. A dedicated time-lock vault restricts principal withdrawal under a published policy.</p></article>
+          <article><span>{HOMES_TEAM_ALLOCATION_PERCENT}%</span><h3>Team at genesis — design</h3><p>Mint to labeled vesting wallets with a proposed 12-month cliff and 36-month linear release. The live mint has no vesting wallets; the verified distribution is in the register above.</p></article>
+          <article><span>{HOMES_INITIAL_BUY_CAP_PERCENT}%</span><h3>Initial distribution cap</h3><p>Designed as a launch-window cap — and the venue enforced exactly this: XLaunch capped wallets at 2% for the launch window. Not embedded permanently in the ERC-20, where address splitting defeats it.</p></article>
+          <article><span>Locker</span><h3>Who owns the liquidity</h3><p>Live today: XLaunch&apos;s locker contract holds the pool&apos;s liquidity with no withdraw path. The designed multisig trust treasury with a published withdrawal policy is a later build with its own receipts.</p></article>
           <article><span>Clean</span><h3>Plain token mechanics</h3><p>No transfer tax, hidden mint, blacklist, honeypot rule or owner-only liquidity exit. Privileged changes use multisig plus a public timelock.</p></article>
         </div>
       </section>

@@ -1,0 +1,36 @@
+# DB01 — scheduled data bake (free-tier, no server).
+#
+# Refreshes slow-moving data as COMMITTED JSON: the site stays fully static.
+# Prepared by the graph loop on 2026-08-14; the SCHEDULE only runs once the
+# founder enables Actions for it (it creates commits). workflow_dispatch lets
+# him run it by hand first. Deploys stay human-triggered — a bake commit does
+# NOT publish; the next release carries it.
+name: data-bake
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "0 12 * * 1" # Mondays 12:00 UTC
+permissions:
+  contents: write
+jobs:
+  bake:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Verify the live HOMES mint (public RPC, read-only)
+        working-directory: app
+        run: node scripts/verify-homes-mint.mjs
+      - name: Commit changed data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/
+          if git diff --cached --quiet; then
+            echo "bake: no data changes"
+          else
+            git commit -m "bake: refresh committed data (mint verification)"
+            git push
+          fi

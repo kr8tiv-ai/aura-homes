@@ -26,6 +26,10 @@ export interface ProjectBudgetScenario {
   delivery: DeliveryMode;
   shippingDistanceKm: number;
   contingencyPct: number;
+  /** AWG is recommended on every Aura home, not mandatory (founder decision
+   * 2026-08-14). Defaults true; scenarios saved before the field existed
+   * read as true. Descoping recomputes the bands from the remaining lines. */
+  awgIncluded: boolean;
 }
 
 export interface BudgetRange {
@@ -98,6 +102,7 @@ export type ProjectBudgetBasisChangeField =
   | "delivery"
   | "shipping"
   | "contingency"
+  | "awg"
   | "region"
   | "municipality"
   | "budget-cap"
@@ -183,6 +188,7 @@ export function defaultProjectBudgetScenario(): ProjectBudgetScenario {
     delivery: "hybrid",
     shippingDistanceKm: 0,
     contingencyPct: 12,
+    awgIncluded: true,
   };
 }
 
@@ -241,6 +247,7 @@ export function diagnoseProjectBudgetBasis(
   if (reference.scenario.delivery !== current.scenario.delivery) add("delivery", "The delivery method changed.");
   if (reference.scenario.shippingDistanceKm !== current.scenario.shippingDistanceKm) add("shipping", "The shipping distance changed.");
   if (reference.scenario.contingencyPct !== current.scenario.contingencyPct) add("contingency", "The contingency changed.");
+  if ((reference.scenario.awgIncluded !== false) !== (current.scenario.awgIncluded !== false)) add("awg", "The AWG water module was descoped or restored.");
   if (reference.region !== current.region) add("region", "The pricing region changed.");
   if (reference.municipality !== current.municipality) add("municipality", "The municipality changed.");
   if (reference.budgetCapCad !== (current.cap?.capCad ?? null)) add("budget-cap", "The working budget cap changed.");
@@ -250,10 +257,14 @@ export function diagnoseProjectBudgetBasis(
   return { state: reference.budgetHash === current.budgetHash ? "current" : "changed", changes };
 }
 
-function systemsFor(strategy: UtilityStrategy, areaSqFt: number) {
+/* AWG rides every strategy at the founder's recommended default (decision
+   2026-08-14: recommended on every home, not mandatory) — a serviced home
+   gets the same summer module as an off-grid one unless the owner descopes
+   it in the scenario. */
+function systemsFor(strategy: UtilityStrategy, areaSqFt: number, awgIncluded: boolean) {
   if (strategy === "serviced") {
     return ecoSystems({
-      awg: false,
+      awg: awgIncluded,
       solar_kw: 0,
       battery_kwh: 0,
       generator: false,
@@ -269,7 +280,7 @@ function systemsFor(strategy: UtilityStrategy, areaSqFt: number) {
       solar_kw: Math.round(4.5 * scale * 2) / 2,
       battery_kwh: Math.round(12 * scale),
       generator: false,
-      awg: false,
+      awg: awgIncluded,
       cistern_litres: Math.round(5_000 * scale / 500) * 500,
     });
   }
@@ -277,7 +288,7 @@ function systemsFor(strategy: UtilityStrategy, areaSqFt: number) {
     solar_kw: Math.round(8 * scale * 2) / 2,
     battery_kwh: Math.round(24 * scale),
     generator: true,
-    awg: true,
+    awg: awgIncluded,
     cistern_litres: Math.round(9_000 * scale / 500) * 500,
   });
 }
@@ -358,9 +369,12 @@ export function createProjectBudget(input: ProjectBudgetInput): ProjectBudget {
     delivery: rawScenario.delivery,
     shippingDistanceKm: boundedNumber(rawScenario.shippingDistanceKm, 0, 0, 20_000),
     contingencyPct: boundedNumber(rawScenario.contingencyPct, 12, 5, 35),
+    /* Scenarios persisted before the field existed read as included — the
+       recommended default, never a silent descope. */
+    awgIncluded: rawScenario.awgIncluded !== false,
   };
   const measures = designMeasures(document);
-  const systems = systemsFor(scenario.utilities, measures.areaSqFt);
+  const systems = systemsFor(scenario.utilities, measures.areaSqFt, scenario.awgIncluded);
   const bom = buildBom({
     width_ft: measures.widthFt,
     depth_ft: measures.depthFt,

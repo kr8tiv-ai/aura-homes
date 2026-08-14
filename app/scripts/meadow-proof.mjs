@@ -2,7 +2,7 @@
    texture inside fixed meadow-only camera regions, separately asserts that
    projected flower heads are present, and captures causal promotion telemetry
    before screenshot/scroll work can contaminate it. */
-import { spawn } from "node:child_process";
+import { execSync, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -315,6 +315,18 @@ async function runMobileProof(browser) {
   const idleRenderStart = await page.evaluate(() => (globalThis.__AURA_RENDER_PROOF__ ?? []).length);
   await page.waitForTimeout(1_500);
   const idleRenderEnd = await page.evaluate(() => (globalThis.__AURA_RENDER_PROOF__ ?? []).length);
+  /* Audit #7 finding 2: frames-rendered proved rendering, not motion — a
+     mobile-only wind freeze under an always frameloop passed. Calibrated
+     Aug 14 by measurement: at scroll 0 the portrait frame is DOM hero copy
+     (its tracer animations would false-positive a wind gate); at the first
+     beat (scrollY 700) the meadow band in front of the house sits at
+     y 0.42–0.58 and measures ~0.028 moving pixels against a 0.000 static
+     floor. Gate at 0.006 — 4× margin, zero on a frozen meadow. */
+  await page.evaluate(() => { window.scrollTo(0, 700); window.dispatchEvent(new Event("scroll")); });
+  await page.waitForTimeout(2_500);
+  const mobileWindMotion = await captureWindMotion(page, { x: 0.02, y: 0.42, width: 0.96, height: 0.16 });
+  await page.evaluate(() => { window.scrollTo(0, 0); window.dispatchEvent(new Event("scroll")); });
+  await page.waitForTimeout(800);
   const ledger = await page.evaluate(() => {
     const canvas = document.querySelector(".story-scene-root canvas");
     const gl = canvas?.getContext("webgl2") ?? canvas?.getContext("webgl");
@@ -342,9 +354,15 @@ async function runMobileProof(browser) {
     activeFrameP95Ms: ledger.final?.governor.p95FrameMs ?? null,
     causalLongTaskMaxMs: ledger.final?.governor.maxLongTaskMs ?? null,
     fullRunRenderP95Ms: percentile95(ledger.renderDurations),
-    /* An untouched scene keeps rendering: the wind never sleeps. Zero new
-       frames during idle is the frozen-meadow failure, not a pass. */
-    livingWind: { start: idleRenderStart, end: idleRenderEnd, passes: idleRenderEnd > idleRenderStart },
+    /* An untouched scene keeps rendering AND its meadow pixels move: the
+       wind never sleeps. Zero new frames or still pixels is the frozen-
+       meadow failure, not a pass. */
+    livingWind: {
+      start: idleRenderStart,
+      end: idleRenderEnd,
+      motionPixelRatio: Number(mobileWindMotion.toFixed(6)),
+      passes: idleRenderEnd > idleRenderStart && mobileWindMotion >= 0.006,
+    },
     camera: mobileCamera,
     flowerVisibility: ledger.flowerVisibility,
   };
@@ -497,6 +515,8 @@ try {
   const report = {
     schema: "MeadowHardwareProofV3",
     createdAt: new Date().toISOString(),
+    /* Audit #7 finding 5: a proof without its commit is unanchorable. */
+    sourceCommit: execSync("git rev-parse HEAD", { cwd: path.resolve("..") }).toString().trim(),
     screenshotPaths,
     approvedBaselineHashes,
     renderer: runtime.renderer,

@@ -160,7 +160,7 @@ export function designBriefToBudget(
  *
  * Follows the file's totalsRule exactly: totals = sum of line items x
  * (1 + contingencyPct), land excluded from ex-land totals. No line is
- * optional — the AWG summer water module is standard on every Aura home
+ * optional — the AWG summer water module is recommended on every Aura home
  * (founder mandate). The file's contingencyPct governs — a questionnaire
  * contingency override is deliberately ignored here so agent output equals the
  * published totals to the dollar (ex-land 199,100 / 301,280 / 443,900 at
@@ -194,7 +194,7 @@ function budgetFromRepoModel(
   const lines: BudgetLine[] = [];
   for (const item of model.lineItems) {
     // Questionnaire-driven inclusion rules. Note: awgSupplement is NEVER
-    // skipped — the AWG summer water module is standard on every Aura home
+    // skipped — the AWG summer water module is recommended on every Aura home
     // (founder mandate; cistern/well still carries winter).
     if (item.key === "hotTubDeck" && !q.extras.hotTub && !q.extras.deck) continue;
 
@@ -290,12 +290,12 @@ function budgetFromDefaults(
   } else {
     push("water", "Water", "Buried cistern + delivery setup", model.cistern);
   }
-  // AWG summer water module — standard on every Aura home (founder mandate);
+  // AWG summer water module — recommended on every Aura home (founder mandate);
   // summer producer plumbed into the cistern loop, cistern/well carries winter.
   push(
     "awgSupplement",
     "Water",
-    "AWG summer water module (standard on every Aura home)",
+    "AWG summer water module (recommended on every Aura home)",
     model.awgSupplement
   );
   push("septic", "Septic", `Septic system (${q.water.septic})`, model.septic);

@@ -500,6 +500,20 @@ test("constrained desktop capability reaches the low-power meadow plan", async (
    how grass shipped through the deck: the generator's copy silently dropped
    the deck rectangle and glass walkway. The offline generator must sample
    the SAME field the live meadow samples, point for point. */
+/* Audit #7 finding 1 tripwire: the deck MESH and the clearance rect are
+   independent literals; whoever moves one must meet this test and move the
+   other. (The structural fix — one shared geometry-constants module — is
+   scaffolded as FD1.) */
+test("the deck rectangle literal exists in both mask sources and the proof carries its commit", async () => {
+  const detail = await readFile(path.join(appRoot, "components/story/SceneDetail.tsx"), "utf8");
+  const field = await readFile(path.join(appRoot, "lib/three/meadow/field.ts"), "utf8");
+  const proof = await readFile(path.join(appRoot, "scripts/meadow-proof.mjs"), "utf8");
+  expect(detail).toContain("-3.9, 2.95, 3.6, 6.3");
+  expect(field).toContain("-3.9, 2.95, 3.6, 6.3");
+  expect(proof).toContain("sourceCommit");
+  expect(proof).toContain("mobileWindMotion >= 0.006");
+});
+
 test("the atlas generator's clearance and terrain match the runtime meadow field exactly", async () => {
   const { clearance: atlasClearance, terrainHeight: atlasTerrainHeight } = await importAtlasGenerator();
   let samples = 0;

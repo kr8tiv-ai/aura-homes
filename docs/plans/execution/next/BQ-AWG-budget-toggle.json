@@ -26,5 +26,9 @@
     "note": "the demo's dollar-exact reconciliation is the hard gate"
   },
   "sideEffect": "local",
-  "status": "ready"
+  "status": "verified",
+  "evidence": {
+    "verifiedAt": "2026-08-14",
+    "delivered": "ProjectBudgetScenario.awgIncluded (default true; pre-field scenarios read as included - never a silent descope); systemsFor applies it across ALL strategies per the recommended-on-every-home decision; basis diagnostics gain an 'awg' change field; validator tolerates the absent key; budget page gains the 'AWG summer water' control (Included (recommended) / Descoped). Spec: default-included on every strategy, descope lowers mid subtotal and changes the budget hash, legacy scenario hash-identical to default. agent demo re-verified to the dollar after the label propagation."
+  }
 }

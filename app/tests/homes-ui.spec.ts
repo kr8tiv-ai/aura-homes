@@ -32,10 +32,14 @@ test("the live token ships its receipts, buy path, and risk labels together", as
     "https://xlaunch.fun/token/0x642855d557ada1eba8a66014aaff902e6394c0de",
   );
   await expect(page.getByRole("link", { name: "GeckoTerminal pool ↗" })).toBeVisible();
-  // The buy guide and its plain risk band are inseparable.
+  // The buy guide and its risk facts are inseparable — stated once, plainly
+  // (D-2026-08-14-voice-calibration: honest, not defensive repetition).
   await expect(page.getByRole("heading", { name: "How to buy HOMES." })).toBeVisible();
-  await expect(page.getByText("Read this before buying.", { exact: true })).toBeVisible();
-  await expect(page.getByText("tokens like this routinely go to zero", { exact: false })).toBeVisible();
+  await expect(page.getByText("The facts, once.", { exact: true })).toBeVisible();
+  await expect(page.getByText("it can go to zero", { exact: false })).toBeVisible();
+  // The mint verification renders real on-chain numbers, never the design split.
+  await expect(page.getByText("Live mint verification", { exact: true })).toBeVisible();
+  await expect(page.getByText("a launchpad curve, not the design split", { exact: false })).toBeVisible();
   // The founder-published creator fee-claim wallet is a receipt, not a secret.
   await expect(page.getByText("Creator fee-claim wallet", { exact: true })).toBeVisible();
   await expect(page.getByText("0x5e8a…41de", { exact: false })).toBeVisible();

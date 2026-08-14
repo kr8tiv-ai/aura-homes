@@ -13,8 +13,18 @@
     "never compile synchronously on mount - the warmup must be idle-scheduled AFTER settled, or it recreates the stall it removes",
     "the warmup must not mount visible geometry or lights that change the image (three.js recompiles ALL programs when the light count changes - warm with the real light configuration)"
   ],
+  "diagnostics-2026-08-14": {
+    "confirmed": [
+      "Stalls persist in the latest passing proof: ~5.4 s long task at ~25 s (post-settle full-tier promotion: EffectComposer + SoftShadows PCSS + IBL + rich materials mounting together - PCSS patches shader chunks globally and Environment changes envMap defines, so the whole material set recompiles), and ~6.8 s at ~31 s (night-switch wave).",
+      "LightArc uses ONE directional light repositioned day/dusk/night - no light-count change there.",
+      "OutdoorLighting's pointLight and Bollards are always mounted, intensity-scaled - not the trigger.",
+      "StarField's `amount < 0.02 -> null` compiled its program on the first night click - FIXED Aug 14 (always mounted, opacity-faded).",
+      "The 6.8 s night trigger is NOT yet attributed - no obvious conditional light/material at the Scene level; FirePit/HotTub/Props internals or a fog/define flip remain suspects."
+    ],
+    "strategySketch": "The durable fix is compile-at-full-complexity-behind-the-loader: mount SoftShadows, the composer (effects at zero intensity), and Environment from first paint on machines that will earn full, making tier promotion pure runtime state (uniforms/resolution) instead of mounts. That moves ALL compile cost behind the loader the stage machine already owns. Requires care on weak machines (they never promote, so gate the early mounts on the same lowPower check)."
+  },
   "instructions": [
-    "1. Identify what mounts/changes on night toggle (StarField, dusk material variants, OutdoorLighting night lights). If OutdoorLighting adds lights at night, consider mounting them always at intensity 0 - constant light count avoids the global program recompile entirely and may be the whole fix.",
+    "1. FIRST attribute the 6.8 s night wave precisely: temporary harness that wraps THREE.WebGLRenderer.compile/onBeforeCompile with console timing (or a Spector.js capture) across one night toggle, listing every program compiled and its ms. Do not guess.",
     "2. Build a NightProgramWarmup component modeled on GrassProgramWarmup: after the meadow reports terminal (listen to aura:meadow-progress like StoryCanvas does) and behind requestIdleCallback, gl.compileAsync a hidden scene containing the night-only materials with the night-time light configuration.",
     "3. Measure with scripts/meadow-proof.mjs on a quiet machine: interactionMs (first toggle) should drop toward the steady 150 ms range; the post-settle LoAF burst should disappear from fullRunLongAnimationFrames.",
     "4. Once proven across 2 consecutive runs, tighten the proof budget: interactionMs <= 250 back down toward 160, and note the change in the proof comment.",

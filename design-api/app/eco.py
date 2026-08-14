@@ -84,7 +84,7 @@ class Orientation(str, Enum):
 class EcoSystems(BaseModel):
     """The off-grid kit. Defaults are the Aura standard, not a blank slate."""
 
-    awg: bool = Field(default=True, description="Atmospheric water generation — standard on every home")
+    awg: bool = Field(default=True, description="Atmospheric water generation — recommended on every home")
     solar_kw: float = Field(default=8.0, ge=0, le=30)
     battery_kwh: float = Field(default=24.0, ge=0, le=100)
     generator: bool = Field(default=True, description="Auto-start; not optional in an Alberta January")

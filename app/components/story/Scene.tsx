@@ -2770,7 +2770,11 @@ function StarField({ amount }: { amount: number }) {
     g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
     return g;
   }, []);
-  if (amount < 0.02) return null;
+  /* Always mounted, faded by opacity: the old `amount < 0.02 → null` meant
+     the points program compiled on the FIRST night toggle instead of behind
+     the loader. 700 transparent points at opacity 0 cost nothing per frame;
+     a first-interaction compile hitch costs the moment the founder shows
+     someone the night sky. (NW01 tracks the remaining night-switch stall.) */
   return (
     <points geometry={geo} renderOrder={-11}>
       <pointsMaterial size={1.15} sizeAttenuation color="#dfe9f5" transparent opacity={amount * 0.95} fog={false} />

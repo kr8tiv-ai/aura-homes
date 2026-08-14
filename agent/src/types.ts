@@ -201,7 +201,7 @@ export interface AlbertaCostModel {
   solarBattery: CostRange; // 8-12 kW / 20-40 kWh package
   cistern: CostRange;
   well: CostRange;
-  /** AWG summer water module — standard on every Aura home (founder mandate). */
+  /** AWG summer water module — recommended on every Aura home (founder decision 2026-08-14; included in the reference configuration). */
   awgSupplement: CostRange;
   septic: CostRange;
   woodStoveInstalled: CostRange; // includes WETT inspection

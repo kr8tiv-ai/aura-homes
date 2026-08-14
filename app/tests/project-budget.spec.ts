@@ -39,6 +39,32 @@ test("a project budget is bound to the exact durable design", () => {
   expect(budget.exclusions.join(" ")).toMatch(/land|tax/i);
 });
 
+/* Founder decision 2026-08-14: AWG is recommended on every home, not
+   mandatory. Included is the default in every strategy; a descope recomputes
+   from the remaining lines; a scenario saved before the field existed reads
+   as included — never a silent descope. */
+test("AWG defaults to included on every strategy and descoping lowers the bands", () => {
+  const document = defaultBuilderDocument();
+  const build = (change: Partial<ProjectBudgetScenario>) =>
+    createProjectBudget({ document, scenario: scenario(change), region: "Alberta", municipality: "Foothills County", budgetCapCad: null });
+
+  for (const utilities of ["serviced", "hybrid", "off-grid"] as const) {
+    const included = build({ utilities });
+    const descoped = build({ utilities, awgIncluded: false });
+    expect(included.scenario.awgIncluded).toBe(true);
+    expect(descoped.scenario.awgIncluded).toBe(false);
+    expect(descoped.subtotal.mid).toBeLessThan(included.subtotal.mid);
+    expect(descoped.budgetHash).not.toBe(included.budgetHash);
+  }
+
+  // A pre-Aug-14 scenario has no awgIncluded key at all: it reads as included.
+  const legacy = scenario();
+  delete (legacy as Partial<ProjectBudgetScenario>).awgIncluded;
+  const restored = createProjectBudget({ document, scenario: legacy, region: "Alberta", municipality: "Foothills County", budgetCapCad: null });
+  expect(restored.scenario.awgIncluded).toBe(true);
+  expect(restored.budgetHash).toBe(build({}).budgetHash);
+});
+
 test("the canonical budget hash changes with the complete planning basis", () => {
   const document = defaultBuilderDocument();
   const first = createProjectBudget({ document, scenario: scenario(), region: "Alberta", municipality: "Foothills County", budgetCapCad: 500_000 });

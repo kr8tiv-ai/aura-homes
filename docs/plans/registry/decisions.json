@@ -49,6 +49,13 @@
       "standing": "executed"
     },
     {
+      "id": "D-2026-08-14-voice-calibration",
+      "date": "2026-08-14",
+      "decision": "Honest, not over-cautious. 'Don't worry about regs as much, worry about doing things right' / 'we're building defi software so we just need to be honest, not too cautious.' Risk facts are stated ONCE, plainly, near the action they concern - never repeated as defensive hedging across a page. Confident builder voice; the honesty rules (receipts, declared zeros, no present-tense unbuilt claims) are unchanged.",
+      "standing": "active",
+      "notes": "Applies to site copy, README, and collateral. Engineering gates (H20-class, receipts-before-recognition) are quality controls and stay as-is."
+    },
+    {
       "id": "D-2026-08-12-copy-latitude",
       "date": "2026-08-12",
       "decision": "Copy latitude: trim bodies, keep headings verbatim. Larger copy changes are per-line founder approvals.",

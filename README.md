@@ -210,12 +210,15 @@ a permissionless launchpad on X Layer mainnet 196:
 | Creator fee-claim wallet | [`0x5e8abc953f4d685943f1a0a730afffbba9df41de`](https://web3.okx.com/explorer/x-layer/address/0x5e8abc953f4d685943f1a0a730afffbba9df41de) — receives 60% of the venue's 1% swap fee |
 | How to buy | [aurahomes.fun/homes](https://aurahomes.fun/homes) — wallet, OKB gas/bridge steps, the venue Buy panel, and address verification |
 
-Say it plainly: this is a **micro-cap experiment minted by an unaudited,
-permissionless venue factory**, quoted against a wrapped-stock token whose
-issuer can pause transfers. Tokens like this routinely go to zero; locked
-liquidity is not a price floor; nothing here is investment advice or an offer.
+The facts, once: this is a micro-cap on a permissionless venue — it can go to
+zero, locked liquidity is not a price floor, and the wrapped-stock quote asset
+can be paused by its issuer. Every address is published so you can verify
+instead of trust. The live mint is verified on-chain at block 67,921,152:
+1,000,000,000 HOMES total, 94.63% in the venue pool, 0.80% in the creator
+wallet — a launchpad curve, not the design split
+([reproduce the read](app/scripts/verify-homes-mint.mjs)).
 
-**The trust layer around it remains a planned concept.** No trust, staking,
+**The trust layer around it is being built in public.** No trust, staking,
 fund balance, property, or payout exists; the venue's creator fees accrue but
 appear on the ledger only after claim receipts are published — the build fails
 on any unreceipted number by construction. The dashboard's zeros are declared,

@@ -381,3 +381,77 @@ Eleven days out, the two things that decide this are both one decision each — 
 ---
 
 *Next audit: append `## Audit #8 — <date>` below this line. Do not edit prior audits.*
+
+---
+
+## Audit #8 — 2026-08-14 (scheduled)
+
+**Method:** fresh-context scheduled pass, run the same day as #7 but after it (#7 closed at commit `8d1c78c`, which this pass audits as HEAD). Every anchor executed; every live claim read over the wire — chain state by JSON-RPC, site by HTTP, contract storage by `eth_call` — nothing accepted from docs. Tree state: `8d1c78c` plus 20 modified + 3 untracked files from the in-flight VT03/AWG/FD1 wave; per house convention this audit touched no in-flight file and no source under `app/`, `agent/`, `contracts/`, `data/`.
+
+**Anchors — ALL GREEN, executed this pass:**
+- contracts `npx hardhat test` — **25 passing (1s)**: escrow happy path with 10% holdback + 60-day maturity, 2-of-3, arbiter tie-break, the full reservation-deposit/refund-window suite (exact-deadline refund, one-second-late revert, no double-spend, wei-exact lifecycle), registry mint/permissions/anchoring, and the three X Layer network guards.
+- agent `npm run demo` — **LOW $199,100 / MID $301,280 / HIGH $443,900 ex-land**, equal to `cost-model.json` `totalsExLand` to the dollar. Re-derived from the 13 raw lines this pass: 181,000 × 1.10 / 269,000 × 1.12 / 386,000 × 1.15 → exactly the published totals; `totalsIncLand` = ex-land + land line = 274,100 / 451,280 / 793,900, exact. Lakeside REJECT intact; 2 constraint notes.
+- app `npm run build` — exit 0, **24/24 static pages, 22 routes**. Also `npx tsc --noEmit` exit 0 and `npm test` **177/177 (6.7s)**, up from 175.
+- **Live chain — the deploy is real and independently verified.** `eth_chainId` **0x7a0 (1952)**; escrow `0x4A77…63b5` and registry `0x1195…C32e` both carry bytecode. Every DEPLOYMENTS.md constructor claim re-read by `eth_call` this pass: escrow `usdc` = `0xcB8B…c79D`, `holdbackBps` **1000**, `holdbackPeriod` **5,184,000**, `refundWindow` **1,209,600**, `state` **0**; registry `nextTokenId` **0** (the honest public zero state) and `owner` = the deployer; deployer nonce **4** (was 0 for five consecutive audits). Documented RPC `testrpc.xlayer.tech/terigon` reachable and agreeing. Both OKLink URL spellings in the docs (`x-layer-testnet` and `xlayer-test`) resolve 200 — not a contradiction.
+- Live site — **21/21 routes 200** at aurahomes.fun. `/budget` returned one transient 503, then 200 on three consecutive retries (46,181 bytes each); not a defect.
+- X — `x.com/AuraHomes_fun` **200** (404 for four consecutive audits).
+- git — HEAD `8d1c78c`, **1 commit AHEAD of `origin/main` (`33e2b3e`)**: Audit #7's own commit is unpushed. Authorship **156/157 `Matt-Aurora-Ventures <lucidbloks@gmail.com>`**; the one exception is the initial commit as `Matt Haynes` with the same email. Nothing pushed by this loop, per standing rule.
+
+**The two longest-standing blockers on the board are closed.** Testnet deploy was human-gated on a faucet captcha for five audits (#1, #4, #5, #6, #7) — it is now deployed *and* verified against live storage, not just claimed. The X account was 404 for four audits — it is live. And Audit #5's "single largest drift risk," the two-plans/two-products split that survived #6 and #7 unchanged, is **RESOLVED**: `PHASED-ROADMAP.md` and `GAP-ANALYSIS.md` now open with explicit `[!CAUTION]` archive banners that name the specific facts that changed, `ROADMAP.md` carries an `[!IMPORTANT]` current-framing banner, and `SUBMISSION.md` is declared the one canonical demo script. The retired pivot's front door was not quietly abandoned either — `/concierge`, `/escrow`, `/design`, `/overview` are documented compatibility redirects with the founder's reasoning inline, not stubs.
+
+**Audit #7's open gaps — 3 resolved, 1 fixed this pass, 1 half-open, 2 open:**
+
+| # | Item | Status |
+|---|---|---|
+| 1 | Deck mesh uncoupled from the clearance field | **OPEN, and the fix aims at the wrong file** — see finding 1 |
+| 2 | Mobile wind gate not falsifiable | **RESOLVED** — `meadow-proof.mjs:356` now requires `mobileWindMotion >= 0.004`, identical to desktop (:418) |
+| 3 | `claims.json` supply-split row stale | **FIXED THIS PASS** — VT03 is complete (`data/homes/mint-verification.json`, block 67,921,152, 1B HOMES, 94.63% pool / 0.8% creator, read 2026-08-14) and rendered at `homes/page.tsx:131`; the row still said "verification pending" |
+| 4 | `/homes` trust claimed in present tense | **RESOLVED** — `homes/page.tsx:279` and `:284` now state DESIGN vs LIVE side by side ("the venue locker holds the liquidity") |
+| 5 | Proof carries no commit stamp | **RESOLVED** — `meadow-proof.mjs:511` emits `sourceCommit`, pinned by `meadow-progressive.spec.ts:513` |
+| 6 | Repair-limit rule is prose only | **STILL OPEN** — see finding 4 |
+| 7 | AWG wording not propagated | **HALF RESOLVED** — see finding 3 |
+
+### Findings
+
+1. **[MEDIUM] The deck-mesh coupling fix targets a file that contains no deck mesh — the misattribution has now propagated into three artifacts.** Audit #7 located the deck mesh at `SceneDetail.tsx:782–794`. That is SceneDetail's *clearance* copy (`:792` — `c = Math.min(c, fade(rectDist(x, z, -3.9, 2.95, 3.6, 6.3), 0.28, 0.95))`), not geometry. The rendered meshes are `Scene.tsx:1657 function Deck` and `Scene.tsx:1789 function Walkway`; SceneDetail contains no `function Deck` and no `planks.push` at all. The new tripwire (`meadow-progressive.spec.ts:507–515`) pins the literal across SceneDetail + `field.ts` + the proof — a genuine win, because SceneDetail's clearance copy was a real third copy — but the test's own comment claims it pins "the deck MESH," and `FD1-shared-scene-geometry.json` repeats the error: its `context` names `SceneDetail.tsx ~L782-794` and its `writeSet` omits `Scene.tsx` entirely. As written, the structural fix would refactor every file except the one holding two of the three meshes. **No shipped bug** — computed this pass, the rendered deck footprint (x −3.600→3.450, z 3.035→6.285, from the 7 plank rows, rim joist, and glass bay) sits inside the clearance rect (−3.9, 2.95, 3.6, 6.3) with margins W 0.300 / E 0.150 / S 0.085 / **N 0.015**. That 1.5 cm north margin is the fragility: an eighth plank row (+0.47) or a deeper nosing pierces the mask with all 177 tests still green. Fix: add `Scene.tsx` to FD1's writeSet, correct the two file:line references, and make FD1's gate back-project the `Deck`/`Walkway` mesh bounds into the clearance rect instead of string-matching a literal.
+2. **[LOW] `totalsRule` governs by a schema field that does not exist.** `cost-model.json:24` defines totals as the "sum of **non-optional** line items × (1 + contingencyPct)", but no line item carries an `optional` field — the complete field set across all 13 lines is `key, label, low, mid, high, basis, ownerBuildable, ownerNote`. Today nothing is optional, so the arithmetic is unambiguous and verified exact. But `D-2026-08-14-awg-recommended` promises "a project may descope it, and a descoped budget recomputes from its own lines," and BQ-AWG deliberately implements descoping as UI state only, never as data — so the rule's own vocabulary has no representation in the file it governs. Fix: either add explicit `optional` booleans to the lines, or reword to "sum of all line items in the reference configuration."
+3. **[LOW] AWG truth flip still half-propagated.** `cost-model.json:18` and `:24` are corrected ("recommended on every Aura home", founder decision recorded) and the FAQ is pinned compliant by `release-truth.spec.ts:20` — but `app/lib/design/materials.ts:21` ("AWG on every home"), `:213` ("standard on every home") and `:783` ("Standard on every Aura home") still assert the retired mandate. Fix in the BQ-AWG change, and consider extending `release-truth.spec.ts` to ban "standard on every" outside explicitly historical contexts, so this cannot drift back.
+4. **[PROCESS] Repair-limit enforcement unchanged since #7 — still prose.** All 14 execution manifests carry `repairLimit: 1`; graph v1.2:144–147 records the successor-chain rule (a renamed chain spends the SAME budget; third consecutive failure escalates by name). No schema field and no checker counts a chain against its ancestor's budget. Renaming a node still costs less than escalating, which is exactly the incentive that produced R03 → R03A…R03H.
+5. **[PROCESS] Audit #7 skipped the mandated requirement scorecard.** The standing brief requires grading every VISION.md requirement DONE / IN-REPO-AS-PLAN / GAP with file evidence each pass; #7 delivered findings only. The cost was concrete: requirement 13 sat at Audit #5's **GAP** grade for four days after the Aug 12 deploy that closed most of it, so the log understated the project to anyone reading it. Restored below.
+6. **[CREDIT] The anti-drift instinct is load-bearing, and it caught this auditor.** This pass moved to "fix" `DEPLOYMENTS.md:29` ("`24 passing` at the release checkpoint") as a stale number. Checking git first: the suite genuinely was **24** at `ea02d8c` (Aug 11, the deployment checkpoint) and reached 25 only at `5bc9a64` (Aug 13). The line is accurate history; overwriting it would have destroyed a true record to match today. Left untouched. `GAP-ANALYSIS.md` deserves the same credit — its assertions ("nonce 0x0 — no contract has ever been deployed", "escrow v2 does not exist", "10/10 passing") are all false today, and all correctly quarantined behind an archive banner that names each changed fact.
+
+**VISION.md scorecard — 16 requirements (1–15 plus 6b): DONE 11 · IN-REPO-AS-PLAN 5 · GAP 0** *(vs Audit #5's 11 / 4 / 1 — requirement 13 clears GAP)*
+
+| # | Requirement | Grade | Evidence |
+|---|---|---|---|
+| 1 | Eco-home AI, ground to finish | IN-REPO-AS-PLAN | `pipeline.ts` runs LAND→DESIGN→BUDGET→milestones; 22 routes incl. `/build` `/projects` `/contractors` `/operator/registry`; BUILD orchestration still docs-only |
+| 2 | SIP construction | DONE | cost-model SIP lines; chase-freeze constraint fires in the demo |
+| 3 | Crypto-native USDC funding | IN-REPO-AS-PLAN | **materially stronger**: escrow + registry deployed on 1952, constructor state verified live this pass; settlement still a valueless test token, no on-ramp, mainnet held by decision brief |
+| 4 | LAND first-class | DONE | `parcels.ts` implements all four filters; `/land` live; REJECT fires with the district citation |
+| 5 | AI is the architect | DONE (as corrected) | pipeline produces a **review-ready package**; the legal correction is honored throughout |
+| 6 | Off-grid, AWG standard | DONE (as amended) | AWG is a costed line, now *recommended* per `D-2026-08-14-awg-recommended`; winter-solar-floor raises battery 30→42 kWh. See finding 3 |
+| 6b | No-concrete foundations | DONE | screw piles in cost model; FOUNDATIONS-NO-CONCRETE.md |
+| 7 | Lifestyle layer | DONE | hot tub + deck in the cost model and rendered in the scene |
+| 8 | One-click, card-first | IN-REPO-AS-PLAN | `/buy` renders the card-first path with the on-ramp labeled pending — honest, not integrated |
+| 9 | Alberta pilot | DONE | playbook, suppliers.json, verified district minimums |
+| 10 | Radically open | DONE | public MIT repo; this log; archive banners on retired plans |
+| 11 | Ridiculously affordable | DONE (as designed) | $0.01 x402 tier |
+| 12 | KR8TIV brand, light-first | DONE | BRAND v3; light card verified live in prior passes |
+| 13 | Hackathon vehicle | **IN-REPO-AS-PLAN** ⬆ *(was GAP)* | deploy **✓ verified live**, X account **✓ live**, hosted demo **✓ 21/21**; 90s video and Google Form remain |
+| 14 | Built to be continued | DONE | AI-HANDOFF + GRAPH-ENGINEERING + registries + this log |
+| 15 | The app runs on AI | DONE | brain / memory / slips / digest execute green |
+
+**Hackathon clock: 7 days to Aug 21, 2026 23:59 UTC.** Critical path per SUBMISSION.md: testnet deploy **DONE and verified**; hosted web demo **DONE** (21/21); X account **DONE**, posting cadence not measurable from this loop (six drafts ready); Google Form **pre-written, blocked only on the video URL**; 90-second video **NOT STARTED — now the single longest pole, and founder-gated** (approve/voice/upload). Verdict: **on track.** Every AI-executable build gate is closed for the first time in the project's life; the entire remaining path is founder-only, and the video is the one item that can still miss the deadline.
+
+**Fixes applied this pass (docs only):** `docs/plans/registry/claims.json` — the supply-split row's stale "verification pending (VT03)" replaced with the completed on-chain verification and its reproduction path. JSON re-validated; `npm test` re-run after the edit, **177/177 still green**. `DEPLOYMENTS.md:29` deliberately left unchanged (finding 6). Nothing in `app/`, `agent/`, `contracts/`, or `data/` was modified; cost-model arithmetic re-verified untouched.
+
+**State of the project (3 lines):**
+The machine is green on every anchor, the money still reconciles to the dollar from raw line items, and the two blockers that dominated five audits — the testnet deploy and the X account — are closed and verified against live state rather than asserted.
+The honesty layer is now the strongest part of the repo: retired plans carry banners naming what changed, the claim registry caught its own violation last pass, and this pass was stopped from destroying a true historical number by checking git before "fixing" it.
+What remains is one founder-side artifact — the 90-second video — plus one structural loose end worth doing properly: FD1 must be pointed at `Scene.tsx`, where the deck actually is, before it claims to have coupled the meshes.
+
+**Next audit due: 2026-08-16 (48 h cadence, through Aug 21).**
+
+---
+
+*Next audit: append `## Audit #9 — <date>` below this line. Do not edit prior audits.*
