@@ -9,6 +9,7 @@ import { APP_ROUTE_TRANSITION_SECONDS } from "@/lib/ui/motionPolicy";
 import CardFXLayer from "./CardFX";
 import ThemeToggle from "./ThemeToggle";
 import ProjectJourneySpine from "./project/ProjectJourneySpine";
+import ProjectSpine, { showsProjectSpine } from "./project/ProjectSpine";
 import SocialShareLinks from "./SocialShareLinks";
 
 /* Async feature load: the domAnimation bundle becomes its own chunk and
@@ -51,7 +52,9 @@ const ALL_NAV = [...JOURNEY_NAV, ...UTILITY_NAV] as const;
 
 /* The journey spine is workspace chrome. It mounts only on the routes where
    an active project is actually worked — never on education, marketplace,
-   or labs pages — and the spine itself renders nothing without a project. */
+   or labs pages — and the spine itself renders nothing without a project.
+   The status spine below it mounts on the same set minus /dashboard (see
+   SPINE_ROUTES) and obeys the same no-project rule. */
 const WORKSPACE_ROUTES = new Set([
   "/projects",
   "/start",
@@ -277,6 +280,11 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
             {isWorkspace && (
               <div className={pathname === "/build" ? "mx-auto max-w-[90rem] px-4 pt-4 sm:px-6" : "mx-auto max-w-5xl px-6 pt-4"}>
                 <ProjectJourneySpine />
+                {/* The readings the journey chips never showed: stage status,
+                    the design fingerprint in plain words, open blockers, and
+                    the one recommended next action with its reason. Renders
+                    nothing without an active project. */}
+                {showsProjectSpine(pathname) && <ProjectSpine />}
               </div>
             )}
             <main

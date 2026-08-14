@@ -1,0 +1,30 @@
+{
+  "node": "LF01 + LF02",
+  "graphVersion": "1.2",
+  "job": "Cost bands and constraint checks that move WHILE the design changes, plus one honest readiness reading that separates design intent from ready-for-professional-review.",
+  "context": "createProjectBudget (lib/builder/projectBudget.ts) already recomputes from the document and carries a confidence score, gaps, and a cap comparison - but it lives on /budget, so a person editing the home cannot see the consequence of the edit they are making. checkSpecAgainstParcel now answers the fit question in the Site step. The pieces exist; they are just not where the decision is.",
+  "writeSet": [
+    "app/components/builder/LiveReadout.tsx (new)",
+    "app/components/builder/BuilderApp.tsx",
+    "app/lib/builder/readiness.ts (new)",
+    "app/tests/builder-readout.spec.ts (new)",
+    "app/tests/project-budget.spec.ts"
+  ],
+  "rejectionGates": [
+    "the live bands MUST come from createProjectBudget - a second, parallel cost calculation in the editor is exactly the divergence class that has bitten this repo twice (mask literals, slope). One source or none.",
+    "agent/ npm run demo must still reconcile the anchored triplet to the dollar afterwards",
+    "the readiness reading must be falsifiable: a design missing a required input CANNOT read as ready. Prove it by constructing one in the spec and asserting it reads not-ready."
+  ],
+  "instructions": [
+    "1. lib/builder/readiness.ts: a pure function from (document, budget, parcel check) to { state: 'design-intent' | 'review-ready', gaps: string[] }. Every gap names the specific missing input and where to supply it. No score theatre - a number that cannot be acted on is decoration.",
+    "2. LiveReadout: a quiet strip in the builder showing the LOW/MID/HIGH band, the two or three constraint checks that currently apply (minimum dwelling size, buildable-envelope fit, FDWR where modelled), and the readiness state. It updates as the document changes and animates only within the 150-250 ms motion tokens.",
+    "3. Every figure must trace to its module and say what it is: a planning range, not a quote; a modelled check, not a permit decision.",
+    "4. Specs: editing the design changes the band; removing a required input flips readiness to design-intent and names the gap; the readiness function is pure and deterministic."
+  ],
+  "verify": {
+    "commands": ["npx tsc --noEmit", "npm test", "cd ../agent && npm run demo"],
+    "note": "the money anchor is the hard gate"
+  },
+  "sideEffect": "local",
+  "status": "ready"
+}

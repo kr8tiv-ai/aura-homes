@@ -1,0 +1,28 @@
+{
+  "node": "EX01 + EX02",
+  "graphVersion": "1.2",
+  "job": "See the artifact before downloading it, and hand a professional ONE package that carries everything they need plus the hash that proves what it describes.",
+  "context": "The exporters exist (drawings SVG, DXF, IFC4, ifcJSON, glTF/OBJ, the canonical .aura.json) and each already states its own limits honestly. What is missing is (a) a preview before commitment and (b) a single package a person can hand to a designer, engineer or builder without assembling it themselves. lib/builder/exportSource.ts resolves what an export is drawn from and already carries the canonical hash.",
+  "writeSet": [
+    "app/components/builder/ExportPanel.tsx (or the existing export workspace component - find it first)",
+    "app/lib/builder/handoffPackage.ts (new)",
+    "app/tests/handoff-package.spec.ts (new)"
+  ],
+  "rejectionGates": [
+    "the preview and the downloaded file must be the SAME BYTES - generate once, show and save the same artifact, never render a preview from a second code path",
+    "the package's stated hash must equal hashBuilderDocument of the document it was built from; a package whose hash does not match its contents must be impossible to produce",
+    "no exporter may claim graph fidelity it does not have - keep the existing per-exporter labels exactly"
+  ],
+  "instructions": [
+    "1. lib/builder/handoffPackage.ts: assemble { project JSON, drawing set, cost snapshot, evidence notes, README } into one zip-less bundle (a single JSON with embedded artifacts is acceptable and keeps it dependency-free - decide and say why). It carries the canonical design hash, the budget hash, the date, and the honest limitations block verbatim.",
+    "2. Live previews: the drawing sheets already render as SVG - show them. For DXF/IFC/glTF show a real summary generated FROM the produced bytes (entity counts, sheet list, geometry mode), never a hand-written description of what it should contain.",
+    "3. Round-trip: re-importing the package must reproduce the same document hash. Pin it.",
+    "4. One button, one package, and a plain sentence about what a professional will still need to do."
+  ],
+  "verify": {
+    "commands": ["npx tsc --noEmit", "npm test"],
+    "note": "round-trip and byte-identity are the load-bearing assertions"
+  },
+  "sideEffect": "local",
+  "status": "ready"
+}

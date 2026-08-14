@@ -1,0 +1,30 @@
+{
+  "node": "VW01",
+  "graphVersion": "1.2",
+  "job": "Make the massing/plan view persistent and live beside every guided step, so the home is always on screen while it is being changed.",
+  "context": "The canvas already never unmounts - it is the export root, and BuilderApp keeps it mounted with a hidden/visible toggle rather than remounting (see the header decision note). Today the guided walk hides it behind panels on several steps. This node is about never HIDING it, not about mounting it again. The anti-yank contract is spec-pinned: data-load-epoch moves only when a whole document loads, never on an edit, and adding a persistent view must not change that.",
+  "writeSet": [
+    "app/components/builder/BuilderApp.tsx",
+    "app/components/builder/Viewport.tsx",
+    "app/app/globals.css (builder layout only)",
+    "app/tests/project-ui.spec.ts",
+    "app/tests/builder-viewer.spec.ts (new)"
+  ],
+  "rejectionGates": [
+    "the 3D canvas must never remount when the step changes - a remount loses GPU state and the export root identity; prove it with a stable canvas element handle across steps",
+    "data-load-epoch must not move on an ordinary edit or a step change",
+    "mobile must not gain an automatically running 3D view (the existing mobile spec pins this)"
+  ],
+  "instructions": [
+    "1. Give the builder a two-pane layout at desktop widths: the step's controls beside a live viewer, with the viewer persistent across all eight steps. Below the breakpoint the existing stacked behaviour stays.",
+    "2. Every step's edits must be visible in the viewer immediately - shell, rooms, openings, site, performance, materials. Where a step has no geometric consequence (Review), show the same view rather than an empty panel.",
+    "3. Prefer 2D plan automatically on the steps where plan is the honest view (Rooms, Openings) and 3D elsewhere, but let the existing view toggle override; never fight the person's choice.",
+    "4. Spec: a canvas handle captured on step 1 is the SAME element on step 6; an edit in each step changes the rendered geometry; the load epoch is unchanged throughout."
+  ],
+  "verify": {
+    "commands": ["npx tsc --noEmit", "npm test", "npm run test:ui"],
+    "note": "run from app/; the orchestrator runs test:ui"
+  },
+  "sideEffect": "local",
+  "status": "ready"
+}

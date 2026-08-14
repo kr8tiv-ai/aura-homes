@@ -107,6 +107,53 @@
   --st-display-font: "Space Grotesk Variable", "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   --st-body-font: "Manrope Variable", "Manrope", ui-sans-serif, system-ui, sans-serif;
   --st-mono-font: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, monospace;
+
+  /* ---- THE MOTION SYSTEM ---------------------------------------------
+     One block decides how the interface answers, so "premium" is a
+     setting rather than a hundred hand-tuned durations. Before this the
+     app surface carried 150/160/180/220/250/300/320/350/450/500 ms picked
+     per rule, which is why two controls a centimetre apart could answer at
+     different speeds.
+
+     Named for the JOB, not the number — read the name and you know when
+     to reach for it. BRAND.md §8 puts micro-interactions in a 150–250 ms
+     band; these three ARE that band's floor, middle and ceiling.
+
+       --motion-echo    the surface answers where it stands: colour, tint,
+                        border. Nothing travels, so nothing needs time to
+                        arrive.
+       --motion-state   the default. A control changes what it IS —
+                        pressed, current, selected, open.
+       --motion-travel  the slowest we allow: something genuinely moves or
+                        resizes. A lift, a sheet, a rule that draws itself.
+
+     ONE curve, and it is the house curve already defined above — a second
+     easing would be a second opinion about what the brand feels like.
+
+     Two things below deliberately sit OUTSIDE the band and are exceptions
+     with reasons, not oversights: --motion-theme-crossfade (a whole-
+     viewport repaint reads as a bug when it snaps) and the story route's
+     cinematic timings, which are scroll choreography rather than
+     micro-interaction.
+     ------------------------------------------------------------------ */
+  --motion-echo: 150ms;
+  --motion-state: 200ms;
+  --motion-travel: 250ms;
+  --motion-ease: var(--ease-fluid-decel);
+  --motion-theme-crossfade: 500ms;
+
+  /* Hover is feedback, not an event. One surface step and a 2px rise is
+     the entire vocabulary — restraint is the setting, so it lives here. */
+  --motion-lift: -2px;
+
+  /* Focus: one ring, visible in both themes, calm. An OUTLINE offset from
+     the control, never a shadow — the brand's no-glow rule is why. The
+     tight offset is for controls that already sit inside a dense grid,
+     where 3px of air would collide with the neighbour's border. */
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 3px;
+  --focus-ring-offset-tight: 2px;
+  --focus-ring-color: var(--st-emerald-deep);
 }
 
 /* ---- NIGHT ------------------------------------------------------------
@@ -182,15 +229,38 @@
   }
 }
 
+/* ---- reduced motion wins at the source ------------------------------
+   Zeroing the tokens here stills every rule built on them at once,
+   instead of asking each new rule to remember an accessibility
+   guarantee. --motion-lift goes to 0 too: a hover rise is travel, and
+   travel is exactly what this preference asks us to stop.
+
+   The hand-written `transition: none` blocks further down STAY. They
+   cover the rules that predate the tokens (the story reveals, the warm
+   response, the loader), and on a guarantee this is the right posture:
+   both mechanisms must fail before motion reaches someone who asked for
+   none. Placed after the theme blocks so nothing above can outrank it.
+   ------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-echo: 0ms;
+    --motion-state: 0ms;
+    --motion-travel: 0ms;
+    --motion-theme-crossfade: 0ms;
+    --motion-lift: 0px;
+  }
+}
+
 body {
   background-color: var(--aura-bg);
   color: var(--aura-text);
   font-feature-settings: "ss01";
   /* the ladder crossfades rather than snapping — a hard swap on a
-     full-viewport WebGL page reads as a bug, not a setting */
+     full-viewport WebGL page reads as a bug, not a setting. Deliberately
+     outside the 150–250 ms band, which is why it has its own token. */
   transition:
-    background-color 0.5s var(--ease-fluid-decel),
-    color 0.5s var(--ease-fluid-decel);
+    background-color var(--motion-theme-crossfade) var(--motion-ease),
+    color var(--motion-theme-crossfade) var(--motion-ease);
 }
 
 h1,
@@ -234,12 +304,12 @@ main p {
   border: 1px solid rgb(var(--tone-ink) / 0.45);
   transform: translate3d(var(--cx, -100px), var(--cy, -100px), 0) scale(var(--cs, 1));
   transition:
-    transform 0.18s var(--ease-fluid-decel),
-    width 0.3s var(--ease-fluid-decel),
-    height 0.3s var(--ease-fluid-decel),
-    background-color 0.3s var(--ease-fluid-decel),
-    border-color 0.3s var(--ease-fluid-decel),
-    opacity 0.3s ease;
+    transform var(--motion-echo) var(--motion-ease),
+    width var(--motion-travel) var(--motion-ease),
+    height var(--motion-travel) var(--motion-ease),
+    background-color var(--motion-travel) var(--motion-ease),
+    border-color var(--motion-travel) var(--motion-ease),
+    opacity var(--motion-travel) var(--motion-ease);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -270,7 +340,7 @@ main p {
   text-transform: uppercase;
   color: rgb(var(--tone-emerald));
   opacity: 0;
-  transition: opacity 0.25s ease;
+  transition: opacity var(--motion-travel) var(--motion-ease);
   white-space: nowrap;
 }
 .aura-cursor.labelled .aura-cursor-label {
@@ -286,10 +356,16 @@ main p {
    Keyboard users could not see where they were: zero :focus-visible rules
    existed and four inputs replaced the outline with a hairline-on-hairline
    colour change. One visible ring, everywhere; ink-on-paper ring for the
-   rail and HUD, which sit over the scene. */
+   rail and HUD, which sit over the scene.
+
+   The ring is now the --focus-ring-* tokens, so its weight, air and colour
+   are one setting rather than nine copies. It stays a solid outline and
+   never a blurred shadow: soft here means QUIET, not diffuse. It also does
+   not animate — a ring that fades in reads as lag to the person who just
+   pressed Tab. */
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {
-  outline: 2px solid var(--st-emerald-deep);
-  outline-offset: 3px;
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
   border-radius: 2px;
 }
 .story-rail button:focus-visible,
@@ -800,19 +876,22 @@ main p {
     @apply bg-aura-panel border rounded-xl;
     border-color: var(--aura-border);
     box-shadow: var(--shadow-2);
+    /* colour follows the theme crossfade; the hover response follows the
+       motion band. Two different jobs, so two different tokens. */
     transition:
-      background-color 0.5s var(--ease-fluid-decel),
-      border-color 0.5s var(--ease-fluid-decel),
-      box-shadow 0.35s var(--ease-fluid-decel),
-      transform 0.35s var(--ease-fluid-decel);
+      background-color var(--motion-theme-crossfade) var(--motion-ease),
+      border-color var(--motion-theme-crossfade) var(--motion-ease),
+      box-shadow var(--motion-travel) var(--motion-ease),
+      transform var(--motion-travel) var(--motion-ease);
   }
   /* a panel that answers the pointer: one surface step up the ladder and a
-     1px rise. Cheap, GPU-only, and it is what makes the pages feel alive
-     rather than printed. */
+     small rise. Cheap, GPU-only, and it is what makes the pages feel alive
+     rather than printed. The rise is --motion-lift, so restraint is set in
+     one place and reduced motion can flatten it to nothing. */
   .aura-panel-lift:hover {
     @apply bg-aura-overlay;
     box-shadow: var(--shadow-3);
-    transform: translateY(-2px);
+    transform: translateY(var(--motion-lift));
   }
   .aura-hairline {
     border-color: var(--aura-border);
@@ -835,9 +914,9 @@ main p {
   text-transform: uppercase;
   line-height: 1;
   transition:
-    color 0.3s var(--ease-fluid-decel),
-    border-color 0.3s var(--ease-fluid-decel),
-    background-color 0.3s var(--ease-fluid-decel);
+    color var(--motion-state) var(--motion-ease),
+    border-color var(--motion-state) var(--motion-ease),
+    background-color var(--motion-state) var(--motion-ease);
 }
 .aura-theme-btn:hover {
   color: rgb(var(--tone-emerald));
@@ -855,7 +934,10 @@ main p {
 /* ---- nav links draw their own rule ----------------------------------
    The hover state used to be a colour change alone, which on a tracked
    0.62rem label is close to invisible. A rule wipes in from the left on
-   the shared curve, and the current route keeps its rule drawn. */
+   the shared curve, and the current route keeps its rule drawn.
+   (The wipe ran at 450 ms before the motion system; it is a rule that
+   travels, so it now runs at --motion-travel like everything else that
+   moves. 450 ms on a nav hover was the loudest thing on the header.) */
 .aura-nav-link {
   position: relative;
   padding-bottom: 3px;
@@ -870,7 +952,7 @@ main p {
   background: rgb(var(--tone-emerald));
   transform: scaleX(0);
   transform-origin: left center;
-  transition: transform 0.45s var(--ease-fluid-decel);
+  transition: transform var(--motion-travel) var(--motion-ease);
 }
 .aura-nav-link:hover::after,
 .aura-nav-link.is-current::after {
@@ -953,8 +1035,8 @@ main p {
   text-transform: uppercase;
   color: var(--st-ink-dim);
   transition-property: color, border-color;
-  transition-duration: 180ms;
-  transition-timing-function: var(--ease-fluid-decel);
+  transition-duration: var(--motion-state);
+  transition-timing-function: var(--motion-ease);
 }
 .site-utility > summary::-webkit-details-marker { display: none; }
 .site-utility > summary:hover,
@@ -991,8 +1073,8 @@ main p {
   font-size: 0.83rem;
   color: var(--st-ink-dim);
   transition-property: color, background-color;
-  transition-duration: 160ms;
-  transition-timing-function: var(--ease-fluid-decel);
+  transition-duration: var(--motion-echo);
+  transition-timing-function: var(--motion-ease);
 }
 .site-utility > nav a:hover,
 .site-utility > nav a[aria-current="page"] {
@@ -1033,9 +1115,12 @@ main p {
   overflow-y: auto;
   opacity: 0;
   transform: translateY(-10px);
+  /* the fade is a state change, the slide is travel — the sheet arrives
+     lit before it has finished moving, which is what makes it feel
+     answered rather than animated */
   transition-property: opacity, transform;
-  transition-duration: 220ms, 320ms;
-  transition-timing-function: var(--ease-fluid-decel);
+  transition-duration: var(--motion-state), var(--motion-travel);
+  transition-timing-function: var(--motion-ease);
 }
 .site-nav-sheet[hidden] { display: none; }
 .site-nav-sheet.is-open { opacity: 1; transform: none; }
@@ -1107,7 +1192,7 @@ main p {
   letter-spacing: 0.15em;
   text-transform: uppercase;
   color: var(--st-ink-dim);
-  transition: background-color 160ms var(--ease-fluid-decel), color 160ms var(--ease-fluid-decel), box-shadow 160ms var(--ease-fluid-decel);
+  transition: background-color var(--motion-echo) var(--motion-ease), color var(--motion-echo) var(--motion-ease), box-shadow var(--motion-echo) var(--motion-ease);
 }
 .builder-mode-toggle__button[aria-pressed="true"] {
   color: var(--st-emerald-deep);
@@ -1136,7 +1221,7 @@ main p {
   font-size: 0.78rem;
   color: var(--st-ink-dim);
   text-align: left;
-  transition: border-color 160ms var(--ease-fluid-decel), color 160ms var(--ease-fluid-decel), background-color 160ms var(--ease-fluid-decel);
+  transition: border-color var(--motion-echo) var(--motion-ease), color var(--motion-echo) var(--motion-ease), background-color var(--motion-echo) var(--motion-ease);
 }
 .guided-step > span {
   font-family: var(--st-mono-font);
@@ -1220,7 +1305,7 @@ main p {
   background: rgb(var(--tone-sunken));
   color: var(--st-ink);
 }
-.builder-command-dialog > input:focus { outline: 2px solid var(--st-emerald-deep); outline-offset: 2px; }
+.builder-command-dialog > input:focus { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset-tight); }
 .builder-command-results { display: grid; gap: 0.35rem; margin-top: 0.65rem; }
 .builder-command-results button { min-height: 3.5rem; border-radius: 0.55rem; padding: 0.65rem 0.75rem; text-align: left; }
 .builder-command-results button:hover,
@@ -1279,8 +1364,8 @@ main p {
   text-transform: uppercase;
   color: var(--st-ink-dim);
   transition-property: color;
-  transition-duration: 160ms;
-  transition-timing-function: var(--ease-fluid-decel);
+  transition-duration: var(--motion-echo);
+  transition-timing-function: var(--motion-ease);
 }
 .builder-document-note > summary:hover,
 .builder-document-note[open] > summary { color: var(--st-emerald-deep); }
@@ -1370,8 +1455,8 @@ main p {
 }
 .plan-library__filters input:focus-visible,
 .plan-library__filters select:focus-visible {
-  outline: 2px solid var(--st-emerald-deep);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset-tight);
 }
 .plan-library__body {
   display: grid;
@@ -1393,14 +1478,14 @@ main p {
   color: var(--st-ink);
   text-align: left;
   box-shadow: 0 1px 0 rgb(var(--tone-ink) / 0.03);
-  transition: border-color 150ms var(--ease-fluid-decel), box-shadow 150ms var(--ease-fluid-decel), background-color 150ms var(--ease-fluid-decel);
+  transition: border-color var(--motion-echo) var(--motion-ease), box-shadow var(--motion-echo) var(--motion-ease), background-color var(--motion-echo) var(--motion-ease);
 }
 .plan-card:hover,
 .plan-card:focus-visible {
   border-color: rgb(var(--tone-emerald) / 0.55);
   box-shadow: var(--shadow-1);
 }
-.plan-card:focus-visible { outline: 2px solid var(--st-emerald-deep); outline-offset: 2px; }
+.plan-card:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset-tight); }
 .plan-card[aria-pressed="true"] {
   border-color: var(--st-emerald-deep);
   background: rgb(var(--tone-emerald) / 0.045);
@@ -1729,9 +1814,9 @@ main p {
   padding: 1rem;
   background: rgb(var(--tone-raised));
   text-align: left;
-  transition: border-color 160ms var(--ease-fluid-decel), transform 160ms var(--ease-fluid-decel), box-shadow 160ms var(--ease-fluid-decel);
+  transition: border-color var(--motion-state) var(--motion-ease), transform var(--motion-state) var(--motion-ease), box-shadow var(--motion-state) var(--motion-ease);
 }
-.project-intake-routes button:hover { transform: translateY(-2px); box-shadow: var(--shadow-2); }
+.project-intake-routes button:hover { transform: translateY(var(--motion-lift)); box-shadow: var(--shadow-2); }
 .project-intake-routes button[aria-pressed="true"] { border-color: var(--st-emerald-deep); box-shadow: inset 0 0 0 1px var(--st-emerald-deep); }
 .project-intake-routes button > span { font-family: var(--st-mono-font); font-size: 0.52rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--st-emerald-deep); }
 .project-intake-routes button strong { display: block; margin-top: 0.65rem; font-size: 1.05rem; }
@@ -1749,10 +1834,10 @@ main p {
   font-size: 0.86rem;
 }
 .project-intake-fields input:focus,
-.project-intake-fields select:focus { outline: 2px solid var(--st-emerald-deep); outline-offset: 2px; }
+.project-intake-fields select:focus { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset-tight); }
 .project-intake-confirm { display: flex; min-height: 3rem; align-items: flex-start; gap: 0.75rem; border: 1px solid rgb(var(--tone-ink) / var(--hair-alpha)); border-radius: 0.75rem; padding: 0.9rem 1rem; background: rgb(var(--tone-panel)); cursor: pointer; }
 .project-intake-confirm input { width: 1.15rem; height: 1.15rem; margin-top: 0.1rem; flex: 0 0 auto; accent-color: rgb(var(--tone-emerald)); }
-.project-intake-confirm input:focus-visible { outline: 2px solid var(--st-emerald-deep); outline-offset: 3px; }
+.project-intake-confirm input:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset); }
 .project-intake-confirm input:disabled { cursor: not-allowed; opacity: 0.5; }
 .project-intake-confirm:has(input:disabled) { cursor: default; }
 .project-intake-confirm__copy { display: grid; gap: 0.25rem; }
@@ -1800,7 +1885,7 @@ main p {
 .project-backup-bar input[type="password"] { min-height: 2.65rem; border: 1px solid rgb(var(--tone-ink) / var(--hair-alpha)); border-radius: 0.5rem; padding-inline: 0.75rem; background: rgb(var(--tone-raised)); color: var(--st-ink); }
 .project-import-button { position: relative; min-height: 2.65rem; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; padding-inline: 1rem; background: rgb(var(--tone-ink)); color: rgb(var(--tone-paper)); cursor: pointer; font-size: 0.7rem; font-weight: 750; }
 .project-import-button input { position: absolute; inline-size: 1px; block-size: 1px; opacity: 0; }
-.project-import-button:focus-within { outline: 2px solid var(--st-emerald-deep); outline-offset: 3px; }
+.project-import-button:focus-within { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset); }
 .project-centre-message { margin-top: 1rem; border-left: 2px solid var(--st-emerald-deep); padding: 0.6rem 0.8rem; font-size: 0.72rem; color: var(--st-ink-dim); }
 .project-cards { display: grid; gap: 1rem; margin-top: 1.5rem; }
 .project-card,
@@ -3057,7 +3142,7 @@ html.story-gated body { overflow: hidden; }
   font-size: 0.57rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  transition: border-color 180ms ease, color 180ms ease, background-color 180ms ease;
+  transition: border-color var(--motion-state) var(--motion-ease), color var(--motion-state) var(--motion-ease), background-color var(--motion-state) var(--motion-ease);
 }
 .aura-share a:hover,
 .aura-share a:focus-visible {
@@ -3065,7 +3150,7 @@ html.story-gated body { overflow: hidden; }
   color: var(--st-emerald-deep);
   background: rgb(var(--tone-emerald) / 0.06);
 }
-.aura-share a:focus-visible { outline: 2px solid var(--st-emerald-deep); outline-offset: 2px; }
+.aura-share a:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset-tight); }
 .aura-share-compact { margin: 0.9rem 0; }
 /* The follow link leads the row and wears the accent — following is the ask,
    sharing is the afterthought. */
