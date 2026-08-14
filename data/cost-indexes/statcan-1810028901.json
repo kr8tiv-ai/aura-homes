@@ -1,0 +1,2341 @@
+{
+  "$schema": "aura-homes cost index set v1",
+  "retrievedAtISO": "2026-08-14T18:58:33.721Z",
+  "referencePeriod": "2026-04-01",
+  "source": {
+    "publisher": "Statistics Canada",
+    "tableId": "18-10-0289-01",
+    "productId": 18100289,
+    "title": "Building construction price indexes, by type of building and division",
+    "url": "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=18100289",
+    "apiEndpoint": "https://www150.statcan.gc.ca/t1/wds/rest/getDataFromCubePidCoordAndLatestNPeriods",
+    "licence": "Statistics Canada Open Licence",
+    "licenceUrl": "https://www.statcan.gc.ca/en/reference/licence",
+    "archiveStatus": "CURRENT - a cube available to the public and that is current",
+    "releaseTime": "2026-07-24T08:30",
+    "supersedes": "18-10-0276-01",
+    "supersedesNote": "This table replaces table 18-10-0276 which was archived with the release of second quarter 2024 data.",
+    "corrections": [
+      {
+        "date": "2025-03-14",
+        "note": "On March 14, 2025, a correction was made to the data for Calgary and Edmonton in the French table. The table was first released on November 5, 2024, at which time the geography labels were inversed for Calgary and Edmonton."
+      }
+    ],
+    "footnotes": [
+      "This table replaces table 18-10-0276 which was archived with the release of second quarter 2024 data.",
+      "All geographic regions are based on the 2021 Census boundaries.",
+      "Data for Quebec City, Quebec; London, Ontario; Regina, Saskatchewan; and Victoria, British Columbia, are available beginning in Q1 2023.",
+      "Cost components for twenty-three MasterFormat divisions are included in the building models. MasterFormat is the industry standard for organizing building materials into distinct groups. Data by division is available starting from Q1 2017."
+    ]
+  },
+  "selection": {
+    "typeOfBuilding": "Single-detached house",
+    "typeOfBuildingMemberId": 5,
+    "divisionStandard": "MasterFormat divisions as grouped by Statistics Canada"
+  },
+  "anchorRegionId": "edmonton",
+  "anchorBasis": "data/alberta/cost-model.json was researched for rural Alberta within ~1hr of Edmonton. Every multiplier is a ratio against this region, so the anchored region's multiplier is 1.0 by construction and the published ex-land triplet cannot move.",
+  "interpretation": "These are time indexes with a common base, not a survey of absolute price levels between cities. A ratio between two regions measures relative construction-cost drift since the base period and equals a cost-level ratio only if the regions started at parity. Aura has no free public source for that parity, so a regionalized budget is an estimate, not a quote, and its band widens by the size of the drift.",
+  "regions": [
+    {
+      "id": "canada-fifteen-cma-composite",
+      "label": "Fifteen census metropolitan area composite",
+      "kind": "composite",
+      "statcanMemberId": 1,
+      "divisions": {
+        "composite": {
+          "label": "Division composite",
+          "value": 109.9,
+          "vectorId": 1617908100,
+          "coordinate": "1.5.1.0.0.0.0.0.0.0"
+        },
+        "generalRequirements": {
+          "label": "General requirements",
+          "value": 117.1,
+          "vectorId": 1617908101,
+          "coordinate": "1.5.2.0.0.0.0.0.0.0"
+        },
+        "concrete": {
+          "label": "Concrete",
+          "value": 110.1,
+          "vectorId": 1617908103,
+          "coordinate": "1.5.4.0.0.0.0.0.0.0"
+        },
+        "structuralSteelFraming": {
+          "label": "Structural steel framing",
+          "value": 110.7,
+          "vectorId": 1617908105,
+          "coordinate": "1.5.6.0.0.0.0.0.0.0"
+        },
+        "woodPlasticsComposites": {
+          "label": "Wood, plastics and composites",
+          "value": 102.1,
+          "vectorId": 1617908107,
+          "coordinate": "1.5.8.0.0.0.0.0.0.0"
+        },
+        "thermalMoistureProtection": {
+          "label": "Thermal and moisture protection",
+          "value": 113.9,
+          "vectorId": 1617908108,
+          "coordinate": "1.5.9.0.0.0.0.0.0.0"
+        },
+        "openings": {
+          "label": "Openings",
+          "value": 107.7,
+          "vectorId": 1617908109,
+          "coordinate": "1.5.10.0.0.0.0.0.0.0"
+        },
+        "finishes": {
+          "label": "Finishes",
+          "value": 114.8,
+          "vectorId": 1617908110,
+          "coordinate": "1.5.11.0.0.0.0.0.0.0"
+        },
+        "plumbing": {
+          "label": "Plumbing",
+          "value": 120.8,
+          "vectorId": 1617908115,
+          "coordinate": "1.5.16.0.0.0.0.0.0.0"
+        },
+        "hvac": {
+          "label": "Heating, ventilation and air conditioning",
+          "value": 108.6,
+          "vectorId": 1617908116,
+          "coordinate": "1.5.17.0.0.0.0.0.0.0"
+        },
+        "electrical": {
+          "label": "Electrical",
+          "value": 107.4,
+          "vectorId": 1617908118,
+          "coordinate": "1.5.19.0.0.0.0.0.0.0"
+        },
+        "earthwork": {
+          "label": "Earthwork",
+          "value": 111.8,
+          "vectorId": 1617908121,
+          "coordinate": "1.5.22.0.0.0.0.0.0.0"
+        },
+        "exteriorImprovements": {
+          "label": "Exterior improvements",
+          "value": 109.1,
+          "vectorId": 1617908122,
+          "coordinate": "1.5.23.0.0.0.0.0.0.0"
+        },
+        "utilities": {
+          "label": "Utilities",
+          "value": 124.5,
+          "vectorId": 1617908123,
+          "coordinate": "1.5.24.0.0.0.0.0.0.0"
+        }
+      }
+    },
+    {
+      "id": "newfoundland-and-labrador",
+      "label": "Newfoundland and Labrador",
+      "kind": "province",
+      "statcanMemberId": 2,
+      "divisions": {
+        "composite": {
+          "label": "Division composite",
+          "value": 113,
+          "vectorId": 1617908484,
+          "coordinate": "2.5.1.0.0.0.0.0.0.0"
+        },
+        "generalRequirements": {
+          "label": "General requirements",
+          "value": 106.4,
+          "vectorId": 1617908485,
+          "coordinate": "2.5.2.0.0.0.0.0.0.0"
+        },
+        "concrete": {
+          "label": "Concrete",
+          "value": 112.9,
+          "vectorId": 1617908487,
+          "coordinate": "2.5.4.0.0.0.0.0.0.0"
+        },
+        "structuralSteelFraming": {
+          "label": "Structural steel framing",
+          "value": 111.7,
+          "vectorId": 1617908489,
+          "coordinate": "2.5.6.0.0.0.0.0.0.0"
+        },
+        "woodPlasticsComposites": {
+          "label": "Wood, plastics and composites",
+          "value": 118.8,
+          "vectorId": 1617908491,
+          "coordinate": "2.5.8.0.0.0.0.0.0.0"
+        },
+        "thermalMoistureProtection": {
+          "label": "Thermal and moisture protection",
+          "value": 107.5,
+          "vectorId": 1617908492,
+          "coordinate": "2.5.9.0.0.0.0.0.0.0"
+        },
+        "openings": {
+          "label": "Openings",
+          "value": 107.1,
+          "vectorId": 1617908493,
+          "coordinate": "2.5.10.0.0.0.0.0.0.0"
+        },
+        "finishes": {
+          "label": "Finishes",
+          "value": 111.4,
+          "vectorId": 1617908494,
+          "coordinate": "2.5.11.0.0.0.0.0.0.0"
+        },
+        "plumbing": {
+          "label": "Plumbing",
+          "value": 118.1,
+          "vectorId": 1617908499,
+          "coordinate": "2.5.16.0.0.0.0.0.0.0"
+        },
+        "hvac": {
+          "label": "Heating, ventilation and air conditioning",
+          "value": 105.6,
+          "vectorId": 1617908500,
+          "coordinate": "2.5.17.0.0.0.0.0.0.0"
+        },
+        "electrical": {
+          "label": "Electrical",
+          "value": 105.5,
+          "vectorId": 1617908502,
+          "coordinate": "2.5.19.0.0.0.0.0.0.0"
+        },
+        "earthwork": {
+          "label": "Earthwork",
+          "value": 116.1,
+          "vectorId": 1617908505,
+          "coordinate": "2.5.22.0.0.0.0.0.0.0"
+        },
+        "exteriorImprovements": {
+          "label": "Exterior improvements",
+          "value": 103.4,
+          "vectorId": 1617908506,
+          "coordinate": "2.5.23.0.0.0.0.0.0.0"
+        },
+        "utilities": {
+          "label": "Utilities",
+          "value": 121.7,
+          "vectorId": 1617908507,
+          "coordinate": "2.5.24.0.0.0.0.0.0.0"
+        }
+      }
+    },
+    {
+      "id": "st-john-s",
+      "label": "St. John's, Newfoundland and Labrador",
+      "kind": "cma",
+      "statcanMemberId": 3,
+      "divisions": {
+        "composite": {
+          "label": "Division composite",
+          "value": 113,
+          "vectorId": 1617908868,
+          "coordinate": "3.5.1.0.0.0.0.0.0.0"
+        },
+        "generalRequirements": {
+          "label": "General requirements",
+          "value": 106.4,
+          "vectorId": 1617908869,
+          "coordinate": "3.5.2.0.0.0.0.0.0.0"
+        },
+        "concrete": {
+          "label": "Concrete",
+          "value": 112.9,
+          "vectorId": 1617908871,
+          "coordinate": "3.5.4.0.0.0.0.0.0.0"
+        },
+        "structuralSteelFraming": {
+          "label": "Structural steel framing",
+          "value": 111.7,
+          "vectorId": 1617908873,
+          "coordinate": "3.5.6.0.0.0.0.0.0.0"
+        },
+        "woodPlasticsComposites": {
+          "label": "Wood, plastics and composites",
+          "value": 118.8,
+          "vectorId": 1617908875,
+          "coordinate": "3.5.8.0.0.0.0.0.0.0"
+        },
+        "thermalMoistureProtection": {
+          "label": "Thermal and moisture protection",
+          "value": 107.5,
+          "vectorId": 1617908876,
+          "coordinate": "3.5.9.0.0.0.0.0.0.0"
+        },
+        "openings": {
+          "label": "Openings",
+          "value": 107.1,
+          "vectorId": 1617908877,
+          "coordinate": "3.5.10.0.0.0.0.0.0.0"
+        },
+        "finishes": {
+          "label": "Finishes",
+          "value": 111.4,
+          "vectorId": 1617908878,
+          "coordinate": "3.5.11.0.0.0.0.0.0.0"
+        },
+        "plumbing": {
+          "label": "Plumbing",
+          "value": 118.1,
+          "vectorId": 1617908883,
+          "coordinate": "3.5.16.0.0.0.0.0.0.0"
+        },
+        "hvac": {
+          "label": "Heating, ventilation and air conditioning",
+          "value": 105.6,
+          "vectorId": 1617908884,
+          "coordinate": "3.5.17.0.0.0.0.0.0.0"
+        },
+        "electrical": {
+          "label": "Electrical",
+          "value": 105.5,
+          "vectorId": 1617908886,
+          "coordinate": "3.5.19.0.0.0.0.0.0.0"
+        },
+        "earthwork": {
+          "label": "Earthwork",
+          "value": 116.1,
+          "vectorId": 1617908889,
+          "coordinate": "3.5.22.0.0.0.0.0.0.0"
+        },
+        "exteriorImprovements": {
+          "label": "Exterior improvements",
+          "value": 103.4,
+          "vectorId": 1617908890,
+          "coordinate": "3.5.23.0.0.0.0.0.0.0"
+        },
+        "utilities": {
+          "label": "Utilities",
+          "value": 121.7,
+          "vectorId": 1617908891,
+          "coordinate": "3.5.24.0.0.0.0.0.0.0"
+        }
+      }
+    },
+    {
+      "id": "nova-scotia",
+      "label": "Nova Scotia",
+      "kind": "province",
+      "statcanMemberId": 4,
+      "divisions": {
+        "composite": {
+          "label": "Division composite",
+          "value": 116,
+          "vectorId": 1617909252,
+          "coordinate": "4.5.1.0.0.0.0.0.0.0"
+        },
+        "generalRequirements": {
+          "label": "General requirements",
+          "value": 114.4,
+          "vectorId": 1617909253,
+          "coordinate": "4.5.2.0.0.0.0.0.0.0"
+        },
+        "concrete": {
+          "label": "Concrete",
+          "value": 122.6,
+          "vectorId": 1617909255,
+          "coordinate": "4.5.4.0.0.0.0.0.0.0"
+        },
+        "structuralSteelFraming": {
+          "label": "Structural steel framing",
+          "value": 117.1,
+          "vectorId": 1617909257,
+          "coordinate": "4.5.6.0.0.0.0.0.0.0"
+        },
+        "woodPlasticsComposites": {
+          "label": "Wood, plastics and composites",
+          "value": 117.1,
+          "vectorId": 1617909259,
+          "coordinate": "4.5.8.0.0.0.0.0.0.0"
+        },
+        "thermalMoistureProtection": {
+          "label": "Thermal and moisture protection",
+          "value": 119.2,
+          "vectorId": 1617909260,
+          "coordinate": "4.5.9.0.0.0.0.0.0.0"
+        },
+        "openings": {
+          "label": "Openings",
+          "value": 109.9,
+          "vectorId": 1617909261,
+          "coordinate": "4.5.10.0.0.0.0.0.0.0"
+        },
+        "finishes": {
+          "label": "Finishes",
+          "value": 113.1,
+          "vectorId": 1617909262,
+          "coordinate": "4.5.11.0.0.0.0.0.0.0"
+        },
+        "plumbing": {
+          "label": "Plumbing",
+          "value": 117,
+          "vectorId": 1617909267,
+          "coordinate": "4.5.16.0.0.0.0.0.0.0"
+        },
+        "hvac": {
+          "label": "Heating, ventilation and air conditioning",
+          "value": 104,
+          "vectorId": 1617909268,
+          "coordinate": "4.5.17.0.0.0.0.0.0.0"
+        },
+        "electrical": {
+          "label": "Electrical",
+          "value": 103.6,
+          "vectorId": 1617909270,
+          "coordinate": "4.5.19.0.0.0.0.0.0.0"
+        },
+        "earthwork": {
+          "label": "Earthwork",
+          "value": 117,
+          "vectorId": 1617909273,
+          "coordinate": "4.5.22.0.0.0.0.0.0.0"
+        },
+        "exteriorImprovements": {
+          "label": "Exterior improvements",
+          "value": 107,
+          "vectorId": 1617909274,
+          "coordinate": "4.5.23.0.0.0.0.0.0.0"
+        },
+        "utilities": {
+          "label": "Utilities",
+          "value": 120.6,
+          "vectorId": 1617909275,
+          "coordinate": "4.5.24.0.0.0.0.0.0.0"
+        }
+      }
+    },
+    {
+      "id": "halifax",
+      "label": "Halifax, Nova Scotia",
+      "kind": "cma",
+      "statcanMemberId": 5,
+      "divisions": {
+        "composite": {
+          "label": "Division composite",
+          "value": 116,
+          "vectorId": 1617909636,
+          "coordinate": "5.5.1.0.0.0.0.0.0.0"
+        },
+        "generalRequirements": {
+          "label": "General requirements",
+          "value": 114.4,
+          "vectorId": 1617909637,
+          "coordinate": "5.5.2.0.0.0.0.0.0.0"
+        },
+        "concrete": {
+          "label": "Concrete",
+          "value": 122.6,
+          "vectorId": 1617909639,
+          "coordinate": "5.5.4.0.0.0.0.0.0.0"
+        },
+        "structuralSteelFraming": {
+          "label": "Structural steel framing",
+          "value": 117.1,
+          "vectorId": 1617909641,
+          "coordinate": "5.5.6.0.0.0.0.0.0.0"
+        },
+        "woodPlasticsComposites": {
+          "label": "Wood, plastics and composites",
+          "value": 117.1,
+          "vectorId": 1617909643,
+          "coordinate": "5.5.8.0.0.0.0.0.0.0"
+        },
+        "thermalMoistureProtection": {
+          "label": "Thermal and moisture protection",
+          "value": 119.2,
+          "vectorId": 1617909644,
+          "coordinate": "5.5.9.0.0.0.0.0.0.0"
+        },
+        "openings": {
+          "label": "Openings",
+          "value": 109.9,
+          "vectorId": 1617909645,
+          "coordinate": "5.5.10.0.0.0.0.0.0.0"
+        },
+        "finishes": {
+          "label": "Finishes",
+          "value": 113.1,
+          "vectorId": 1617909646,
+          "coordinate": "5.5.11.0.0.0.0.0.0.0"
+        },
+        "plumbing": {
+          "label": "Plumbing",
+          "value": 117,
+          "vectorId": 1617909651,
+          "coordinate": "5.5.16.0.0.0.0.0.0.0"
+        },
+        "hvac": {
+          "label": "Heating, ventilation and air conditioning",
+          "value": 104,
+          "vectorId": 1617909652,
+          "coordinate": "5.5.17.0.0.0.0.0.0.0"
+        },
+        "electrical": {
+          "label": "Electrical",
+          "value": 103.6,
+          "vectorId": 1617909654,
+          "coordinate": "5.5.19.0.0.0.0.0.0.0"
+        },
+        "earthwork": {
+          "label": "Earthwork",
+          "value": 117,
+          "vectorId": 1617909657,
+          "coordinate": "5.5.22.0.0.0.0.0.0.0"
+        },
+        "exteriorImprovements": {
+          "label": "Exterior improvements",
+          "value": 107,
+          "vectorId": 1617909658,
+          "coordinate": "5.5.23.0.0.0.0.0.0.0"
+        },
+        "utilities": {
+          "label": "Utilities",
+          "value": 120.6,
+          "vectorId": 1617909659,
+          "coordinate": "5.5.24.0.0.0.0.0.0.0"
+        }
+      }
+    },
+    {
+      "id": "new-brunswick",
+      "label": "New Brunswick",
+      "kind": "province",
+      "statcanMemberId": 6,
+      "divisions": {
+        "composite": {
+          "label": "Division composite",
+          "value": 106.4,
+          "vectorId": 1617910020,
+          "coordinate": "6.5.1.0.0.0.0.0.0.0"
+        },
+        "generalRequirements": {
+          "label": "General requirements",
+          "value": 100.9,
+          "vectorId": 1617910021,
+          "coordinate": "6.5.2.0.0.0.0.0.0.0"
+        },
+        "concrete": {
+          "label": "Concrete",
+          "value": 106.4,
+          "vectorId": 1617910023,
+          "coordinate": "6.5.4.0.0.0.0.0.0.0"
+        },
+        "structuralSteelFraming": {
+          "label": "Structural steel framing",
+          "value": 107.1,
+          "vectorId": 1617910025,
+          "coordinate": "6.5.6.0.0.0.0.0.0.0"
+        },
+        "woodPlasticsComposites": {
+          "label": "Wood, plastics and composites",
+          "value": 105.5,
+          "vectorId": 1617910027,
+          "coordinate": "6.5.8.0.0.0.0.0.0.0"
+        },
+        "thermalMoistureProtection": {
+          "label": "Thermal and moisture protection",
+          "value": 105.4,
+          "vectorId": 1617910028,
+          "coordinate": "6.5.9.0.0.0.0.0.0.0"
+        },
+        "openings": {
+          "label": "Openings",
+          "value": 104.4,
+          "vectorId": 1617910029,
+          "coordinate": "6.5.10.0.0.0.0.0.0.0"
+        },
+        "finishes": {
+          "label": "Finishes",
+          "value": 103.9,
+          "vectorId": 1617910030,
+          "coordinate": "6.5.11.0.0.0.0.0.0.0"
+        },
+        "plumbing": {
+          "label": "Plumbing",
+          "value": 119.3,
+          "vectorId": 1617910035,
+          "coordinate": "6.5.16.0.0.0.0.0.0.0"
+        },
+        "hvac": {
+          "label": "Heating, ventilation and air conditioning",
+          "value": 106.4,
+          "vectorId": 1617910036,
+          "coordinate": "6.5.17.0.0.0.0.0.0.0"
+        },
+        "electrical": {
+          "label": "Electrical",
+          "value": 106.4,
+          "vectorId": 1617910038,
+          "coordinate": "6.5.19.0.0.0.0.0.0.0"
+        },
+        "earthwork": {
+          "label": "Earthwork",
+          "value": 104,
+          "vectorId": 1617910041,
+          "coordinate": "6.5.22.0.0.0.0.0.0.0"
+        },
+        "exteriorImprovements": {
+          "label": "Exterior improvements",
+          "value": 107.7,
+          "vectorId": 1617910042,
+          "coordinate": "6.5.23.0.0.0.0.0.0.0"
+        },
+        "utilities": {
+          "label": "Utilities",
+          "value": 122.8,
+          "vectorId": 1617910043,
+          "coordinate": "6.5.24.0.0.0.0.0.0.0"
+        }
+      }
+    },
+    {
+      "id": "moncton",
+      "label": "Moncton, New Brunswick",
+      "kind": "cma",
+      "statcanMemberId": 7,
+      "divisions": {
+        "composite": {
+          "label": "Division composite",
+          "value": 106.4,
+          "vectorId": 1617910404,
+          "coordinate": "7.5.1.0.0.0.0.0.0.0"
+        },
+        "generalRequirements": {
+          "label": "General requirements",
+          "value": 100.9,
+          "vectorId": 1617910405,
+          "coordinate": "7.5.2.0.0.0.0.0.0.0"
+        },
+        "concrete": {
+          "label": "Concrete",
+          "value": 106.4,
+          "vectorId": 1617910407,
+          "coordinate": "7.5.4.0.0.0.0.0.0.0"
+        },
+        "structuralSteelFraming": {
+          "label": "Structural steel framing",
+          "value": 107.1,
+          "vectorId": 1617910409,
+          "coordinate": "7.5.6.0.0.0.0.0.0.0"
+        },
+        "woodPlasticsComposites": {
+          "label": "Wood, plastics and composites",
+          "value": 105.5,
+          "vectorId": 1617910411,
+          "coordinate": "7.5.8.0.0.0.0.0.0.0"
+        },
+        "thermalMoistureProtection": {
+          "label": "Thermal and moisture protection",
+          "value": 105.4,
+          "vectorId": 1617910412,
+          "coordinate": "7.5.9.0.0.0.0.0.0.0"
+        },
+        "openings": {
+          "label": "Openings",
+          "value": 104.4,
+          "vectorId": 1617910413,
+          "coordinate": "7.5.10.0.0.0.0.0.0.0"
+        },
+        "finishes": {
+          "label": "Finishes",
+          "value": 103.9,
+          "vectorId": 1617910414,
+          "coordinate": "7.5.11.0.0.0.0.0.0.0"
+        },
+        "plumbing": {
+          "label": "Plumbing",
+          "value": 119.3,
+          "vectorId": 1617910419,
+          "coordinate": "7.5.16.0.0.0.0.0.0.0"
+        },
+        "hvac": {
+          "label": "Heating, ventilation and air conditioning",
+          "value": 106.4,
+          "vectorId": 1617910420,
+          "coordinate": "7.5.17.0.0.0.0.0.0.0"
+        },
+        "electrical": {
+          "label": "Electrical",
+          "value": 106.4,
+          "vectorId": 1617910422,
+          "coordinate": "7.5.19.0.0.0.0.0.0.0"
+        },
+        "earthwork": {
+          "label": "Earthwork",
+          "value": 104,
+          "vectorId": 1617910425,
+          "coordinate": "7.5.22.0.0.0.0.0.0.0"
+        },
+        "exteriorImprovements": {
+          "label": "Exterior improvements",
+          "value": 107.7,
+          "vectorId": 1617910426,
+          "coordinate": "7.5.23.0.0.0.0.0.0.0"
+        },
+        "utilities": {
+          "label": "Utilities",
+          "value": 122.8,
+          "vectorId": 1617910427,
+          "coordinate": "7.5.24.0.0.0.0.0.0.0"
+        }
+      }
+    },
+    {
+      "id": "quebec-province",
+      "label": "Quebec",
+      "kind": "province",
+      "statcanMemberId": 8,
+      "divisions": {
+        "composite": {
+          "label": "Division composite",
+          "value": 116.4,
+          "vectorId": 1617910788,
+          "coordinate": "8.5.1.0.0.0.0.0.0.0"
+        },
+        "generalRequirements": {
+          "label": "General requirements",
+          "value": 116.3,
+          "vectorId": 1617910789,
+          "coordinate": "8.5.2.0.0.0.0.0.0.0"
+        },
+        "concrete": {
+          "label": "Concrete",
+          "value": 130.7,
+          "vectorId": 1617910791,
+          "coordinate": "8.5.4.0.0.0.0.0.0.0"
+        },
+        "structuralSteelFraming": {
+          "label": "Structural steel framing",
+          "value": 123.7,
+          "vectorId": 1617910793,
+          "coordinate": "8.5.6.0.0.0.0.0.0.0"
+        },
+        "woodPlasticsComposites": {
+          "label": "Wood, plastics and composites",
+          "value": 107.5,
+          "vectorId": 1617910795,
+          "coordinate": "8.5.8.0.0.0.0.0.0.0"
+        },
+        "thermalMoistureProtection": {
+          "label": "Thermal and moisture protection",
+          "value": 118.7,
+          "vectorId": 1617910796,
+          "coordinate": "8.5.9.0.0.0.0.0.0.0"
+        },
+        "openings": {
+          "label": "Openings",
+          "value": 108.9,
+          "vectorId": 1617910797,
+          "coordinate": "8.5.10.0.0.0.0.0.0.0"
+        },
+        "finishes": {
+          "label": "Finishes",
+          "value": 121.9,
+          "vectorId": 1617910798,
+          "coordinate": "8.5.11.0.0.0.0.0.0.0"
+        },
+        "plumbing": {
+          "label": "Plumbing",
+          "value": 121.7,
+          "vectorId": 1617910803,
+          "coordinate": "8.5.16.0.0.0.0.0.0.0"
+        },
+        "hvac": {
+          "label": "Heating, ventilation and air conditioning",
+          "value": 109.7,
+          "vectorId": 1617910804,
+          "coordinate": "8.5.17.0.0.0.0.0.0.0"
+        },
+        "electrical": {
+          "label": "Electrical",
+          "value": 110.1,
+          "vectorId": 1617910806,
+          "coordinate": "8.5.19.0.0.0.0.0.0.0"
+        },
+        "earthwork": {
+          "label": "Earthwork",
+          "value": 126.5,
+          "vectorId": 1617910809,
+          "coordinate": "8.5.22.0.0.0.0.0.0.0"
+        },
+        "exteriorImprovements": {
+          "label": "Exterior improvements",
+          "value": 113.6,
+          "vectorId": 1617910810,
+          "coordinate": "8.5.23.0.0.0.0.0.0.0"
+        },
+        "utilities": {
+          "label": "Utilities",
+          "value": 124.6,
+          "vectorId": 1617910811,
+          "coordinate": "8.5.24.0.0.0.0.0.0.0"
+        }
+      }
+    },
+    {
+      "id": "quebec",
+      "label": "Quebec, Quebec",
+      "kind": "cma",
+      "statcanMemberId": 9,
+      "divisions": {
+        "composite": {
+          "label": "Division composite",
+          "value": 120.7,
+          "vectorId": 1617911172,
+          "coordinate": "9.5.1.0.0.0.0.0.0.0"
+        },
+        "generalRequirements": {
+          "label": "General requirements",
+          "value": 115.2,
+          "vectorId": 1617911173,
+          "coordinate": "9.5.2.0.0.0.0.0.0.0"
+        },
+        "concrete": {
+          "label": "Concrete",
+          "value": 121.8,
+          "vectorId": 1617911175,
+          "coordinate": "9.5.4.0.0.0.0.0.0.0"
+        },
+        "structuralSteelFraming": {
+          "label": "Structural steel framing",
+          "value": 122.8,
+          "vectorId": 1617911177,
+          "coordinate": "9.5.6.0.0.0.0.0.0.0"
+        },
+        "woodPlasticsComposites": {
+          "label": "Wood, plastics and composites",
+          "value": 121.5,
+          "vectorId": 1617911179,
+          "coordinate": "9.5.8.0.0.0.0.0.0.0"
+        },
+        "thermalMoistureProtection": {
+          "label": "Thermal and moisture protection",
+          "value": 121,
+          "vectorId": 1617911180,
+          "coordinate": "9.5.9.0.0.0.0.0.0.0"
+        },
+        "openings": {
+          "label": "Openings",
+          "value": 115.9,
+          "vectorId": 1617911181,
+          "coordinate": "9.5.10.0.0.0.0.0.0.0"
+        },
+        "finishes": {
+          "label": "Finishes",
+          "value": 127.8,
+          "vectorId": 1617911182,
+          "coordinate": "9.5.11.0.0.0.0.0.0.0"
+        },
+        "plumbing": {
+          "label": "Plumbing",
+          "value": 121.7,
+          "vectorId": 1617911187,
+          "coordinate": "9.5.16.0.0.0.0.0.0.0"
+        },
+        "hvac": {
+          "label": "Heating, ventilation and air conditioning",
+          "value": 109.7,
+          "vectorId": 1617911188,
+          "coordinate": "9.5.17.0.0.0.0.0.0.0"
+        },
+        "electrical": {
+          "label": "Electrical",
+          "value": 110.1,
+          "vectorId": 1617911190,
+          "coordinate": "9.5.19.0.0.0.0.0.0.0"
+        },
+        "earthwork": {
+          "label": "Earthwork",
+          "value": 138,
+          "vectorId": 1617911193,
+          "coordinate": "9.5.22.0.0.0.0.0.0.0"
+        },
+        "exteriorImprovements": {
+          "label": "Exterior improvements",
+          "value": 120.6,
+          "vectorId": 1617911194,
+          "coordinate": "9.5.23.0.0.0.0.0.0.0"
+        },
+        "utilities": {
+          "label": "Utilities",
+          "value": 124.6,
+          "vectorId": 1617911195,
+          "coordinate": "9.5.24.0.0.0.0.0.0.0"
+        }
+      }
+    },
+    {
+      "id": "montreal",
+      "label": "Montréal, Quebec",
+      "kind": "cma",
+      "statcanMemberId": 10,
+      "divisions": {
+        "composite": {
+          "label": "Division composite",
+          "value": 114.8,
+          "vectorId": 1617911556,
+          "coordinate": "10.5.1.0.0.0.0.0.0.0"
+        },
+        "generalRequirements": {
+          "label": "General requirements",
+          "value": 116.7,
+          "vectorId": 1617911557,
+          "coordinate": "10.5.2.0.0.0.0.0.0.0"
+        },
+        "concrete": {
+          "label": "Concrete",
+          "value": 134.1,
+          "vectorId": 1617911559,
+          "coordinate": "10.5.4.0.0.0.0.0.0.0"
+        },
+        "structuralSteelFraming": {
+          "label": "Structural steel framing",
+          "value": 124,
+          "vectorId": 1617911561,
+          "coordinate": "10.5.6.0.0.0.0.0.0.0"
+        },
+        "woodPlasticsComposites": {
+          "label": "Wood, plastics and composites",
+          "value": 102.6,
+          "vectorId": 1617911563,
+          "coordinate": "10.5.8.0.0.0.0.0.0.0"
+        },
+        "thermalMoistureProtection": {
+          "label": "Thermal and moisture protection",
+          "value": 117.7,
+          "vectorId": 1617911564,
+          "coordinate": "10.5.9.0.0.0.0.0.0.0"
+        },
+        "openings": {
+          "label": "Openings",
+          "value": 106.4,
+          "vectorId": 1617911565,
+          "coordinate": "10.5.10.0.0.0.0.0.0.0"
+        },
+        "finishes": {
+          "label": "Finishes",
+          "value": 119.5,
+          "vectorId": 1617911566,
+          "coordinate": "10.5.11.0.0.0.0.0.0.0"
+        },
+        "plumbing": {
+          "label": "Plumbing",
+          "value": 121.7,
+          "vectorId": 1617911571,
+          "coordinate": "10.5.16.0.0.0.0.0.0.0"
+        },
+        "hvac": {
+          "label": "Heating, ventilation and air conditioning",
+          "value": 109.7,
+          "vectorId": 1617911572,
+          "coordinate": "10.5.17.0.0.0.0.0.0.0"
+        },
+        "electrical": {
+          "label": "Electrical",
+          "value": 110.1,
+          "vectorId": 1617911574,
+          "coordinate": "10.5.19.0.0.0.0.0.0.0"
+        },
+        "earthwork": {
+          "label": "Earthwork",
+          "value": 121.4,
+          "vectorId": 1617911577,
+          "coordinate": "10.5.22.0.0.0.0.0.0.0"
+        },
+        "exteriorImprovements": {
+          "label": "Exterior improvements",
+          "value": 110.9,
+          "vectorId": 1617911578,
+          "coordinate": "10.5.23.0.0.0.0.0.0.0"
+        },
+        "utilities": {
+          "label": "Utilities",
+          "value": 124.6,
+          "vectorId": 1617911579,
+          "coordinate": "10.5.24.0.0.0.0.0.0.0"
+        }
+      }
+    },
+    {
+      "id": "ontario",
+      "label": "Ontario",
+      "kind": "province",
+      "statcanMemberId": 11,
+      "divisions": {
+        "composite": {
+          "label": "Division composite",
+          "value": 106.2,
+          "vectorId": 1617911940,
+          "coordinate": "11.5.1.0.0.0.0.0.0.0"
+        },
+        "generalRequirements": {
+          "label": "General requirements",
+          "value": 124.8,
+          "vectorId": 1617911941,
+          "coordinate": "11.5.2.0.0.0.0.0.0.0"
+        },
+        "concrete": {
+          "label": "Concrete",
+          "value": 94,
+          "vectorId": 1617911943,
+          "coordinate": "11.5.4.0.0.0.0.0.0.0"
+        },
+        "structuralSteelFraming": {
+          "label": "Structural steel framing",
+          "value": 103.8,
+          "vectorId": 1617911945,
+          "coordinate": "11.5.6.0.0.0.0.0.0.0"
+        },
+        "woodPlasticsComposites": {
+          "label": "Wood, plastics and composites",
+          "value": 97.4,
+          "vectorId": 1617911947,
+          "coordinate": "11.5.8.0.0.0.0.0.0.0"
+        },
+        "thermalMoistureProtection": {
+          "label": "Thermal and moisture protection",
+          "value": 112.3,
+          "vectorId": 1617911948,
+          "coordinate": "11.5.9.0.0.0.0.0.0.0"
+        },
+        "openings": {
+          "label": "Openings",
+          "value": 104.9,
+          "vectorId": 1617911949,
+          "coordinate": "11.5.10.0.0.0.0.0.0.0"
+        },
+        "finishes": {
+          "label": "Finishes",
+          "value": 111.7,
+          "vectorId": 1617911950,
+          "coordinate": "11.5.11.0.0.0.0.0.0.0"
+        },
+        "plumbing": {
+          "label": "Plumbing",
+          "value": 119.9,
+          "vectorId": 1617911955,
+          "coordinate": "11.5.16.0.0.0.0.0.0.0"
+        },
+        "hvac": {
+          "label": "Heating, ventilation and air conditioning",
+          "value": 106.3,
+          "vectorId": 1617911956,
+          "coordinate": "11.5.17.0.0.0.0.0.0.0"
+        },
+        "electrical": {
+          "label": "Electrical",
+          "value": 106.5,
+          "vectorId": 1617911958,
+          "coordinate": "11.5.19.0.0.0.0.0.0.0"
+        },
+        "earthwork": {
+          "label": "Earthwork",
+          "value": 102.2,
+          "vectorId": 1617911961,
+          "coordinate": "11.5.22.0.0.0.0.0.0.0"
+        },
+        "exteriorImprovements": {
+          "label": "Exterior improvements",
+          "value": 102.2,
+          "vectorId": 1617911962,
+          "coordinate": "11.5.23.0.0.0.0.0.0.0"
+        },
+        "utilities": {
+          "label": "Utilities",
+          "value": 123.3,
+          "vectorId": 1617911963,
+          "coordinate": "11.5.24.0.0.0.0.0.0.0"
+        }
+      }
+    },
+    {
+      "id": "ottawa-gatineau",
+      "label": "Ottawa–Gatineau, Ontario part, Ontario/Quebec",
+      "kind": "cma",
+      "statcanMemberId": 12,
+      "divisions": {
+        "composite": {
+          "label": "Division composite",
+          "value": 108.5,
+          "vectorId": 1617912324,
+          "coordinate": "12.5.1.0.0.0.0.0.0.0"
+        },
+        "generalRequirements": {
+          "label": "General requirements",
+          "value": 124.1,
+          "vectorId": 1617912325,
+          "coordinate": "12.5.2.0.0.0.0.0.0.0"
+        },
+        "concrete": {
+          "label": "Concrete",
+          "value": 109.8,
+          "vectorId": 1617912327,
+          "coordinate": "12.5.4.0.0.0.0.0.0.0"
+        },
+        "structuralSteelFraming": {
+          "label": "Structural steel framing",
+          "value": 101.9,
+          "vectorId": 1617912329,
+          "coordinate": "12.5.6.0.0.0.0.0.0.0"
+        },
+        "woodPlasticsComposites": {
+          "label": "Wood, plastics and composites",
+          "value": 95.1,
+          "vectorId": 1617912331,
+          "coordinate": "12.5.8.0.0.0.0.0.0.0"
+        },
+        "thermalMoistureProtection": {
+          "label": "Thermal and moisture protection",
+          "value": 113.1,
+          "vectorId": 1617912332,
+          "coordinate": "12.5.9.0.0.0.0.0.0.0"
+        },
+        "openings": {
+          "label": "Openings",
+          "value": 110,
+          "vectorId": 1617912333,
+          "coordinate": "12.5.10.0.0.0.0.0.0.0"
+        },
+        "finishes": {
+          "label": "Finishes",
+          "value": 114.2,
+          "vectorId": 1617912334,
+          "coordinate": "12.5.11.0.0.0.0.0.0.0"
+        },
+        "plumbing": {
+          "label": "Plumbing",
+          "value": 119.6,
+          "vectorId": 1617912339,
+          "coordinate": "12.5.16.0.0.0.0.0.0.0"
+        },
+        "hvac": {
+          "label": "Heating, ventilation and air conditioning",
+          "value": 106.2,
+          "vectorId": 1617912340,
+          "coordinate": "12.5.17.0.0.0.0.0.0.0"
+        },
+        "electrical": {
+          "label": "Electrical",
+          "value": 106.6,
+          "vectorId": 1617912342,
+          "coordinate": "12.5.19.0.0.0.0.0.0.0"
+        },
+        "earthwork": {
+          "label": "Earthwork",
+          "value": 113.4,
+          "vectorId": 1617912345,
+          "coordinate": "12.5.22.0.0.0.0.0.0.0"
+        },
+        "exteriorImprovements": {
+          "label": "Exterior improvements",
+          "value": 108.7,
+          "vectorId": 1617912346,
+          "coordinate": "12.5.23.0.0.0.0.0.0.0"
+        },
+        "utilities": {
+          "label": "Utilities",
+          "value": 123,
+          "vectorId": 1617912347,
+          "coordinate": "12.5.24.0.0.0.0.0.0.0"
+        }
+      }
+    },
+    {
+      "id": "toronto",
+      "label": "Toronto, Ontario",
+      "kind": "cma",
+      "statcanMemberId": 13,
+      "divisions": {
+        "composite": {
+          "label": "Division composite",
+          "value": 105.4,
+          "vectorId": 1617912708,
+          "coordinate": "13.5.1.0.0.0.0.0.0.0"
+        },
+        "generalRequirements": {
+          "label": "General requirements",
+          "value": 126,
+          "vectorId": 1617912709,
+          "coordinate": "13.5.2.0.0.0.0.0.0.0"
+        },
+        "concrete": {
+          "label": "Concrete",
+          "value": 88.2,
+          "vectorId": 1617912711,
+          "coordinate": "13.5.4.0.0.0.0.0.0.0"
+        },
+        "structuralSteelFraming": {
+          "label": "Structural steel framing",
+          "value": 101.3,
+          "vectorId": 1617912713,
+          "coordinate": "13.5.6.0.0.0.0.0.0.0"
+        },
+        "woodPlasticsComposites": {
+          "label": "Wood, plastics and composites",
+          "value": 98.3,
+          "vectorId": 1617912715,
+          "coordinate": "13.5.8.0.0.0.0.0.0.0"
+        },
+        "thermalMoistureProtection": {
+          "label": "Thermal and moisture protection",
+          "value": 111.5,
+          "vectorId": 1617912716,
+          "coordinate": "13.5.9.0.0.0.0.0.0.0"
+        },
+        "openings": {
+          "label": "Openings",
+          "value": 103.4,
+          "vectorId": 1617912717,
+          "coordinate": "13.5.10.0.0.0.0.0.0.0"
+        },
+        "finishes": {
+          "label": "Finishes",
+          "value": 111.1,
+          "vectorId": 1617912718,
+          "coordinate": "13.5.11.0.0.0.0.0.0.0"
+        },
+        "plumbing": {
+          "label": "Plumbing",
+          "value": 119.9,
+          "vectorId": 1617912723,
+          "coordinate": "13.5.16.0.0.0.0.0.0.0"
+        },
+        "hvac": {
+          "label": "Heating, ventilation and air conditioning",
+          "value": 106.3,
+          "vectorId": 1617912724,
+          "coordinate": "13.5.17.0.0.0.0.0.0.0"
+        },
+        "electrical": {
+          "label": "Electrical",
+          "value": 106.5,
+          "vectorId": 1617912726,
+          "coordinate": "13.5.19.0.0.0.0.0.0.0"
+        },
+        "earthwork": {
+          "label": "Earthwork",
+          "value": 98.5,
+          "vectorId": 1617912729,
+          "coordinate": "13.5.22.0.0.0.0.0.0.0"
+        },
+        "exteriorImprovements": {
+          "label": "Exterior improvements",
+          "value": 100.9,
+          "vectorId": 1617912730,
+          "coordinate": "13.5.23.0.0.0.0.0.0.0"
+        },
+        "utilities": {
+          "label": "Utilities",
+          "value": 123.4,
+          "vectorId": 1617912731,
+          "coordinate": "13.5.24.0.0.0.0.0.0.0"
+        }
+      }
+    },
+    {
+      "id": "london",
+      "label": "London, Ontario",
+      "kind": "cma",
+      "statcanMemberId": 14,
+      "divisions": {
+        "composite": {
+          "label": "Division composite",
+          "value": 111.9,
+          "vectorId": 1617913092,
+          "coordinate": "14.5.1.0.0.0.0.0.0.0"
+        },
+        "generalRequirements": {
+          "label": "General requirements",
+          "value": 116.8,
+          "vectorId": 1617913093,
+          "coordinate": "14.5.2.0.0.0.0.0.0.0"
+        },
+        "concrete": {
+          "label": "Concrete",
+          "value": 124,
+          "vectorId": 1617913095,
+          "coordinate": "14.5.4.0.0.0.0.0.0.0"
+        },
+        "structuralSteelFraming": {
+          "label": "Structural steel framing",
+          "value": 132.9,
+          "vectorId": 1617913097,
+          "coordinate": "14.5.6.0.0.0.0.0.0.0"
+        },
+        "woodPlasticsComposites": {
+          "label": "Wood, plastics and composites",
+          "value": 100.4,
+          "vectorId": 1617913099,
+          "coordinate": "14.5.8.0.0.0.0.0.0.0"
+        },
+        "thermalMoistureProtection": {
+          "label": "Thermal and moisture protection",
+          "value": 117.7,
+          "vectorId": 1617913100,
+          "coordinate": "14.5.9.0.0.0.0.0.0.0"
+        },
+        "openings": {
+          "label": "Openings",
+          "value": 110.2,
+          "vectorId": 1617913101,
+          "coordinate": "14.5.10.0.0.0.0.0.0.0"
+        },
+        "finishes": {
+          "label": "Finishes",
+          "value": 116.1,
+          "vectorId": 1617913102,
+          "coordinate": "14.5.11.0.0.0.0.0.0.0"
+        },
+        "plumbing": {
+          "label": "Plumbing",
+          "value": 120,
+          "vectorId": 1617913107,
+          "coordinate": "14.5.16.0.0.0.0.0.0.0"
+        },
+        "hvac": {
+          "label": "Heating, ventilation and air conditioning",
+          "value": 106.3,
+          "vectorId": 1617913108,
+          "coordinate": "14.5.17.0.0.0.0.0.0.0"
+        },
+        "electrical": {
+          "label": "Electrical",
+          "value": 106.5,
+          "vectorId": 1617913110,
+          "coordinate": "14.5.19.0.0.0.0.0.0.0"
+        },
+        "earthwork": {
+          "label": "Earthwork",
+          "value": 113.5,
+          "vectorId": 1617913113,
+          "coordinate": "14.5.22.0.0.0.0.0.0.0"
+        },
+        "exteriorImprovements": {
+          "label": "Exterior improvements",
+          "value": 103.1,
+          "vectorId": 1617913114,
+          "coordinate": "14.5.23.0.0.0.0.0.0.0"
+        },
+        "utilities": {
+          "label": "Utilities",
+          "value": 123.4,
+          "vectorId": 1617913115,
+          "coordinate": "14.5.24.0.0.0.0.0.0.0"
+        }
+      }
+    },
+    {
+      "id": "manitoba",
+      "label": "Manitoba",
+      "kind": "province",
+      "statcanMemberId": 15,
+      "divisions": {
+        "composite": {
+          "label": "Division composite",
+          "value": 112.9,
+          "vectorId": 1617913476,
+          "coordinate": "15.5.1.0.0.0.0.0.0.0"
+        },
+        "generalRequirements": {
+          "label": "General requirements",
+          "value": 115,
+          "vectorId": 1617913477,
+          "coordinate": "15.5.2.0.0.0.0.0.0.0"
+        },
+        "concrete": {
+          "label": "Concrete",
+          "value": 119.9,
+          "vectorId": 1617913479,
+          "coordinate": "15.5.4.0.0.0.0.0.0.0"
+        },
+        "structuralSteelFraming": {
+          "label": "Structural steel framing",
+          "value": 118.3,
+          "vectorId": 1617913481,
+          "coordinate": "15.5.6.0.0.0.0.0.0.0"
+        },
+        "woodPlasticsComposites": {
+          "label": "Wood, plastics and composites",
+          "value": 109,
+          "vectorId": 1617913483,
+          "coordinate": "15.5.8.0.0.0.0.0.0.0"
+        },
+        "thermalMoistureProtection": {
+          "label": "Thermal and moisture protection",
+          "value": 115.7,
+          "vectorId": 1617913484,
+          "coordinate": "15.5.9.0.0.0.0.0.0.0"
+        },
+        "openings": {
+          "label": "Openings",
+          "value": 114.8,
+          "vectorId": 1617913485,
+          "coordinate": "15.5.10.0.0.0.0.0.0.0"
+        },
+        "finishes": {
+          "label": "Finishes",
+          "value": 111.3,
+          "vectorId": 1617913486,
+          "coordinate": "15.5.11.0.0.0.0.0.0.0"
+        },
+        "plumbing": {
+          "label": "Plumbing",
+          "value": 117.4,
+          "vectorId": 1617913491,
+          "coordinate": "15.5.16.0.0.0.0.0.0.0"
+        },
+        "hvac": {
+          "label": "Heating, ventilation and air conditioning",
+          "value": 105.6,
+          "vectorId": 1617913492,
+          "coordinate": "15.5.17.0.0.0.0.0.0.0"
+        },
+        "electrical": {
+          "label": "Electrical",
+          "value": 102.8,
+          "vectorId": 1617913494,
+          "coordinate": "15.5.19.0.0.0.0.0.0.0"
+        },
+        "earthwork": {
+          "label": "Earthwork",
+          "value": 112.2,
+          "vectorId": 1617913497,
+          "coordinate": "15.5.22.0.0.0.0.0.0.0"
+        },
+        "exteriorImprovements": {
+          "label": "Exterior improvements",
+          "value": 107.9,
+          "vectorId": 1617913498,
+          "coordinate": "15.5.23.0.0.0.0.0.0.0"
+        },
+        "utilities": {
+          "label": "Utilities",
+          "value": 120.7,
+          "vectorId": 1617913499,
+          "coordinate": "15.5.24.0.0.0.0.0.0.0"
+        }
+      }
+    },
+    {
+      "id": "winnipeg",
+      "label": "Winnipeg, Manitoba",
+      "kind": "cma",
+      "statcanMemberId": 16,
+      "divisions": {
+        "composite": {
+          "label": "Division composite",
+          "value": 112.9,
+          "vectorId": 1617913860,
+          "coordinate": "16.5.1.0.0.0.0.0.0.0"
+        },
+        "generalRequirements": {
+          "label": "General requirements",
+          "value": 115,
+          "vectorId": 1617913861,
+          "coordinate": "16.5.2.0.0.0.0.0.0.0"
+        },
+        "concrete": {
+          "label": "Concrete",
+          "value": 119.9,
+          "vectorId": 1617913863,
+          "coordinate": "16.5.4.0.0.0.0.0.0.0"
+        },
+        "structuralSteelFraming": {
+          "label": "Structural steel framing",
+          "value": 118.3,
+          "vectorId": 1617913865,
+          "coordinate": "16.5.6.0.0.0.0.0.0.0"
+        },
+        "woodPlasticsComposites": {
+          "label": "Wood, plastics and composites",
+          "value": 109,
+          "vectorId": 1617913867,
+          "coordinate": "16.5.8.0.0.0.0.0.0.0"
+        },
+        "thermalMoistureProtection": {
+          "label": "Thermal and moisture protection",
+          "value": 115.7,
+          "vectorId": 1617913868,
+          "coordinate": "16.5.9.0.0.0.0.0.0.0"
+        },
+        "openings": {
+          "label": "Openings",
+          "value": 114.8,
+          "vectorId": 1617913869,
+          "coordinate": "16.5.10.0.0.0.0.0.0.0"
+        },
+        "finishes": {
+          "label": "Finishes",
+          "value": 111.3,
+          "vectorId": 1617913870,
+          "coordinate": "16.5.11.0.0.0.0.0.0.0"
+        },
+        "plumbing": {
+          "label": "Plumbing",
+          "value": 117.4,
+          "vectorId": 1617913875,
+          "coordinate": "16.5.16.0.0.0.0.0.0.0"
+        },
+        "hvac": {
+          "label": "Heating, ventilation and air conditioning",
+          "value": 105.6,
+          "vectorId": 1617913876,
+          "coordinate": "16.5.17.0.0.0.0.0.0.0"
+        },
+        "electrical": {
+          "label": "Electrical",
+          "value": 102.8,
+          "vectorId": 1617913878,
+          "coordinate": "16.5.19.0.0.0.0.0.0.0"
+        },
+        "earthwork": {
+          "label": "Earthwork",
+          "value": 112.2,
+          "vectorId": 1617913881,
+          "coordinate": "16.5.22.0.0.0.0.0.0.0"
+        },
+        "exteriorImprovements": {
+          "label": "Exterior improvements",
+          "value": 107.9,
+          "vectorId": 1617913882,
+          "coordinate": "16.5.23.0.0.0.0.0.0.0"
+        },
+        "utilities": {
+          "label": "Utilities",
+          "value": 120.7,
+          "vectorId": 1617913883,
+          "coordinate": "16.5.24.0.0.0.0.0.0.0"
+        }
+      }
+    },
+    {
+      "id": "saskatchewan",
+      "label": "Saskatchewan",
+      "kind": "province",
+      "statcanMemberId": 17,
+      "divisions": {
+        "composite": {
+          "label": "Division composite",
+          "value": 116.7,
+          "vectorId": 1617914244,
+          "coordinate": "17.5.1.0.0.0.0.0.0.0"
+        },
+        "generalRequirements": {
+          "label": "General requirements",
+          "value": 111,
+          "vectorId": 1617914245,
+          "coordinate": "17.5.2.0.0.0.0.0.0.0"
+        },
+        "concrete": {
+          "label": "Concrete",
+          "value": 129.2,
+          "vectorId": 1617914247,
+          "coordinate": "17.5.4.0.0.0.0.0.0.0"
+        },
+        "structuralSteelFraming": {
+          "label": "Structural steel framing",
+          "value": 121.6,
+          "vectorId": 1617914249,
+          "coordinate": "17.5.6.0.0.0.0.0.0.0"
+        },
+        "woodPlasticsComposites": {
+          "label": "Wood, plastics and composites",
+          "value": 116.1,
+          "vectorId": 1617914251,
+          "coordinate": "17.5.8.0.0.0.0.0.0.0"
+        },
+        "thermalMoistureProtection": {
+          "label": "Thermal and moisture protection",
+          "value": 120.3,
+          "vectorId": 1617914252,
+          "coordinate": "17.5.9.0.0.0.0.0.0.0"
+        },
+        "openings": {
+          "label": "Openings",
+          "value": 112.9,
+          "vectorId": 1617914253,
+          "coordinate": "17.5.10.0.0.0.0.0.0.0"
+        },
+        "finishes": {
+          "label": "Finishes",
+          "value": 117.9,
+          "vectorId": 1617914254,
+          "coordinate": "17.5.11.0.0.0.0.0.0.0"
+        },
+        "plumbing": {
+          "label": "Plumbing",
+          "value": 117.8,
+          "vectorId": 1617914259,
+          "coordinate": "17.5.16.0.0.0.0.0.0.0"
+        },
+        "hvac": {
+          "label": "Heating, ventilation and air conditioning",
+          "value": 105.8,
+          "vectorId": 1617914260,
+          "coordinate": "17.5.17.0.0.0.0.0.0.0"
+        },
+        "electrical": {
+          "label": "Electrical",
+          "value": 107.1,
+          "vectorId": 1617914262,
+          "coordinate": "17.5.19.0.0.0.0.0.0.0"
+        },
+        "earthwork": {
+          "label": "Earthwork",
+          "value": 119.5,
+          "vectorId": 1617914265,
+          "coordinate": "17.5.22.0.0.0.0.0.0.0"
+        },
+        "exteriorImprovements": {
+          "label": "Exterior improvements",
+          "value": 114.6,
+          "vectorId": 1617914266,
+          "coordinate": "17.5.23.0.0.0.0.0.0.0"
+        },
+        "utilities": {
+          "label": "Utilities",
+          "value": 121,
+          "vectorId": 1617914267,
+          "coordinate": "17.5.24.0.0.0.0.0.0.0"
+        }
+      }
+    },
+    {
+      "id": "regina",
+      "label": "Regina, Saskatchewan",
+      "kind": "cma",
+      "statcanMemberId": 18,
+      "divisions": {
+        "composite": {
+          "label": "Division composite",
+          "value": 124.5,
+          "vectorId": 1617914628,
+          "coordinate": "18.5.1.0.0.0.0.0.0.0"
+        },
+        "generalRequirements": {
+          "label": "General requirements",
+          "value": 116.1,
+          "vectorId": 1617914629,
+          "coordinate": "18.5.2.0.0.0.0.0.0.0"
+        },
+        "concrete": {
+          "label": "Concrete",
+          "value": 136.5,
+          "vectorId": 1617914631,
+          "coordinate": "18.5.4.0.0.0.0.0.0.0"
+        },
+        "structuralSteelFraming": {
+          "label": "Structural steel framing",
+          "value": 126.9,
+          "vectorId": 1617914633,
+          "coordinate": "18.5.6.0.0.0.0.0.0.0"
+        },
+        "woodPlasticsComposites": {
+          "label": "Wood, plastics and composites",
+          "value": 128.5,
+          "vectorId": 1617914635,
+          "coordinate": "18.5.8.0.0.0.0.0.0.0"
+        },
+        "thermalMoistureProtection": {
+          "label": "Thermal and moisture protection",
+          "value": 129.7,
+          "vectorId": 1617914636,
+          "coordinate": "18.5.9.0.0.0.0.0.0.0"
+        },
+        "openings": {
+          "label": "Openings",
+          "value": 115.4,
+          "vectorId": 1617914637,
+          "coordinate": "18.5.10.0.0.0.0.0.0.0"
+        },
+        "finishes": {
+          "label": "Finishes",
+          "value": 126.5,
+          "vectorId": 1617914638,
+          "coordinate": "18.5.11.0.0.0.0.0.0.0"
+        },
+        "plumbing": {
+          "label": "Plumbing",
+          "value": 117.8,
+          "vectorId": 1617914643,
+          "coordinate": "18.5.16.0.0.0.0.0.0.0"
+        },
+        "hvac": {
+          "label": "Heating, ventilation and air conditioning",
+          "value": 105.8,
+          "vectorId": 1617914644,
+          "coordinate": "18.5.17.0.0.0.0.0.0.0"
+        },
+        "electrical": {
+          "label": "Electrical",
+          "value": 107.1,
+          "vectorId": 1617914646,
+          "coordinate": "18.5.19.0.0.0.0.0.0.0"
+        },
+        "earthwork": {
+          "label": "Earthwork",
+          "value": 128,
+          "vectorId": 1617914649,
+          "coordinate": "18.5.22.0.0.0.0.0.0.0"
+        },
+        "exteriorImprovements": {
+          "label": "Exterior improvements",
+          "value": 120.3,
+          "vectorId": 1617914650,
+          "coordinate": "18.5.23.0.0.0.0.0.0.0"
+        },
+        "utilities": {
+          "label": "Utilities",
+          "value": 121,
+          "vectorId": 1617914651,
+          "coordinate": "18.5.24.0.0.0.0.0.0.0"
+        }
+      }
+    },
+    {
+      "id": "saskatoon",
+      "label": "Saskatoon, Saskatchewan",
+      "kind": "cma",
+      "statcanMemberId": 19,
+      "divisions": {
+        "composite": {
+          "label": "Division composite",
+          "value": 114.7,
+          "vectorId": 1617915012,
+          "coordinate": "19.5.1.0.0.0.0.0.0.0"
+        },
+        "generalRequirements": {
+          "label": "General requirements",
+          "value": 109.7,
+          "vectorId": 1617915013,
+          "coordinate": "19.5.2.0.0.0.0.0.0.0"
+        },
+        "concrete": {
+          "label": "Concrete",
+          "value": 127.5,
+          "vectorId": 1617915015,
+          "coordinate": "19.5.4.0.0.0.0.0.0.0"
+        },
+        "structuralSteelFraming": {
+          "label": "Structural steel framing",
+          "value": 120.2,
+          "vectorId": 1617915017,
+          "coordinate": "19.5.6.0.0.0.0.0.0.0"
+        },
+        "woodPlasticsComposites": {
+          "label": "Wood, plastics and composites",
+          "value": 112.8,
+          "vectorId": 1617915019,
+          "coordinate": "19.5.8.0.0.0.0.0.0.0"
+        },
+        "thermalMoistureProtection": {
+          "label": "Thermal and moisture protection",
+          "value": 118,
+          "vectorId": 1617915020,
+          "coordinate": "19.5.9.0.0.0.0.0.0.0"
+        },
+        "openings": {
+          "label": "Openings",
+          "value": 112.2,
+          "vectorId": 1617915021,
+          "coordinate": "19.5.10.0.0.0.0.0.0.0"
+        },
+        "finishes": {
+          "label": "Finishes",
+          "value": 115.7,
+          "vectorId": 1617915022,
+          "coordinate": "19.5.11.0.0.0.0.0.0.0"
+        },
+        "plumbing": {
+          "label": "Plumbing",
+          "value": 117.8,
+          "vectorId": 1617915027,
+          "coordinate": "19.5.16.0.0.0.0.0.0.0"
+        },
+        "hvac": {
+          "label": "Heating, ventilation and air conditioning",
+          "value": 105.8,
+          "vectorId": 1617915028,
+          "coordinate": "19.5.17.0.0.0.0.0.0.0"
+        },
+        "electrical": {
+          "label": "Electrical",
+          "value": 107.1,
+          "vectorId": 1617915030,
+          "coordinate": "19.5.19.0.0.0.0.0.0.0"
+        },
+        "earthwork": {
+          "label": "Earthwork",
+          "value": 117.3,
+          "vectorId": 1617915033,
+          "coordinate": "19.5.22.0.0.0.0.0.0.0"
+        },
+        "exteriorImprovements": {
+          "label": "Exterior improvements",
+          "value": 113.2,
+          "vectorId": 1617915034,
+          "coordinate": "19.5.23.0.0.0.0.0.0.0"
+        },
+        "utilities": {
+          "label": "Utilities",
+          "value": 121,
+          "vectorId": 1617915035,
+          "coordinate": "19.5.24.0.0.0.0.0.0.0"
+        }
+      }
+    },
+    {
+      "id": "alberta",
+      "label": "Alberta",
+      "kind": "province",
+      "statcanMemberId": 20,
+      "divisions": {
+        "composite": {
+          "label": "Division composite",
+          "value": 111.2,
+          "vectorId": 1617915396,
+          "coordinate": "20.5.1.0.0.0.0.0.0.0"
+        },
+        "generalRequirements": {
+          "label": "General requirements",
+          "value": 106.7,
+          "vectorId": 1617915397,
+          "coordinate": "20.5.2.0.0.0.0.0.0.0"
+        },
+        "concrete": {
+          "label": "Concrete",
+          "value": 125.5,
+          "vectorId": 1617915399,
+          "coordinate": "20.5.4.0.0.0.0.0.0.0"
+        },
+        "structuralSteelFraming": {
+          "label": "Structural steel framing",
+          "value": 112.8,
+          "vectorId": 1617915401,
+          "coordinate": "20.5.6.0.0.0.0.0.0.0"
+        },
+        "woodPlasticsComposites": {
+          "label": "Wood, plastics and composites",
+          "value": 102.4,
+          "vectorId": 1617915403,
+          "coordinate": "20.5.8.0.0.0.0.0.0.0"
+        },
+        "thermalMoistureProtection": {
+          "label": "Thermal and moisture protection",
+          "value": 113.1,
+          "vectorId": 1617915404,
+          "coordinate": "20.5.9.0.0.0.0.0.0.0"
+        },
+        "openings": {
+          "label": "Openings",
+          "value": 111.2,
+          "vectorId": 1617915405,
+          "coordinate": "20.5.10.0.0.0.0.0.0.0"
+        },
+        "finishes": {
+          "label": "Finishes",
+          "value": 117.5,
+          "vectorId": 1617915406,
+          "coordinate": "20.5.11.0.0.0.0.0.0.0"
+        },
+        "plumbing": {
+          "label": "Plumbing",
+          "value": 123.3,
+          "vectorId": 1617915411,
+          "coordinate": "20.5.16.0.0.0.0.0.0.0"
+        },
+        "hvac": {
+          "label": "Heating, ventilation and air conditioning",
+          "value": 112.4,
+          "vectorId": 1617915412,
+          "coordinate": "20.5.17.0.0.0.0.0.0.0"
+        },
+        "electrical": {
+          "label": "Electrical",
+          "value": 109.1,
+          "vectorId": 1617915414,
+          "coordinate": "20.5.19.0.0.0.0.0.0.0"
+        },
+        "earthwork": {
+          "label": "Earthwork",
+          "value": 118.3,
+          "vectorId": 1617915417,
+          "coordinate": "20.5.22.0.0.0.0.0.0.0"
+        },
+        "exteriorImprovements": {
+          "label": "Exterior improvements",
+          "value": 118,
+          "vectorId": 1617915418,
+          "coordinate": "20.5.23.0.0.0.0.0.0.0"
+        },
+        "utilities": {
+          "label": "Utilities",
+          "value": 128,
+          "vectorId": 1617915419,
+          "coordinate": "20.5.24.0.0.0.0.0.0.0"
+        }
+      }
+    },
+    {
+      "id": "calgary",
+      "label": "Calgary, Alberta",
+      "kind": "cma",
+      "statcanMemberId": 21,
+      "divisions": {
+        "composite": {
+          "label": "Division composite",
+          "value": 112.1,
+          "vectorId": 1617915780,
+          "coordinate": "21.5.1.0.0.0.0.0.0.0"
+        },
+        "generalRequirements": {
+          "label": "General requirements",
+          "value": 104.9,
+          "vectorId": 1617915781,
+          "coordinate": "21.5.2.0.0.0.0.0.0.0"
+        },
+        "concrete": {
+          "label": "Concrete",
+          "value": 125.5,
+          "vectorId": 1617915783,
+          "coordinate": "21.5.4.0.0.0.0.0.0.0"
+        },
+        "structuralSteelFraming": {
+          "label": "Structural steel framing",
+          "value": 114.2,
+          "vectorId": 1617915785,
+          "coordinate": "21.5.6.0.0.0.0.0.0.0"
+        },
+        "woodPlasticsComposites": {
+          "label": "Wood, plastics and composites",
+          "value": 102.6,
+          "vectorId": 1617915787,
+          "coordinate": "21.5.8.0.0.0.0.0.0.0"
+        },
+        "thermalMoistureProtection": {
+          "label": "Thermal and moisture protection",
+          "value": 113.9,
+          "vectorId": 1617915788,
+          "coordinate": "21.5.9.0.0.0.0.0.0.0"
+        },
+        "openings": {
+          "label": "Openings",
+          "value": 114.3,
+          "vectorId": 1617915789,
+          "coordinate": "21.5.10.0.0.0.0.0.0.0"
+        },
+        "finishes": {
+          "label": "Finishes",
+          "value": 120.3,
+          "vectorId": 1617915790,
+          "coordinate": "21.5.11.0.0.0.0.0.0.0"
+        },
+        "plumbing": {
+          "label": "Plumbing",
+          "value": 123.2,
+          "vectorId": 1617915795,
+          "coordinate": "21.5.16.0.0.0.0.0.0.0"
+        },
+        "hvac": {
+          "label": "Heating, ventilation and air conditioning",
+          "value": 112.4,
+          "vectorId": 1617915796,
+          "coordinate": "21.5.17.0.0.0.0.0.0.0"
+        },
+        "electrical": {
+          "label": "Electrical",
+          "value": 109.1,
+          "vectorId": 1617915798,
+          "coordinate": "21.5.19.0.0.0.0.0.0.0"
+        },
+        "earthwork": {
+          "label": "Earthwork",
+          "value": 122.1,
+          "vectorId": 1617915801,
+          "coordinate": "21.5.22.0.0.0.0.0.0.0"
+        },
+        "exteriorImprovements": {
+          "label": "Exterior improvements",
+          "value": 120.3,
+          "vectorId": 1617915802,
+          "coordinate": "21.5.23.0.0.0.0.0.0.0"
+        },
+        "utilities": {
+          "label": "Utilities",
+          "value": 127.9,
+          "vectorId": 1617915803,
+          "coordinate": "21.5.24.0.0.0.0.0.0.0"
+        }
+      }
+    },
+    {
+      "id": "edmonton",
+      "label": "Edmonton, Alberta",
+      "kind": "cma",
+      "statcanMemberId": 22,
+      "divisions": {
+        "composite": {
+          "label": "Division composite",
+          "value": 110.1,
+          "vectorId": 1617916164,
+          "coordinate": "22.5.1.0.0.0.0.0.0.0"
+        },
+        "generalRequirements": {
+          "label": "General requirements",
+          "value": 108.1,
+          "vectorId": 1617916165,
+          "coordinate": "22.5.2.0.0.0.0.0.0.0"
+        },
+        "concrete": {
+          "label": "Concrete",
+          "value": 125.7,
+          "vectorId": 1617916167,
+          "coordinate": "22.5.4.0.0.0.0.0.0.0"
+        },
+        "structuralSteelFraming": {
+          "label": "Structural steel framing",
+          "value": 110.7,
+          "vectorId": 1617916169,
+          "coordinate": "22.5.6.0.0.0.0.0.0.0"
+        },
+        "woodPlasticsComposites": {
+          "label": "Wood, plastics and composites",
+          "value": 102.2,
+          "vectorId": 1617916171,
+          "coordinate": "22.5.8.0.0.0.0.0.0.0"
+        },
+        "thermalMoistureProtection": {
+          "label": "Thermal and moisture protection",
+          "value": 112.1,
+          "vectorId": 1617916172,
+          "coordinate": "22.5.9.0.0.0.0.0.0.0"
+        },
+        "openings": {
+          "label": "Openings",
+          "value": 107.6,
+          "vectorId": 1617916173,
+          "coordinate": "22.5.10.0.0.0.0.0.0.0"
+        },
+        "finishes": {
+          "label": "Finishes",
+          "value": 112.6,
+          "vectorId": 1617916174,
+          "coordinate": "22.5.11.0.0.0.0.0.0.0"
+        },
+        "plumbing": {
+          "label": "Plumbing",
+          "value": 123.3,
+          "vectorId": 1617916179,
+          "coordinate": "22.5.16.0.0.0.0.0.0.0"
+        },
+        "hvac": {
+          "label": "Heating, ventilation and air conditioning",
+          "value": 112.5,
+          "vectorId": 1617916180,
+          "coordinate": "22.5.17.0.0.0.0.0.0.0"
+        },
+        "electrical": {
+          "label": "Electrical",
+          "value": 109.1,
+          "vectorId": 1617916182,
+          "coordinate": "22.5.19.0.0.0.0.0.0.0"
+        },
+        "earthwork": {
+          "label": "Earthwork",
+          "value": 113.4,
+          "vectorId": 1617916185,
+          "coordinate": "22.5.22.0.0.0.0.0.0.0"
+        },
+        "exteriorImprovements": {
+          "label": "Exterior improvements",
+          "value": 115,
+          "vectorId": 1617916186,
+          "coordinate": "22.5.23.0.0.0.0.0.0.0"
+        },
+        "utilities": {
+          "label": "Utilities",
+          "value": 128,
+          "vectorId": 1617916187,
+          "coordinate": "22.5.24.0.0.0.0.0.0.0"
+        }
+      }
+    },
+    {
+      "id": "british-columbia",
+      "label": "British Columbia",
+      "kind": "province",
+      "statcanMemberId": 23,
+      "divisions": {
+        "composite": {
+          "label": "Division composite",
+          "value": 111.4,
+          "vectorId": 1617916548,
+          "coordinate": "23.5.1.0.0.0.0.0.0.0"
+        },
+        "generalRequirements": {
+          "label": "General requirements",
+          "value": 109.9,
+          "vectorId": 1617916549,
+          "coordinate": "23.5.2.0.0.0.0.0.0.0"
+        },
+        "concrete": {
+          "label": "Concrete",
+          "value": 111.3,
+          "vectorId": 1617916551,
+          "coordinate": "23.5.4.0.0.0.0.0.0.0"
+        },
+        "structuralSteelFraming": {
+          "label": "Structural steel framing",
+          "value": 116.6,
+          "vectorId": 1617916553,
+          "coordinate": "23.5.6.0.0.0.0.0.0.0"
+        },
+        "woodPlasticsComposites": {
+          "label": "Wood, plastics and composites",
+          "value": 107.8,
+          "vectorId": 1617916555,
+          "coordinate": "23.5.8.0.0.0.0.0.0.0"
+        },
+        "thermalMoistureProtection": {
+          "label": "Thermal and moisture protection",
+          "value": 116,
+          "vectorId": 1617916556,
+          "coordinate": "23.5.9.0.0.0.0.0.0.0"
+        },
+        "openings": {
+          "label": "Openings",
+          "value": 105.8,
+          "vectorId": 1617916557,
+          "coordinate": "23.5.10.0.0.0.0.0.0.0"
+        },
+        "finishes": {
+          "label": "Finishes",
+          "value": 109.5,
+          "vectorId": 1617916558,
+          "coordinate": "23.5.11.0.0.0.0.0.0.0"
+        },
+        "plumbing": {
+          "label": "Plumbing",
+          "value": 119.9,
+          "vectorId": 1617916563,
+          "coordinate": "23.5.16.0.0.0.0.0.0.0"
+        },
+        "hvac": {
+          "label": "Heating, ventilation and air conditioning",
+          "value": 109.3,
+          "vectorId": 1617916564,
+          "coordinate": "23.5.17.0.0.0.0.0.0.0"
+        },
+        "electrical": {
+          "label": "Electrical",
+          "value": 108.7,
+          "vectorId": 1617916566,
+          "coordinate": "23.5.19.0.0.0.0.0.0.0"
+        },
+        "earthwork": {
+          "label": "Earthwork",
+          "value": 121.4,
+          "vectorId": 1617916569,
+          "coordinate": "23.5.22.0.0.0.0.0.0.0"
+        },
+        "exteriorImprovements": {
+          "label": "Exterior improvements",
+          "value": 108.4,
+          "vectorId": 1617916570,
+          "coordinate": "23.5.23.0.0.0.0.0.0.0"
+        },
+        "utilities": {
+          "label": "Utilities",
+          "value": 123.8,
+          "vectorId": 1617916571,
+          "coordinate": "23.5.24.0.0.0.0.0.0.0"
+        }
+      }
+    },
+    {
+      "id": "vancouver",
+      "label": "Vancouver, British Columbia",
+      "kind": "cma",
+      "statcanMemberId": 24,
+      "divisions": {
+        "composite": {
+          "label": "Division composite",
+          "value": 108.4,
+          "vectorId": 1617916932,
+          "coordinate": "24.5.1.0.0.0.0.0.0.0"
+        },
+        "generalRequirements": {
+          "label": "General requirements",
+          "value": 108.2,
+          "vectorId": 1617916933,
+          "coordinate": "24.5.2.0.0.0.0.0.0.0"
+        },
+        "concrete": {
+          "label": "Concrete",
+          "value": 106.8,
+          "vectorId": 1617916935,
+          "coordinate": "24.5.4.0.0.0.0.0.0.0"
+        },
+        "structuralSteelFraming": {
+          "label": "Structural steel framing",
+          "value": 113.2,
+          "vectorId": 1617916937,
+          "coordinate": "24.5.6.0.0.0.0.0.0.0"
+        },
+        "woodPlasticsComposites": {
+          "label": "Wood, plastics and composites",
+          "value": 103.3,
+          "vectorId": 1617916939,
+          "coordinate": "24.5.8.0.0.0.0.0.0.0"
+        },
+        "thermalMoistureProtection": {
+          "label": "Thermal and moisture protection",
+          "value": 112.5,
+          "vectorId": 1617916940,
+          "coordinate": "24.5.9.0.0.0.0.0.0.0"
+        },
+        "openings": {
+          "label": "Openings",
+          "value": 102.3,
+          "vectorId": 1617916941,
+          "coordinate": "24.5.10.0.0.0.0.0.0.0"
+        },
+        "finishes": {
+          "label": "Finishes",
+          "value": 106.2,
+          "vectorId": 1617916942,
+          "coordinate": "24.5.11.0.0.0.0.0.0.0"
+        },
+        "plumbing": {
+          "label": "Plumbing",
+          "value": 119.9,
+          "vectorId": 1617916947,
+          "coordinate": "24.5.16.0.0.0.0.0.0.0"
+        },
+        "hvac": {
+          "label": "Heating, ventilation and air conditioning",
+          "value": 109.3,
+          "vectorId": 1617916948,
+          "coordinate": "24.5.17.0.0.0.0.0.0.0"
+        },
+        "electrical": {
+          "label": "Electrical",
+          "value": 108.7,
+          "vectorId": 1617916950,
+          "coordinate": "24.5.19.0.0.0.0.0.0.0"
+        },
+        "earthwork": {
+          "label": "Earthwork",
+          "value": 117.5,
+          "vectorId": 1617916953,
+          "coordinate": "24.5.22.0.0.0.0.0.0.0"
+        },
+        "exteriorImprovements": {
+          "label": "Exterior improvements",
+          "value": 105.1,
+          "vectorId": 1617916954,
+          "coordinate": "24.5.23.0.0.0.0.0.0.0"
+        },
+        "utilities": {
+          "label": "Utilities",
+          "value": 123.8,
+          "vectorId": 1617916955,
+          "coordinate": "24.5.24.0.0.0.0.0.0.0"
+        }
+      }
+    },
+    {
+      "id": "victoria",
+      "label": "Victoria, British Columbia",
+      "kind": "cma",
+      "statcanMemberId": 25,
+      "divisions": {
+        "composite": {
+          "label": "Division composite",
+          "value": 123.6,
+          "vectorId": 1617917316,
+          "coordinate": "25.5.1.0.0.0.0.0.0.0"
+        },
+        "generalRequirements": {
+          "label": "General requirements",
+          "value": 116,
+          "vectorId": 1617917317,
+          "coordinate": "25.5.2.0.0.0.0.0.0.0"
+        },
+        "concrete": {
+          "label": "Concrete",
+          "value": 131.1,
+          "vectorId": 1617917319,
+          "coordinate": "25.5.4.0.0.0.0.0.0.0"
+        },
+        "structuralSteelFraming": {
+          "label": "Structural steel framing",
+          "value": 130.6,
+          "vectorId": 1617917321,
+          "coordinate": "25.5.6.0.0.0.0.0.0.0"
+        },
+        "woodPlasticsComposites": {
+          "label": "Wood, plastics and composites",
+          "value": 126,
+          "vectorId": 1617917323,
+          "coordinate": "25.5.8.0.0.0.0.0.0.0"
+        },
+        "thermalMoistureProtection": {
+          "label": "Thermal and moisture protection",
+          "value": 130.8,
+          "vectorId": 1617917324,
+          "coordinate": "25.5.9.0.0.0.0.0.0.0"
+        },
+        "openings": {
+          "label": "Openings",
+          "value": 120.2,
+          "vectorId": 1617917325,
+          "coordinate": "25.5.10.0.0.0.0.0.0.0"
+        },
+        "finishes": {
+          "label": "Finishes",
+          "value": 123.6,
+          "vectorId": 1617917326,
+          "coordinate": "25.5.11.0.0.0.0.0.0.0"
+        },
+        "plumbing": {
+          "label": "Plumbing",
+          "value": 120,
+          "vectorId": 1617917331,
+          "coordinate": "25.5.16.0.0.0.0.0.0.0"
+        },
+        "hvac": {
+          "label": "Heating, ventilation and air conditioning",
+          "value": 109.3,
+          "vectorId": 1617917332,
+          "coordinate": "25.5.17.0.0.0.0.0.0.0"
+        },
+        "electrical": {
+          "label": "Electrical",
+          "value": 108.7,
+          "vectorId": 1617917334,
+          "coordinate": "25.5.19.0.0.0.0.0.0.0"
+        },
+        "earthwork": {
+          "label": "Earthwork",
+          "value": 137.3,
+          "vectorId": 1617917337,
+          "coordinate": "25.5.22.0.0.0.0.0.0.0"
+        },
+        "exteriorImprovements": {
+          "label": "Exterior improvements",
+          "value": 121.3,
+          "vectorId": 1617917338,
+          "coordinate": "25.5.23.0.0.0.0.0.0.0"
+        },
+        "utilities": {
+          "label": "Utilities",
+          "value": 123.8,
+          "vectorId": 1617917339,
+          "coordinate": "25.5.24.0.0.0.0.0.0.0"
+        }
+      }
+    }
+  ]
+}

@@ -2,6 +2,14 @@
   "$schema": "aura-homes supplier directory v1",
   "principle": "Alberta-first, direct-from-supplier, no middlemen. Out-of-province only where no Alberta supply exists.",
   "asOf": "2026-08",
+  "provenance": {
+    "method": "Desk research from public supplier, manufacturer and municipal pages. No supplier was contacted, none has agreed to appear here, and none is endorsed. Nothing in this file is a quote, a referral, or a statement about quality of work.",
+    "collectedAtField": "asOf",
+    "collectedAtGranularity": "month",
+    "collectedAtRule": "asOf is the ONLY collection date in this file. A month is read as its first instant, never its last, so a record can never read as fresher than the file can prove. Do not add per-record dates; that would be a second anchor for the same fact.",
+    "sourceField": "url",
+    "sourceRule": "A record without a url has no source anyone can reopen. It must render as unknown, never as a check that was performed."
+  },
   "categories": {
     "sip": [
       { "name": "Insulspan (PFB/Carlisle)", "location": "Calgary AB", "note": "CCMC 13016-R listed - the painless Alberta permit path", "url": "https://www.insulspan.com", "albertaLocal": true },

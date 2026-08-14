@@ -23,6 +23,14 @@ jobs:
       - name: Verify the live HOMES mint (public RPC, read-only)
         working-directory: app
         run: node scripts/verify-homes-mint.mjs
+      # StatCan publishes construction price indexes quarterly. The bake
+      # refuses to run if its source table ever stops being CURRENT, so a
+      # silently archived table fails the workflow instead of shipping a
+      # stale index under a fresh retrieval date — which is exactly what
+      # 18-10-0276-01 would have done had it not been caught by hand.
+      - name: Re-bake the regional cost indexes (StatCan, free, no key)
+        working-directory: app
+        run: node scripts/bake-cost-indexes.mjs
       - name: Commit changed data
         run: |
           git config user.name "github-actions[bot]"

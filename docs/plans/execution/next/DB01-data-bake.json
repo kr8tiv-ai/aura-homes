@@ -16,7 +16,7 @@
   "instructions": [
     "1. Write .github/workflows/data-bake.yml: cron weekly (e.g. Mondays 12:00 UTC) + workflow_dispatch; checkout, node 20, run each bake script, git diff --quiet || commit + push. Do NOT auto-deploy - the deploy stays a human-triggered release.",
     "2. First bake script: app/scripts/bake-mint-verification.mjs already effectively exists as scripts/verify-homes-mint.mjs - call it and commit data/homes/mint-verification.json when the block advances.",
-    "3. Second: bake-cost-indexes.mjs pulling StatCan table 18-10-0276-01 CSV (free, no key) into data/cost-indexes/statcan-1810027601.json with source URL + retrieval date fields. DO NOT wire it into the budget yet - that is plan C2 stage 1 with its own anchor-invariance test.",
+    "3. DONE (C2, Aug 14) but NOT with the table this manifest named: 18-10-0276-01 is ARCHIVED, its last reference period is 2024-04-01, and StatCan's own footnote says it was replaced when 2024 Q2 shipped. Baking the named table would have published a two-year-stale index under a fresh retrieval date - the exact quiet falsehood this node exists to prevent. app/scripts/bake-cost-indexes.mjs bakes the live successor 18-10-0289-01 to data/cost-indexes/statcan-1810028901.json (25 regions x 14 divisions), carries supersedes + StatCan's footnote in the artifact, and REFUSES TO RUN if its table ever stops being CURRENT. Add `node app/scripts/bake-cost-indexes.mjs` as a workflow step.",
     "4. Third: a lint step that fails the workflow when any licensed-photo permission in data/listings (once C-1 lands) is past expiresAtISO.",
     "5. Evidence: the workflow file, one successful local dry-run of each script, and a note that enabling the schedule is a founder action."
   ],
