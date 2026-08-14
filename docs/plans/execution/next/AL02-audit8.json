@@ -22,6 +22,18 @@
     "note": "the audit IS the artifact; commit as Matt-Aurora-Ventures <lucidbloks@gmail.com>, no Co-Authored-By"
   },
   "sideEffect": "local",
-  "status": "ready",
-  "dueISO": "2026-08-16"
+  "status": "verified",
+  "dueISO": "2026-08-16",
+  "evidence": {
+    "verifiedAt": "2026-08-14",
+    "auditedRange": "8d1c78c..6644ed4 (11 commits)",
+    "appendedAs": "Audit #9 - the scheduled pass claimed #8 hours earlier at tree state 8d1c78c; per the Audit #6 precedent this pass takes the next number and notes the collision rather than writing a second #8. Node id remains AL02.",
+    "anchorsExecuted": "app npx tsc --noEmit exit 0; app npm test 290/290 (15.4s); agent npm run demo LOW 199,100 / MID 301,280 / HIGH 443,900 ex-land, equal to cost-model.json totalsExLand to the dollar; contracts npm test 25 passing; npx playwright test tests/release-truth.spec.ts 4/4. Anchors re-run at 6644ed4 after HEAD moved mid-pass.",
+    "deliberatelyNotRun": "npm run test:ui, npm run build, scripts/meadow-proof.mjs - per rejectionGate 3, another process was active on the machine. Recorded evidence audited instead: shots/r03-meadow/meadow-proof.json, scripts/__site-proof/*.png, and the manifest evidence blocks. This is stated in the audit entry's Method paragraph.",
+    "extraGatesRun": "node scripts/generate-meadow-atlas.mjs --verify (no browser) - verified:true, instancesSha256 0913e10585871853e184545a79a49426e1ffd9c680dbd297d28b931deff9b849, byte-identical to the pin at tests/meadow-progressive.spec.ts:208. FD1's byte-identity claim is TRUE.",
+    "findings": "10 numbered, with file:line anchors. 1 MEDIUM-HIGH (FD1 executed the writeSet the previous audit named as wrong; Scene.tsx deck/walkway meshes still uncoupled), 3 MEDIUM (7 of 14 manifests shipped but still status ready with no evidence; 2 of 4 waves have no manifests at all; wave 2 put 3 nodes on BuilderApp.tsx with EX02 reaching in undeclared - NO WORK LOST, verified by identifier-set and whitespace-insensitive diff), 3 LOW-MEDIUM (handoff reader never re-derives projectName/geometryMode; ProjectSpine 'changed' unreachable through any production write path; AWG mandate wording third consecutive audit and BQ-AWG closed verified without it), 3 LOW (guidance standing:checked unpinned in one direction; meadow-proof.json 5 commits stale; LiveReadout coverage detail + listings provenance nullable).",
+    "auditSevenFollowThrough": "7 findings re-verified rather than trusted: 4 closed (mobile wind gate now stricter than desktop at meadow-proof.mjs:364 and pinned as a literal at meadow-progressive.spec.ts:553; claims.json row; /homes trust - 0 hits for the banned phrase under app/; sourceCommit stamp, which is how finding 9 was caught), 2 open (deck mesh, AWG wording), 1 unexercised (repair limit - no repair chain ran this wave).",
+    "passesThatSurvivedAttack": "Regional cost cannot give an unknown region a silent 1.0 by any traced path, and its anchor-invariance test is falsifiable (regional-cost.spec.ts:82-93 perturbs and asserts the total moves). Handoff package: no constructible counterexample to the stated-hash-vs-contents claim. Storage: resolves on transaction commit not last request, with an injected-backend anti-vacuity guard. Truth sweep clean on all nine banned terms.",
+    "writeSetRespected": "docs/AUDIT-LOG.md (appended only, no prior entry edited) and this manifest. No other file touched - several were being edited concurrently by other agents and HEAD moved twice during the pass."
+  }
 }
