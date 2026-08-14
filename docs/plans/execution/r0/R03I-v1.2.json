@@ -1,0 +1,58 @@
+{
+  "node": "R03I",
+  "graphVersion": "1.2",
+  "job": "Repair the R03 meadow's shipped regressions while keeping its baked-atlas look: living wind, deck/walkway exclusion, earned full-tier promotion, and falsifiable gates a rewritten spec cannot dodge.",
+  "inputs": {
+    "regressionLedger": "Wind dead (no wind in the atlas shader; demand-frameloop override; lowPower motion kill-switch freezing Firefox/Safari), 1.4 m atlas cards piercing the deck (generator clearance dropped the deck rect and walkway), allowFullQuality hardcoded false unmounting the entire effects set, story-quality.spec inverted to bless the non-promotion.",
+    "founderDecision": "D-2026-08-13-scene-restoration: keep the new grass look, restore the motion, exclusion and effects, keep all copy/editor changes."
+  },
+  "outputs": {
+    "schema": "R03IRestorationV1",
+    "delivered": [
+      "atlas cards bend on the shared flora.ts wind clock (root-pinned, per-card phase, gust envelope)",
+      "frameloop honours the sceneQuality module contract; demand rendering survives only in the reduced-motion still tier and low-power page integration",
+      "motion gates on prefers-reduced-motion only; capability hints never freeze the scene",
+      "generator clearance mirrors sampleMeadowClearance exactly; atlas regenerated; parity + bin-level deck tests standing",
+      "full-tier promotion restored on hardware that earns it; skipped on sub-full tiers (measured 197 ms promotion re-render froze the mobile governor)",
+      "atlas compile/upload sequenced before the first meadow page window (measured 112 ms compile raced page integration and intermittently froze a healthy desktop meadow)",
+      "meadow-proof isolation fix: the desktop page closes before the mobile measurement (a background always-rendering tab produced 161-257 ms long tasks in the mobile windows)",
+      "two-tier interaction gates: first night toggle ≤250 ms (one-time night program compilation), steady-state ≤160 ms"
+    ]
+  },
+  "dependsOn": ["R03H", "G00"],
+  "verify": {
+    "owner": "same-session author with machine-readable gates; fresh-context re-verification owed at Audit #7 (AL01)",
+    "evidence": {
+      "verifiedAt": "2026-08-14T02:20:00-06:00",
+      "unitSpecs": "175/175 (includes new mask-parity across a 3,000-point grid, deck/walkway/house placement decode of meadow-atlas.bin, wind-clock and frameloop-contract pins)",
+      "uiSpecs": "58/58 on a fresh export build, including story-quality data-scene-quality=full after the meadow paints (45 s real walk)",
+      "hardwareProof": {
+        "schema": "MeadowHardwareProofV3",
+        "renderer": "ANGLE AMD Radeon 740M D3D11",
+        "desktop": {
+          "state": "settled",
+          "instances": 23213,
+          "causalLongTaskMaxMs": 0.7,
+          "fullRunRenderP95Ms": 8.3,
+          "livingWindMotionPixelRatio": 0.263,
+          "interactionFirstMs": 160,
+          "interactionSteadyMs": 152,
+          "coverageCloseVsApprovedBaseline": 1.85
+        },
+        "mobile": {
+          "state": "settled",
+          "pages": 44,
+          "instances": 22255,
+          "causalLongTaskMaxMs": 0.3,
+          "livingWind": true
+        }
+      },
+      "knownRemainingWork": [
+        "PB-class: compileAsync warmup for the full-tier promotion and night program set (measured 5.7 s / 6.7 s one-time compile bursts after settle and on first night switch, outside the causal gates)",
+        "AL01: Audit #7 fresh-context grading of this repair"
+      ]
+    }
+  },
+  "sideEffect": "local",
+  "status": "verified"
+}
