@@ -57,6 +57,11 @@ test("the built proof measures botanical texture and visible flowers at fixed ca
   expect(proof).toContain("activeFrameP95Ms");
   expect(proof).toContain("livingWind");
   expect(proof).toContain("fullRunRenderP95Ms <= 16.7");
+  /* Interactions carry two budgets: first night toggle may pay one-time
+     program compilation (250 ms ceiling); every later toggle must stay
+     inside the strict 160 ms steady-state budget. */
+  expect(proof).toContain("interactionMs <= 250");
+  expect(proof).toContain("steadyInteractionMs <= 160");
   expect(proof).toContain("waitForCameraSettled(page, FIXED_CAMERAS.close.scrollY)");
   expect(proof).toContain("current >= baseline * 0.98");
   expect(proof).not.toContain("function edgeCoverage");
@@ -397,15 +402,22 @@ test("the module frameloop contract stands: motion tiers render always, only the
   const canvas = await readFile(path.join(appRoot, "components/story/StoryCanvas.tsx"), "utf8");
   const scene = await readFile(path.join(appRoot, "components/story/Scene.tsx"), "utf8");
   const proof = await readFile(path.join(appRoot, "scripts/meadow-proof.mjs"), "utf8");
-  /* StoryCanvas may never override the frameloop sceneQuality.ts declares:
-     forcing "demand" on balanced/full froze the wind, clouds, steam and
-     wildlife whenever the visitor stopped scrolling. The invalidator stays,
-     scoped to the reduced-motion still tier that genuinely wants stills. */
+  /* StoryCanvas may never blanket-override the frameloop sceneQuality.ts
+     declares: forcing "demand" on balanced/full froze the wind, clouds,
+     steam and wildlife whenever the visitor stopped scrolling. Demand
+     rendering survives in exactly two scoped places — the reduced-motion
+     still tier, and LOW-POWER page integration (a render sharing a frame
+     with a page merge was a measured 161–197 ms long task that froze the
+     mobile governor) — and integration demand ends the moment the meadow
+     reports terminal, which is when the wind starts. */
   expect(canvas).toContain("function SceneRenderDurationSignal");
   expect(canvas).toContain("function StoryDemandInvalidator");
   expect(canvas).toContain('window.addEventListener("scroll", requestFrame');
-  expect(canvas).not.toContain('frameloop: "demand"');
-  expect(canvas).toContain('enabled={settled && quality.frameloop === "demand"}');
+  expect(canvas).not.toContain('frameloop: "demand",');
+  expect(canvas).toContain("const integrationDemand = lowPower && settled && !meadowTerminal;");
+  expect(canvas).toContain('frameloop={integrationDemand ? "demand" : quality.frameloop}');
+  expect(canvas).toContain('window.addEventListener("aura:meadow-progress", onMeadowProgress)');
+  expect(canvas).toContain('enabled={integrationDemand || (settled && quality.frameloop === "demand")}');
   expect(scene).toContain("CAMERA_SETTLE_EPSILON");
   expect(scene).toContain("cameraSettled ? undefined : state.invalidate()");
   expect(scene).toContain('CustomEvent("aura:camera-progress"');

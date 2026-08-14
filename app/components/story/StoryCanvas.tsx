@@ -202,6 +202,10 @@ export default function StoryCanvas({
    *  caps have done their job and the meadow may grow to full density. */
   const [settled, setSettled] = useState(false);
   const [meadowReady, setMeadowReady] = useState(false);
+  /** true once the progressive meadow reports its terminal state (settled or
+   *  governor-frozen) — the moment page integration can no longer collide
+   *  with continuous rendering. */
+  const [meadowTerminal, setMeadowTerminal] = useState(false);
   const fullQualityPromoted = useRef(false);
   const openingReadySent = useRef(false);
 
@@ -215,6 +219,18 @@ export default function StoryCanvas({
     if (painted === "meadow") setSettled(true);
   }, [onReady, onStagePainted]);
   const handleMeadowReady = useCallback(() => setMeadowReady(true), []);
+
+  /* The meadow runtime broadcasts its lifecycle on the window (the same
+     events the hardware proof records). Terminal means settled or frozen —
+     either way, page integration is over. */
+  useEffect(() => {
+    const onMeadowProgress = (event: Event) => {
+      const state = (event as CustomEvent<{ state?: string }>).detail?.state;
+      if (state === "settled" || state === "frozen") setMeadowTerminal(true);
+    };
+    window.addEventListener("aura:meadow-progress", onMeadowProgress);
+    return () => window.removeEventListener("aura:meadow-progress", onMeadowProgress);
+  }, []);
 
   /* useProgress is a global zustand store wired to THREE.DefaultLoadingManager
      at module scope; Scene.tsx preloads the GLBs at module scope, so it is
@@ -322,6 +338,14 @@ export default function StoryCanvas({
   if (webgl === null) return null;
   if (webgl === false) return null;
 
+  /* Low-power devices integrate the released meadow pages (11–44) on demand:
+     a render landing in the same frame as a page merge was a measured
+     161–197 ms long task that froze the mobile governor at its opening
+     floor. The wind starts the moment the meadow reports terminal. Capable
+     desktops integrate cleanly under the module contract (measured 0.2 ms
+     causal max) and keep their wind from the first settled frame. */
+  const integrationDemand = lowPower && settled && !meadowTerminal;
+
   return (
     <>
       <div
@@ -334,7 +358,7 @@ export default function StoryCanvas({
         <Canvas
           shadows={quality.softShadows}
           dpr={[1, quality.maxDpr]}
-          frameloop={quality.frameloop}
+          frameloop={integrationDemand ? "demand" : quality.frameloop}
         /* far was 140 — the mountain range sits well beyond that and was being
            clipped into a grey slab across the sky. 260 clears the range from
            every camera beat while keeping the near/far ratio modest enough not
@@ -376,9 +400,10 @@ export default function StoryCanvas({
             onPainted={handleStagePainted}
           />
           <SceneRenderDurationSignal />
-          {/* Only the still tier renders on demand; keep its scroll/resize
-              invalidation so the reduced-motion still tracks the camera. */}
-          <StoryDemandInvalidator enabled={settled && quality.frameloop === "demand"} />
+          {/* Demand rendering exists in exactly two places — the reduced-
+              motion still tier, and low-power page integration — and both
+              keep scroll/resize invalidation so the image tracks the camera. */}
+          <StoryDemandInvalidator enabled={integrationDemand || (settled && quality.frameloop === "demand")} />
         </Suspense>
         </Canvas>
         </SceneErrorBoundary>

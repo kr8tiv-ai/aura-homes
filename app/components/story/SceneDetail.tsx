@@ -2472,9 +2472,17 @@ export default function SceneDetail({
   const [grassProgramReady, setGrassProgramReady] = useState(false);
   const [meadowAtlasReady, setMeadowAtlasReady] = useState(false);
   const handleGrassProgramReady = useCallback(() => setGrassProgramReady(true), []);
-  const handleMeadowAtlasReady = useCallback(() => setMeadowAtlasReady(true), []);
+  /* One painted frame separates the atlas's program compile + texture
+     upload from the first meadow page window. Without this gap the ~112 ms
+     one-time compile RACED the worker's page integration; when it landed
+     inside a page window the governor froze a healthy meadow at its opening
+     floor. Deterministic ordering replaces the race: atlas terminal (loaded
+     or failed) → one frame paints (the compile) → pages begin. */
+  const handleMeadowAtlasReady = useCallback(() => {
+    requestAnimationFrame(() => requestAnimationFrame(() => setMeadowAtlasReady(true)));
+  }, []);
   const meadow = useProgressiveMeadow({
-    enabled: includeMeadow && grassProgramReady,
+    enabled: includeMeadow && grassProgramReady && meadowAtlasReady,
     width: size.width,
     reducedMotion: frozen,
     lowPower: mobile || lowPower,
