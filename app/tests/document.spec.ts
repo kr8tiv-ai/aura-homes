@@ -21,6 +21,53 @@ import { exportGltf, exportSpecJson } from "@/lib/builder/exportSpec";
 import { addFixture, emptyFixtureSet } from "@/lib/builder/fixtures";
 import { defaultSpec } from "@/lib/builder/spec";
 
+/* B-P1 pins, written before the UI uses the slot. The site rides the
+   document as an OPTIONAL field by the planOrigin precedent: a document
+   without one is BYTE-IDENTICAL to its pre-site self (same canonical JSON,
+   same hash — every golden, share link, and saved project keeps working),
+   a document with one round-trips losslessly, and a malformed one fails
+   loudly without touching local work. */
+test("the optional site slot keeps site-less documents byte-identical and round-trips when present", () => {
+  const bare = defaultBuilderDocument();
+  expect("site" in bare).toBe(false);
+  const bareJson = canonicalBuilderDocumentJson(bare);
+  expect(bareJson).not.toContain('"site"');
+
+  const revalidated = validateBuilderDocument(JSON.parse(bareJson));
+  if (!revalidated.ok) throw new Error(revalidated.problem);
+  expect(canonicalBuilderDocumentJson(revalidated.document)).toBe(bareJson);
+  expect(hashBuilderDocument(revalidated.document)).toBe(hashBuilderDocument(bare));
+
+  const sited = {
+    ...bare,
+    site: {
+      parcel: {
+        lotWidthFt: 120, lotDepthFt: 240,
+        frontSetbackFt: 25, sideSetbackFt: 10, rearSetbackFt: 25,
+        frontFaces: "s" as const, slope: "gentle" as const,
+      },
+      provenance: "manual" as const,
+      grade: "plane" as const,
+    },
+  };
+  const parsed = validateBuilderDocument(JSON.parse(canonicalBuilderDocumentJson(sited)));
+  if (!parsed.ok) throw new Error(parsed.problem);
+  expect(parsed.document.site).toEqual(sited.site);
+  expect(hashBuilderDocument(parsed.document)).toBe(hashBuilderDocument(sited));
+  expect(hashBuilderDocument(sited)).not.toBe(hashBuilderDocument(bare));
+
+  // Listing-derived parcels carry post-setback envelopes honestly: zeros, never invented numbers.
+  const listingDerived = validateBuilderDocument({
+    ...bare,
+    site: { parcel: { ...sited.site.parcel, frontSetbackFt: 0, sideSetbackFt: 0, rearSetbackFt: 0 }, provenance: "listing-derived", grade: "flat" },
+  });
+  expect(listingDerived.ok).toBe(true);
+
+  const broken = validateBuilderDocument({ ...bare, site: { provenance: "manual", grade: "vertical" } });
+  expect(broken.ok).toBe(false);
+  if (!broken.ok) expect(broken.problem).toContain("site.grade");
+});
+
 test("a legacy HomeSpec migrates into a complete builder document", () => {
   const spec = defaultSpec();
   const migrated = builderDocumentFromLegacySpec(spec);

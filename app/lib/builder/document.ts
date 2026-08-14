@@ -35,6 +35,7 @@ import {
   type SurfaceOverrides,
 } from "./surfaces";
 import { validateHomeSpec } from "./share";
+import { validateBuilderSite, type BuilderSite } from "./site";
 import type { Partition, PartitionDoor } from "./walls";
 
 export const BUILDER_DOCUMENT_FORMAT = "aura-builder-document" as const;
@@ -107,6 +108,10 @@ export interface BuilderDocument {
   comfort: ComfortSettings;
   quarantine: BuilderQuarantine;
   planOrigin?: BuilderPlanOrigin;
+  /** B-P1: the land under the home. OPTIONAL by the planOrigin precedent —
+   * absent on every pre-site document, so v2 files and their hashes stay
+   * byte-identical and share tokens (spec-level) are untouched. */
+  site?: BuilderSite;
 }
 
 export type BuilderDocumentMigration =
@@ -453,6 +458,8 @@ function assembleDocument(
   if (!quarantine.ok) return quarantine;
   const planOrigin = validatePlanOrigin(source.planOrigin);
   if (!planOrigin.ok) return planOrigin;
+  const site = validateBuilderSite(source.site);
+  if (!site.ok) return { ok: false, problem: site.problem };
 
   return {
     ok: true,
@@ -468,6 +475,7 @@ function assembleDocument(
       comfort: comfort.settings,
       quarantine: quarantine.quarantine,
       ...(planOrigin.planOrigin ? { planOrigin: planOrigin.planOrigin } : {}),
+      ...(site.site ? { site: site.site } : {}),
     },
   };
 }

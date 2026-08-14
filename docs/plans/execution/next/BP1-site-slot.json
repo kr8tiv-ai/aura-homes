@@ -19,9 +19,10 @@
     "the load-epoch anti-yank contract is spec-pinned: adding the Site step must not reframe the camera on ordinary edits",
     "listings-derived parcels carry post-setback envelopes - map honestly: setbacks 0 + an explanatory note, never invented numbers"
   ],
+  "supersession-2026-08-14": "Steps 1-2 are DONE, and the v3-migration design was superseded on the evidence: share tokens encode the SPEC (SPEC_VERSION wire format), never the document envelope, and planOrigin set the precedent for optional document slots with NO version bump. The site slot follows that precedent - site-less documents are byte-identical to their pre-site selves (pinned in document.spec.ts: same canonical JSON, same hash), so no migration, no codec change, no golden churn. What the old design did that this one deliberately does not: nothing - v3 existed only to carry the slot, and an optional slot carries itself. Remaining steps 3-6 (guided Site step, 'Use this plot', A1 threading + checkSpecAgainstParcel, terrain, site-proof) consume lib/builder/site.ts as shipped.",
   "instructions": [
-    "1. lib/builder/site.ts: BuilderSite { parcel: ParcelFacts | null, provenance: 'manual' | 'listing-derived' | 'geojson', grade: 'flat' | 'plane' | 'heightfield', seed?: number }.",
-    "2. document.ts: optional site slot; v3 migration (absent -> null); document.spec pins: v2 docs open, v3 round-trips, share emits v2 when site is null.",
+    "1. DONE - lib/builder/site.ts: BuilderSite { parcel: ParcelFacts | null, provenance: 'manual' | 'listing-derived' | 'geojson', grade: 'flat' | 'plane' | 'heightfield', seed?: number } with validateBuilderSite (absent/null = no site; malformed fails loudly).",
+    "2. DONE - document.ts: optional site slot via the planOrigin spread pattern; byte-stability + round-trip + listing-derived-zeros + malformed-fails pins in document.spec.ts.",
     "3. Populate paths: a Site guided step hosting the existing ParcelPanel (pure setSite edit = ONE undo step), and a 'Use this plot' action on /land cards.",
     "4. Thread parcel into BuilderApp.generate -> drawingSet so sheets.ts A1 SITE PLAN renders lot lines; call checkSpecAgainstParcel and surface findings in the review step (calm list, no modal).",
     "5. terrain.ts: pure gradeHeightFt(x, z, site); displace the Viewport ground plane; convert GRADE_Y_FT flat piles to per-pile lengths via the existing pileGrid.",
