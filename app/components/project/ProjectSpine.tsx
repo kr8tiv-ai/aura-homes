@@ -120,13 +120,35 @@ function stepHref(stepId: JourneyStepId, journey: AuraProject["journey"]): strin
    basis hash still equals the current document hash. Everything else is
    graded by the evidence that actually survives in the document:
 
-   · a basis hash that no longer matches  -> there WAS a save, and the
-     design has moved since it. "Changed since last save."
-   · no basis hash but the step has been worked (`withProjectDesign` nulls
-     the basis on every real edit) -> there is unconfirmed design work, and
-     no evidence a save ever happened. "Unsaved changes" — not "changed
-     since last save", which would imply a save this project cannot prove.
    · no basis hash and the step is untouched -> "Not saved yet."
+   · no basis hash but the step has been worked -> there is unconfirmed
+     design work and no evidence a save ever happened. "Unsaved changes",
+     not "changed since last save", which would imply a save this project
+     cannot prove.
+   · a basis hash that no longer matches -> there WAS a save, and the
+     design has moved since it. "Changed since last save."
+
+   WHICH BRANCH AN EDIT ACTUALLY LANDS ON, said plainly because the obvious
+   reading is wrong. `withProjectDesign` nulls the recorded basis and
+   reopens the design step on every edit that moves the document hash. So
+   editing a saved design reads "Unsaved changes" — the second branch, not
+   the third. No sequence of in-app writes can leave a stale basis behind,
+   which means the "changed" reading is unreachable through the builder.
+
+   It is kept because it is not dead. Two things reach it, both real:
+
+   · an IMPORTED project. `parseAuraProjectFile` and
+     `decryptAuraProjectFile` validate the record's shape and never compare
+     `stepStates.design.basisHash` against `design.documentHash`, so a file
+     off somebody's disk genuinely can carry a save recorded against a
+     design it no longer holds.
+   · an explicit `withProjectStepState(project, "design", "complete", now,
+     basisHash)` — the confirmation path's optional fifth argument, which
+     records a step against a hash other than the one being held.
+
+   Reporting either of those as "Unsaved changes" would erase the only
+   evidence in the file that a save happened and was then moved away from,
+   which is precisely what the reader needs to see.
 
    The words are the headline; the fingerprint is a short, truncated
    companion. The full hash lives in the title, never as the headline.

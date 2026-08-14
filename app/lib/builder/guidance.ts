@@ -29,8 +29,18 @@
      · `measurement.withinTarget` — non-null ONLY when a target exists AND
                                     the value was compared with it.
 
-   The spec pins the invariant that ties those together, so a future sentence
-   cannot claim compliance by wording alone.
+   Across the six topics this build carries, those collapse into one rule a
+   machine can hold: `standing === "checked"` EXACTLY WHEN
+   `measurement.withinTarget !== null`. Only the glazing ratio sits on the
+   checked side, because `FDWR_MAX` is the one ceiling this repo actually
+   stores. A counted bedroom, a counted storey and a measured floor area are
+   measurements with no rule behind them, so they read `not-modelled` however
+   much arithmetic ran — which is what the `GuidanceStanding` comment below
+   has always said and what two of them stopped doing until 2026-08-14.
+
+   `tests/guidance.spec.ts` pins that biconditional in BOTH directions. A
+   one-directional pin — only checking that a comparison implies "checked" —
+   lets a false "checked" through, which is the failure that matters.
 
    ONE ANCHORED SOURCE PER FACT. Nothing here computes a quantity that some
    other module already owns. The glazing ratio is `modelledGlazingRatio`; the
@@ -338,7 +348,14 @@ function roomLayout(document: BuilderDocument): GuidanceExplanation {
       authority:
         "Aura's own inference rule, printed in full beside the drawing; no building code sets a bedroom count",
     },
-    standing: "checked",
+    /* `not-modelled`, even though a real number is printed beside it. The
+       standing reports whether the CONSTRAINT was evaluated, and the source
+       above says out loud that no building code sets a bedroom count — there
+       is no rule here to hold a program against, only Aura's own inference.
+       This read "checked" until 2026-08-14 on the strength of the arithmetic
+       having run, which is exactly the reading the type's own comment forbids
+       and the one that would let a false compliance claim through. */
+    standing: "not-modelled",
     measurement: {
       label: "deriveProgram.bedrooms · lib/builder/toPlan.ts",
       value: program.bedrooms,
@@ -367,7 +384,10 @@ function storeyCount(document: BuilderDocument): GuidanceExplanation {
       authority:
         "HomeSpec.Volume.storeys is typed 1 | 2, so the model cannot express a third storey; nothing in this repo stores Part 9's scope limits",
     },
-    standing: "checked",
+    /* `not-modelled` for the same reason the sentence gives: NBC Part 9's own
+       scope limits are the constraint behind a storey count, and this repo
+       stores none of them. A counted storey is a measurement, not a check. */
+    standing: "not-modelled",
     measurement: {
       label: "storeysOf · lib/builder/toPlan.ts",
       value: storeys,

@@ -13,11 +13,22 @@ import { buildMeadowPage, meadowTransferList } from "@/lib/three/meadow/generato
 import { MeadowPromotionGovernor } from "@/lib/three/meadow/governor";
 import { sampleMeadowClearance, sampleTerrainHeight } from "@/lib/three/meadow/field";
 import {
+  DECK_BAY_FRAME_OVERHANG,
+  DECK_GLASS_BAY,
+  DECK_MESH_FOOTPRINT,
   DECK_RECT,
+  DECK_STEPS,
+  DECK_STEPS_FOOTPRINT,
+  ENTRANCE_FLIGHT_FOOTPRINT,
+  FIREPIT_HEARTH,
   HOUSE_RECT,
+  MASKED_FOOTPRINTS,
   STEPS_RECT_WIDE,
+  STEPS_TREADS,
   STEPS_TREAD_FOOTPRINT,
+  WALKWAY_MESH,
   WALKWAY_SEGMENT,
+  rectContains,
 } from "@/lib/three/meadow/geometry";
 import { buildFlowerField, flowerVisibilityAtDistance } from "@/components/story/flora";
 import { pathToFileURL } from "node:url";
@@ -544,13 +555,183 @@ test("the built world's footprints live in one module and no consumer retypes th
   expect(STEPS_RECT_WIDE.z1).toBeGreaterThanOrEqual(STEPS_TREAD_FOOTPRINT.z1);
   expect(STEPS_TREAD_FOOTPRINT.z1).toBeCloseTo(8.53, 10);
 
-  /* The deck's walking surface is what every rail, newel and step nosing
-     lands on; Scene.tsx still carries it as its own literal, so the number
-     is pinned here until that mesh is wired to the module too. */
+  /* RENEGOTIATED: this used to read "Scene.tsx still carries it as its own
+     literal, so the number is pinned here until that mesh is wired to the
+     module too". Scene.tsx is now wired — every rail, newel and step nosing
+     reads DECK_RECT.surfaceY — so the pin no longer stands in for a missing
+     wire. It stays because 0.485 is the shipped walking surface and the test
+     below proves the meshes reproduce it. */
   expect(DECK_RECT.surfaceY).toBe(0.485);
 
   expect(proof).toContain("sourceCommit");
   expect(proof).toContain("mobileWindMotion >= 0.006");
+});
+
+/* THE OTHER HALF OF THE SAME FIX.
+   The masks were moved onto lib/three/meadow/geometry.ts and the MESHES were
+   left behind carrying their own copies of the same footprints — the state
+   three audits in a row have called out, because a half-closed loop reads as
+   fixed and drifts exactly like an open one. Grass shipped standing through
+   the deck once and through the lower treads once; both times the mesh and
+   the mask were edited apart.
+
+   These assertions are structural first and grep second. The structural ones
+   sample the REAL clearance field at the real mesh outlines, so a mesh that
+   grows past its mask fails here whether or not anybody retyped a literal. */
+test("no built mesh carries its own copy of a masked footprint", async () => {
+  const scene = await readFile(path.join(appRoot, "components/story/Scene.tsx"), "utf8");
+  const detail = await readFile(path.join(appRoot, "components/story/SceneDetail.tsx"), "utf8");
+
+  /* --- 1. the guard can fail. A containment check that cannot report false
+     turns "unverified" into "verified" for free, so prove the instrument
+     works before trusting what it says about the real rects. --- */
+  expect(rectContains(DECK_RECT, { x0: -99, z0: -99, x1: 99, z1: 99 })).toBe(false);
+  expect(rectContains(DECK_RECT, DECK_RECT)).toBe(true);
+
+  /* --- 2. every mesh footprint sits inside the rect that masks it. --- */
+  expect(MASKED_FOOTPRINTS.length).toBeGreaterThanOrEqual(4);
+  for (const { name, mask, mesh } of MASKED_FOOTPRINTS) {
+    expect(`${name}: ${rectContains(mask, mesh)}`).toBe(`${name}: true`);
+  }
+
+  /* The deck's own flight straddles the z 6.3 line where DECK_RECT ends and
+     STEPS_RECT_WIDE begins, so it is covered by the PAIR or by neither. Two
+     rects only cover a straddling rect if they also overlap each other —
+     otherwise there is a band of unmasked ground between them. */
+  expect(DECK_RECT.z1).toBeGreaterThanOrEqual(STEPS_RECT_WIDE.z0);
+  expect(DECK_STEPS_FOOTPRINT.z0).toBeGreaterThanOrEqual(DECK_RECT.z0);
+  expect(DECK_STEPS_FOOTPRINT.z1).toBeLessThanOrEqual(STEPS_RECT_WIDE.z1);
+  expect(DECK_STEPS_FOOTPRINT.x0).toBeGreaterThanOrEqual(Math.max(DECK_RECT.x0, STEPS_RECT_WIDE.x0));
+  expect(DECK_STEPS_FOOTPRINT.x1).toBeLessThanOrEqual(Math.min(DECK_RECT.x1, STEPS_RECT_WIDE.x1));
+
+  /* --- 3. the mask itself, sampled at the real outlines. sampleMeadowClearance
+     returns 0 where no grass may grow and 1 in open meadow; the test above
+     proves the offline atlas samples this same field point for point. --- */
+  expect(sampleMeadowClearance(20, 20, false)).toBeGreaterThan(0);
+  const corners = (rect: { x0: number; z0: number; x1: number; z1: number }) =>
+    [
+      [rect.x0, rect.z0],
+      [rect.x1, rect.z0],
+      [rect.x0, rect.z1],
+      [rect.x1, rect.z1],
+    ] as const;
+  for (const [label, rect] of [
+    ["deck", DECK_MESH_FOOTPRINT],
+    ["deck flight", DECK_STEPS_FOOTPRINT],
+    ["entrance flight", ENTRANCE_FLIGHT_FOOTPRINT],
+    ["entrance treads", STEPS_TREAD_FOOTPRINT],
+  ] as const) {
+    for (const [x, z] of corners(rect)) {
+      expect(`${label} ${x},${z}: ${sampleMeadowClearance(x, z, false)}`).toBe(`${label} ${x},${z}: 0`);
+    }
+  }
+  expect(sampleMeadowClearance(WALKWAY_MESH.fromX, WALKWAY_MESH.fromZ, false)).toBe(0);
+  expect(sampleMeadowClearance(WALKWAY_MESH.toX, WALKWAY_MESH.toZ, false)).toBe(0);
+
+  /* The tray under the glass bay reaches DECK_BAY_FRAME_OVERHANG past
+     DECK_RECT. That is fine only because the deck's clearance fades in
+     outside the rect; assert the ground, not the arithmetic. */
+  expect(DECK_BAY_FRAME_OVERHANG).toBeGreaterThan(0);
+  expect(
+    sampleMeadowClearance(
+      DECK_GLASS_BAY.centerX,
+      DECK_GLASS_BAY.centerZ + DECK_GLASS_BAY.frameDepth / 2,
+      false,
+    ),
+  ).toBe(0);
+
+  /* The hearth is built 0.32 m off FIREPIT_CENTER (recorded in the module).
+     What has to hold is that the stone ring stays on cleared ground. */
+  for (let i = 0; i < 16; i += 1) {
+    const a = (i / 16) * Math.PI * 2;
+    const x = FIREPIT_HEARTH.x + Math.cos(a) * FIREPIT_HEARTH.ringRadius;
+    const z = FIREPIT_HEARTH.z + Math.sin(a) * FIREPIT_HEARTH.ringRadius;
+    expect(`ring ${i}: ${sampleMeadowClearance(x, z, false)}`).toBe(`ring ${i}: 0`);
+  }
+
+  /* --- 4. the copies are gone from the mesh files, named piece by piece.
+     Each string below is what that mesh used to read before it was wired to
+     the module; any of them reappearing is the divergence class reopening. --- */
+  expect(scene).toContain('from "@/lib/three/meadow/geometry"');
+  for (const literal of [
+    "const EAVE = 3.6",
+    "args={[7.5, 0.32, 6.4]}",
+    "args={[4.9, 0.09, 0.43]}",
+    "position={[-1.15, 0.44, z]}",
+    "args={[2.1, 0.08, 3.11]}",
+    "base={0.485}",
+    "args={[2.1, 0.1, 0.34]}",
+    "Math.atan2(0.355, 0.98)",
+    "[-1.09, 0.485, 6.24]",
+    "[3.45, 4.65]",
+    "[4.85, 5.06]",
+    "position={[5.9, 0, 5.4]}",
+    "[-2.4, 33.0]",
+    "[-4.6, 0, 6.2]",
+  ]) {
+    expect(`Scene.tsx retypes ${literal}: ${scene.includes(literal)}`).toBe(
+      `Scene.tsx retypes ${literal}: false`,
+    );
+  }
+  /* The entrance flight's cheeks are the widest part of it, so they were the
+     copy that mattered most in SceneDetail. */
+  for (const literal of ["[-1.22, 1.22]", "[-1.16, 1.16]", "args={[2.2, 0.08, 0.3]}", "0.42 - (i + 1) * 0.082"]) {
+    expect(`SceneDetail.tsx retypes ${literal}: ${detail.includes(literal)}`).toBe(
+      `SceneDetail.tsx retypes ${literal}: false`,
+    );
+  }
+  /* The two rects that actually drifted may not reappear in a mesh file
+     either — the same ban the mask consumers carry. */
+  for (const source of [scene, detail]) {
+    expect(source).not.toContain("-3.9, 2.95, 3.6, 6.3");
+    expect(source).not.toContain("-1.45, 6.3, 1.55, 8.7");
+  }
+
+  /* --- 5. and the meshes really are reading the module, not merely importing
+     it. Deleting a derivation and restoring a literal has to break something
+     positive as well as something negative. --- */
+  for (const symbol of [
+    "HOUSE_SHELL.slab.width",
+    "DECK_PLANKS.rows",
+    "DECK_PLANKS.y",
+    "DECK_RAIL.eastX",
+    "DECK_RECT.surfaceY",
+    "DECK_STEPS.treadDepth",
+    "WALKWAY_MESH.fromX",
+    "PATH_STONES: readonly (readonly [number, number])[] = PATH",
+  ]) {
+    expect(`Scene.tsx derives ${symbol}: ${scene.includes(symbol)}`).toBe(
+      `Scene.tsx derives ${symbol}: true`,
+    );
+  }
+  for (const symbol of ["ENTRANCE_FLIGHT.cheekX", "ENTRANCE_FLIGHT.rake", "STEPS_TREADS.width"]) {
+    expect(`SceneDetail.tsx derives ${symbol}: ${detail.includes(symbol)}`).toBe(
+      `SceneDetail.tsx derives ${symbol}: true`,
+    );
+  }
+});
+
+/* RECORDED DIVERGENCE, not an approval. Scene.tsx's Deck draws a three-tread
+   step-down at the entrance and SceneDetail.tsx's EntranceSteps draws a
+   five-tread flight in the same place, at the same time, from different
+   numbers. FD1's remit was to stop the numbers existing twice, which it did;
+   reconciling the two flights moves visible geometry and is a scene decision.
+   This test states the disagreement in numbers so it cannot be forgotten
+   again, and pins the property that keeps it harmless — both flights are
+   masked. Delete it when the flights are reconciled. */
+test("the two entrance flights disagree, and both are masked anyway", () => {
+  expect(DECK_STEPS.count).toBe(3);
+  expect(STEPS_TREADS.count).toBe(5);
+  expect(DECK_STEPS.treadDepth).not.toBe(STEPS_TREADS.treadDepth);
+  expect(DECK_STEPS.width).not.toBe(STEPS_TREADS.width);
+  expect(DECK_STEPS.originX).toBe(STEPS_TREADS.originX);
+  /* They overlap in plan: the deck flight's last tread and the entrance
+     flight's first tread are 0.12 m apart in z, which is less than half a
+     tread — this is the disagreement, stated. */
+  const deckLastZ = DECK_STEPS.firstZ + (DECK_STEPS.count - 1) * DECK_STEPS.treadDepth;
+  const flightFirstZ = STEPS_TREADS.originZ + STEPS_TREADS.treadDepth;
+  expect(Math.abs(flightFirstZ - deckLastZ)).toBeLessThan(DECK_STEPS.treadDepth / 2);
+  expect(rectContains(STEPS_RECT_WIDE, ENTRANCE_FLIGHT_FOOTPRINT)).toBe(true);
 });
 
 test("the atlas generator's clearance and terrain match the runtime meadow field exactly", async () => {

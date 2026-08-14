@@ -12,6 +12,25 @@ import { withBase } from "../../lib/basePath";
 import type { OpeningSceneStage, SceneQuality } from "@/lib/three/sceneQuality";
 import { NORDIC_MATERIALS } from "@/lib/three/nordicMaterials";
 import { MEADOW_SPARKLE_SPEED } from "@/lib/three/meadow/contract";
+/* The home, the deck, the flight, the walkway and the walked route are drawn
+   HERE and masked out of the meadow somewhere else. Both halves read the same
+   numbers from this module. Two copies of them is how grass shipped standing
+   through the deck, and later through the lower treads — a copy in this file
+   is the specific defect the module exists to make impossible. */
+import {
+  BENCH_CENTER,
+  DECK_GLASS_BAY,
+  DECK_PLANKS,
+  DECK_RAIL,
+  DECK_RECT,
+  DECK_STEPS,
+  DECK_STEPS_RAKE,
+  FIREPIT_HEARTH,
+  HOUSE_SHELL,
+  PATH,
+  TUB_CENTER,
+  WALKWAY_MESH,
+} from "@/lib/three/meadow/geometry";
 import SceneDetail, { meadowShade, trailTrodden } from "./SceneDetail";
 
 /* ------------------------------------------------------------------ */
@@ -1069,10 +1088,12 @@ export type Dusk = ReturnType<typeof useDuskRegistry>;
 
 /* ------------------------------ the home ---------------------------- */
 
-const RIDGE_H = 4.8;
-const EAVE = 3.6;
-const EAVE_H = 0.35;
-const DEPTH = 3.0; // half depth
+/* The shell's four defining numbers come from the module that also sizes
+   HOUSE_RECT, the rect that keeps the meadow out of the house. */
+const RIDGE_H = HOUSE_SHELL.ridgeY;
+const EAVE = HOUSE_SHELL.halfWidth;
+const EAVE_H = HOUSE_SHELL.eaveY;
+const DEPTH = HOUSE_SHELL.halfDepth; // half depth
 const ROOF_A = Math.atan2(EAVE, RIDGE_H - EAVE_H);
 const SLOPE_L = Math.hypot(EAVE, RIDGE_H - EAVE_H);
 
@@ -1153,9 +1174,10 @@ function AFrameHome({ dusk, archGlass, glassRoof }: { dusk: Dusk; archGlass: THR
 
   return (
     <group>
-      {/* floor slab on screw piles */}
-      <mesh castShadow receiveShadow position={[0, 0.22, 0]}>
-        <boxGeometry args={[7.5, 0.32, 6.4]} />
+      {/* floor slab on screw piles — the piece of the home that touches the
+          ground, so it is what HOUSE_SHELL_FOOTPRINT is measured from */}
+      <mesh castShadow receiveShadow position={[0, HOUSE_SHELL.slab.y, 0]}>
+        <boxGeometry args={[HOUSE_SHELL.slab.width, HOUSE_SHELL.slab.thickness, HOUSE_SHELL.slab.depth]} />
         <meshStandardMaterial color="#c6ccc4" roughness={0.9} flatShading />
       </mesh>
       {([[-3.2, -2.6], [3.2, -2.6], [-3.2, 2.6], [3.2, 2.6], [0, -2.6], [0, 2.6]] as [number, number][]).map(
@@ -1180,7 +1202,7 @@ function AFrameHome({ dusk, archGlass, glassRoof }: { dusk: Dusk; archGlass: THR
             position={[(s * EAVE) / 2, (RIDGE_H + EAVE_H) / 2, 0]}
             rotation={[0, 0, s * ROOF_A]}
           >
-            <boxGeometry args={[0.16, SLOPE_L + 0.5, 6.9]} />
+            <boxGeometry args={[0.16, SLOPE_L + 0.5, HOUSE_SHELL.roofDepth]} />
             <meshStandardMaterial
               color={NORDIC_MATERIALS.standingSeam.color}
               roughness={NORDIC_MATERIALS.standingSeam.roughness}
@@ -1439,7 +1461,7 @@ function AFrameHome({ dusk, archGlass, glassRoof }: { dusk: Dusk; archGlass: THR
 function GlassRailRun({
   from,
   to,
-  h = 0.98,
+  h = DECK_RAIL.height,
   base = 0.5,
   mat,
 }: {
@@ -1488,7 +1510,7 @@ function GlassRailRun({
 function Newel({
   at,
   base,
-  h = 0.98,
+  h = DECK_RAIL.height,
 }: {
   at: [number, number];
   base: number;
@@ -1663,12 +1685,15 @@ function Deck({ glassFloor, glassRail }: { glassFloor: THREE.Material; glassRail
      floated 23cm off the edge and a 36cm band of meadow showed through the
      entry, which is the unnatural gap in the approach. The seventh row
      carries the deck to 6.285, the rails now stand ON it, and the top tread
-     tucks under the nosing the way a real stair does. */
-  for (let i = 0; i < 7; i++) {
-    const z = 3.25 + i * 0.47;
+     tucks under the nosing the way a real stair does.
+
+     The row count, pitch and plank size live in DECK_PLANKS so that the
+     rect masking this deck moves when the deck does. */
+  for (let i = 0; i < DECK_PLANKS.rows; i++) {
+    const z = DECK_PLANKS.firstZ + i * DECK_PLANKS.pitch;
     planks.push(
-      <mesh key={i} castShadow receiveShadow position={[-1.15, 0.44, z]}>
-        <boxGeometry args={[4.9, 0.09, 0.43]} />
+      <mesh key={i} castShadow receiveShadow position={[DECK_PLANKS.centerX, DECK_PLANKS.y, z]}>
+        <boxGeometry args={[DECK_PLANKS.width, DECK_PLANKS.thickness, DECK_PLANKS.depth]} />
         <meshStandardMaterial map={grain} color={pieceTone(cedar[i % 3], i)} roughness={0.85} flatShading />
       </mesh>
     );
@@ -1677,7 +1702,7 @@ function Deck({ glassFloor, glassRail }: { glassFloor: THREE.Material; glassRail
     <group>
       {planks}
       {/* rim joist + skirt so the deck reads built, not floating lumber */}
-      <mesh castShadow receiveShadow position={[-1.15, 0.29, 4.43]}>
+      <mesh castShadow receiveShadow position={[DECK_PLANKS.centerX, 0.29, 4.43]}>
         <boxGeometry args={[4.72, 0.24, 2.62]} />
         <meshStandardMaterial map={grain} color="#6d523c" roughness={0.9} flatShading />
       </mesh>
@@ -1694,50 +1719,73 @@ function Deck({ glassFloor, glassRail }: { glassFloor: THREE.Material; glassRail
           the SAME line as the new seventh plank row (6.285). They used to
           stop 26cm apart, which put a notch in the deck edge right where the
           balustrade crosses from timber onto glass. */}
-      <mesh material={glassFloor} position={[2.4, 0.44, 4.73]} renderOrder={RO_GLASS_FLOOR}>
-        <boxGeometry args={[2.1, 0.08, 3.11]} />
+      <mesh
+        material={glassFloor}
+        position={[DECK_GLASS_BAY.centerX, DECK_PLANKS.y, DECK_GLASS_BAY.centerZ]}
+        renderOrder={RO_GLASS_FLOOR}
+      >
+        <boxGeometry args={[DECK_GLASS_BAY.width, DECK_GLASS_BAY.thickness, DECK_GLASS_BAY.depth]} />
       </mesh>
-      {/* frame under glass */}
-      <mesh castShadow position={[2.4, 0.345, 4.73]}>
-        <boxGeometry args={[2.2, 0.05, 3.21]} />
+      {/* Frame under glass. It is 10cm deeper than the pane it carries and
+          shares its centre, so it ends 3.5cm past DECK_RECT — the module
+          measures that overhang as DECK_BAY_FRAME_OVERHANG rather than
+          letting it drift unwatched. */}
+      <mesh castShadow position={[DECK_GLASS_BAY.centerX, DECK_GLASS_BAY.frameY, DECK_GLASS_BAY.centerZ]}>
+        <boxGeometry
+          args={[DECK_GLASS_BAY.frameWidth, DECK_GLASS_BAY.frameThickness, DECK_GLASS_BAY.frameDepth]}
+        />
         <meshStandardMaterial color="#5d6663" roughness={0.5} metalness={0.5} />
       </mesh>
       {/* glass railings: front edge with a gap for the steps, west edge */}
       {/* Moved out to the new deck line at 6.285 (they sat at 6.05, which was
           23cm past the old edge — a balustrade standing on air).
 
-          base is 0.485, NOT the 0.5 default. The deck's walking surface is
-          0.44 + half a 0.09 plank = 0.485, and GlassRailRun puts the bottom of
-          its channel exactly on `base` — so the default left a 1.5cm slot of
-          daylight running under every pane on the deck. */}
-      <GlassRailRun from={[-3.6, 6.24]} to={[-1.09, 6.24]} base={0.485} mat={glassRail} />
-      <GlassRailRun from={[1.19, 6.24]} to={[3.45, 6.24]} base={0.485} mat={glassRail} />
-      <GlassRailRun from={[-3.6, 3.15]} to={[-3.6, 6.24]} base={0.485} mat={glassRail} />
+          base is DECK_RECT.surfaceY, NOT the 0.5 default. The deck's walking
+          surface is the plank centre plus half a plank, and GlassRailRun puts
+          the bottom of its channel exactly on `base` — so the default left a
+          1.5cm slot of daylight running under every pane on the deck. Reading
+          it from the module is also what keeps the rails on the deck if the
+          plank stack ever changes thickness. */}
+      <GlassRailRun from={[DECK_RAIL.westX, DECK_RAIL.frontZ]} to={[DECK_RAIL.gapX0, DECK_RAIL.frontZ]} base={DECK_RECT.surfaceY} mat={glassRail} />
+      <GlassRailRun from={[DECK_RAIL.gapX1, DECK_RAIL.frontZ]} to={[DECK_RAIL.eastX, DECK_RAIL.frontZ]} base={DECK_RECT.surfaceY} mat={glassRail} />
+      <GlassRailRun from={[DECK_RAIL.westX, DECK_RAIL.backZ]} to={[DECK_RAIL.westX, DECK_RAIL.frontZ]} base={DECK_RECT.surfaceY} mat={glassRail} />
       {/* THE EAST EDGE WAS COMPLETELY UNGUARDED — a 3m open drop along the
           glass bay from the house to the front corner, with nothing on it. The
           two runs below close it, leaving a 1m opening at z 4.15–5.15 where
           the walkway to the hot tub leaves, which is the one place a guard
           should stop. */}
-      <GlassRailRun from={[3.45, 3.15]} to={[3.45, 4.15]} base={0.485} mat={glassRail} />
-      <GlassRailRun from={[3.45, 5.15]} to={[3.45, 6.24]} base={0.485} mat={glassRail} />
+      <GlassRailRun from={[DECK_RAIL.eastX, DECK_RAIL.backZ]} to={[DECK_RAIL.eastX, DECK_RAIL.walkGapZ0]} base={DECK_RECT.surfaceY} mat={glassRail} />
+      <GlassRailRun from={[DECK_RAIL.eastX, DECK_RAIL.walkGapZ1]} to={[DECK_RAIL.eastX, DECK_RAIL.frontZ]} base={DECK_RECT.surfaceY} mat={glassRail} />
       {/* A post at every corner, every free end, and both sides of the walkway
           opening. Anything less leaves a pane hanging or a corner notched. */}
       {(
         [
-          [-3.6, 6.24],
-          [-3.6, 3.15],
-          [3.45, 6.24],
-          [3.45, 3.15],
-          [3.45, 4.15],
-          [3.45, 5.15],
+          [DECK_RAIL.westX, DECK_RAIL.frontZ],
+          [DECK_RAIL.westX, DECK_RAIL.backZ],
+          [DECK_RAIL.eastX, DECK_RAIL.frontZ],
+          [DECK_RAIL.eastX, DECK_RAIL.backZ],
+          [DECK_RAIL.eastX, DECK_RAIL.walkGapZ0],
+          [DECK_RAIL.eastX, DECK_RAIL.walkGapZ1],
         ] as [number, number][]
       ).map((at, i) => (
-        <Newel key={`dn${i}`} at={at} base={0.485} />
+        <Newel key={`dn${i}`} at={at} base={DECK_RECT.surfaceY} />
       ))}
-      {/* steps to the meadow */}
-      {[0, 1, 2].map((i) => (
-        <mesh key={i} castShadow receiveShadow position={[0.05, 0.34 - i * 0.13, 6.35 + i * 0.34]}>
-          <boxGeometry args={[2.1, 0.1, 0.34]} />
+      {/* Steps to the meadow. DECK_STEPS carries these; read its comment before
+          changing anything here — this flight and SceneDetail's EntranceSteps
+          describe the same entrance with different numbers, and that
+          divergence is recorded rather than silently reconciled. */}
+      {Array.from({ length: DECK_STEPS.count }, (_, i) => (
+        <mesh
+          key={i}
+          castShadow
+          receiveShadow
+          position={[
+            DECK_STEPS.originX,
+            DECK_STEPS.topY - i * DECK_STEPS.rise,
+            DECK_STEPS.firstZ + i * DECK_STEPS.treadDepth,
+          ]}
+        >
+          <boxGeometry args={[DECK_STEPS.width, DECK_STEPS.thickness, DECK_STEPS.treadDepth]} />
           <meshStandardMaterial map={grain} color={pieceTone(cedar[i % 3], i + 11)} roughness={0.85} flatShading />
         </mesh>
       ))}
@@ -1756,16 +1804,26 @@ function Deck({ glassFloor, glassRail }: { glassFloor: THREE.Material; glassRail
           real stair closes them with a stringer: the raked board the treads
           land on. Set just outside the 2.1m tread width and just inside the
           newels, so tread edge, stringer and post stack without a seam. */}
-      {([-1.03, 1.13] as const).map((x, i) => (
-        <group key={`sg${i}`} position={[x, 0.3075, 6.73]} rotation={[Math.atan2(0.355, 0.98), 0, 0]}>
-          <mesh castShadow receiveShadow position={[0, -0.17, 0]}>
-            <boxGeometry args={[0.06, 0.34, 1.13]} />
+      {DECK_STEPS.stringerX.map((x, i) => (
+        <group key={`sg${i}`} position={[x, DECK_STEPS.stringerGroupY, DECK_STEPS.stringerGroupZ]} rotation={[DECK_STEPS_RAKE, 0, 0]}>
+          <mesh castShadow receiveShadow position={[0, -DECK_STEPS.stringerDrop, 0]}>
+            <boxGeometry args={[DECK_STEPS.stringerWidth, DECK_STEPS.stringerHeight, DECK_STEPS.stringerLength]} />
             <meshStandardMaterial map={grain} color={pieceTone("#8a6a4a", i + 21)} roughness={0.88} flatShading />
           </mesh>
         </group>
       ))}
-      <StepRail from={[-1.09, 0.485, 6.24]} to={[-1.09, 0.13, 7.22]} mat={glassRail} />
-      <StepRail from={[1.19, 0.485, 6.24]} to={[1.19, 0.13, 7.22]} mat={glassRail} />
+      {/* The flanking rails land on the same two x lines the front rail run
+          breaks at, so the guard is continuous round the opening. */}
+      <StepRail
+        from={[DECK_RAIL.gapX0, DECK_RECT.surfaceY, DECK_RAIL.frontZ]}
+        to={[DECK_RAIL.gapX0, DECK_STEPS.footY, DECK_STEPS.footZ]}
+        mat={glassRail}
+      />
+      <StepRail
+        from={[DECK_RAIL.gapX1, DECK_RECT.surfaceY, DECK_RAIL.frontZ]}
+        to={[DECK_RAIL.gapX1, DECK_STEPS.footY, DECK_STEPS.footZ]}
+        mat={glassRail}
+      />
     </group>
   );
 }
@@ -1782,9 +1840,9 @@ function Deck({ glassFloor, glassRail }: { glassFloor: THREE.Material; glassRail
    0.78) and the rails are offset along the true perpendicular, so every
    piece clears the staves and lands on the stone pad instead.
 */
-const WALK_FROM: [number, number] = [3.45, 4.65];
-const WALK_TO: [number, number] = [4.85, 5.06];
-const WALK_PAD = 0.3;
+const WALK_FROM: [number, number] = [WALKWAY_MESH.fromX, WALKWAY_MESH.fromZ];
+const WALK_TO: [number, number] = [WALKWAY_MESH.toX, WALKWAY_MESH.toZ];
+const WALK_PAD = WALKWAY_MESH.pad;
 
 function Walkway({ glassFloor, glassRail }: { glassFloor: THREE.Material; glassRail: THREE.Material }) {
   const from = WALK_FROM;
@@ -1797,7 +1855,7 @@ function Walkway({ glassFloor, glassRail }: { glassFloor: THREE.Material; glassR
   // true perpendicular in the ground plane
   const px = -uz;
   const pz = ux;
-  const half = 0.5;
+  const half = WALKWAY_MESH.halfWidth;
   const cx = (from[0] + to[0]) / 2;
   const cz = (from[1] + to[1]) / 2;
   const ang = Math.atan2(dx, dz);
@@ -1811,34 +1869,34 @@ function Walkway({ glassFloor, glassRail }: { glassFloor: THREE.Material; glassR
   ];
   return (
     <group>
-      <group position={[cx, 0.42, cz]} rotation={[0, ang, 0]}>
+      <group position={[cx, WALKWAY_MESH.glassY, cz]} rotation={[0, ang, 0]}>
         {/* Glass underside sits at 0.385; the frame top used to land on
             exactly 0.385 — coplanar, and the pair z-fought every time the
             camera came near. Frame dropped to -0.085 leaving 5cm of air. */}
         <mesh material={glassFloor} position={[0, 0, 0]} renderOrder={RO_GLASS_FLOOR}>
-          <boxGeometry args={[1.0, 0.07, len + WALK_PAD]} />
+          <boxGeometry args={[half * 2, WALKWAY_MESH.glassThickness, len + WALK_PAD]} />
         </mesh>
-        <mesh castShadow position={[0, -0.085, 0]}>
-          <boxGeometry args={[1.08, 0.05, len + WALK_PAD + 0.1]} />
+        <mesh castShadow position={[0, -WALKWAY_MESH.frameDrop, 0]}>
+          <boxGeometry args={[WALKWAY_MESH.frameWidth, WALKWAY_MESH.frameThickness, len + WALK_PAD + 0.1]} />
           <meshStandardMaterial color="#5d6663" roughness={0.5} metalness={0.5} />
         </mesh>
       </group>
       {/* stone piers grounding the walkway */}
-      {([[4.0, 4.77], [4.72, 4.98]] as [number, number][]).map(([x, z], i) => (
+      {(WALKWAY_MESH.piers as readonly (readonly [number, number])[]).map(([x, z], i) => (
         <mesh key={`wp${i}`} castShadow position={[x, 0.18, z]}>
           <cylinderGeometry args={[0.11, 0.15, 0.4, 8]} />
           <meshStandardMaterial color="#848c85" roughness={0.95} flatShading />
         </mesh>
       ))}
-      <GlassRailRun from={railA[0]} to={railA[1]} h={0.62} base={0.45} mat={glassRail} />
-      <GlassRailRun from={railB[0]} to={railB[1]} h={0.62} base={0.45} mat={glassRail} />
+      <GlassRailRun from={railA[0]} to={railA[1]} h={WALKWAY_MESH.railHeight} base={WALKWAY_MESH.railBase} mat={glassRail} />
+      <GlassRailRun from={railB[0]} to={railB[1]} h={WALKWAY_MESH.railHeight} base={WALKWAY_MESH.railBase} mat={glassRail} />
       {/* A post at BOTH ends of both runs. Only the far ends were posted, so
           each rail began in mid-air where it left the deck — the same
           unfinished-end defect the deck rails had, just less obvious because
           the deck edge is behind it. Same Newel as everywhere else, so the
           walkway's posts match the deck's rather than being their own size. */}
       {[railA[0], railA[1], railB[0], railB[1]].map((at, i) => (
-        <Newel key={`nw${i}`} at={at} base={0.45} h={0.62} />
+        <Newel key={`nw${i}`} at={at} base={WALKWAY_MESH.railBase} h={WALKWAY_MESH.railHeight} />
       ))}
     </group>
   );
@@ -1994,7 +2052,12 @@ function FirePit({ dusk }: { dusk: Dusk }) {
   const clones = useNormalizedClones(
     fire.scene,
     0.75,
-    useMemo(() => [{ pos: [-4.6, 0, 6.2] as [number, number, number], rotY: 0.5 }], [])
+    /* FIREPIT_HEARTH, not a literal: the mask clears a disc around
+       FIREPIT_CENTER (-4.7, 6.5) and the hearth is built 0.32 m away at
+       (-4.6, 6.2). That gap is documented in the module — neither number was
+       changed, because one moves visible fire and the other rebakes the
+       atlas — and the spec asserts the ring still sits inside the clearing. */
+    useMemo(() => [{ pos: [FIREPIT_HEARTH.x, 0, FIREPIT_HEARTH.z] as [number, number, number], rotY: 0.5 }], [])
   );
   const light = useRef<THREE.PointLight>(null);
   useLayoutEffect(
@@ -2014,16 +2077,25 @@ function FirePit({ dusk }: { dusk: Dusk }) {
     <group>
       <primitive object={clones[0]} />
       {/* stone ring */}
-      {Array.from({ length: 9 }).map((_, i) => {
-        const a = (i / 9) * Math.PI * 2;
+      {Array.from({ length: FIREPIT_HEARTH.ringStones }).map((_, i) => {
+        const a = (i / FIREPIT_HEARTH.ringStones) * Math.PI * 2;
         return (
-          <mesh key={i} castShadow position={[-4.6 + Math.cos(a) * 0.85, 0.12, 6.2 + Math.sin(a) * 0.85]} rotation={[0, a, 0]}>
+          <mesh
+            key={i}
+            castShadow
+            position={[
+              FIREPIT_HEARTH.x + Math.cos(a) * FIREPIT_HEARTH.ringRadius,
+              0.12,
+              FIREPIT_HEARTH.z + Math.sin(a) * FIREPIT_HEARTH.ringRadius,
+            ]}
+            rotation={[0, a, 0]}
+          >
             <boxGeometry args={[0.34, 0.24, 0.22]} />
             <meshStandardMaterial map={makeStoneMottle()} color="#7f8781" roughness={0.95} flatShading />
           </mesh>
         );
       })}
-      <pointLight ref={light} position={[-4.6, 1.0, 6.2]} color="#ffb46b" intensity={1.2} distance={7} decay={2} />
+      <pointLight ref={light} position={[FIREPIT_HEARTH.x, FIREPIT_HEARTH.lightY, FIREPIT_HEARTH.z]} color="#ffb46b" intensity={1.2} distance={7} decay={2} />
       {/* pulled in off the fence line at z=8.5 — the middle chair's back used
           to reach into the rails */}
       {([
@@ -2128,12 +2200,10 @@ function Bench({ position, rotY }: { position: [number, number, number]; rotY: n
   );
 }
 
-/** Stepping stones tracing the walked route: trailhead -> crest -> steps. */
-const PATH_STONES: [number, number][] = [
-  [-2.4, 33.0], [-2.1, 31.2], [-1.6, 29.2], [-0.6, 27.4], [0.3, 25.6], [0.9, 23.8], [0.6, 21.8],
-  [-0.4, 19.6], [-1.4, 17.2], [-2.0, 14.8], [-1.9, 12.4], [-1.3, 10.4],
-  [-0.5, 8.9], [0.1, 7.7],
-];
+/** Stepping stones tracing the walked route: trailhead -> crest -> steps.
+ *  The slabs stand on PATH itself — the route the meadow thins toward — so a
+ *  stone can never end up beside the mown line instead of on it. */
+const PATH_STONES: readonly (readonly [number, number])[] = PATH;
 
 /* TUFTS (28 clusters x five 4-sided cones at the trailhead) are GONE.
    They predate the instanced meadow, which now grows denser, better-shaped
@@ -3012,9 +3082,14 @@ export default function Scene({
           onMeadowReady={onMeadowReady}
         />
       ) : null}
-      {includeSite ? <HotTub position={[5.9, 0, 5.4]} dusk={dusk} frozen={reduced} /> : null}
+      {includeSite ? <HotTub position={[TUB_CENTER.x, 0, TUB_CENTER.z]} dusk={dusk} frozen={reduced} /> : null}
       {includeForest && richMaterials ? <FirePit dusk={dusk} /> : null}
-      {includeSite ? <Bench position={[8.6, terrainH(8.6, 18.0) - 0.14, 18.0]} rotY={Math.PI * 1.12} /> : null}
+      {includeSite ? (
+        <Bench
+          position={[BENCH_CENTER.x, terrainH(BENCH_CENTER.x, BENCH_CENTER.z) - 0.14, BENCH_CENTER.z]}
+          rotY={Math.PI * 1.12}
+        />
+      ) : null}
       {includeSite ? <PathStones /> : null}
       {includeSite ? <Trailhead /> : null}
       {includeSite ? <Fence /> : null}

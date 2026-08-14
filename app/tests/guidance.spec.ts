@@ -13,6 +13,7 @@ import {
   explain,
   type GuidanceExplanation,
   type GuidanceIntake,
+  type GuidanceStanding,
   type GuidanceTopic,
 } from "@/lib/builder/guidance";
 import { FDWR_MAX, WALL_R_VALUE } from "@/lib/design/materials";
@@ -35,6 +36,13 @@ import { totalFloorAreaSqFt } from "@/lib/builder/spec";
         the module can only produce by running the comparison. The grep's
         vocabulary lives HERE, not in the module, so the module cannot define
         its way to green — and a canary below proves the grep can fail.
+
+     1b. THE STANDING BICONDITIONAL. `standing === "checked"` exactly when
+        `measurement.withinTarget !== null`, pinned in both directions plus a
+        per-topic table. The grep above only catches a sentence that CLAIMS a
+        comparison; this catches a topic that claims the STANDING without one,
+        which is how two topics sat on the wrong side of the module's own rule
+        until 2026-08-14.
 
      2. THE GRAPH REFUSAL. After a planar-graph conversion `document.spec` is
         a frozen recovery copy. Every spec-derived reading must go
@@ -130,6 +138,98 @@ test("no sentence claims a constraint is met without having compared it", () => 
       expect(explanation.standing, `${name} · ${topic}`).toBe("checked");
     }
   }
+});
+
+/* ---------------------------------------------------------------------------
+   1b. the standing rule, pinned in BOTH directions
+
+   The one-directional version — "a compared sentence must say checked" — was
+   the whole gate until 2026-08-14, and it let two topics report `checked`
+   with no constraint behind them at all. A false "checked" is the failure
+   that matters, so the reverse implication is pinned too.
+   ------------------------------------------------------------------------ */
+
+/** What each topic must report for the reference home, and why it is that
+ *  side: `checked` needs a stored rule to compare against, and `FDWR_MAX` is
+ *  the only one this repo holds. */
+const STANDING_ON_THE_REFERENCE_HOME: Readonly<Record<GuidanceTopic, GuidanceStanding>> = {
+  "glazing-ratio": "checked",
+  "room-layout": "not-modelled",
+  "storey-count": "not-modelled",
+  "minimum-dwelling-size": "not-modelled",
+  "wall-r-value": "not-modelled",
+  "roof-r-value": "not-modelled",
+};
+
+test("standing is 'checked' exactly when the comparison behind it was run", () => {
+  const fixtures: Array<[string, BuilderDocument]> = [
+    ["reference home", doc()],
+    ["planar graph", graphDoc()],
+    ["glass wall removed", withoutGlass()],
+    ["over-glazed", overGlazed()],
+    ["no volumes", withoutVolumes()],
+  ];
+
+  let checked = 0;
+  let notModelled = 0;
+  for (const [name, document] of fixtures) {
+    for (const topic of GUIDANCE_TOPICS) {
+      const explanation = explain(topic, document);
+      if (explanation === null) continue;
+      const compared = (explanation.measurement?.withinTarget ?? null) !== null;
+      /* The biconditional. Left to right: a topic claiming it was checked must
+         carry the comparison that earned the claim. Right to left: a topic
+         that ran a comparison must not hide it behind `not-modelled`. */
+      expect(explanation.standing === "checked", `${name} · ${topic}`).toBe(compared);
+      if (explanation.standing === "checked") checked += 1;
+      else notModelled += 1;
+    }
+  }
+
+  /* Both sides must actually be exercised, or the rule above is satisfied by
+     a fixture set that only ever visits one of them. */
+  expect(checked).toBeGreaterThan(0);
+  expect(notModelled).toBeGreaterThan(0);
+});
+
+test("each topic sits on the side of the rule its own source can defend", () => {
+  for (const topic of GUIDANCE_TOPICS) {
+    const explanation = must(topic, doc());
+    expect(explanation.standing, topic).toBe(STANDING_ON_THE_REFERENCE_HOME[topic]);
+  }
+
+  /* A table that said one thing everywhere would pass by saying nothing. */
+  expect(new Set(Object.values(STANDING_ON_THE_REFERENCE_HOME)).size).toBe(2);
+
+  // The checked direction: a stored ceiling, and a verdict against it.
+  const glazing = must("glazing-ratio", doc());
+  expect(glazing.standing).toBe("checked");
+  expect(glazing.measurement?.target).toBe(FDWR_MAX);
+  expect(glazing.measurement?.withinTarget).not.toBeNull();
+
+  /* The not-modelled direction, per topic. Rooms and storeys print real
+     numbers and are still `not-modelled`: no bedroom count and no Part 9
+     scope limit is stored anywhere in this repo, so nothing was checked. */
+  for (const topic of [
+    "room-layout",
+    "storey-count",
+    "minimum-dwelling-size",
+    "wall-r-value",
+    "roof-r-value",
+  ] as const) {
+    const explanation = must(topic, doc());
+    expect(explanation.standing, topic).toBe("not-modelled");
+    expect(explanation.measurement?.target ?? null, `${topic}: no rule, no target`).toBeNull();
+    expect(
+      explanation.measurement?.withinTarget ?? null,
+      `${topic}: no target, no verdict`,
+    ).toBeNull();
+  }
+
+  /* And the two that print a measured number still print it — the fix was to
+     the claim about the number, not to the number. */
+  expect(must("room-layout", doc()).measurement?.value).toBe(deriveProgram(doc().spec).bedrooms);
+  expect(must("storey-count", doc()).measurement?.value).toBe(storeysOf(doc().spec));
 });
 
 test("a target is never implied without one, and never claimed without a comparison", () => {

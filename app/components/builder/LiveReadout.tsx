@@ -232,11 +232,22 @@ export default function LiveReadout({
         />
         <Check
           name="Site coverage"
-          verdict={report === null ? "Not checked" : `${(Math.round(report.coveragePct * 10) / 10).toFixed(1)}%`}
+          verdict={
+            graphMode ? "Not run" : report === null ? "Not checked" : `${(Math.round(report.coveragePct * 10) / 10).toFixed(1)}%`
+          }
+          /* Graph mode needs its own sentence. Coverage divides the SPEC's
+             footprint by the lot, and after a conversion the spec is the
+             frozen recovery copy — so `parcelApplies` withholds the figure no
+             matter what land is attached. Telling a person to attach the lot
+             here was an instruction that could not work: they would do it and
+             the reading would stay blank. Undo is the one action that brings
+             the check back, which the Shape panel already says. */
           detail={
-            report === null
-              ? "Attach the lot in the Site step and coverage is measured against it."
-              : `Footprint over ${sqft(report.lotSqFt)} of lot. Most bylaws also count decks and covered areas, which this does not.`
+            graphMode
+              ? "This project uses planar graph geometry. Coverage is measured from the frozen recovery spec's footprint, so attaching a lot will not produce a figure here — Undo returns through the conversion, where this check runs again."
+              : report === null
+                ? "Attach the lot in the Site step and coverage is measured against it."
+                : `Footprint over ${sqft(report.lotSqFt)} of lot. Most bylaws also count decks and covered areas, which this does not.`
           }
           source="analyseParcel · your district's own limit is not known here"
         />

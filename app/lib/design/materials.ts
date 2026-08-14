@@ -18,10 +18,12 @@
        standard. Grouted pile variants are excluded because they reintroduce
        cementitious material into the ground. Hempcrete is NON-STRUCTURAL
        infill only — never a foundation and never a structural wall.
-     · AWG on every home, honestly labelled. Condenser cutoff is ~15 °C /
-       30% RH, so outdoor winter output in zone 7A/7B/8 is ZERO litres. A
-       cistern or well carries winter, always. The module ships anyway as the
-       summer producer (10–20 L/day, June–September).
+     · AWG RECOMMENDED on every home, honestly labelled — recommended rather
+       than mandatory since the founder decision of 2026-08-14, and the Aura
+       reference configuration keeps it, so no number here moves. Condenser
+       cutoff is ~15 °C / 30% RH, so outdoor winter output in zone 7A/7B/8 is
+       ZERO litres. A cistern or well carries winter, always. The module is
+       carried as the summer producer (10–20 L/day, June–September).
      · Glass-forward, but code-legal. FDWR ≤ 22% on the NBC 9.36 prescriptive
        path, oriented for winter solar gain.
      · Solar + LiFePO4 + an auto-start generator that is NOT optional in an
@@ -210,7 +212,8 @@ export type Orientation =
 
 /** The off-grid kit. Defaults are the Aura standard, not a blank slate. */
 export interface EcoSystems {
-  /** Atmospheric water generation — standard on every home. */
+  /** Atmospheric water generation — recommended on every home, not mandatory
+   *  (founder decision 2026-08-14). The reference kit keeps it on. */
   awg: boolean;
   /** 0–30 kW. */
   solar_kw: number;
@@ -780,7 +783,7 @@ export function buildBom({
       cad_mid: 5000,
       cad_high: 8000,
       basis:
-        "Standard on every Aura home. 10–20 L/day Jun–Sep; ZERO outdoors in winter.",
+        "Recommended on every Aura home, not mandatory. 10–20 L/day Jun–Sep; ZERO outdoors in winter.",
       supplier_tags: ["awg", "water"],
     });
   }

@@ -94,7 +94,7 @@ export const ECO_STANDARD: ReadonlyArray<EcoItem> = [
     id: "awg",
     label: "AWG atmospheric water generation",
     detail:
-      "Standard on every home, and never the water plan: condensers cut off near 15 °C / 30% RH, so outdoor winter output in Alberta is zero litres. It is the summer producer (roughly 10–20 L/day, June to September); a cistern or well carries winter.",
+      "Recommended on every home rather than mandatory, and never the water plan: condensers cut off near 15 °C / 30% RH, so outdoor winter output in Alberta is zero litres. It is the summer producer (roughly 10–20 L/day, June to September); a cistern or well carries winter. The Aura reference configuration keeps it, which is why it rides the brief here; the AWG cost line is descopable on /budget.",
     clause: "AWG atmospheric water generation",
   },
   {

@@ -187,7 +187,7 @@ def build(
         add(key="awg", label="Atmospheric water generator (summer producer)",
             category=Category.WATER, qty=1, unit="unit",
             cad_low=3500, cad_mid=5000, cad_high=8000,
-            basis="Standard on every Aura home. 10–20 L/day Jun–Sep; ZERO outdoors in winter.",
+            basis="Recommended on every Aura home, not mandatory. 10–20 L/day Jun–Sep; ZERO outdoors in winter.",
             supplier_tags=["awg", "water"])
     if systems.cistern_litres > 0:
         L = systems.cistern_litres

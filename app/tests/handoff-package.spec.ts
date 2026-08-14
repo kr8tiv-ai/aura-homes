@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "playwright/test";
+import { keccak256, stringToHex } from "viem";
 
 import {
   convertBuilderDocumentToGraph,
@@ -226,6 +227,87 @@ test("every single-field tamper is refused by name", async () => {
   const gRead = readHandoffPackage(retext(g));
   expect(gRead.ok).toBe(false);
   if (!gRead.ok && projectFile) expect(gRead.problem).toContain(projectFile.name);
+});
+
+/* ---------------------------------------------------------------------------
+   THE RESEALED FORGERY.
+
+   Every tamper above leaves the stated package hash stale, so check 5 catches
+   it and nothing is learned about the fields check 5 hashes. But the package
+   hash is a plain keccak over the body with no secret in it: a tamperer can
+   edit a field and recompute it. `resealed` is that attacker, written here
+   from the module's documented rule rather than imported from it, so the
+   forgery is a real forgery rather than a call into the code under test.
+   ------------------------------------------------------------------------ */
+
+const canonicalValue = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value.map(canonicalValue);
+  if (typeof value !== "object" || value === null) return value;
+  const source = value as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const key of Object.keys(source).sort()) out[key] = canonicalValue(source[key]);
+  return out;
+};
+
+function resealed(pkg: HandoffPackage): string {
+  const body: Record<string, unknown> = { ...(pkg as unknown as Record<string, unknown>) };
+  delete body.packageHash;
+  const sealed = {
+    ...body,
+    packageHash: keccak256(stringToHex(JSON.stringify(canonicalValue(body)))),
+  };
+  return `${JSON.stringify(canonicalValue(sealed), null, 2)}\n`;
+}
+
+test("the forgery machinery is faithful — an untouched reseal still reads", async () => {
+  /* Without this, every refusal below could be a broken reseal rather than a
+     caught tamper, and the two tests after it would prove nothing. */
+  const built = await buildHandoffPackage(base());
+  const clone = JSON.parse(built.json) as HandoffPackage;
+  const read = readHandoffPackage(resealed(clone));
+  expect(read.ok).toBe(true);
+  if (!read.ok) return;
+  expect(read.package.packageHash).toBe(built.package.packageHash);
+});
+
+test("a resealed package that renames the project is caught by the document, not by a hash", async () => {
+  const built = await buildHandoffPackage(base());
+  const forged = JSON.parse(built.json) as HandoffPackage;
+  const honestName = forged.projectName;
+  forged.projectName = "Somebody else's house";
+
+  const read = readHandoffPackage(resealed(forged));
+  expect(read.ok).toBe(false);
+  if (read.ok) return;
+  /* The refusal must come from re-deriving the name out of the embedded
+     document. If it named the package hash instead, the reseal failed and the
+     manifest's own words are still unchecked. */
+  expect(read.problem).toContain("Somebody else's house");
+  expect(read.problem).toContain(honestName);
+  expect(read.problem).not.toContain("package hash");
+
+  // And the honest name is the document's, never the manifest's copy of it.
+  expect(honestName).toBe(defaultBuilderDocument().spec.name);
+});
+
+test("a resealed package that lies about its geometry mode is refused", async () => {
+  const converted = convertBuilderDocumentToGraph(defaultBuilderDocument(), 0.5);
+  expect(converted.ok).toBe(true);
+  if (!converted.ok) return;
+
+  const built = await buildHandoffPackage(base({ document: converted.document }));
+  expect(built.package.geometryMode).toBe("building-graph");
+
+  /* A graph project dressed as a legacy-volume one: the recipient would go
+     looking for a drawing set and a DXF that this design cannot produce. */
+  const forged = JSON.parse(built.json) as HandoffPackage;
+  forged.geometryMode = "legacy-volumes";
+  const read = readHandoffPackage(resealed(forged));
+  expect(read.ok).toBe(false);
+  if (read.ok) return;
+  expect(read.problem).toContain("legacy-volumes");
+  expect(read.problem).toContain("building-graph");
+  expect(read.problem).not.toContain("package hash");
 });
 
 test("a package from a newer build, or from nothing at all, is refused rather than half-read", async () => {

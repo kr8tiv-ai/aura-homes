@@ -44,6 +44,7 @@ import type { MeadowPage } from "@/lib/three/meadow/contract";
 import {
   BENCH_CENTER,
   DECK_RECT,
+  ENTRANCE_FLIGHT,
   FIREPIT_CENTER,
   HOUSE_RECT,
   PATH,
@@ -1563,7 +1564,7 @@ function EntranceSteps({ glassRail }: { glassRail: THREE.Material }) {
   return (
     <group position={[STEPS_TREADS.originX, 0, STEPS_TREADS.originZ]}>
       {Array.from({ length: N }, (_, i) => {
-        const y = 0.42 - (i + 1) * 0.082;
+        const y = ENTRANCE_FLIGHT.topY - (i + 1) * ENTRANCE_FLIGHT.rise;
         const z = (i + 1) * STEPS_TREADS.treadDepth;
         return (
           <group key={i}>
@@ -1571,25 +1572,48 @@ function EntranceSteps({ glassRail }: { glassRail: THREE.Material }) {
               <boxGeometry args={[STEPS_TREADS.width, 0.1, STEPS_TREADS.treadDepth]} />
               <meshStandardMaterial map={grain} color={cedar[i % 3]} roughness={0.85} flatShading />
             </mesh>
-            <mesh position={[0, y - 0.09, z]} castShadow>
+            <mesh position={[0, y - ENTRANCE_FLIGHT.riserDrop, z]} castShadow>
               {/* the riser board under each tread carries its own inset size */}
-              <boxGeometry args={[2.2, 0.08, 0.3]} />
+              <boxGeometry
+                args={[
+                  ENTRANCE_FLIGHT.riserWidth,
+                  ENTRANCE_FLIGHT.riserThickness,
+                  ENTRANCE_FLIGHT.riserDepth,
+                ]}
+              />
               <meshStandardMaterial color="#6d523c" roughness={0.9} flatShading />
             </mesh>
           </group>
         );
       })}
       {/* stringers */}
-      {[-1.16, 1.16].map((x, i) => (
-        <mesh key={i} castShadow position={[x, 0.19, 0.94]} rotation={[-0.22, 0, 0]}>
-          <boxGeometry args={[0.08, 0.16, 2.0]} />
+      {ENTRANCE_FLIGHT.stringerX.map((x, i) => (
+        <mesh
+          key={i}
+          castShadow
+          position={[x, ENTRANCE_FLIGHT.stringerY, ENTRANCE_FLIGHT.flankZ]}
+          rotation={[ENTRANCE_FLIGHT.rake, 0, 0]}
+        >
+          <boxGeometry
+            args={[ENTRANCE_FLIGHT.stringerWidth, ENTRANCE_FLIGHT.stringerHeight, ENTRANCE_FLIGHT.flankLength]}
+          />
           <meshStandardMaterial color="#5d6663" roughness={0.5} metalness={0.55} />
         </mesh>
       ))}
-      {/* glass cheeks, matching the deck balustrade */}
-      {[-1.22, 1.22].map((x, i) => (
-        <mesh key={`g${i}`} material={glassRail} position={[x, 0.42, 0.94]} rotation={[-0.22, 0, 0]} renderOrder={20}>
-          <boxGeometry args={[0.04, 0.5, 2.0]} />
+      {/* Glass cheeks, matching the deck balustrade. These are the widest part
+          of the flight, so ENTRANCE_FLIGHT_FOOTPRINT — the rect the mask has
+          to cover — is measured from them and not from the treads. */}
+      {ENTRANCE_FLIGHT.cheekX.map((x, i) => (
+        <mesh
+          key={`g${i}`}
+          material={glassRail}
+          position={[x, ENTRANCE_FLIGHT.cheekY, ENTRANCE_FLIGHT.flankZ]}
+          rotation={[ENTRANCE_FLIGHT.rake, 0, 0]}
+          renderOrder={20}
+        >
+          <boxGeometry
+            args={[ENTRANCE_FLIGHT.cheekThickness, ENTRANCE_FLIGHT.cheekHeight, ENTRANCE_FLIGHT.flankLength]}
+          />
         </mesh>
       ))}
     </group>

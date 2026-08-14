@@ -33,6 +33,11 @@
           the embedded project, each file's hash and byte count from its own
           content, the budget hash from the budget, and the package hash from
           everything else — and refuses the package by name if any disagrees.
+          It also RE-DERIVES the two fields that merely describe the project,
+          `projectName` and `geometryMode`, from the embedded document. A hash
+          recomputed over a body proves the body is self-consistent, not that
+          it is honest: nothing stops a tamperer editing the title and
+          rehashing, so the title is checked against the document instead.
         · `buildHandoffPackage` runs its own output through that reader before
           returning, and throws if it does not verify. So a package that lies
           is not merely rejected on the way in; it never leaves this module.
@@ -693,6 +698,30 @@ export function readHandoffPackage(text: string): HandoffPackageRead {
     return {
       ok: false,
       problem: `This package states design hash ${parsed.designHash} but the project inside it hashes to ${designHash}. It was edited after it was written.`,
+    };
+  }
+
+  /* 1b. The two fields that DESCRIBE the project, re-derived rather than read.
+        The package hash is a plain keccak over the body with no secret in it,
+        so anybody who edits `projectName` or `geometryMode` can recompute it
+        and sail through check 5 — the hash proves the file is internally
+        consistent, not that it tells the truth about the house. The design
+        hash binds the DOCUMENT; these two comparisons are the only thing
+        binding the manifest's words about that document to the document. A
+        package titled for one home carrying another is exactly the confusion
+        a recipient cannot detect by eye. */
+  const projectName = checked.document.spec.name;
+  if (parsed.projectName !== projectName) {
+    return {
+      ok: false,
+      problem: `This package is titled ${JSON.stringify(parsed.projectName)} and the project inside it is named ${JSON.stringify(projectName)}. It was edited after it was written.`,
+    };
+  }
+  const geometryMode = checked.document.geometry.kind;
+  if (parsed.geometryMode !== geometryMode) {
+    return {
+      ok: false,
+      problem: `This package states ${JSON.stringify(parsed.geometryMode)} geometry and the project inside it is ${JSON.stringify(geometryMode)}. It was edited after it was written.`,
     };
   }
 

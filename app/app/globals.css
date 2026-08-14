@@ -48,6 +48,7 @@
   --tone-teal-mark: 13 148 136;
   --tone-violet: 124 58 237;
   --tone-lime: 77 124 15;
+  --tone-danger: 148 81 61; /* #94513d — the shade the quote surfaces already used */
 
   /* ---- hairlines and elevation ------------------------------------- */
   --hair-alpha: 0.12;
@@ -81,10 +82,16 @@
   --aura-violet: rgb(var(--tone-violet));
   --aura-lime: rgb(var(--tone-lime));
   --aura-border: rgb(var(--tone-ink) / var(--hair-alpha));
+  /* the solid-ink pair: an inked surface and the paper-coloured text that
+     sits on it. Referenced by the budget and quote surfaces since they were
+     written; never declared until the undefined-token gate below found them. */
+  --aura-ink: rgb(var(--tone-ink));
+  --aura-paper: rgb(var(--tone-paper));
 
   /* story palette lives at :root so fixed chrome outside .story-scope
      (the floating header, the menu sheet) resolves the same inks */
   --st-paper: rgb(var(--tone-base));
+  --st-sunken: rgb(var(--tone-sunken));
   --st-ink: rgb(var(--tone-ink));
   --st-ink-dim: rgb(var(--tone-dim));
   --st-faint: rgb(var(--tone-faint));
@@ -97,6 +104,11 @@
   --st-teal: rgb(var(--tone-teal));
   --st-violet: rgb(var(--tone-violet));
   --st-lime: rgb(var(--tone-lime));
+  /* the one warning ink. It existed three times as a hand-written hex
+     (#94513d, #9a4d37) and once as an undeclared var, which meant the commit
+     error on the plan preview rendered in ordinary body colour — an error a
+     reader could not tell from prose. */
+  --st-danger: rgb(var(--tone-danger));
   /* THE brand curve — "fluid deceleration": launches decisively, settles
      without overshoot, never bouncy. --ease-fluid-decel is the documented
      alias; --st-ease-out the historical name. One curve for reveals,
@@ -186,6 +198,7 @@
   --tone-teal-mark: 45 212 191;
   --tone-violet: 167 139 250;
   --tone-lime: 163 230 53;
+  --tone-danger: 224 160 140; /* #e0a08c — remapped, not reused: the paper brick is unreadable on charcoal */
 
   --hair-alpha: 0.16;
   --hair-soft-alpha: 0.09;
@@ -218,6 +231,7 @@
     --tone-teal-mark: 45 212 191;
     --tone-violet: 167 139 250;
     --tone-lime: 163 230 53;
+    --tone-danger: 224 160 140;
     --hair-alpha: 0.16;
     --hair-soft-alpha: 0.09;
     --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
@@ -547,7 +561,7 @@ main p {
   border-radius: 0;
   color: var(--aura-text);
   background: rgb(var(--tone-base) / 0.55);
-  font-family: var(--st-sans-font);
+  font-family: var(--st-body-font);
   font-size: 0.86rem;
   letter-spacing: 0;
   text-transform: none;
@@ -633,7 +647,7 @@ main p {
   border-radius: 0;
   background: rgb(var(--tone-base) / 0.52);
   color: var(--aura-text);
-  font-family: var(--st-sans-font);
+  font-family: var(--st-body-font);
   font-size: 0.76rem;
   letter-spacing: 0;
   text-transform: none;
@@ -645,13 +659,13 @@ main p {
 .quote-lines legend { position: absolute; top: 0; left: 0.7rem; transform: translateY(-50%); padding-inline: 0.25rem; background: var(--aura-panel); }
 .quote-checkbox { grid-column: 1 / 3; display: flex; align-items: center; gap: 0.45rem; padding-top: 0.25rem; }
 .quote-checkbox input { width: 1rem; height: 1rem; accent-color: var(--aura-emerald); }
-.quote-remove { justify-self: end; color: #94513d; font-size: 0.64rem; }
+.quote-remove { justify-self: end; color: var(--st-danger); font-size: 0.64rem; }
 .quote-notes { display: block; margin-top: 0.75rem; }
 .quote-notes textarea { min-height: 4.5rem; resize: vertical; }
 .quote-file { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 0.6rem; margin-top: 0.75rem; padding: 0.75rem; border: 1px dashed var(--budget-rule); }
-.quote-file input { max-width: 12rem; font-family: var(--st-sans-font); font-size: 0.65rem; text-transform: none; }
+.quote-file input { max-width: 12rem; font-family: var(--st-body-font); font-size: 0.65rem; text-transform: none; }
 .quote-file span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.quote-problem { margin-top: 0.65rem; color: #9a4d37; font-size: 0.72rem; }
+.quote-problem { margin-top: 0.65rem; color: var(--st-danger); font-size: 0.72rem; }
 .quote-save { width: 100%; margin-top: 0.75rem; padding: 0.78rem 1rem; background: var(--aura-ink); color: var(--aura-paper); font-size: 0.72rem; font-weight: 650; }
 .quote-save:disabled { opacity: 0.48; }
 .quote-empty { padding: clamp(2rem, 6vw, 5rem) 0.5rem; text-align: center; }
@@ -784,7 +798,7 @@ main p {
 .contractor-case-form input:not([type="checkbox"]),
 .contractor-case-form select,
 .rfq-form input,
-.rfq-form select { display: block; width: 100%; min-height: 2.55rem; margin-top: 0.3rem; padding: 0.5rem 0.6rem; border: 1px solid color-mix(in srgb, var(--aura-text) 16%, transparent); border-radius: 0; background: rgb(var(--tone-base) / 0.5); color: var(--aura-text); font-family: var(--st-sans-font); font-size: 0.76rem; letter-spacing: 0; text-transform: none; }
+.rfq-form select { display: block; width: 100%; min-height: 2.55rem; margin-top: 0.3rem; padding: 0.5rem 0.6rem; border: 1px solid color-mix(in srgb, var(--aura-text) 16%, transparent); border-radius: 0; background: rgb(var(--tone-base) / 0.5); color: var(--aura-text); font-family: var(--st-body-font); font-size: 0.76rem; letter-spacing: 0; text-transform: none; }
 .contractor-case-form fieldset { margin-top: 1rem; padding: 1rem; border: 1px solid color-mix(in srgb, var(--aura-text) 16%, transparent); }
 .contractor-case-form legend { padding-inline: 0.35rem; font-size: 0.75rem; font-weight: 650; }
 .contractor-case-form fieldset > p { margin-bottom: 0.8rem; font-size: 0.68rem; color: color-mix(in srgb, var(--aura-text) 62%, transparent); }
@@ -1889,7 +1903,7 @@ main p {
 }
 .project-intake-fields input:focus,
 .project-intake-fields select:focus { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset-tight); }
-.project-intake-confirm { display: flex; min-height: 3rem; align-items: flex-start; gap: 0.75rem; border: 1px solid rgb(var(--tone-ink) / var(--hair-alpha)); border-radius: 0.75rem; padding: 0.9rem 1rem; background: rgb(var(--tone-panel)); cursor: pointer; }
+.project-intake-confirm { display: flex; min-height: 3rem; align-items: flex-start; gap: 0.75rem; border: 1px solid rgb(var(--tone-ink) / var(--hair-alpha)); border-radius: 0.75rem; padding: 0.9rem 1rem; background: rgb(var(--tone-raised)); cursor: pointer; }
 .project-intake-confirm input { width: 1.15rem; height: 1.15rem; margin-top: 0.1rem; flex: 0 0 auto; accent-color: rgb(var(--tone-emerald)); }
 .project-intake-confirm input:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset); }
 .project-intake-confirm input:disabled { cursor: not-allowed; opacity: 0.5; }

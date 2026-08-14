@@ -12,6 +12,7 @@ import {
   type AuraProject,
   type JourneyStepId,
 } from "@/lib/project/document";
+import { parseAuraProjectFile, projectFileJson } from "@/lib/project/file";
 import {
   SPINE_ROUTES,
   SPINE_STEPS,
@@ -46,8 +47,15 @@ function freshProject(journey: AuraProject["journey"] = "find-land-build"): Aura
 }
 
 function editedProject(project: AuraProject): AuraProject {
+  return renamedProject(project, "Edited for the spine");
+}
+
+/** A real design edit, through the same call the builder uses. Named so a
+ *  second edit in one test can differ from the first — `withProjectDesign` is
+ *  a no-op on the step states when the hash does not actually move. */
+function renamedProject(project: AuraProject, name: string): AuraProject {
   const document = structuredClone(project.design.document);
-  document.spec = { ...document.spec, name: "Edited for the spine" };
+  document.spec = { ...document.spec, name };
   return withProjectDesign(project, document, now);
 }
 
@@ -99,6 +107,49 @@ test("the design fingerprint reads in plain words across every state the documen
   const stale = withProjectStepState(project, "design", "complete", now, edited.design.documentHash);
   expect(readDesignSaveState(stale).state).toBe("changed");
   expect(readDesignSaveState(stale).headline).toBe("Changed since last save");
+});
+
+test("'changed since last save' is unreachable in the builder and reachable from a file", () => {
+  /* The reading the audit found unreachable through every production write
+     path. It is kept, and this is the pin for why: not because the builder
+     produces it, but because an imported project genuinely can carry it. */
+  const project = freshProject();
+  const saved = withProjectStepState(editedProject(project), "design", "complete", now);
+  expect(readDesignSaveState(saved).state).toBe("saved");
+
+  // A second real edit, on top of a genuine save. withProjectDesign nulls the
+  // basis, so the builder lands on "unsaved" — never on "changed".
+  const editedAgain = renamedProject(saved, "Moved on after the save");
+  expect(editedAgain.design.documentHash).not.toBe(saved.design.documentHash);
+  expect(editedAgain.stepStates.design.basisHash).toBeNull();
+  expect(readDesignSaveState(editedAgain).state).toBe("unsaved");
+
+  /* And the reading is not dead code. A project file carries stepStates
+     verbatim and the parser never compares the recorded basis against the
+     document hash, so this record survives a round trip through disk. */
+  const stale = withProjectStepState(
+    project,
+    "design",
+    "complete",
+    now,
+    editedAgain.design.documentHash,
+  );
+  const imported = parseAuraProjectFile(projectFileJson(stale));
+  expect(imported.ok).toBe(true);
+  if (!imported.ok) return;
+  expect(imported.project.stepStates.design.basisHash).not.toBeNull();
+  expect(imported.project.stepStates.design.basisHash).not.toBe(
+    imported.project.design.documentHash,
+  );
+  expect(readDesignSaveState(imported.project).state).toBe("changed");
+  expect(readDesignSaveState(imported.project).headline).toBe("Changed since last save");
+
+  /* The comment above readDesignSaveState is part of the contract here: it
+     used to argue the opposite of what the code does. These are the two claims
+     it now makes, checked against the source rather than trusted. */
+  const source = readRepo("app/components/project/ProjectSpine.tsx");
+  expect(source).toContain("unreachable through the builder");
+  expect(source).toContain("parseAuraProjectFile");
 });
 
 test("the fingerprint headline is words; the hash is short, truthful, and secondary", () => {
