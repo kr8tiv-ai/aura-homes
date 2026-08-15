@@ -406,6 +406,85 @@ That is the product, not a workaround.
 
 ---
 
+## 3a-ter. The E-stream — the editor people actually build in (added Aug 14, evening)
+
+Three founder observations opened this stream, and two of them were the founder
+failing to find his own features — which is the most reliable usability signal
+this project has received twice now.
+
+> *"the selection for the house should be visible above the plans so it's one of
+> the first things a person can do — if they don't scroll down they don't see
+> the feature."*
+>
+> *"in the editor I can't easily change window size, or door placement … it
+> should all be exceptionally easy and possible both from 3d and the floor plan,
+> every feature you should be able to change super super easily."*
+
+The first was **shipped in wave 11**: Plans was already step one and the
+catalogue already lived in the controls column, but the stage stacks the model
+above the controls, so arriving on `/build` met an empty reference house with
+fifty-five editable plans below the fold. Fixed with CSS `order` scoped to
+`[data-stage="browse"]` — never DOM order, because the canvas is the export root
+and re-parenting it drops its WebGL context and every model export with it.
+
+The second decomposed into three different problems wearing one sentence, and
+the decomposition is the useful part:
+
+| Where | State | What it actually is |
+|---|---|---|
+| 2D, legacy geometry | **Already works** — `Plan2D` carries `{ kind: "opening" }` (slide) and `{ kind: "opening-end" }` (resize) in its drag grammar | A DISCOVERABILITY failure, not a missing feature. The person who commissioned it could not find it. |
+| 3D | **Nothing exists.** `Viewport.tsx` has no opening interaction at all — volume click-select and the surface raycast are its only pointer paths | The real gap |
+| Graph geometry | No drag path; `addGraphOpening` exists as a mutator with nothing driving it | The parity gap |
+
+**The load-bearing rule for node OPEN01**: the 3D handle, the 2D drag and the
+numeric field must produce the same edit through the same function — a drag and
+the equivalent typed value yielding an identical `hashBuilderDocument`. Three
+code paths for one edit is the divergence class this repository has been bitten
+by four separate times (the meadow mask literals, the slope, the deck meshes,
+the bar-versus-figure quantity on the margin stack).
+
+### What Chaos sells, and what of it we can honestly build for nothing
+
+The founder asked us to study chaos.com — Enscape, Envision, Veras, Impact —
+and implement what we can without paying for a third-party service. The reading
+that matters is that **all four map onto engines this repo already owns.** We
+have a live R3F scene with an orbit camera, a deterministic geometry engine, a
+comfort model, FDWR against NBC 9.36, and a costed line-item budget. What is
+missing is not capability. It is the three verbs they sell.
+
+| Their product | The verb | Our node, and what it runs on |
+|---|---|---|
+| **Enscape** — real-time exploration inside the modelling tool | *explore* | Partly shipped: the model is already live beside the controls on every step. What was missing is options seen together — **VAR01** |
+| **Veras** — AI design iterations across form, facade, layout | *explore* | **VAR01**, deterministically. See the line below. |
+| **Envision** — cinematic walkthroughs and presentation | *present* | **WALK01**, on the camera and controls already in the scene. No new dependency. |
+| **Impact** — daylight and energy scenarios against a target | *compare* | **SCEN01**, over `comfortReport` and `modelledGlazingRatio` — the same functions the read-out uses |
+
+**The one line this stream will not cross.** Veras generates renderings with a
+diffusion model. We do not, and must never imply we do. VAR01 is *deterministic
+and parametric*: it varies glazing, roof form, proportion and orientation
+through the same validated geometry pipeline the editor uses, so every variant
+is a real `BuilderDocument` that opens, hashes and **costs**. That is a
+different product, and in this context a better one — a picture you cannot build
+is worth less than a design you can price. It is also the only version of the
+feature this project could ship honestly, because a generated image carries no
+provenance and this product's whole claim is that every figure has one.
+
+**The highest-risk claim in the stream, named so it cannot be forgotten:**
+daylight autonomy, energy use intensity and heating load are **not modelled** by
+this codebase. SCEN01 compares what *is* modelled and names what is not. A
+scenario comparison implying an energy result we never computed would be the
+most dangerous sentence on the site, and it is exactly the sentence a
+sustainability feature invites.
+
+**PL03** runs alongside: more diversity, more glass, on the founder's ask for
+"beautiful stunning designs that are modern and eco friendly". Authored under a
+known-weak anti-padding gate — PL02's replacement is still defeatable through a
+prose field — which makes the author's judgement the control, and that is
+precisely the situation where padding is tempting. Fifteen real designs beat
+thirty permutations, and the node is told to say so if that is what it finds.
+
+---
+
 ## 3b. U-stream — the workspace people actually live in
 
 Added August 14, 2026 from the founder's product direction. The through-line is

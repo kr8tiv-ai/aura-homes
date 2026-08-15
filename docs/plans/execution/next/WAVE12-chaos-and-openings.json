@@ -1,0 +1,93 @@
+{
+  "wave": 12,
+  "graphVersion": "1.2",
+  "origin": "Founder, 2026-08-14: (a) 'in the editor I can't easily change window size, or door placement ... it should all be exceptionally easy and possible both from 3d and the floor plan'; (b) study chaos.com's builder products and implement what we can WITHOUT paying for third-party services; (c) 'how can we add more diversity to our models? Cooler ones, more glass ... beautiful stunning designs that are modern and eco friendly'.",
+
+  "theChaosReading": {
+    "whatTheyShip": "Enscape (real-time design exploration inside the modelling tool — change on the fly, see results instantly, explore ideas during a client review). Envision (presentation and storytelling — cinematic visuals, immersive walkthroughs). Veras (AI-powered design iterations — many variations in seconds across form, facade and layout). Impact (early-stage sustainability insight — compare daylight and energy scenarios against targets).",
+    "whatMapsToUsForFREE": "All four map onto engines this repo ALREADY has, which is why none of this needs a paid service: we have a live R3F scene with an orbit camera, a deterministic geometry engine, a comfort/daylight model, FDWR against NBC 9.36, and a costed line-item budget. What is missing is not capability — it is the three verbs Chaos sells: EXPLORE (variations side by side), PRESENT (a walkthrough a client understands), and COMPARE (scenarios against a target).",
+    "theHonestyLINE": "Veras generates renderings with a diffusion model. WE DO NOT AND MUST NOT CLAIM TO. Our variation engine is DETERMINISTIC and PARAMETRIC — it varies glazing, roof form, proportion and orientation through the same validated geometry pipeline the editor uses, so every variant is a real, buildable, costable document rather than an image. That is a different product and in this context a better one: a picture you cannot build is worth less than a design you can price. Never describe it as AI-generated, never imply a rendering engine we do not have."
+  },
+
+  "sharedRules": {
+    "orchestratorOwns": ["README.md", "docs/SUBMISSION.md", "app/package.json", "app/playwright.ui.config.ts", "app/tests/gate-coverage.spec.ts"],
+    "note": "Four other agents work this same checkout. Write only your declared files. Never run git. Never run npm run build, test:ui, meadow proof or npm install. Run npx tsc --noEmit and your own spec by path. MEASURE, DO NOT ASSERT: two recent waves shipped claims written in comments that nothing checked and both were false. If you claim a relationship, assert it against a real engine.",
+    "BUILDER_APP_IS_OFF_LIMITS_TO_EVERYONE": "app/components/builder/BuilderApp.tsx appears in four of these five write-sets, which cannot be true at once — it is one 2,000-line file and four agents editing it is silent data loss, not a merge conflict. It is therefore REMOVED from every write-set in this wave and the orchestrator mounts all of it. Build your component so it can be mounted with props it is GIVEN — document, spec, selection, and a single onEdit callback — and put the exact mount snippet you need, with its import line and its props, in your orchestratorTodo. A component that can only work by reaching into BuilderApp's internals is the wrong shape anyway; being unable to touch that file is a design constraint worth having."
+  },
+
+  "OPEN01": {
+    "job": "Make an opening's size and position obviously and directly editable — in the 3D view, in the plan, and by number.",
+    "whatIsActuallyTrueToday, verified": [
+      "IN 2D LEGACY MODE IT ALREADY WORKS and is simply not discoverable. Plan2D.tsx carries a full drag grammar including `{ kind: 'opening' }` (slide along the wall, :175) and `{ kind: 'opening-end' }` (drag one end to resize, :176), with hit-testing at :447 and the commit path at :465. The founder could not find it, which means the affordance is invisible, not absent.",
+      "IN 3D NOTHING EXISTS. Viewport.tsx has no opening interaction of any kind — volume click-select and SurfacePicker's raycast are the only pointer paths. This is the real gap.",
+      "IN GRAPH MODE there is no opening drag either; addGraphOpening exists as a mutator but nothing drives it from a pointer.",
+      "NUMERIC EDITORS EXIST but are scattered: SpecPanel.tsx (:313, :366, :615) and AX01's GraphPlanEditor fields (:975-976)."
+    ],
+    "writeSet": [
+      "app/components/builder/OpeningHandles.tsx (new — the 3D handle layer)",
+      "app/components/builder/Plan2D.tsx",
+      "app/components/builder/BuilderApp.tsx",
+      "app/app/globals.css (.opening-* selectors only)",
+      "app/tests/opening-edit.spec.ts (new)"
+    ],
+    "rejectionGates": [
+      "ENTER 3D THROUGH Viewport's EXISTING `houseChildren` PROP. It was built for exactly this and currently carries FixtureLayer. Do NOT open Viewport.tsx: the canvas is the export root, and two other specs pin that it never remounts and is never conditionally mounted.",
+      "ONE MUTATION PATH FOR ALL THREE SURFACES. The 3D handle, the 2D drag and the numeric field must produce the SAME edit through the SAME function — a drag in 3D and the equivalent typed value must yield an identical document and an identical hashBuilderDocument. Three code paths for one edit is the divergence class that has bitten this repo four times.",
+      "ONE GESTURE IS ONE UNDO STEP, and the history label rule already coalesces by label — reuse it, and assert that a drag followed by a typed edit is TWO entries rather than one.",
+      "AN OPENING MAY NOT LEAVE ITS WALL. plan-catalog.spec.ts already asserts offset+width <= run and sill+height <= wall head for every catalogue plan; the editor must refuse the same states rather than allowing a drag to create what the catalogue forbids. Refuse in the mutator and announce it.",
+      "AND IT MAY NOT OVERLAP ANOTHER OPENING — a door set into a pane of glass shipped in the catalogue this week and a gate was added for it. The editor must not be able to create one.",
+      "DISCOVERABILITY IS THE POINT, NOT JUST CAPABILITY. The founder could not find a feature that already worked. A selected opening must show its handles; the cursor must change; the size must be readable while dragging. Assert that handles are present and visible for a selected opening, because 'it works if you know' is what this node exists to end."
+    ]
+  },
+
+  "VAR01": {
+    "job": "Explore several versions of the design at once — the Veras verb, done deterministically.",
+    "writeSet": ["app/lib/builder/variations.ts (new)", "app/components/builder/VariationStrip.tsx (new)", "app/components/builder/BuilderApp.tsx", "app/app/globals.css (.variation-* only)", "app/tests/variations.spec.ts (new)"],
+    "rejectionGates": [
+      "NEVER CALL IT AI. It is parametric and deterministic. Same input, same variants, every time — assert that.",
+      "EVERY VARIANT IS A REAL DOCUMENT, produced through validateBuilderDocument, hashable, openable, and costable. A variant that cannot be opened is a picture, and this product does not ship pictures of houses.",
+      "EVERY VARIANT CARRIES WHAT CHANGED AND WHAT IT COSTS — the delta in words plus its own budget band from createProjectBudget. A variation strip without cost is a mood board.",
+      "APPLYING ONE IS ONE UNDO STEP and never silent.",
+      "Vary things that matter in a cold climate: glazing area and orientation, roof form, footprint proportion, storeys. Where a variant crosses the NBC 9.36 prescriptive glazing ceiling it must say so, exactly as the catalogue plans do."
+    ]
+  },
+
+  "WALK01": {
+    "job": "Walk through the home and present it — the Envision verb, with the camera we already have.",
+    "writeSet": ["app/components/builder/Walkthrough.tsx (new)", "app/components/builder/BuilderApp.tsx", "app/app/globals.css (.walk-* only)", "app/tests/walkthrough.spec.ts (new)"],
+    "rejectionGates": [
+      "NO NEW DEPENDENCY. drei's controls and the existing camera are enough; if you reach for a tour library, stop and report.",
+      "THE CANVAS MUST NOT REMOUNT and data-load-epoch must not move — a camera mode is a way of looking, not a document edit. Assert the hash is untouched.",
+      "EYE HEIGHT IS A STATED ASSUMPTION, not a magic number: name it in the UI with its value, the way every other figure in this product carries its basis.",
+      "prefers-reduced-motion must not be trapped in a moving camera — offer a stepped path between viewpoints, and assert it.",
+      "It must work with the keyboard, because AX01 just made the rest of the editor work that way and a mode that breaks it is a regression."
+    ]
+  },
+
+  "SCEN01": {
+    "job": "Compare two design scenarios against a target — the Impact verb, over the comfort and glazing engines we already run.",
+    "writeSet": ["app/lib/builder/scenarios.ts (new)", "app/components/builder/ScenarioCompare.tsx (new)", "app/components/builder/BuilderApp.tsx", "app/app/globals.css (.scenario-* only)", "app/tests/scenarios.spec.ts (new)"],
+    "rejectionGates": [
+      "ONE ENGINE, TWO CALLS. Comfort and glazing figures come from comfortReport and modelledGlazingRatio — the same functions the read-out uses. A second calculation of one fact is forbidden here for the fourth time in this repo's history.",
+      "'NOT MODELLED' IS A FIRST-CLASS ANSWER and must appear where it applies. Daylight autonomy, energy use intensity and heating load are NOT modelled by this codebase today; a comparison that implies they are would be the most dangerous claim in the product. Compare what is modelled and name what is not.",
+      "NEVER PRESENT A MODELLED COMPARISON AS A CODE OR ENERGY-RATING OUTCOME. The FDWR figure is already labelled 'a comparison, not a code check' and that labelling travels here.",
+      "Every scenario is a real document with a real hash, and switching between them changes nothing on disk."
+    ]
+  },
+
+  "PL03": {
+    "job": "More diversity, more glass, more beautiful — the second plan wave, learning from the first.",
+    "context": [
+      "PL01 added thirty and the library is 55. A fresh-context review read six of them and found them genuinely distinct, so the SET is sound — but it also proved the anti-padding gate weak, and PL02's replacement is still defeatable through a prose field. Author as though the gate were strict.",
+      "The eight over-ceiling plans from PL01 are the template for honest glass: each names the 22% NBC 9.36 PRESCRIPTIVE ceiling, states its own ratio, names the compliance path, and says what the glass costs in a zone 7A winter."
+    ],
+    "writeSet": ["app/lib/builder/planCatalog.ts", "app/tests/plan-catalog.spec.ts", "docs/research/PLAN-LIBRARY-SOURCES.md"],
+    "rejectionGates": [
+      "AURA-AUTHORED MIT ORIGINALS ONLY. Design them; do not trace a real house.",
+      "REAL DESIGNS, NOT PERMUTATIONS. If you can only justify fifteen, ship fifteen and say so — the padding gate is weak and that makes your judgement the control, which is exactly the situation where padding is tempting.",
+      "OPENINGS INSIDE THEIR WALLS, AND NOT OVERLAPPING EACH OTHER. Both are now asserted; a door set into a glazing wall shipped once already.",
+      "EVERY OVER-CEILING PLAN DISCLOSES, in the same sentence shape the existing eight use.",
+      "GLASS IS A COLD-CLIMATE DECISION AND MUST READ AS ONE. Large north glazing is a heat-loss choice; large south glazing needs a summer-shading answer. Say what it costs and what pays for it — that honesty is what makes the ambitious ones credible rather than decorative."
+    ]
+  }
+}
