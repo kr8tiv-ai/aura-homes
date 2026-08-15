@@ -13,16 +13,20 @@ import {
   type PlanTemplate,
 } from "@/lib/builder/planCatalog";
 import { summarizeHome } from "@/lib/builder/geometry";
-import { totalFloorAreaSqFt } from "@/lib/builder/spec";
-import { modelledGlazingRatio } from "@/lib/builder/toPlan";
+import { glazedAreaSqFt, totalFloorAreaSqFt, type HomeSpec } from "@/lib/builder/spec";
+import { modelledGlazingRatio, planFromSpec } from "@/lib/builder/toPlan";
 import { FDWR_MAX } from "@/lib/design/materials";
+import { formatFeetInches } from "@/lib/units";
 
 test("the plan library is substantial, deterministic and contains licensed open work", () => {
-  // Raised from 25 when the thirty-plan Nordic glass set landed (PL01). The
-  // bound is a floor, not the count — the count lives in the array.
-  expect(PLAN_TEMPLATES.length).toBeGreaterThanOrEqual(55);
+  // Raised from 25 when the thirty-plan Nordic glass set landed (PL01), and
+  // from 55 to 72 when PL03's seventeen landed. The bound is a floor, not the
+  // count — the count lives in the array. A floor left behind the library
+  // stops discriminating, which is why it moves with each wave rather than
+  // being treated as permanent.
+  expect(PLAN_TEMPLATES.length).toBeGreaterThanOrEqual(72);
   expect(new Set(PLAN_TEMPLATES.map((plan) => plan.id)).size).toBe(PLAN_TEMPLATES.length);
-  expect(PLAN_TEMPLATES.filter((plan) => plan.source.kind === "aura-authored").length).toBeGreaterThanOrEqual(44);
+  expect(PLAN_TEMPLATES.filter((plan) => plan.source.kind === "aura-authored").length).toBeGreaterThanOrEqual(61);
   expect(PLAN_TEMPLATES.filter((plan) => plan.source.kind === "licensed-adaptation").length).toBeGreaterThanOrEqual(3);
   expect(PLAN_TEMPLATES.filter((plan) => plan.source.kind === "public-domain-adaptation").length).toBeGreaterThanOrEqual(8);
 
@@ -229,8 +233,12 @@ test("every plan above the prescriptive glazing ceiling discloses it in its own 
   const over = PLAN_TEMPLATES.filter((plan) => modelledGlazingRatio(plan.spec) > FDWR_MAX);
 
   /* A glass-forward library with nothing over the ceiling would make this
-     assertion decoration. The Nordic glass set alone puts eight plans over. */
-  expect(over.length).toBeGreaterThanOrEqual(8);
+     assertion decoration. The Nordic glass set alone put eight plans over;
+     PL03 added five more (vertikal-tower, atriumgard, dobbelgavl-bar,
+     solvegg-house, skygge-veranda) on top of the two grandfathered records,
+     so the floor moves 8 -> 15. Renegotiated rather than left at 8: a floor
+     that the library has already doubled past cannot fail on a regression. */
+  expect(over.length).toBeGreaterThanOrEqual(15);
 
   /* A stale exemption is worse than no exemption: if one of these is fixed,
      removed or redesigned under the ceiling, this fails and the list must be
@@ -297,7 +305,9 @@ test("every glazing percentage a plan states about itself tracks its own geometr
     }
   }
   // A regex that matches nothing would pass this test on a library of lies.
-  expect(claims).toBeGreaterThanOrEqual(25);
+  // 25 was PL01's floor; every one of PL03's seventeen states its own ratio
+  // too, so the floor moves to 42 and the regex cannot quietly stop matching.
+  expect(claims).toBeGreaterThanOrEqual(42);
   expect(drifted).toEqual([]);
 });
 
@@ -333,7 +343,11 @@ test("no two plans are the same building wearing a different name", () => {
         .join("|"),
     ),
   );
-  expect(elevations.size).toBeGreaterThanOrEqual(50);
+  /* 50 was the floor at 55 plans (five collisions of slack). At 72 the library
+     measures 71 distinct first-volume elevations, so the floor moves to 65 —
+     still with slack, but slack that scales with the library instead of
+     becoming free room to paste elevations into. */
+  expect(elevations.size).toBeGreaterThanOrEqual(65);
 
   /* NEITHER GUARD ABOVE IS THE RULE THIS TEST IS NAMED AFTER, and a verifier
      proved it in one line: a 56th plan that was an existing plan with `widthFt`
@@ -343,7 +357,7 @@ test("no two plans are the same building wearing a different name", () => {
      five collisions. "Real designs, not permutations" was enforced by judgement.
 
      It is now enforced by measurement — see the block over `paddedPlanPairs` in
-     planCatalog.ts for why the rule is CONDITIONAL rather than a distance
+     planCatalog.ts for why the rule is STRUCTURAL rather than a distance
      threshold (a threshold that catches the clone also rejects two USDA plan
      sets). The two guards above stay: an exact clone and a collapsing elevation
      set are real defects too, and this replaces neither. */
@@ -384,7 +398,17 @@ test("the anti-padding gate catches a plan that is another plan with one dimensi
     plan.spec.volumes[0].widthFt = 25;
   });
 
-  for (const padded of [nudgedAuthored, nudgedDefault]) {
+  /* SHAPE 3 — the same trick aimed at PL03's wave rather than PL01's, because
+     a counterexample that only ever clones a two-year-old record stops testing
+     the library people are actually adding to. `dobbelgavl-bar` re-listed one
+     foot wider: hand-authored elevation, so nothing about it changes. */
+  const nudgedNewWave = clone("dobbelgavl-bar", (plan) => {
+    plan.id = "dobbelgavl-bar-wide";
+    plan.title = "Dobbelgavl Wide";
+    plan.spec.volumes[0].widthFt = 19;
+  });
+
+  for (const padded of [nudgedAuthored, nudgedDefault, nudgedNewWave]) {
     const verdicts = paddedPlanPairs([...PLAN_TEMPLATES, padded]);
     expect(
       verdicts.map((v) => `${v.a} ~ ${v.b}`),
@@ -395,16 +419,78 @@ test("the anti-padding gate catches a plan that is another plan with one dimensi
     expect(verdicts[0].massingDistance).toBeLessThan(PLAN_NUDGE_DISTANCE);
   }
 
-  /* THE OTHER HALF, WHICH MATTERS JUST AS MUCH: the threshold is pinned to the
-     honest library, not chosen. Across all 55 plans exactly ONE pair differs on
-     no structural axis — two one-bedroom SIP gables — and the only thing
-     telling them apart is 204 sq ft of floor area. That pair is what sets the
-     ceiling on how strict this can get, so it is named. If a future plan drags
-     these two closer than PLAN_NUDGE_DISTANCE, this goes red and the threshold
-     must be re-argued rather than quietly nudged down. */
+  /* SHAPE 4 — THE ONE THE OLD RULE COULD NOT CATCH, AND THE REASON THE RULE
+     CHANGED. The gate used to require BOTH a near-identical massing and no
+     structural difference, so a clone escaped simply by being padded harder:
+     get further than PLAN_NUDGE_DISTANCE from your twin and the structural
+     test was never reached. `meadow-one` re-listed at 36 × 42 — half again in
+     both plan dimensions, nothing else touched — is that escape, and its
+     distance is asserted to be OVER the old threshold so this counterexample
+     cannot pass by accident under a rule that still consulted distance. */
+  const paddedHarder = clone("meadow-one", (plan) => {
+    plan.id = "meadow-one-grand";
+    plan.title = "Meadow One Grand";
+    plan.spec.volumes[0].widthFt = 36;
+    plan.spec.volumes[0].depthFt = 42;
+  });
+  const grandVerdicts = paddedPlanPairs([...PLAN_TEMPLATES, paddedHarder]);
+  expect(
+    grandVerdicts.map((v) => `${v.a} ~ ${v.b}`),
+    "meadow-one-grand is meadow-one at half again in both plan dimensions with nothing else changed, and the gate did not catch it",
+  ).toEqual(["meadow-one ~ meadow-one-grand"]);
+  expect(grandVerdicts[0].structuralAxes).toEqual([]);
+  expect(
+    grandVerdicts[0].massingDistance,
+    "this clone is supposed to be FAR from its twin — if it is inside the nudge radius it is testing the same thing shapes 1 to 3 already test",
+  ).toBeGreaterThan(PLAN_NUDGE_DISTANCE);
+
+  /* THE OTHER HALF, WHICH MATTERS JUST AS MUCH: the library itself has to be
+     clean under the strict rule, not merely under the one that let distance
+     acquit. It was not, and this is what the pins record.
+
+     `meadow-one`, `solstice-cottage` and `jordhus-berm` were three
+     one-bedroom SIP gables sharing an elevation string and a programme, all
+     three acquitted by distance alone. Two of them were the SIGNATURE not
+     looking: `jordhus-berm`'s only openings above its earth berm are two vents
+     7.5 ft up, and the elevation axis recorded nothing but "window on the east
+     wall". It records a sill BAND now, and the band is what acquits it —
+     asserted here, because an acquittal nobody checks is how the last version
+     of this rule went quiet. The third was the real defect and was fixed in
+     the catalogue: `solstice-cottage` now carries the south-collecting
+     elevation its own summary describes instead of the library default. */
   const meadow = PLAN_TEMPLATES.find((plan) => plan.id === "meadow-one")!;
   const solstice = PLAN_TEMPLATES.find((plan) => plan.id === "solstice-cottage")!;
-  expect(planStructuralAxes(meadow, solstice)).toEqual([]);
+  const jordhus = PLAN_TEMPLATES.find((plan) => plan.id === "jordhus-berm")!;
+  for (const [left, right] of [
+    [meadow, solstice],
+    [meadow, jordhus],
+    [solstice, jordhus],
+  ] as const) {
+    expect(
+      planStructuralAxes(left, right),
+      `${left.id} ~ ${right.id} used to differ on no structural axis and was acquitted by distance alone`,
+    ).toContain("elevation");
+  }
+
+  /* AND THE SILL BAND IS WHAT DOES IT for the bermed plan, not something else
+     that happens to differ. Drop its vents to a normal window sill and the
+     elevation axis goes silent — which is the state this gate shipped in. */
+  const flattened = clone("jordhus-berm", (plan) => {
+    plan.id = "jordhus-berm-flat";
+    for (const opening of plan.spec.volumes[0].openings) {
+      if (opening.id.startsWith("vent-")) opening.sillFt = 3;
+    }
+  });
+  expect(
+    planStructuralAxes(meadow, flattened),
+    "jordhus-berm is acquitted by something other than where its openings sit, so the sill band is not the thing doing the work this comment credits it with",
+  ).toEqual([]);
+
+  /* The 0.25 that used to be this rule's calibration floor, kept as a
+     measurement: meadow-one and solstice-cottage are still the widest-apart
+     pair the library ever had with nothing structural between them, and they
+     are still far outside the nudge radius. Neither fact acquits them any
+     more, which is the point. */
   expect(planMassingDistance(meadow, solstice)).toBeCloseTo(0.25, 4);
   expect(planMassingDistance(meadow, solstice)).toBeGreaterThan(PLAN_NUDGE_DISTANCE);
 
@@ -563,6 +649,306 @@ test("the over-report reaches the estimate a buyer reads, with the number in it"
       expect(estimate.footprintOverlapSqFt).toBe(0);
     }
   }
+});
+
+/* ---------------------------------------------------------------------------
+   PL03's GATES — the four claims this wave makes that a reader could not check
+
+   Everything below exists because a claim was about to be written in prose. The
+   repo's own history is the argument: two recent waves shipped sentences that
+   nothing checked and both were false, and this wave found two more of the same
+   kind while building the measurement (`beltsville-farmhouse` published an area
+   four square feet off its own geometry, and `kompakt-passiv` claimed a
+   superlative that is false under both readings of it). Neither was caught by
+   reading. Both are now caught by arithmetic.
+   ------------------------------------------------------------------------- */
+
+test("the area printed on every card is the area the geometry actually models", () => {
+  /* Every kicker in the library opens with "N sq ft". That number is the first
+     thing a buyer reads and, until PL03, nothing compared it to the model —
+     `beltsville-farmhouse` said 1,292 against a 26×38 + 14×22 envelope that is
+     1,296, and had said so since it was authored.
+
+     There is no exemption list here on purpose. A published area is either the
+     model's area or it is wrong, and one grandfathered record would make the
+     next one easy. */
+  const drifted: string[] = [];
+  let checked = 0;
+  for (const plan of PLAN_TEMPLATES) {
+    const match = /^([\d,]+)\s*sq ft/.exec(plan.kicker);
+    if (!match) {
+      drifted.push(`${plan.id}: kicker does not open with an area — "${plan.kicker}"`);
+      continue;
+    }
+    checked += 1;
+    const stated = Number(match[1].replace(/,/g, ""));
+    const actual = Math.round(totalFloorAreaSqFt(plan.spec));
+    if (stated !== actual) drifted.push(`${plan.id}: card says ${stated} sq ft, geometry models ${actual}`);
+  }
+  expect(drifted).toEqual([]);
+  // A regex that stopped matching would pass an empty list. Every plan is read.
+  expect(checked).toBe(PLAN_TEMPLATES.length);
+});
+
+test("no plan claims more glass than its own geometry draws", () => {
+  /* Notes talk in square feet of glass as well as in percentages, and a square
+     footage rots exactly the way a percentage does.
+
+     THE PROPERTY IS PINNED IN TWO STRENGTHS, DELIBERATELY. Two PL01 notes
+     ("221 sq ft of glass" on vinterhage-house, "252 sq ft" on vann-edge)
+     describe ONE PART of the building — the sunspace, the three south bays —
+     and prose cannot tell a test which part. Forcing them to equal the whole
+     house's glazing would fail two honest sentences, so the universal rule is
+     the bound that must hold either way (you cannot claim more glass than the
+     model draws), and the exact rule is pinned by id for the notes that mean
+     the whole house. Weaker property, named, rather than a gate that rejects
+     honest work — the same trade `programme`'s `sleeping` field records. */
+  const WHOLE_HOUSE_CLAIMS = ["midtglass-longhouse", "skogsrom-cabin"] as const;
+  const problems: string[] = [];
+  let claims = 0;
+  for (const plan of PLAN_TEMPLATES) {
+    const match = /([\d,]+) sq ft of glass/.exec(plan.spec.notes);
+    if (!match) continue;
+    claims += 1;
+    const stated = Number(match[1].replace(/,/g, ""));
+    const actual = Math.round(glazedAreaSqFt(plan.spec));
+    if (stated > actual) {
+      problems.push(`${plan.id}: notes claim ${stated} sq ft of glass, the model draws ${actual}`);
+    }
+    if ((WHOLE_HOUSE_CLAIMS as readonly string[]).includes(plan.id) && stated !== actual) {
+      problems.push(`${plan.id}: its claim is about the whole house, so ${stated} must equal ${actual}`);
+    }
+  }
+  expect(problems).toEqual([]);
+  expect(claims).toBeGreaterThanOrEqual(4);
+  for (const id of WHOLE_HOUSE_CLAIMS) {
+    const plan = PLAN_TEMPLATES.find((candidate) => candidate.id === id)!;
+    expect(plan.spec.notes, `${id} is pinned as a whole-house glass claim but no longer makes one`).toMatch(
+      /\d[\d,]* sq ft of glass/,
+    );
+  }
+});
+
+/** Exterior wall per square foot of FLOOR — the quantity two notes now argue
+ *  about. Perimeter is counted once per volume regardless of storeys, because
+ *  a two-storey wall is two storeys of the same perimeter. */
+const wallPerFloorFt = (plan: PlanTemplate): number =>
+  plan.spec.volumes.reduce((sum, v) => sum + 2 * (v.widthFt + v.depthFt), 0) / totalFloorAreaSqFt(plan.spec);
+
+test("the two plans that argue about exterior wall are both telling the truth", () => {
+  /* `atriumgard` says no plan over 400 sq ft carries more exterior wall per
+     square foot of floor; `kompakt-passiv` says the courtyard carries a little
+     over twice what it does. Both are checked here, and the first one is
+     deliberately NOT the superlative it wanted to be: `libertiny-study`, a
+     165 sq ft towable, beats it at 0.341, because a tiny house always wins
+     this measure. Claiming the crown outright would have been the third false
+     comparative this repo shipped this month — the measurement was built
+     first, and the sentence was written to it. */
+  const atrium = PLAN_TEMPLATES.find((plan) => plan.id === "atriumgard")!;
+  const kompakt = PLAN_TEMPLATES.find((plan) => plan.id === "kompakt-passiv")!;
+
+  const bigger = PLAN_TEMPLATES.filter(
+    (plan) => totalFloorAreaSqFt(plan.spec) > 400 && wallPerFloorFt(plan) > wallPerFloorFt(atrium) + 1e-9,
+  ).map((plan) => `${plan.id} (${wallPerFloorFt(plan).toFixed(3)})`);
+  expect(bigger, "atriumgard's notes claim nothing over 400 sq ft carries more exterior wall").toEqual([]);
+  expect(atrium.spec.notes).toMatch(/over 400 sq ft carries more exterior wall per square foot/);
+
+  /* The only plan in the whole library that beats it, pinned by name: if it
+     ever stops beating atriumgard the claim above can be strengthened to a
+     plain superlative, and this is what says so. */
+  const winners = PLAN_TEMPLATES.filter(
+    (plan) => wallPerFloorFt(plan) > wallPerFloorFt(atrium),
+  ).map((plan) => plan.id).sort();
+  expect(winners).toEqual(["libertiny-study"]);
+  expect(totalFloorAreaSqFt(PLAN_TEMPLATES.find((plan) => plan.id === "libertiny-study")!.spec)).toBeLessThan(400);
+
+  const multiple = wallPerFloorFt(atrium) / wallPerFloorFt(kompakt);
+  expect(multiple).toBeGreaterThan(2);
+  expect(multiple).toBeLessThan(2.2);
+  expect(kompakt.spec.notes).toMatch(/a little over twice as much exterior wall per square foot of floor/);
+  expect(atrium.spec.notes).toMatch(/a little over twice what the near-square Kompakt Passiv carries/);
+
+  /* And the sentence kompakt-passiv used to carry, kept as a counterexample so
+     nobody restores it: it claimed the least exterior wall per square foot of
+     anything in the library, and it is beaten on both readings. */
+  const beatsKompaktOnFloor = PLAN_TEMPLATES.filter((plan) => wallPerFloorFt(plan) < wallPerFloorFt(kompakt));
+  expect(beatsKompaktOnFloor.length).toBeGreaterThan(0);
+  const perFootprint = (plan: PlanTemplate): number =>
+    plan.spec.volumes.reduce((sum, v) => sum + 2 * (v.widthFt + v.depthFt), 0) /
+    plan.spec.volumes.reduce((sum, v) => sum + v.widthFt * v.depthFt, 0);
+  expect(PLAN_TEMPLATES.filter((plan) => perFootprint(plan) < perFootprint(kompakt)).length).toBeGreaterThan(0);
+  expect(kompakt.spec.notes).not.toMatch(/least exterior wall per square foot of anything/);
+});
+
+test("a plan whose shading strategy is its eave carries the eave the engine draws", () => {
+  /* THE FIELD THAT WAS A CONSTANT. All 55 plans before PL03 used a 1.5 ft
+     overhang, so "budget for an overhang" was advice the library could not
+     take. `skygge-veranda` takes it, and three things have to be true at once
+     or the deep eave is decoration:
+
+       1. geometry.ts must actually draw a bigger roof (not just store a bigger
+          number), measured against the SAME spec at the default overhang;
+       2. the drawing note a buyer reads must print the real depth, not 1.5;
+       3. the shading arithmetic the note states must follow from the plan's own
+          overhang and the solar geometry it cites.
+
+     The third is hand arithmetic and the note says so: this codebase has no
+     sun-path model, so the altitudes below come from latitude and axial tilt,
+     which is exactly what the note claims and all it claims. */
+  const deep = PLAN_TEMPLATES.filter((plan) => plan.spec.volumes.some((v) => v.roof.overhangFt !== 1.5));
+  expect(deep.map((plan) => plan.id)).toEqual(["skygge-veranda"]);
+
+  const plan = deep[0];
+  const volume = plan.spec.volumes[0];
+  expect(volume.roof.overhangFt).toBe(4);
+
+  // 1. the roof geometry moves with the field.
+  const shallow: HomeSpec = JSON.parse(JSON.stringify(plan.spec));
+  shallow.volumes[0].roof.overhangFt = 1.5;
+  const deepBounds = summarizeHome(plan.spec).boundsWithRoof;
+  const shallowBounds = summarizeHome(shallow).boundsWithRoof;
+  expect(deepBounds.maxX - deepBounds.minX - (shallowBounds.maxX - shallowBounds.minX)).toBeCloseTo(
+    2 * (4 - 1.5),
+    6,
+  );
+
+  // 2. the handoff note prints the real depth rather than the library default.
+  const roofNote = planFromSpec(plan.spec).notes.find((note) => note.figures?.some((f) => f.sub?.includes("overhang")));
+  expect(roofNote, "planFromSpec no longer emits a roof note with an overhang figure").toBeDefined();
+  const subs = (roofNote!.figures ?? []).map((f) => f.sub ?? "").join(" | ");
+  expect(subs).toContain(`${formatFeetInches(4)} overhang`);
+  expect(subs).not.toContain(`${formatFeetInches(1.5)} overhang`);
+
+  // 3. the arithmetic in the sentence follows from the plan's own overhang.
+  const LATITUDE_DEG = 53.5; // Edmonton, the pilot city named throughout this app
+  const OBLIQUITY_DEG = 23.44;
+  const tanAt = (altitudeDeg: number) => Math.tan((altitudeDeg * Math.PI) / 180);
+  const summerNoon = 90 - LATITUDE_DEG + OBLIQUITY_DEG;
+  const winterNoon = 90 - LATITUDE_DEG - OBLIQUITY_DEG;
+  expect(Math.round(summerNoon)).toBe(60);
+  expect(Math.round(winterNoon)).toBe(13);
+  const summerShade = volume.roof.overhangFt * tanAt(summerNoon);
+  const winterShade = volume.roof.overhangFt * tanAt(winterNoon);
+
+  const stated = /roughly ([\d.]+) ft of shade[\s\S]*?about ([\d.]+) ft at midwinter/.exec(plan.spec.notes);
+  expect(stated, "skygge-veranda's notes no longer state both shade depths in the shape this gate reads").not.toBeNull();
+  expect(Math.abs(Number(stated![1]) - summerShade)).toBeLessThan(0.1);
+  expect(Math.abs(Number(stated![2]) - winterShade)).toBeLessThan(0.1);
+  // The claim is only interesting if the shade covers most of the glazing.
+  const glazing = volume.openings.find((o) => o.id === "glass-s")!;
+  expect(summerShade).toBeGreaterThan(glazing.heightFt * 0.7);
+  expect(winterShade).toBeLessThan(glazing.heightFt * 0.15);
+  expect(plan.spec.notes).toMatch(/no sun-path model/);
+});
+
+test("the plan drawn to a panel grid is actually on the grid, and the grid means something", () => {
+  /* `modulhus` sells one idea: every opening begins and ends on a two-foot line
+     so no header crosses a CLT panel joint. That is a claim about numbers, so
+     it is checked as one — and it is checked to be DISCRIMINATING as well as
+     true, because a property every plan satisfies is not a design decision. */
+  const onGrid = (plan: PlanTemplate): boolean =>
+    plan.spec.volumes.every((v) =>
+      v.openings.every((o) => Math.abs(o.offsetFt % 2) < 1e-9 && Math.abs(o.widthFt % 2) < 1e-9),
+    );
+
+  const modul = PLAN_TEMPLATES.find((plan) => plan.id === "modulhus")!;
+  const offGrid = modul.spec.volumes.flatMap((v) =>
+    v.openings
+      .filter((o) => Math.abs(o.offsetFt % 2) > 1e-9 || Math.abs(o.widthFt % 2) > 1e-9)
+      .map((o) => `${o.id} at ${o.offsetFt} × ${o.widthFt}`),
+  );
+  expect(offGrid, "modulhus claims every opening lands on a 2 ft line").toEqual([]);
+  expect(modul.spec.notes).toMatch(/begins and ends on a two-foot line/);
+  expect(modul.spec.material).toBe("clt");
+
+  /* MEASURED, NOT GUESSED: today this is exactly ZERO — modulhus is the only
+     plan in 72 whose every opening lands on the grid, which is what makes the
+     discipline a decision rather than a coincidence. The bound is set at 3 so
+     two future plans may land on it by accident without failing an unrelated
+     wave, and if a third does, the claim has stopped meaning anything. */
+  const others = PLAN_TEMPLATES.filter((plan) => plan.id !== "modulhus" && onGrid(plan));
+  expect(
+    others.length,
+    `${others.map((p) => p.id).join(", ")} also sit entirely on the 2 ft grid — modulhus's discipline is no longer a distinguishing decision`,
+  ).toBeLessThan(3);
+});
+
+test("a courtyard's roofs fall away from its court, in the data and in the drawing", () => {
+  /* `facing` was never overridden anywhere in the library before PL03: every
+     shed faced south because that is geometry.ts's default. atriumgard's whole
+     snow argument depends on four roofs falling OUTWARD, so the direction is
+     derived from each bar's position relative to the court rather than trusted
+     as a literal, and then checked to have reached the drawing note. */
+  const atrium = PLAN_TEMPLATES.find((plan) => plan.id === "atriumgard")!;
+  const wrong: string[] = [];
+  for (const v of atrium.spec.volumes) {
+    // The bar's outward direction is simply where it sits relative to the court
+    // centre, which for this plan is the origin.
+    const outward =
+      Math.abs(v.x) > Math.abs(v.z) ? (v.x > 0 ? "e" : "w") : v.z > 0 ? "s" : "n";
+    if (v.roof.facing !== outward) wrong.push(`${v.id} sits ${outward} of the court but its roof faces ${v.roof.facing}`);
+  }
+  expect(wrong).toEqual([]);
+  expect(new Set(atrium.spec.volumes.map((v) => v.roof.facing)).size).toBe(4);
+  expect(atrium.spec.notes).toMatch(/fall AWAY from the court/);
+
+  const subs = (planFromSpec(atrium.spec).notes.flatMap((note) => note.figures ?? []))
+    .map((f) => f.sub ?? "")
+    .join(" | ");
+  for (const facing of ["N", "S", "E", "W"]) expect(subs).toContain(`facing ${facing}`);
+});
+
+test("every square-foot figure a feature bullet prints is a real dimension of that plan", () => {
+  /* Five plans put an area in their feature list — "48 sq ft glazed bay",
+     "264 sq ft sheltered court". Those are the same class of claim as a kicker
+     and rot the same way, so they are resolved against the geometry: a volume's
+     footprint, the plan's total floor area, or — for the one figure that is a
+     VOID rather than a volume — the court the four bars leave between them. */
+  const courtSqFt = (plan: PlanTemplate): number => {
+    const rect = (v: (typeof plan.spec.volumes)[number]) => ({
+      x0: v.x - v.widthFt / 2, x1: v.x + v.widthFt / 2, z0: v.z - v.depthFt / 2, z1: v.z + v.depthFt / 2,
+    });
+    const rects = plan.spec.volumes.map(rect);
+    const west = Math.max(...rects.filter((r) => r.x1 <= 0).map((r) => r.x1));
+    const east = Math.min(...rects.filter((r) => r.x0 >= 0).map((r) => r.x0));
+    const north = Math.max(...rects.filter((r) => r.z1 <= 0).map((r) => r.z1));
+    const south = Math.min(...rects.filter((r) => r.z0 >= 0).map((r) => r.z0));
+    return (east - west) * (south - north);
+  };
+
+  const unresolved: string[] = [];
+  let claims = 0;
+  for (const plan of PLAN_TEMPLATES) {
+    for (const feature of plan.features) {
+      const match = /(\d[\d,]*) sq ft/.exec(feature);
+      if (!match) continue;
+      claims += 1;
+      const stated = Number(match[1].replace(/,/g, ""));
+      const footprints = plan.spec.volumes.map((v) => v.widthFt * v.depthFt);
+      const court = plan.id === "atriumgard" ? [courtSqFt(plan)] : [];
+      const allowed = [...footprints, Math.round(totalFloorAreaSqFt(plan.spec)), ...court];
+      if (!allowed.some((value) => Math.abs(value - stated) < 0.5)) {
+        unresolved.push(`${plan.id}: "${feature}" matches no volume footprint (${footprints.join(", ")}) or court`);
+      }
+    }
+  }
+  expect(unresolved).toEqual([]);
+  // The five that exist today. A regex that stopped matching would pass empty.
+  expect(claims).toBe(5);
+  expect(Math.round(courtSqFt(PLAN_TEMPLATES.find((plan) => plan.id === "atriumgard")!))).toBe(264);
+});
+
+test("the library reaches four bedrooms, and says so only where it is true", () => {
+  /* Diversity is a claim too. `familie-fire` calls itself the first
+     four-bedroom plan in the library; before it, three was the ceiling. */
+  const four = PLAN_TEMPLATES.filter((plan) => plan.bedrooms >= 4);
+  expect(four.map((plan) => plan.id)).toEqual(["familie-fire"]);
+  expect(Math.max(...PLAN_TEMPLATES.filter((plan) => plan.bedrooms < 4).map((plan) => plan.bedrooms))).toBe(3);
+  expect(four[0].summary).toMatch(/first four-bedroom plan in the library/);
+  // The pavilion the summary sells is the size the features claim.
+  const pavilion = four[0].spec.volumes.find((v) => v.id === "pavilion")!;
+  expect(pavilion.widthFt * pavilion.depthFt).toBe(192);
+  expect(four[0].features.join(" ")).toContain("192 sq ft");
 });
 
 test("a proxy cost basis names what the Alberta BOM is not modelling", () => {

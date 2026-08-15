@@ -74,7 +74,6 @@ import {
   interiorBoundsLocal,
   localAlignCandidates,
   makeView,
-  moveOpening,
   moveVolumeTo,
   movePartitionTo,
   offsetWall,
@@ -87,7 +86,6 @@ import {
   pointOnPartitionLocal,
   pointOnWallLocal,
   pruneOrphanPartitions,
-  resizeOpening,
   setPartitionDoor,
   removePartition,
   addPartition,
@@ -115,6 +113,15 @@ import {
   type WorldBounds,
 } from "@/lib/builder/walls";
 import { KIND_LABELS, WALL_LABELS, addOpening, removeOpening } from "./edits";
+import {
+  applyOpeningEdit,
+  checkOpening,
+  openingBoxFromEdgeDrag,
+  openingReadout,
+  openingRunFt,
+  OPENING_HANDLES_IN_PLAN,
+  type OpeningHandleKind,
+} from "./openingEdit";
 import { Button, Segmented } from "./ui";
 
 /* ===========================================================================
@@ -149,7 +156,12 @@ export interface Plan2DProps {
 type Tool = "select" | "partition" | "window" | "door" | "glazing-wall";
 
 const TOOLS: ReadonlyArray<{ id: Tool; label: string; title: string }> = [
-  { id: "select", label: "Select", title: "Move corners, walls, openings and partitions" },
+  {
+    id: "select",
+    label: "Select",
+    title:
+      "Move corners, walls and partitions — and click a window or door to get its three grips: slide it from the middle, resize it from either end",
+  },
   { id: "partition", label: "Partition", title: "Drag inside a mass to draw an interior wall" },
   { id: "window", label: "Window", title: "Click a wall to place a window there" },
   { id: "door", label: "Door", title: "Click a wall to place a door there" },
@@ -197,6 +209,11 @@ interface Preview {
   guides: Guide[];
   /** the rubber band, for the partition tool */
   draft: { volumeId: string; a: Vec2; b: Vec2 } | null;
+  /** what the mutator would not do, in words. An opening drag that runs into
+   *  the end of its wall or into another opening STOPS there, and a stop
+   *  nobody explains reads as a broken editor. Empty for every other gesture,
+   *  which is why it is optional rather than a field each case has to fill. */
+  refusals?: readonly string[];
 }
 
 /* ===========================================================================
@@ -224,6 +241,84 @@ function swingPath(hinge: Px, jamb: Px, tip: Px): string {
   return (
     `M${hinge.x.toFixed(2)} ${hinge.y.toFixed(2)}L${tip.x.toFixed(2)} ${tip.y.toFixed(2)}` +
     `M${jamb.x.toFixed(2)} ${jamb.y.toFixed(2)}A${r.toFixed(2)} ${r.toFixed(2)} 0 0 ${sweep} ${tip.x.toFixed(2)} ${tip.y.toFixed(2)}`
+  );
+}
+
+/* ===========================================================================
+   THE OPENING GRIPS — the discoverability half of this node.
+
+   The 2D editor could already slide an opening along its wall and drag either
+   end to resize it. The founder could not find either gesture, and the reason
+   is measurable rather than aesthetic: the grips were 6 CSS px square, drawn
+   only while the pointer was already within the grab radius, and the surface
+   never changed cursor. An affordance you have to already be using is not one.
+
+   THREE THINGS CHANGED, AND EACH IS ASSERTED IN `tests/opening-edit.spec.ts`
+   AGAINST THE REAL STYLESHEET rather than claimed here:
+
+   1. THE MARK IS THE TARGET. `OPENING_GRAB_PX` is the tolerance `hitTest` is
+      given, and it is also the radius the ring is drawn at, so what you can see
+      is exactly what you can grab. At 12 px that is a 24 px target, which is
+      the minimum WCAG 2.2 success criterion 2.5.8 (AA) asks of a pointer
+      target — the number is chosen for that reason and the spec measures it.
+   2. THEY APPEAR ON SELECTION, not on hover. Click a window anywhere — in the
+      plan, in the model, in the panel list — and its grips are on it.
+   3. THE CURSOR SAYS WHAT WILL HAPPEN. `grab` on the middle grip, `ew-resize`
+      on the two ends, through `.opening-plan-handle` in globals.css.
+
+   POINTER EVENTS BUBBLE THROUGH THESE. Plan2D does not hit-test through the
+   DOM — it hit-tests in world feet in `walls.ts`, which is why a wall is
+   grabbable along its whole length rather than only where a handle is drawn.
+   So these elements exist to be SEEN and to carry a cursor; they deliberately
+   do not stop propagation, and the press they show still reaches the <svg>.
+   =========================================================================== */
+
+/** The pointer tolerance, in CSS px, and therefore the radius every opening
+ *  grip is drawn at. 12 rather than `DEFAULT_SNAP.tolPx`'s 10 so the drawn
+ *  target reaches 24 px across. */
+export const OPENING_GRAB_PX = 12;
+
+export interface OpeningPlanMark {
+  kind: OpeningHandleKind;
+  at: Px;
+}
+
+/**
+ * The grips of ONE opening, in plan.
+ *
+ * Pure and exported so the spec can render it at real pixel coordinates with
+ * the real stylesheet attached and MEASURE that the marks are visible and
+ * carry a cursor — the plan editor itself cannot be rendered in a static test
+ * because it draws nothing until a ResizeObserver has reported a box.
+ */
+export function OpeningPlanHandles({
+  marks,
+  grabPx = OPENING_GRAB_PX,
+}: {
+  marks: readonly OpeningPlanMark[];
+  grabPx?: number;
+}) {
+  return (
+    <g className="opening-plan-handles">
+      {marks.map((m) => (
+        <g key={m.kind} className="opening-plan-handle" data-opening-handle={m.kind}>
+          {/* the ring: the size of the real grab radius */}
+          <circle className="opening-plan-handle__ring" cx={m.at.x} cy={m.at.y} r={grabPx} />
+          {/* the mark: what the eye lands on */}
+          {m.kind === "slide" ? (
+            <circle className="opening-plan-handle__mark" cx={m.at.x} cy={m.at.y} r={grabPx / 3} />
+          ) : (
+            <rect
+              className="opening-plan-handle__mark"
+              x={m.at.x - grabPx / 3}
+              y={m.at.y - grabPx / 3}
+              width={(grabPx / 3) * 2}
+              height={(grabPx / 3) * 2}
+            />
+          )}
+        </g>
+      ))}
+    </g>
   );
 }
 
@@ -326,11 +421,23 @@ export default function Plan2D({
   }, [spec]);
 
   /* -------------------------------------------------------------- settings */
-  const [snapSettings, setSnapSettings] = useState<SnapSettings>(DEFAULT_SNAP);
+  /* `tolPx` is raised from `DEFAULT_SNAP`'s 10 to `OPENING_GRAB_PX` so the grip
+     a person sees is a 24 px target — see the block above `OpeningPlanHandles`.
+     It is the same tolerance every other handle on the plan is hit-tested with,
+     because two grab radii on one surface is a thing nobody could predict. */
+  const [snapSettings, setSnapSettings] = useState<SnapSettings>({
+    ...DEFAULT_SNAP,
+    tolPx: OPENING_GRAB_PX,
+  });
   const [tool, setTool] = useState<Tool>("select");
   const [selection, setSelection] = useState<PlanHandle | null>(null);
   const [hover, setHover] = useState<PlanHandle | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
+  /* What the last opening gesture would NOT do. Held past the end of the drag
+     on purpose: the whole failure this node exists to end is a thing that
+     silently does not happen, and a sentence that vanishes with the pointer is
+     the same silence one frame later. Cleared by the next successful gesture. */
+  const [refusals, setRefusals] = useState<readonly string[]>([]);
 
   /* Mirrored into a ref as well as state. The state is what renders; the ref
      is what `endDrag` reads. Reading the state there instead would put
@@ -398,9 +505,28 @@ export default function Plan2D({
         const placed = added.spec.volumes.find((x) => x.id === v.id);
         const made = placed?.openings.find((o) => o.id === added.id);
         const t = tAlongWall(v, hit.wall, th, world);
+        /* Centred on the click, through the one mutator — so a new window is
+           legalised by the same code that legalises a drag. */
         const next = made
-          ? moveOpening(added.spec, v.id, added.id, t - made.widthFt / 2)
+          ? applyOpeningEdit(added.spec, v.id, added.id, { offsetFt: t - made.widthFt / 2 }).spec
           : added.spec;
+        /* AND THEN CHECKED, because `addOpening` can place one before this file
+           ever sees it: `edits.ts` falls back to the far end of the wall when
+           no gap fits, and `applyOpeningEdit` only promises never to make an
+           overlap WORSE — it cannot undo one it was handed. A click that has
+           nowhere to go takes the opening away again and says so, rather than
+           authoring the exact state `plan-catalog.spec.ts` forbids. */
+        const legal = checkOpening(next, v.id, added.id);
+        if (!legal.onWall || legal.clashes.length > 0) {
+          setRefusals([
+            legal.clashes.length > 0
+              ? "There is no room for that here — it would be cut into the opening beside it, so nothing was added."
+              : "There is no room for that on this wall, so nothing was added.",
+          ]);
+          setTool("select");
+          return;
+        }
+        setRefusals([]);
         gestureRef.current += 1;
         onEdit(next, `plan:add-opening:${gestureRef.current}`);
         setSelection({ kind: "opening", volumeId: v.id, openingId: added.id });
@@ -622,6 +748,15 @@ export default function Plan2D({
           };
         }
 
+        /* THE TWO OPENING GESTURES GO THROUGH `applyOpeningEdit`, which is the
+           same function the 3D grips and the numeric fields call. They used to
+           call `moveOpening` and `resizeOpening` in `walls.ts` directly — those
+           clamp an opening to its wall and know nothing at all about the
+           opening NEXT to it, which is how a door set into a pane of glass
+           reached the catalogue and got a gate written for it. The snapping
+           above stays here, because a snap is a reading of where the pointer
+           MEANT to go and belongs with the pointer; the legality of the result
+           belongs with the mutator, once, for every surface. */
         case "opening": {
           const v = spec0.volumes.find((x) => x.id === drag.volumeId);
           const o = v?.openings.find((x) => x.id === drag.openingId);
@@ -630,19 +765,15 @@ export default function Plan2D({
           const raw = drag.offset0 + (t - drag.grabT);
           const cands = openingAlignCandidates(spec0, v, o.wall, o.id, o.widthFt);
           const snapped = snapScalar(raw, cands, tolFt, s);
-          const nextSpec = moveOpening(spec0, v.id, o.id, snapped.value);
-          const nv = nextSpec.volumes.find((x) => x.id === v.id);
-          const no = nv?.openings.find((x) => x.id === o.id);
-          const chain = nv && no ? openingChain(nextSpec, nv, no) : null;
+          const edit = applyOpeningEdit(spec0, v.id, o.id, { offsetFt: snapped.value });
           return {
-            spec: nextSpec,
+            spec: edit.spec,
             partitions: parts0,
             adjusted: [],
             guides: [],
             draft: null,
-            readout: chain
-              ? `${dim(chain.before)}  |  ${dim(chain.span)}  |  ${dim(chain.after)}`
-              : "",
+            readout: openingReadout(edit.box, openingRunFt(spec0, v, o.wall), dim),
+            refusals: edit.refusals,
           };
         }
 
@@ -653,19 +784,20 @@ export default function Plan2D({
           const raw = tAlongWall(v, o.wall, th, world);
           const cands = openingAlignCandidates(spec0, v, o.wall, o.id, 0);
           const snapped = snapScalar(raw, cands, tolFt, s);
-          const nextSpec = resizeOpening(spec0, v.id, o.id, drag.end, snapped.value);
-          const nv = nextSpec.volumes.find((x) => x.id === v.id);
-          const no = nv?.openings.find((x) => x.id === o.id);
-          const chain = nv && no ? openingChain(nextSpec, nv, no) : null;
+          const edit = applyOpeningEdit(
+            spec0,
+            v.id,
+            o.id,
+            openingBoxFromEdgeDrag(o, drag.end, snapped.value),
+          );
           return {
-            spec: nextSpec,
+            spec: edit.spec,
             partitions: parts0,
             adjusted: [],
             guides: [],
             draft: null,
-            readout: chain
-              ? `${KIND_LABELS[o.kind]} ${dim(chain.span)} wide  ·  ${dim(chain.before)} from the end`
-              : "",
+            readout: `${KIND_LABELS[o.kind]} · ${openingReadout(edit.box, openingRunFt(spec0, v, o.wall), dim)}`,
+            refusals: edit.refusals,
           };
         }
 
@@ -802,7 +934,9 @@ export default function Plan2D({
         });
         return;
       }
-      showPreview(solve(state, world));
+      const next = solve(state, world);
+      showPreview(next);
+      if (next) setRefusals(next.refusals ?? []);
     },
     [partitions, pxOf, showPreview, solve, spec, tolFt, tool, worldOf],
   );
@@ -903,7 +1037,11 @@ export default function Plan2D({
         const zero = pointOnWallLocal(v, o.wall, th, 0);
         const along = (seg.x - zero.x) * d.x + (seg.z - zero.z) * d.z;
         if (along === 0) return;
-        onEdit(moveOpening(spec, v.id, o.id, o.offsetFt + along), step);
+        // The keyboard is a fourth surface and takes the same road as the other
+        // three: an arrow key cannot put an opening somewhere a drag could not.
+        const edit = applyOpeningEdit(spec, v.id, o.id, { offsetFt: o.offsetFt + along });
+        setRefusals(edit.refusals);
+        if (edit.changed) onEdit(edit.spec, step);
         return;
       }
       if (sel.kind === "wall") {
@@ -1063,6 +1201,13 @@ export default function Plan2D({
         partitions where you want them instead of letting the room packer decide. Every drag is one
         undo, and Escape mid-drag costs nothing.
       </p>
+      <p className="mt-2 max-w-3xl text-xs leading-relaxed text-aura-text/60">
+        <strong className="font-semibold text-aura-text/80">Windows and doors:</strong> click one
+        and three grips appear on it — the middle one slides it along the wall, the two ends change
+        its width. The same opening carries five grips in the 3D view, where the sill and the head
+        can be dragged too, and the same five numbers can be typed. An opening stops at the end of
+        its wall and against its neighbours, and says so when it does.
+      </p>
 
       {/* --------------------------------------------------------- toolbar */}
       <div className="mt-5 flex flex-wrap items-end justify-between gap-4">
@@ -1156,6 +1301,7 @@ export default function Plan2D({
                 selKey={selKey}
                 selectedOpeningId={selectedOpeningId ?? null}
                 showHandles={tool === "select"}
+                grabPx={snapSettings.tolPx}
               />
             ))}
 
@@ -1235,6 +1381,17 @@ export default function Plan2D({
         </p>
       ) : null}
 
+      {/* WHAT THE DRAG WOULD NOT DO. An opening stops at the end of its wall
+          and against its neighbours, and a stop nobody explains reads as a
+          broken editor rather than as a rule. */}
+      {refusals.length > 0 ? (
+        <ul className="opening-refusals" aria-live="polite">
+          {refusals.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+      ) : null}
+
       <p className="mt-4 border-t aura-hairline pt-4 max-w-3xl text-xs leading-relaxed text-aura-text/55">
         Partitions drawn here are 90 mm — the non-structural thickness this system uses everywhere,
         and the one the schedule prints. They are NOT yet carried into the plan engine or the sheet
@@ -1260,6 +1417,7 @@ function VolumePlan({
   selKey,
   selectedOpeningId,
   showHandles,
+  grabPx,
 }: {
   v: Volume;
   view: View;
@@ -1270,6 +1428,11 @@ function VolumePlan({
   selKey: string;
   selectedOpeningId: string | null;
   showHandles: boolean;
+  /** the pointer tolerance the editor actually hit-tests with, in CSS px. It
+   *  is passed in rather than hard-coded so a grip is DRAWN exactly as large as
+   *  it is GRABBABLE — a mark smaller than the target hides the affordance, and
+   *  a mark larger than it promises a grab that misses. */
+  grabPx: number;
 }) {
   const hw = v.widthFt / 2;
   const hd = v.depthFt / 2;
@@ -1354,22 +1517,28 @@ function VolumePlan({
                 strokeWidth={o.kind === "glazing-wall" ? 3 : 2}
               />
             )}
-            {showHandles && lit
-              ? [a, b].map((p, i) => {
-                  const px = toPx(view, toWorld(v, p));
-                  return (
-                    <rect
-                      key={`oe${i}`}
-                      x={px.x - 3}
-                      y={px.y - 3}
-                      width={6}
-                      height={6}
-                      className="fill-aura-bg stroke-aura-teal"
-                      strokeWidth={1.25}
-                    />
-                  );
-                })
-              : null}
+            {/* THE GRIPS. Drawn whenever this opening is SELECTED, not only
+                while the cursor happens to be on top of one — the founder
+                could not find a feature that already worked, and an affordance
+                that only appears once you are already on it is not an
+                affordance. See `OpeningPlanHandles`. */}
+            {showHandles && lit ? (
+              <OpeningPlanHandles
+                marks={OPENING_HANDLES_IN_PLAN.map((kind) => {
+                  const t =
+                    kind === "edge-0"
+                      ? o.offsetFt
+                      : kind === "edge-1"
+                        ? o.offsetFt + o.widthFt
+                        : o.offsetFt + o.widthFt / 2;
+                  return {
+                    kind,
+                    at: toPx(view, toWorld(v, pointOnWallLocal(v, o.wall, thicknessFt, t))),
+                  };
+                })}
+                grabPx={grabPx}
+              />
+            ) : null}
           </g>
         );
       })}

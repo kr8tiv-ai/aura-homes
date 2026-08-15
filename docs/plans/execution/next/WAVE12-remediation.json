@@ -1,0 +1,34 @@
+{
+  "wave": 12,
+  "graphVersion": "1.2",
+  "shipped": ["OPEN01", "VAR01", "WALK01", "SCEN01", "PL03"],
+  "outcome": {
+    "verifiedAt": "2026-08-14",
+    "whatThisWaveWasFor": "The founder's own words: 'in the editor I can't easily change window size, or door placement for some reason, it should all be exceptionally easy and possible both from 3d and the floor plan'. Four nodes answer that literally — grips on the wall in 3D, handles in the plan, a numbers panel that types the same edit, and one status channel so all three say the same thing while you drag. VAR01, WALK01 and SCEN01 are the Chaos reading landing: variations, a walkthrough, and an impact comparison, all deterministic and all built from geometry this repo already computes rather than from a rendering service.",
+    "theMountIsTheWorkTheAgentsCouldNotDo": "Five agents wrote nine files with disjoint write-sets and none of them could ship a feature, because BuilderApp.tsx is the single mount point and only one writer may hold it. The orchestrator mounted all four. That is the shape of this bottleneck and it is now recorded twice: here, and in graph v1.2 §2b.",
+
+    "OPEN01": "Openings are editable from three places that write one edit. `OpeningHandles` puts slide/edge/sill/head grips on the wall in 3D and is gated `enabled={viewMode === \"3d\"}` rather than unmounted, so it keeps reporting status while the plan view is the one being dragged. `Plan2D` carries slide and edge handles. `OpeningNumbers` types the same figures and prints the refusal in full — 'the header would run out of wall' — instead of a drag that quietly stops moving. Opening ids are unique PER VOLUME, not per design, so BuilderApp resolves the owning volume once in a memo rather than threading it through every caller. RESIDUAL: the `grabPx={5}` regression the node was meant to close still passes its own gate; the gate proves a grip exists at a size, not that a five-pixel target is reachable by a real pointer. Named, not fixed.",
+
+    "VAR01": "Mounted beside the plan library rather than in a mode of its own, because exploring versions of the home you have is the same job as choosing the one you start from. Every variant is a real BuilderDocument that opens, hashes and costs — parametric, deterministic, nothing generated.",
+
+    "WALK01": "Viewpoints derived from the site summary the viewer is already drawing: the approach stand-off is computed from a real THREE.PerspectiveCamera at Viewport's own field of view, not chosen. Read-only by construction — the design hash is the same string when you step out. GATE HOLE FOUND AND CLOSED IN THIS WAVE: section 8, 'in a served build', skips itself without a baseURL, and the spec was in package.json's unit list where no baseURL exists — so the keyboard walk and the moves-nothing-else assertion declared and never executed. Moved to playwright.ui.config.ts's testMatch, where they run. This is the second time a spec has been counted as coverage while executing zero assertions.",
+
+    "SCEN01": "Read-only comparison of what this build MODELS, with what it does not model named in rows of the same table rather than in a footnote. THE HIGHEST-SEVERITY FINDING OF THE WAVE, found and fixed before mount: the NOT_MODELLED rows were checked only for LENGTH, so the sentence 'Aura models daylight autonomy internally and this design achieves 62% sDA' passed all twelve tests inside a row headed 'Not modelled'. Two gates added — a forbidden-phrase scan over ALL FIVE moves (the old one covered only the two rendered) and a result-shape rule rejecting /\\d+(\\.\\d+)?\\s*(%|percent|kwh|kw\\/h|sda|ase|ach\\b)/gi anywhere in absent-quantity prose. Both counterexamples watched fail, source restored to SHA BA46CD3BF43F177096C57A7CA073B41FB0E5FAE3D3F370FF3BC269A3416A2442.",
+
+    "PL03": "The library went 55 -> 72. The count gate went red in the same run and named all three publication sites, which is what it was built to do."
+  },
+
+  "gateHolesClosedByTheOrchestrator": {
+    "planCountByProximity": "tests/gate-coverage.spec.ts asserted the plan count with `submission.includes(\"72\")`. docs/SUBMISSION.md contains a video row reading '72-84s | Chain' — a TIMESTAMP satisfying a plan-count gate. Same class as the README badge that read 175/58 while the table beside it was right: presence is not correctness. The count must now appear within 40 characters of the word 'plan'. Proven by mutation — with the two real sentences reworded and only the timestamp left, the gate fails with 'a number that happens to be in a timestamp is not a published count'.",
+    "walkthroughZeroCoverage": "See WALK01 above. A spec in the unit gate whose assertions all sit behind a baseURL guard is a spec that runs nothing."
+  },
+
+  "openFindings": [
+    "OPEN01: grabPx={5} passes its own gate. The gate proves a grip's declared size, not its reachability.",
+    "SCEN01: `ask-warmer` declares moves:[\"comfort\"] and changes nothing in summer — a declared dimension that does not move, in a panel whose whole job is honest comparison. DISPATCHED to a remediation agent.",
+    "PL03: three padding defeats in the de-duplication gate, and two comments that claim something the code beside them does not do. DISPATCHED to the same agent.",
+    "PL02 (still open from wave 8): `programme()` includes `plan.sleeping`, free prose, so one appended character acquits a padded clone. The real fix is structured sleeping data — a loft is a fact about a building and deserves a field, not a sentence. Reverting it collides two honest USDA adaptations; the reason is commented at the code."
+  ],
+
+  "stoppingHere": "The pattern across waves 8 through 12 is stable enough to state as a rule rather than a surprise: every verifier finds a new hole, and the holes get narrower each time. Two of this wave's were STRUCTURAL — a gate that read only two of five rows, and a spec that executed none of its assertions — and both are closed. The rest are narrow variants of rules that now work on their main case. With seven days to the deadline, mounting four features the founder asked for by name beats a sixth iteration on a gate that already catches its defect."
+}

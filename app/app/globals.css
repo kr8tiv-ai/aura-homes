@@ -4867,3 +4867,755 @@ html.story-gated body { overflow: hidden; }
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SCENARIO COMPARE  ·  .scenario-*  (components/builder/ScenarioCompare.tsx)
+   ───────────────────────────────────────────────────────────────────────
+   A two-column comparison against a target — the layout sustainability
+   tools use for daylight and energy, neither of which this build models.
+   The design brief is therefore the /land zoning panel's, sharpened: the
+   NOT-MODELLED block must read as an ANSWER, never as an empty state and
+   never as something still loading.
+
+   So type does that work and colour does not. The absent-quantity labels
+   are larger and higher-contrast than the figure labels beside them, and
+   nothing in the block is dimmed toward disabled. The one accent in the
+   panel is the editor's single alert ink, spent only where a real target
+   is missed — a delta going up is not a verdict and never takes it.
+
+   Every figure cell borrows `.builder-figure__*` rather than declaring a
+   second type ladder, so a number here weighs exactly what the same
+   number weighs in the live read-out. This block owns layout and chrome.
+
+   tests/scenarios.spec.ts renders the real component against this file
+   and measures each claim at the widths and themes that claim needs —
+   NOT all of them everywhere, and the difference is written down because
+   a comment that overstates its own coverage is the same defect class as
+   one that overstates a size:
+     · absent labels vs figure labels, size AND contrast — 390, 768, 1280,
+       both themes, since a clamp resolving to its floor is exactly how the
+       last such claim was false on every phone;
+     · every tier at 4.5:1 on base and raised — 1280, both themes;
+     · figure vs delta, and A beside B with no overflow — 390, light, which
+       is the width where both are hardest.
+
+   A hierarchy claim written in a comment is worth nothing; this file has
+   paid for that twice.
+   ═══════════════════════════════════════════════════════════════════════ */
+.scenario {
+  display: grid;
+  gap: var(--space-5);
+  padding: var(--space-5);
+  border: 1px solid var(--st-hair);
+  border-radius: 0.75rem;
+}
+.scenario-head {
+  display: grid;
+  gap: var(--space-2);
+  max-inline-size: 52rem;
+}
+.scenario-eyebrow {
+  font-family: var(--st-mono-font);
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--st-emerald-deep);
+}
+.scenario-lede {
+  font-size: 0.8rem;
+  line-height: 1.65;
+  color: var(--st-ink-dim);
+  text-wrap: pretty;
+}
+.scenario-controls {
+  display: grid;
+  gap: var(--space-4);
+}
+@media (min-width: 52rem) {
+  .scenario-controls {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.5fr);
+  }
+}
+
+/* Both columns holding the same document is a real state and a common one
+   — it is what you see before you have picked a second move. Said, not
+   hidden, and in the alert ink because every delta below it is zero. */
+.scenario-identical {
+  border-inline-start: 2px solid var(--st-violet);
+  padding-inline-start: var(--space-4);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: var(--st-ink-dim);
+}
+.scenario-refusal {
+  border-inline-start: 2px solid var(--st-violet);
+  padding-inline-start: var(--space-4);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: var(--st-ink-dim);
+}
+
+.scenario-table {
+  display: grid;
+  gap: var(--space-5);
+}
+
+/* TWO COLUMNS AT EVERY WIDTH, and that is the load-bearing decision in this
+   block. A comparison collapsed to one column is not a comparison — A and B
+   stop being adjacent and the reader has to hold a number in their head. So
+   on a phone the row wraps to: description across the top, A and B beside
+   each other, delta across the bottom. Nothing here has a fixed min-width;
+   every track is minmax(0, …) so the panel cannot overflow a 390 px page. */
+.scenario-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-4);
+  align-items: start;
+}
+.scenario-row__head {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: var(--space-1);
+  min-inline-size: 0;
+}
+.scenario-delta {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: var(--space-1);
+  min-inline-size: 0;
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid rgb(var(--tone-ink) / var(--hair-soft-alpha));
+}
+@media (min-width: 52rem) {
+  .scenario-row {
+    grid-template-columns:
+      minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr);
+  }
+  .scenario-row__head,
+  .scenario-delta {
+    grid-column: auto;
+  }
+}
+
+.scenario-column {
+  display: grid;
+  gap: var(--space-1);
+  min-inline-size: 0;
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid rgb(var(--tone-ink) / var(--hair-alpha));
+}
+.scenario-column__name {
+  font-family: var(--st-mono-font);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--st-ink);
+}
+
+/* Subordinate to the figure it describes, and measured to stay that way:
+   0.95rem against the figure's 1.3rem floor. The delta is the second thing
+   a reader looks at, never the first. */
+.scenario-delta__value {
+  font-family: var(--st-display-font);
+  font-size: 0.95rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  color: var(--st-ink);
+}
+/* A quantity that did not move recedes rather than disappearing — "no
+   change" is an answer and this panel prints it. */
+.scenario-delta__value[data-changed="false"] {
+  color: var(--st-ink-dim);
+}
+.scenario-delta__target {
+  font-family: var(--st-mono-font);
+  font-size: 0.68rem;
+  line-height: 1.45;
+  color: var(--st-ink-dim);
+}
+
+/* ---- the not-modelled block: rows, not a footnote -------------------- */
+.scenario-absent {
+  display: grid;
+  gap: var(--space-4);
+  padding-block-start: var(--space-4);
+  border-block-start: 1px solid rgb(var(--tone-ink) / var(--hair-alpha));
+}
+.scenario-absent__title {
+  font-family: var(--st-mono-font);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--st-ink);
+}
+.scenario-absent__lede {
+  max-inline-size: 52rem;
+  font-size: 0.8rem;
+  line-height: 1.65;
+  color: var(--st-ink-dim);
+  text-wrap: pretty;
+}
+.scenario-absent__list {
+  display: grid;
+  gap: var(--space-4);
+}
+@media (min-width: 64rem) {
+  .scenario-absent__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.scenario-absent__item {
+  display: grid;
+  gap: var(--space-2);
+  min-inline-size: 0;
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid rgb(var(--tone-ink) / var(--hair-alpha));
+}
+/* FULL STRENGTH, and larger than the figure label beside it. This is the
+   claim the spec measures: an absent quantity is not a greyed-out row. */
+.scenario-absent__label {
+  font-family: var(--st-body-font);
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--st-ink);
+}
+.scenario-absent__why {
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: var(--st-ink-dim);
+  text-wrap: pretty;
+}
+.scenario-absent__needs {
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--st-ink-dim);
+  text-wrap: pretty;
+}
+.scenario-absent__needs span {
+  font-family: var(--st-mono-font);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.scenario-foot {
+  max-inline-size: 52rem;
+  padding-block-start: var(--space-4);
+  border-block-start: 1px solid rgb(var(--tone-ink) / var(--hair-soft-alpha));
+  font-size: 0.75rem;
+  line-height: 1.65;
+  color: var(--st-ink-dim);
+  text-wrap: pretty;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   WALKTHROUGH  ·  .walk-*  (components/builder/Walkthrough.tsx)
+   ───────────────────────────────────────────────────────────────────────
+   THE REDUCED-MOTION BRANCH LIVES HERE RATHER THAN IN JS, and that is the
+   whole reason this block exists rather than a ternary in the component.
+
+   Every control of the stepped path — Back, Next, and one button per
+   viewpoint — is in the markup under BOTH preferences, unchanged. The only
+   thing the preference removes is PRESENT, the control whose entire purpose
+   is a camera that moves on its own; and the only thing it swaps is which of
+   the two motion sentences is on screen, so the panel never describes
+   behaviour the person is not getting.
+
+   Keeping it in CSS is what makes the guarantee measurable: the markup is one
+   tree, so a browser can be asked under each preference which controls have a
+   box, and `tests/walkthrough.spec.ts` asks exactly that. A JS branch would
+   have put the answer somewhere a stylesheet test cannot see.
+
+   The travel time itself is NOT here — the camera is WebGL, not CSS. It is
+   `WALK_TRAVEL_MS` in the component, and the spec asserts that number is the
+   same as `--motion-travel` below rather than a second opinion about speed.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.walk {
+  display: grid;
+  gap: 0.75rem;
+  padding: clamp(0.9rem, 2vw, 1.2rem);
+  border: 1px solid var(--st-hair-soft);
+  background: rgb(var(--tone-base));
+}
+.walk-head {
+  display: grid;
+  gap: 0.3rem;
+}
+.walk-label {
+  font-family: var(--st-mono-font);
+  font-size: 0.59rem;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--st-emerald-deep);
+}
+.walk-lede {
+  max-inline-size: 46rem;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--st-ink-dim);
+}
+
+.walk-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.walk-step,
+.walk-play,
+.walk-stop {
+  border: 1px solid var(--st-hair-soft);
+  border-radius: 999px;
+  padding: 0.45rem 0.85rem;
+  background: rgb(var(--tone-base));
+  color: var(--aura-text);
+  font-size: 0.74rem;
+  line-height: 1.3;
+  cursor: pointer;
+  transition:
+    border-color var(--motion-echo) var(--motion-ease),
+    color var(--motion-echo) var(--motion-ease);
+}
+.walk-step:hover,
+.walk-play:hover,
+.walk-stop:hover {
+  border-color: var(--st-emerald-deep);
+}
+.walk-stop[aria-pressed="true"],
+.walk-play[aria-pressed="true"] {
+  border-color: var(--st-emerald-deep);
+  color: var(--st-emerald-deep);
+}
+.walk-position {
+  flex: 1 1 14rem;
+  padding-inline-start: 0.35rem;
+  font-family: var(--st-mono-font);
+  font-size: 0.6rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--st-ink-dim);
+}
+
+.walk-stops {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.walk-basis,
+.walk-keys,
+.walk-limit,
+.walk-note,
+.walk-readonly {
+  max-inline-size: 46rem;
+  font-size: 0.72rem;
+  line-height: 1.55;
+  color: var(--st-ink-dim);
+}
+/* The stated assumption is not a footnote: it reads at the panel's body size
+   and in the panel's body ink, because a viewpoint placed from a number the
+   reader cannot find is a magic number with extra steps. */
+.walk-eye {
+  max-inline-size: 46rem;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--aura-text);
+}
+.walk-limit {
+  color: var(--st-faint);
+}
+
+/* One of these two sentences is on screen, never both and never neither. */
+.walk-note-stepped {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .walk-note-stepped {
+    display: block;
+  }
+  .walk-note-glide {
+    display: none;
+  }
+  /* PRESENT is the only control a reduced-motion reader loses, because it is
+     the only one that moves the camera without being asked each time. Back,
+     Next and every viewpoint button keep their box. */
+  .walk-play {
+    display: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   DESIGN VARIATIONS — VAR01 (.variation-* only)
+
+   The rules here are self-sufficient on purpose: no @apply, no Tailwind
+   utility, no token borrowed from a neighbouring prefix. variations.spec.ts
+   renders VariationStrip with nothing but this stylesheet attached and
+   MEASURES the result, so a rule that only worked inside .builder-page
+   would silently stop describing what the spec checks.
+
+   TWO LAYOUT RULES, both about not lying with pixels:
+   · The cost band and the cost model's blind spot live in the SAME BLOCK
+     (.variation-cost), above the Apply button. A caveat you can scroll past
+     before you commit is a caveat that gets quoted away. The spec asserts
+     the containment and the reading order rather than trusting this comment.
+   · The grid is auto-fit with a hard minmax(0, 1fr) floor and every long
+     string wraps, so nothing on this strip can push the page sideways on a
+     375px phone — also asserted, because a hash and a currency pair are
+     exactly the kind of unbreakable text that does.
+   ═══════════════════════════════════════════════════════════════════════ */
+.variation-strip {
+  --variation-rule: color-mix(in srgb, var(--aura-text) 15%, transparent);
+  --variation-rule-soft: color-mix(in srgb, var(--aura-text) 8%, transparent);
+  --variation-dim: color-mix(in srgb, var(--aura-text) 62%, transparent);
+  --variation-faint: color-mix(in srgb, var(--aura-text) 46%, transparent);
+  display: grid;
+  gap: clamp(1rem, 2.5vw, 1.75rem);
+  padding-block: clamp(1.25rem, 3vw, 2rem);
+  border-block: 1px solid var(--variation-rule);
+  color: var(--aura-text);
+}
+.variation-head { max-width: 46rem; }
+.variation-eyebrow {
+  font-family: var(--st-mono-font);
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--st-emerald-deep);
+}
+.variation-title {
+  margin-top: 0.55rem;
+  font-family: var(--st-display-font);
+  font-size: clamp(1.4rem, 3.2vw, 2.1rem);
+  font-weight: 520;
+  line-height: 1.06;
+  letter-spacing: -0.03em;
+}
+.variation-method {
+  margin-top: 0.7rem;
+  font-size: 0.82rem;
+  line-height: 1.62;
+  color: var(--variation-dim);
+}
+
+/* The live region. Empty until something is applied — an always-on label
+   here would make "applying is never silent" unfalsifiable. */
+.variation-announce:not(:empty) {
+  margin-top: 0.9rem;
+  padding: 0.6rem 0.8rem;
+  border-left: 2px solid var(--st-emerald);
+  background: color-mix(in srgb, var(--st-emerald) 8%, transparent);
+  font-size: 0.82rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.variation-unavailable {
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--variation-rule);
+  border-left: 2px solid var(--st-danger);
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--variation-dim);
+}
+
+.variation-basis {
+  padding: clamp(0.85rem, 2vw, 1.15rem);
+  border: 1px solid var(--variation-rule);
+  background: rgb(var(--tone-floating) / 0.55);
+  box-shadow: var(--shadow-1);
+}
+.variation-axis {
+  font-family: var(--st-mono-font);
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--variation-faint);
+}
+
+.variation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(19rem, 100%), 1fr));
+  gap: clamp(0.75rem, 2vw, 1.15rem);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.variation-card {
+  display: grid;
+  align-content: start;
+  gap: 0.55rem;
+  min-width: 0;
+  padding: clamp(0.85rem, 2vw, 1.15rem);
+  border: 1px solid var(--variation-rule);
+  background: rgb(var(--tone-floating) / 0.4);
+}
+.variation-card-title {
+  font-family: var(--st-display-font);
+  font-size: 1.12rem;
+  font-weight: 560;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+.variation-deltas {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+  padding-left: 1.05rem;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--variation-dim);
+}
+.variation-deltas li { overflow-wrap: anywhere; }
+
+/* ---- the band, and the model's limit, in one block -------------------- */
+.variation-cost {
+  display: grid;
+  gap: 0.32rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--variation-rule-soft);
+  border-top: 2px solid var(--st-emerald);
+  background: rgb(var(--tone-base) / 0.5);
+}
+.variation-cost-label {
+  font-family: var(--st-mono-font);
+  font-size: 0.56rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--variation-faint);
+}
+.variation-cost-figure {
+  font-family: var(--st-display-font);
+  font-size: clamp(1.05rem, 2.4vw, 1.35rem);
+  font-weight: 560;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.variation-cost-mid {
+  font-size: 0.74rem;
+  line-height: 1.5;
+  color: var(--st-emerald-deep);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.variation-blindspot {
+  font-size: 0.72rem;
+  line-height: 1.55;
+  color: var(--variation-dim);
+  overflow-wrap: anywhere;
+}
+
+.variation-glazing {
+  padding-left: 0.7rem;
+  border-left: 2px solid var(--st-emerald);
+  font-size: 0.74rem;
+  line-height: 1.55;
+  color: var(--variation-dim);
+  overflow-wrap: anywhere;
+}
+.variation-card[data-variation-over-ceiling="yes"] .variation-glazing {
+  border-left-color: var(--st-danger);
+}
+
+.variation-figures {
+  font-family: var(--st-mono-font);
+  font-size: 0.6rem;
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+  color: var(--variation-faint);
+  overflow-wrap: anywhere;
+}
+
+.variation-apply {
+  justify-self: start;
+  margin-top: 0.15rem;
+  padding: 0.5rem 0.95rem;
+  border: 1px solid var(--st-emerald-deep);
+  background: transparent;
+  color: var(--st-emerald-deep);
+  font-family: var(--st-mono-font);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color 160ms var(--st-ease-out), color 160ms var(--st-ease-out);
+}
+.variation-apply:hover,
+.variation-apply:focus-visible {
+  background: var(--st-emerald-deep);
+  color: var(--aura-paper);
+}
+
+.variation-refusals {
+  padding: 0.75rem 0.9rem;
+  border: 1px dashed var(--variation-rule);
+}
+.variation-refusals ul {
+  display: grid;
+  gap: 0.32rem;
+  margin: 0.45rem 0 0;
+  padding-left: 1.05rem;
+  font-size: 0.76rem;
+  line-height: 1.55;
+  color: var(--variation-dim);
+}
+.variation-refusals li { overflow-wrap: anywhere; }
+
+.variation-source {
+  font-family: var(--st-mono-font);
+  font-size: 0.58rem;
+  letter-spacing: 0.05em;
+  color: var(--variation-faint);
+  overflow-wrap: anywhere;
+}
+
+/* ---- OPEN01: the opening grips, and what the editor refuses ------------
+   Every selector in this block is `.opening-*`, which is this node's whole
+   allocation of the shared stylesheet.
+
+   THE ONE NUMBER THAT MATTERS IS THE RING'S RADIUS, and it is NOT here: it is
+   `OPENING_GRAB_PX` in Plan2D.tsx, passed to `<circle r>` as a geometry
+   attribute, because it is the pointer tolerance `hitTest` is given and a
+   second copy in CSS would be a second copy of a limit. What the ring gets
+   from this file is its ink, and what the group gets is its cursor.
+
+   NOT ONE LITERAL COLOUR. Everything resolves through the tonal ladder, so a
+   grip is the same emerald as a picked surface and the plan repaints correctly
+   at 2 a.m. like the rest of the site. */
+
+.opening-plan-handle {
+  cursor: ew-resize;
+}
+.opening-plan-handle[data-opening-handle="slide"] {
+  cursor: grab;
+}
+.opening-plan-handle:active {
+  cursor: grabbing;
+}
+
+/* The ring IS the target: it is drawn at exactly the radius the editor
+   hit-tests with, so "what you can see" and "what you can grab" are one
+   circle. Filled faintly rather than left as an outline, because an outline at
+   this size reads as decoration and a disc reads as a handle. */
+.opening-plan-handle__ring {
+  fill: rgb(var(--tone-emerald-bright) / 0.14);
+  stroke: rgb(var(--tone-emerald-bright) / 0.75);
+  stroke-width: 1.25;
+  transition: fill var(--motion-state) var(--motion-ease);
+}
+.opening-plan-handle:hover .opening-plan-handle__ring {
+  fill: rgb(var(--tone-emerald-bright) / 0.3);
+}
+
+/* The mark inside it: the thing the eye lands on. Solid against the plan's
+   own ground so it is legible over poché, glass and floor alike. */
+.opening-plan-handle__mark {
+  fill: rgb(var(--tone-base));
+  stroke: rgb(var(--tone-emerald-bright));
+  stroke-width: 1.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .opening-plan-handle__ring {
+    transition: none;
+  }
+}
+
+/* What the mutator would not do, in the plan and in the panel. Violet is this
+   site's "read this" ink — the same one the plan engine's own warnings use. */
+.opening-refusals,
+.opening-numbers__refusals {
+  display: grid;
+  gap: 0.32rem;
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.9rem 0.6rem 1.85rem;
+  border: 1px dashed rgb(var(--tone-violet) / 0.55);
+  border-radius: 0.6rem;
+  list-style: disc;
+  font-size: 0.76rem;
+  line-height: 1.55;
+  color: rgb(var(--tone-violet));
+}
+.opening-refusals li,
+.opening-numbers__refusals li {
+  overflow-wrap: anywhere;
+}
+
+/* ---- the numeric half -------------------------------------------------- */
+
+.opening-numbers {
+  display: grid;
+  gap: 1.1rem;
+}
+
+.opening-numbers__readout {
+  font-family: var(--st-mono-font);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+  color: rgb(var(--tone-ink));
+  overflow-wrap: anywhere;
+}
+
+.opening-numbers__grid {
+  display: grid;
+  gap: 1.1rem 1.6rem;
+  /* AUTO-FIT, NOT A MEDIA QUERY. The original asked the VIEWPORT for a second
+     column, but this panel's width comes from the column it sits in — so on a
+     1440px screen it took two columns inside a 550px pane and each field's
+     right-aligned value ran into the next field's label ("4'-0"HEIGHT").
+     `auto-fit` asks the container instead: two columns when there is room for
+     two 14rem fields, one when there is not, at every width, with no
+     breakpoint to keep in step with a layout change somewhere else. */
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+
+.opening-numbers__field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.opening-numbers__row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.opening-numbers__input {
+  min-width: 0;
+  flex: 1 1 auto;
+  border: 1px solid rgb(var(--tone-ink) / var(--hair-alpha));
+  border-radius: 0.4rem;
+  background: rgb(var(--tone-base));
+  padding: 0.5rem 0.65rem;
+  color: rgb(var(--tone-ink));
+  font-family: var(--st-mono-font);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.opening-numbers__input:focus {
+  border-color: rgb(var(--tone-emerald));
+  outline: none;
+}
+
+.opening-numbers__hint {
+  font-size: 0.7rem;
+  line-height: 1.5;
+  color: rgb(var(--tone-dim));
+}
+
+.opening-numbers__note {
+  border-top: 1px solid rgb(var(--tone-ink) / var(--hair-alpha));
+  padding-top: 0.85rem;
+  font-size: 0.72rem;
+  line-height: 1.6;
+  color: rgb(var(--tone-dim));
+}

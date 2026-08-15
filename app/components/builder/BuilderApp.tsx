@@ -218,10 +218,15 @@ import { documentSignature, readAutosave, writeAutosave } from "@/lib/builder/st
 import { checkSpecAgainstParcel, planFromSpec, type PlanHandoff } from "@/lib/builder/toPlan";
 import AxonSheet from "./AxonSheet";
 import BuilderOrderHandoff from "./BuilderOrderHandoff";
+import CoPilot from "./CoPilot";
 import ComfortPanel from "./ComfortPanel";
 import DrawingSheets from "./DrawingSheets";
 import ExportRow from "./ExportRow";
 import FixturePalette, { FixtureLayer, useFixtureGeometry } from "./FixturePalette";
+import { OpeningHandles, OpeningNumbers, type OpeningStatus } from "./OpeningHandles";
+import WalkthroughPanel, { WalkthroughCameraRig } from "./Walkthrough";
+import VariationStrip from "./VariationStrip";
+import ScenarioCompare from "./ScenarioCompare";
 import GraphPlanEditor from "./GraphPlanEditor";
 import GuidanceNote from "./GuidanceNote";
 import HandoffPanel from "./HandoffPanel";
@@ -735,6 +740,21 @@ export default function BuilderApp() {
   const [phraseApplied, setPhraseApplied] = useState<string | null>(null);
   const [selectedVolumeId, setSelectedVolumeId] = useState<string | null>(null);
   const [selectedOpeningId, setSelectedOpeningId] = useState<string | null>(null);
+  const [openingStatus, setOpeningStatus] = useState<OpeningStatus | null>(null);
+
+  /* OPENING IDS ARE UNIQUE PER VOLUME, NOT PER DESIGN — two volumes may both
+     carry a `door-s`. Selection is therefore stored as the opening id alone
+     (that is what the plan and the panel click) and the owning volume is
+     RESOLVED here, once, rather than being threaded through every caller. If
+     the id ever appears on two volumes this picks the first, which is the same
+     one the plan drew, so the grips land on the wall the person clicked. */
+  const openingVolumeId = useMemo(
+    () =>
+      selectedOpeningId
+        ? spec.volumes.find((v) => v.openings.some((o) => o.id === selectedOpeningId))?.id ?? null
+        : null,
+    [selectedOpeningId, spec.volumes],
+  );
   const [pickedSurface, setPickedSurface] = useState<SurfaceId | null>(null);
   const [selectedFixtureId, setSelectedFixtureId] = useState<string | null>(null);
   const [showClearances, setShowClearances] = useState(true);
@@ -1571,14 +1591,46 @@ export default function BuilderApp() {
               }
               comfort={comfortOverlay}
               tools={viewportTools}
+              /* THREE THINGS RIDE IN THE EXPORT ROOT, and the ordering rule
+                  is that only real building geometry may stay in a .glb. The
+                  fixtures are the home; the opening grips and the camera rig
+                  are instruments. Both instruments carry EXPORT_IGNORE, and
+                  the rig renders null anyway.
+
+                  The rig is UNCONDITIONAL because a walkthrough works in graph
+                  mode too; the fixtures and the grips are not, because neither
+                  has graph-mode geometry to attach to yet. */
               houseChildren={
-                graphMode ? null : (
-                  <FixtureLayer
-                    geometry={fixtureGeometry}
-                    selectedId={activeFixtureId}
-                    onSelect={pickFixture}
-                  />
-                )
+                <>
+                  {graphMode ? null : (
+                    <>
+                      <FixtureLayer
+                        geometry={fixtureGeometry}
+                        selectedId={activeFixtureId}
+                        onSelect={pickFixture}
+                      />
+                      {/* The grips are 3D-only ON PURPOSE, not by omission: the
+                          plan view has its own drag handles inside Plan2D, and
+                          two live grip sets over one wall would fight for the
+                          same pointer. `enabled` is the gate rather than an
+                          unmount, for one narrow reason — the component clears
+                          a stale status when the selection changes, and that
+                          effect has to keep running in plan view so the numbers
+                          panel never shows the last window's dimension beside a
+                          different window. It reports drag status only in 3D,
+                          because only 3D has a drag. */}
+                      <OpeningHandles
+                        spec={spec}
+                        volumeId={openingVolumeId}
+                        openingId={selectedOpeningId}
+                        onEdit={edit}
+                        onStatus={setOpeningStatus}
+                        enabled={viewMode === "3d"}
+                      />
+                    </>
+                  )}
+                  <WalkthroughCameraRig />
+                </>
               }
             />
           </div>
@@ -1641,6 +1693,46 @@ export default function BuilderApp() {
             )}
           </div>
 
+          {/* ---------------------------------------------- the opening, in numbers
+
+              OPEN01. The same window, said three ways, and all three write the
+              same edit: drag a grip in 3D, drag a handle in the plan, or type a
+              figure here. This panel lives in the VIEW column rather than under
+              a tab because it belongs to whichever view is on screen — the 3D
+              grips and the plan handles both report through `openingStatus`,
+              so the width you are dragging is the width printed here, live,
+              and a refusal ("the header would run out of wall") is printed in
+              full rather than being a drag that quietly stops moving.
+
+              It is mounted in BOTH views and in every workspace with a viewer.
+              Nothing selected means nothing rendered — the component returns
+              null on a null opening, so the column does not grow an empty box. */}
+          {graphMode ? null : (
+            <OpeningNumbers
+              spec={spec}
+              volumeId={openingVolumeId}
+              openingId={selectedOpeningId}
+              onEdit={edit}
+              status={openingStatus}
+              onStatus={setOpeningStatus}
+            />
+          )}
+
+          {/* --------------------------------------------------------- the walk
+
+              WALK01. Enscape's headline is a walkthrough, and this is ours,
+              built from the summary the viewer is already drawing rather than
+              from a second scene: every viewpoint is a position derived from
+              the home's own bounds and ridge height, and the sentence under
+              each one says which number it came from.
+
+              3D only, and that is a limit rather than a preference — the panel
+              moves a camera, and the plan view has none. It is READ-ONLY: the
+              design hash is the same string when you step out as when you
+              stepped in, which is a claim the spec checks rather than a
+              promise this comment makes. */}
+          {viewMode === "3d" ? <WalkthroughPanel summary={home.summary} /> : null}
+
           {/* ------------------------------------------------ clearances, unburied
 
               A wood stove four inches from a combustible wall is the most
@@ -1697,6 +1789,21 @@ export default function BuilderApp() {
         <div className="builder-stage__controls">
           <Pane on={workspace === "plans"}>
             <PlanCatalog onChoose={choosePlan} currentName={spec.name} />
+            {/* VAR01 — exploring versions of the home you have is the same job
+                as choosing the one you start from, so it lives beside the
+                library rather than in a mode of its own. Deterministic and
+                parametric: every variant is a real document that opens, hashes
+                and costs. Nothing here is generated. */}
+            <div className="mt-6">
+              <VariationStrip
+                document={state.doc}
+                onApply={edit}
+                region={auraProject?.requirements.location.region ?? "Alberta"}
+                municipality={auraProject?.requirements.location.municipality ?? ""}
+                scenario={auraProject?.budgetBasis?.scenario}
+                budgetCapCad={auraProject?.requirements.budgetCad.max ?? null}
+              />
+            </div>
           </Pane>
 
           {/* The Site step's own panel. Mounted only while the walk is standing
@@ -1741,6 +1848,25 @@ export default function BuilderApp() {
               is still missing. It recomputes from the document, so it moves while
               you work rather than on a submit. */}
           <LiveReadout document={state.doc} parcelCheck={siteCheck} />
+
+          {/* AI01 — the co-pilot, beside the read-out that raised most of what
+              it talks about. Off in the plan route for the same reason the undo
+              bar and the surface picker are: that screen is read-only, and a
+              panel offering to change the design on it would not be. It is NOT
+              gated on graph mode — `readCoPilot` refuses a planar-graph project
+              in its own words, and a panel that explains why it is silent is
+              worth more than one that vanishes. */}
+          {planRoute ? null : (
+            <CoPilot
+              document={state.doc}
+              parcelCheck={siteCheck}
+              onApply={edit}
+              region={auraProject?.requirements.location.region ?? "Alberta"}
+              municipality={auraProject?.requirements.location.municipality ?? ""}
+              scenario={auraProject?.budgetBasis?.scenario}
+              budgetCapCad={auraProject?.requirements.budgetCad.max ?? null}
+            />
+          )}
 
           {/* Only in 3D: the panel's own copy says "click any surface in the view
               above", and in plan mode there is no such view to click. Every
@@ -1942,6 +2068,22 @@ export default function BuilderApp() {
                 heatmap={heatmap}
                 onHeatmap={setHeatmap}
               />
+            ) : null}
+
+            {/* SCEN01 — the Impact verb. READ-ONLY: it takes the document and
+                writes nothing, so it needs no onEdit and cannot touch history.
+                Mounted only while Comfort is open, for the same reason
+                ComfortPanel is — it runs two plan solves and two bills of
+                materials, and a slider drag two tabs away should cost nothing.
+
+                It compares what this build MODELS and names what it does not.
+                Daylight autonomy, energy use intensity and heating load are
+                absent from this codebase entirely, and the panel says so in
+                rows of the same table rather than in a footnote. */}
+            {workspace === "comfort" && !graphMode ? (
+              <div className="mt-6">
+                <ScenarioCompare document={state.doc} />
+              </div>
             ) : null}
           </Pane>
 

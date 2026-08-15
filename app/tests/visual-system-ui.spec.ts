@@ -182,7 +182,14 @@ test("the builder opens canvas-first with a persistent model and plan switch", a
   await page.goto("/build");
   await expect(page.getByRole("heading", { name: "Shape the home. Keep every decision." })).toBeVisible();
   await expect(page.locator(".builder-viewport canvas")).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByRole("group", { name: "View" })).toBeVisible();
+  /* `exact: true` because getByRole's `name` is a case-insensitive SUBSTRING
+     match, and this test means one specific control: the 3D-model / 2D-plan
+     switch. It passed for months by accident — until the walkthrough panel
+     shipped a group labelled "Step between viewpoints", whose name contains
+     "view", and two elements matched. The fix is to say which one, not to
+     rename the other: a loose locator that happens to be unambiguous today is
+     a test that will break on an unrelated word tomorrow. */
+  await expect(page.getByRole("group", { name: "View", exact: true })).toBeVisible();
   await expect(page.getByText("Design intent only—not structural", { exact: false }).first()).toBeVisible();
 });
 

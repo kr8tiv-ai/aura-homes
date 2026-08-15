@@ -20,6 +20,8 @@
    it never mutates a spec and never invents a quantity of its own.
    =========================================================================== */
 
+import { useState } from "react";
+
 import { Field, Select, TextArea } from "@/components/design/Controls";
 import { CLIMATE_ZONES, MATERIALS, feetInches } from "@/components/design/ecoSpec";
 import type { HomeSpec, OpeningKind, RoofForm, Volume, Wall } from "@/lib/builder/spec";
@@ -32,7 +34,6 @@ import {
   WALL_LABELS,
   addOpening,
   addVolume,
-  clamp,
   duplicateVolume,
   patchDeck,
   patchOpening,
@@ -42,9 +43,14 @@ import {
   removeOpening,
   removeVolume,
   setDeck,
-  snap,
   wallLengthFt,
 } from "./edits";
+import {
+  applyOpeningEdit,
+  openingBox,
+  openingFieldLabel,
+  type OpeningBox,
+} from "./openingEdit";
 import { SEASONS, bearingWords, hourLabel, type Season } from "./sun";
 import { Button, Panel, Segmented, Slider, TextInput } from "./ui";
 
@@ -501,13 +507,28 @@ function OpeningsPanel({
   onEdit: (next: HomeSpec, label: string) => void;
 }) {
   const opening = volume.openings.find((o) => o.id === selectedOpeningId) ?? null;
+  const [refusals, setRefusals] = useState<readonly string[]>([]);
 
   const add = (kind: OpeningKind) => {
     const wall: Wall = opening?.wall ?? "s";
     const r = addOpening(spec, volume.id, wall, kind);
     if (!r.id) return;
+    setRefusals([]);
     onEdit(r.spec, `open:add:${volume.id}:${r.id}`);
     onSelectOpening(r.id);
+  };
+
+  /* ONE key at a time, which is exactly the shape a 3D grip and a plan drag
+     produce. `openingFieldLabel` gives a typed change a different label SHAPE
+     from a gesture's, so the history reducer — which coalesces by label and by
+     label only — treats a drag followed by a typed value as two steps. */
+  const askOpening = (key: keyof OpeningBox, value: number) => {
+    if (!opening) return;
+    const want: Partial<OpeningBox> = {};
+    want[key] = value;
+    const result = applyOpeningEdit(spec, volume.id, opening.id, want);
+    setRefusals(result.refusals);
+    if (result.changed) onEdit(result.spec, openingFieldLabel(opening.id, key));
   };
 
   const runFt = opening ? wallLengthFt(spec, volume, opening.wall) : 0;
@@ -583,16 +604,23 @@ function OpeningsPanel({
               options={WALLS}
               columns={4}
               onChange={(wall) => {
-                // Walls are different lengths — e and w butt into n and s and
-                // are two wall thicknesses shorter — so an offset that was
-                // valid on one wall can hang off the end of another. Clamped
-                // on the way across rather than left for the geometry to trim.
-                const run = wallLengthFt(spec, volume, wall);
-                const offsetFt = snap(clamp(opening.offsetFt, 0, Math.max(0, run - opening.widthFt)), 0.25);
-                onEdit(
-                  patchOpening(spec, volume.id, opening.id, { wall, offsetFt }),
-                  `open:${opening.id}:wall`,
+                /* Walls are different lengths — e and w butt into n and s and
+                   are two wall thicknesses shorter — and the wall it lands on
+                   may already have openings of its own. So the wall change is
+                   `patchOpening` (a change of identity, not of size) followed
+                   immediately by the mutator re-legalising the SAME box on its
+                   new run: one clamp, in the one place clamps live, instead of
+                   a private copy here that knew about the wall's length and
+                   nothing about its neighbours. */
+                const moved = patchOpening(spec, volume.id, opening.id, { wall });
+                const result = applyOpeningEdit(
+                  moved,
+                  volume.id,
+                  opening.id,
+                  openingBox(opening),
                 );
+                setRefusals(result.refusals);
+                onEdit(result.spec, `open:${opening.id}:wall`);
               }}
             />
             <Segmented<OpeningKind>
@@ -605,6 +633,14 @@ function OpeningsPanel({
               }
               hint="Doors are excluded from the glazed area, the same way the engine counts."
             />
+            {/* THE FOUR DIMENSIONS GO THROUGH `applyOpeningEdit`, the same
+                function the floor-plan drag and the 3D grips call. They used to
+                call `patchOpening`, which is a spread with no clamp at all: a
+                slider here could put a window off the end of its wall or set it
+                into the pane of glass beside it, and neither state can be
+                contributed back to the plan library it came from. The mutator
+                refuses both and says which, so the sliders now report rather
+                than allow. */}
             <Slider
               label="Width"
               value={opening.widthFt}
@@ -612,28 +648,23 @@ function OpeningsPanel({
               max={Math.max(LIMITS.openingWidthFt.min, Math.min(LIMITS.openingWidthFt.max, runFt))}
               step={LIMITS.openingWidthFt.step}
               display={ft}
-              onChange={(widthFt) =>
-                onEdit(
-                  patchOpening(spec, volume.id, opening.id, { widthFt }),
-                  `open:${opening.id}:width`,
-                )
-              }
+              onChange={(widthFt) => askOpening("widthFt", widthFt)}
               hint={`This wall is ${ft(runFt)} long.`}
             />
             <Slider
               label="Height"
               value={opening.heightFt}
               min={LIMITS.openingHeightFt.min}
-              max={LIMITS.openingHeightFt.max}
+              max={Math.max(LIMITS.openingHeightFt.min, Math.min(LIMITS.openingHeightFt.max, eave))}
               step={LIMITS.openingHeightFt.step}
               display={ft}
-              onChange={(heightFt) =>
-                onEdit(
-                  patchOpening(spec, volume.id, opening.id, { heightFt }),
-                  `open:${opening.id}:height`,
-                )
-              }
-              hint={`Eave is at ${ft(eave)}. Taller than the wall is allowed — on a gable end the extra reaches into the roof, and anything past the outline is trimmed and reported.`}
+              onChange={(heightFt) => askOpening("heightFt", heightFt)}
+              /* THIS HINT USED TO SAY THE OPPOSITE — "taller than the wall is
+                 allowed ... trimmed and reported" — and it was true of the old
+                 unclamped slider. It is corrected in the same change that
+                 narrowed the behaviour, rather than left standing over a
+                 control that no longer behaves that way. */
+              hint={`Sill to head, and the head stops at the eave: this wall is ${ft(eave)} tall. An opening that ran out through the top of its wall is a state every plan in the library is checked against.`}
             />
             <Slider
               label="Position along the wall"
@@ -642,12 +673,7 @@ function OpeningsPanel({
               max={Math.max(0, runFt)}
               step={0.25}
               display={ft}
-              onChange={(offsetFt) =>
-                onEdit(
-                  patchOpening(spec, volume.id, opening.id, { offsetFt }),
-                  `open:${opening.id}:offset`,
-                )
-              }
+              onChange={(offsetFt) => askOpening("offsetFt", offsetFt)}
               hint="From the wall's left end, looking at it from outside."
             />
             <Slider
@@ -657,12 +683,18 @@ function OpeningsPanel({
               max={LIMITS.sillFt.max}
               step={LIMITS.sillFt.step}
               display={ft}
-              onChange={(sillFt) =>
-                onEdit(patchOpening(spec, volume.id, opening.id, { sillFt }), `open:${opening.id}:sill`)
-              }
+              onChange={(sillFt) => askOpening("sillFt", sillFt)}
               hint="Above the finished floor. Zero for a door or a glazing wall."
             />
           </div>
+
+          {refusals.length > 0 ? (
+            <ul className="opening-refusals" aria-live="polite">
+              {refusals.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          ) : null}
         </div>
       ) : null}
     </Panel>

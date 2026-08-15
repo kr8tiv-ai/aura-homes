@@ -18,6 +18,7 @@ import {
   type Opening,
   type RoofForm,
   type Volume,
+  type Wall,
 } from "./spec";
 import { buildBom, ecoSystems } from "@/lib/design/materials";
 import type { EcoMaterial } from "@/lib/designApi";
@@ -157,6 +158,29 @@ interface VolumeInput {
    *  how a catalog stops reading as choice. Plans that are ABOUT their
    *  openings (the Nordic lantern walls especially) author them here. */
   openings?: Opening[];
+  /** Eave overhang in feet. Every plan in the library used the same 1.5 until
+   *  PL03, which is a real design variable left constant: geometry.ts projects
+   *  `roof.overhangFt` on all four sides into `boundsWithRoof`, and toPlan.ts
+   *  prints it on the drawing note, so the number is load-bearing rather than
+   *  decorative. A plan whose SHADING STRATEGY is the roof states the depth
+   *  here and in its notes, and tests/plan-catalog.spec.ts checks the two
+   *  against each other and against the roof geometry.ts actually draws. */
+  overhang?: number;
+  /** Which way a shed or saltbox slope falls. geometry.ts defaults a shed to
+   *  "s" (array in the sun) and a saltbox to "n" (long slope on the weather
+   *  side) — but the `volume()` helper below has always written "s" onto BOTH
+   *  forms, so the library's two saltboxes, `hearth-accessible` and
+   *  `saltbox-nord`, have overridden geometry.ts's "n" since long before PL03.
+   *  That override is load-bearing rather than incidental: saltbox-nord's own
+   *  summary is a long slope carrying down over the glazed elevation, and the
+   *  glazed elevation is the south one, so a saltbox left at geometry.ts's
+   *  default would drop its long slope on the blank wall.
+   *
+   *  What PL03 added is the first use of this INPUT. A courtyard needs its
+   *  roofs to fall AWAY from the court and no pitch will do that, so plans
+   *  where the fall direction is the idea now state it per volume instead of
+   *  inheriting the helper's one answer for the whole library. */
+  facing?: Wall;
 }
 
 function volume(input: VolumeInput): Volume {
@@ -187,8 +211,12 @@ function volume(input: VolumeInput): Volume {
     roof: {
       form: input.roof ?? "gable",
       pitchDeg: input.pitch ?? (input.roof === "shed" ? 18 : input.roof === "flat" ? 2 : 35),
-      overhangFt: 1.5,
-      ...(input.roof === "shed" || input.roof === "saltbox" ? { facing: "s" as const } : {}),
+      overhangFt: input.overhang ?? 1.5,
+      ...(input.facing
+        ? { facing: input.facing }
+        : input.roof === "shed" || input.roof === "saltbox"
+          ? { facing: "s" as const }
+          : {}),
     },
     openings,
   };
@@ -591,7 +619,7 @@ export const PLAN_TEMPLATES: readonly PlanTemplate[] = [
     sleeping: "One enclosed bedroom",
     storeys: 1,
     tags: ["400–800 sq ft", "passive solar", "public domain"],
-    features: ["Published 18 × 26 envelope", "Passive-solar lineage", "Compact one-bedroom plan"],
+    features: ["Published 18 × 26 envelope", "One south collecting aperture", "High north vent, small end windows"],
     source: {
       kind: "public-domain-adaptation",
       name: "USDA Cooperative Farm Building Plan Exchange",
@@ -599,13 +627,39 @@ export const PLAN_TEMPLATES: readonly PlanTemplate[] = [
       license: "US Government work (17 USC 105) via the USDA Plan Exchange series provenance recorded in NDSU Extension's index",
       licenseUrl: "https://www.usa.gov/government-works",
       attribution: "Based on the 1-Bedroom Passive Solar Cottage, Plan Exchange No. 7148 (1983 revision), United States Department of Agriculture; sheets served by NDSU Extension.",
-      changes: "Aura kept the published 18 × 26 ft footprint and south-glazed intent, and re-based the envelope on SIP assumptions; the original solar storage details are not reproduced and are worth reading.",
+      changes: "Aura kept the published 18 × 26 ft footprint and south-collecting intent, and re-based the envelope on SIP assumptions. The elevation is Aura's, not the source's: the federal window schedule is not reproduced, so the south aperture, the high north vent and the two end windows are Aura's reading of the intent rather than the 1983 sheets' numbers. The original solar storage details are not reproduced and are worth reading.",
       shareAlike: false,
       relationship: "dimensional-adaptation",
     },
-    volumes: [volume({ width: 18, depth: 26, roof: "gable", pitch: 35 })],
+    /* DRAWN TO ITS OWN ARGUMENT, and the reason is a defect this record used to
+       be. A passive-solar cottage whose whole summary is its south face was
+       carrying the library's DEFAULT openings — the same south glazing wall,
+       door and two side windows every generic plan starts with — which made it
+       indistinguishable from `meadow-one` on every axis the anti-padding rule
+       can see, and made the summary a sentence the drawing did not support.
+       The south wall now carries one aperture rather than a generic glazing
+       band, the north wall carries a single opening set above head height
+       instead of nothing, and the ends carry small windows. That is a SHAPE
+       and only a shape: nothing in this build computes a solar gain, an air
+       change or a heat loss, so the drawing supports the summary's DESCRIPTION
+       of the 1983 intent and supports no claim about performance. */
+    volumes: [
+      volume({
+        width: 18,
+        depth: 26,
+        roof: "gable",
+        pitch: 35,
+        openings: [
+          opening("sun-wall-s", "s", "glazing-wall", 11, 7.5, 1.5, 0.5),
+          opening("door-s", "s", "door", 3, 6.8, 14),
+          opening("vent-n", "n", "window", 3, 2, 7.5, 6.5),
+          opening("win-e", "e", "window", 3, 3.5, 9),
+          opening("win-w", "w", "window", 3, 3.5, 14),
+        ],
+      }),
+    ],
     deck: { width: 14, depth: 7 },
-    notes: "Passive-solar performance is a site fact, not a plan fact: orientation, shading and thermal mass need a professional energy check before the lineage becomes a claim.",
+    notes: "The elevation is drawn to the plan's own argument rather than to the library default: one south aperture doing the collecting, one north vent set high, and a small window on each end. That is a shape and nothing more. Passive-solar performance is a site fact, not a plan fact: orientation, shading and thermal mass need a professional energy check before the lineage becomes a claim, and nothing in this build calculates a solar gain or a heat loss to support one.",
   }),
   publicDomain({
     id: "bunkhouse-loft",
@@ -666,7 +720,11 @@ export const PLAN_TEMPLATES: readonly PlanTemplate[] = [
   publicDomain({
     id: "beltsville-farmhouse",
     title: "Beltsville Farmhouse",
-    kicker: "1,292 sq ft · USDA 7161 (1965)",
+    /* 1,292 until PL03, when a gate started comparing every card's published
+       area against its own geometry: this envelope is 26×38 + 14×22 = 1,296,
+       and the card had been four square feet light since it was authored. The
+       geometry is the authority, so the number moved. */
+    kicker: "1,296 sq ft · USDA 7161 (1965)",
     summary: "The three-bedroom farmhouse designed around the Beltsville energy-saving kitchen-workroom — federal efficiency research, sixty years early.",
     bestFor: "A family home with the deepest eco-design lineage in the library",
     bedrooms: 3,
@@ -1464,7 +1522,16 @@ export const PLAN_TEMPLATES: readonly PlanTemplate[] = [
       }),
     ],
     deck: { width: 18, depth: 9 },
-    notes: "Aura-authored compact concept, modelled at 16% glazing — comfortably under the prescriptive ceiling, which is the point. A near-square plan has the least exterior wall per square foot of anything else in this library, and every window that is not on the south face is a hole in that advantage. The one big glazed wall still needs a summer-shading answer; the 35° gable's eave is not deep enough on its own, so budget for an overhang, a shade or planting.",
+    /* THE SENTENCE THAT MOVED, AND WHY (PL03). This note used to claim a
+       near-square plan "has the least exterior wall per square foot of
+       anything else in this library". PL03 built the measurement to support
+       its own courtyard plan and the superlative turned out to be false under
+       BOTH readings: per square foot of FLOOR, north-family-two (0.073) and
+       four other two-storey plans beat it; per square foot of FOOTPRINT,
+       hearth-accessible (0.134) beats its 0.154. What IS true is the
+       comparison the plan was really making, so that is what it now says, and
+       tests/plan-catalog.spec.ts holds the ratio against the geometry. */
+    notes: "Aura-authored compact concept, modelled at 16% glazing — comfortably under the prescriptive ceiling, which is the point. A near-square plan spends far less wall on the same floor area than the courtyards and clusters in this library: Atriumgård carries a little over twice as much exterior wall per square foot of floor as this plan does, and every foot of that wall loses heat. Every window that is not on the south face is a hole in the same advantage. The one big glazed wall still needs a summer-shading answer; the 35° gable's eave is not deep enough on its own, so budget for an overhang, a shade or planting.",
   }),
   original({
     id: "hytte-lodge",
@@ -2232,6 +2299,866 @@ export const PLAN_TEMPLATES: readonly PlanTemplate[] = [
     deck: { width: 18, depth: 8 },
     notes: "Aura-authored shuttered-glass concept, modelled at 22% glazing — just under the prescriptive ceiling, and that is the honest framing: shutters do not change the ratio, because the ratio is an area calculation. What they change is the night-time and unoccupied heat loss, which for a cabin that is empty five days a week is the number that actually matters. Shutters that are hard to close do not get closed — the hardware, the tracks and the ice on them are the design problem, and they need a real detail, not a note.",
   }),
+
+  /* ==========================================================================
+     THE SECOND GLASS WAVE — seventeen Aura originals, August 2026 (PL03).
+
+     The founder asked for "cooler ones, more glass ... beautiful stunning
+     designs that are modern and eco friendly". PL01 answered the first half of
+     that with thirty; this wave answers the rest, and the number is seventeen
+     rather than thirty ON PURPOSE.
+
+     WHY SEVENTEEN. The anti-padding gate is measurable now (`paddedPlanPairs`)
+     but it is still conditional, and a verifier has already defeated its
+     predecessor twice — once with a one-foot nudge, once with a single letter
+     in a prose field. So the count is a judgement call and judgement is what
+     was applied: every plan below had to answer "what does this building know
+     that no other plan in the library knows?" in one sentence, before it was
+     drawn. Seventeen ideas passed. The ones that did not are named in
+     docs/research/PLAN-LIBRARY-SOURCES.md § 11.2 with the reason, because a
+     rejected idea recorded is worth more than a thirtieth plan shipped.
+
+     WHAT IS NEW IN THE ENGINE, AND WHY IT IS NOT DECORATION. Two `volume()`
+     inputs land with this wave: `overhang` (every one of the previous 55 plans
+     used 1.5 ft, so the roof's own shading power was a constant nobody could
+     spend) and `facing` (a courtyard's roofs have to fall away from the court;
+     no pitch achieves that). Both reach geometry.ts — `boundsWithRoof` grows
+     with the overhang, and the shed fall direction is read from `facing` — and
+     tests/plan-catalog.spec.ts asserts both against the engine rather than
+     trusting the field to have been read.
+
+     THE GLASS RULE IS UNCHANGED AND STRICTER IN PRACTICE. `FDWR_MAX` is 0.22,
+     the NBC 9.36 PRESCRIPTIVE ceiling and not a legal maximum; the builder
+     reports `modelledGlazingRatio` and never clamps it. Five of these
+     seventeen model above the ceiling, and each of the five names the ceiling,
+     states its own ratio to within a point of its geometry, names the
+     compliance path and says what the glass costs in a zone 7A winter — the
+     same sentence shape the eight PL01 plans use, held by the same gate.
+     ====================================================================== */
+
+  original({
+    id: "jordhus-berm",
+    title: "Jordhus Berm",
+    kicker: "540 sq ft · earth-sheltered",
+    summary:
+      "Three walls held against an earth berm and one wall given entirely to glass — the cheapest insulation in Alberta is the ground you are already standing on.",
+    bestFor: "An exposed site, an off-grid budget, or anyone tired of the wind",
+    bedrooms: 1,
+    bathrooms: 1,
+    sleeping: "One enclosed bedroom",
+    storeys: 1,
+    tags: ["400–800 sq ft", "one bedroom", "earth sheltered", "cold climate"],
+    features: ["Bermed on three sides", "One full-height south glass wall", "High vents in both gable ends"],
+    costBasis: {
+      status: "proxy",
+      label: "Bermed-wall proxy",
+      note: "An earth-bermed wall is a structural retaining wall with waterproofing and drainage behind it, not a SIP panel. The Alberta BOM prices the shell it knows, so treat this range as a floor and get a quote from a foundation supplier plus an engineer's scope for the retaining and waterproofing work before believing any of it.",
+    },
+    volumes: [
+      volume({
+        width: 30,
+        depth: 18,
+        roof: "gable",
+        pitch: 30,
+        height: 10,
+        openings: [
+          opening("glass-s", "s", "glazing-wall", 22, 9, 4),
+          opening("door-s", "s", "door", 3, 6.8, 26.5),
+          opening("vent-e", "e", "window", 2, 2, 8, 7.5),
+          opening("vent-w", "w", "window", 2, 2, 8, 7.5),
+        ],
+      }),
+    ],
+    deck: { width: 18, depth: 8 },
+    notes:
+      "Aura-authored earth-sheltered concept, modelled at 21% glazing — under the 22% prescriptive ceiling, with almost all of it on one wall. The berm is the whole argument: earth against three walls holds them near ground temperature instead of −30 °C, so the same glass on the fourth wall costs less to run than it would on an exposed box. What it costs instead is a structural retaining wall, a waterproofing system and drainage that has to keep working for fifty years, and none of that is modelled here. The two 2 ft vents high in the gable ends are the only openings above the berm line; a room with one exposure needs mechanical ventilation designed for it, not an opening window.",
+  }),
+  original({
+    id: "lysrygg-monitor",
+    title: "Lysrygg Monitor",
+    kicker: "1,140 sq ft · monitor roof",
+    summary:
+      "Two low wings either side of a tall central spine glazed on both long faces — daylight arrives in the middle of a deep plan instead of dying six feet from a window.",
+    bestFor: "A deep plan, a north-facing lot, or a family that wants one big room",
+    bedrooms: 2,
+    bathrooms: 1.5,
+    sleeping: "Two enclosed bedrooms",
+    storeys: 1,
+    tags: ["800–1,200 sq ft", "two bedroom", "clerestory", "multi-volume"],
+    features: ["Raised clerestory spine", "Wing roofs fall away from the spine", "Light from above, not across"],
+    volumes: [
+      volume({
+        id: "wing-s",
+        name: "South wing",
+        width: 30,
+        depth: 14,
+        z: 12,
+        height: 8.5,
+        roof: "shed",
+        pitch: 12,
+        facing: "s",
+        openings: [
+          opening("glass-s", "s", "glazing-wall", 14, 8, 3),
+          opening("door-s", "s", "door", 3, 6.8, 22),
+          opening("win-e", "e", "window", 4, 4, 5),
+          opening("win-w", "w", "window", 4, 4, 5),
+        ],
+      }),
+      volume({
+        id: "spine",
+        name: "Clerestory spine",
+        width: 30,
+        depth: 10,
+        height: 13,
+        roof: "gable",
+        pitch: 20,
+        openings: [
+          opening("cler-n1", "n", "window", 8, 3, 1.5, 9.5),
+          opening("cler-n2", "n", "window", 8, 3, 11, 9.5),
+          opening("cler-n3", "n", "window", 8, 3, 20.5, 9.5),
+          opening("cler-s1", "s", "window", 8, 3, 1.5, 9.5),
+          opening("cler-s2", "s", "window", 8, 3, 11, 9.5),
+          opening("cler-s3", "s", "window", 8, 3, 20.5, 9.5),
+        ],
+      }),
+      volume({
+        id: "wing-n",
+        name: "North wing",
+        width: 30,
+        depth: 14,
+        z: -12,
+        height: 8.5,
+        roof: "shed",
+        pitch: 12,
+        facing: "n",
+        openings: [
+          opening("win-n1", "n", "window", 5, 4, 4, 3.5),
+          opening("win-n2", "n", "window", 5, 4, 21, 3.5),
+          opening("win-e", "e", "window", 3, 4, 5),
+          opening("win-w", "w", "window", 3, 4, 5),
+        ],
+      }),
+    ],
+    deck: { width: 20, depth: 9 },
+    notes:
+      "Aura-authored monitor-roof concept, modelled at 14% glazing — a long way under the ceiling, which is the point being made. Six clerestory panes set 9'-6\" up put usable light into the middle of a 38 ft deep plan, and a wall of glass at eye level cannot do that no matter how big it is. The two wing roofs fall AWAY from the spine on purpose, so the building never creates the two valleys a monitor otherwise invites; those junctions are still the detail that decides whether this ages well, and they are a professional's drawing rather than a massing decision. Clerestory glass is also the hardest glass in a house to shade, to clean and to reach — say that to yourself before the third pane goes in, because it loses heat at night like any other glass and you cannot hang a curtain over it.",
+  }),
+  original({
+    id: "vertikal-tower",
+    title: "Vertikal Tower",
+    kicker: "576 sq ft · two storeys on 288",
+    summary:
+      "The smallest footprint in the library that still holds a two-storey home: one room stacked on another, with the south face glazed on both floors.",
+    bestFor: "An expensive urban lot, an infill parcel, or a small site with a view",
+    bedrooms: 1,
+    bathrooms: 1.5,
+    sleeping: "One bedroom upstairs",
+    storeys: 2,
+    tags: ["400–800 sq ft", "one bedroom", "two storey", "urban infill"],
+    features: ["288 sq ft of ground", "Glazed south face on both floors", "Flat roof and parapet"],
+    volumes: [
+      volume({
+        width: 16,
+        depth: 18,
+        storeys: 2,
+        height: 9.5,
+        roof: "flat",
+        openings: [
+          opening("glass-s", "s", "glazing-wall", 13, 8.5, 1.5),
+          opening("glass-s-upper", "s", "glazing-wall", 13, 8, 1.5, 10),
+          opening("door-e", "e", "door", 3, 6.8, 3),
+          opening("win-e-upper", "e", "window", 5, 5, 3, 12),
+          opening("win-w", "w", "window", 4, 5, 7),
+          opening("win-w-upper", "w", "window", 4, 5, 7, 12),
+          opening("win-n-upper", "n", "window", 4, 4, 6, 12),
+        ],
+      }),
+    ],
+    deck: { width: 12, depth: 6 },
+    notes:
+      "Aura-authored vertical-infill concept. Modelled glazing is 23% of the modelled wall area — above the 22% NBC 9.36 prescriptive ceiling, and the reason is arithmetic rather than ambition: a 16 × 18 ft plan has very little wall to spread glass over, so two ordinary glazed elevations put it over the line. The route is the performance path, where a better glazing package and a tighter envelope buy it back. The costs are specific. A small building loses heat through its skin faster per square foot of floor than a large one, so the envelope has to be better here than on a bungalow of the same glazing ratio. This shell does not model the intermediate floor, the stair or the stair opening — those need graph editing and professional design. And two storeys of glass facing a street needs a privacy answer at ground level that a curtain is not.",
+  }),
+  original({
+    id: "bakgate-adu",
+    title: "Bakgate ADU",
+    kicker: "1,056 sq ft · suite over a garage",
+    summary:
+      "The Edmonton back lane, answered: two parking bays and a workshop underneath, a one-bedroom suite with a glazed gable to the lane above.",
+    bestFor: "A laneway suite, a rental on a lot you already own, or family nearby",
+    bedrooms: 1,
+    bathrooms: 1,
+    sleeping: "One bedroom upstairs",
+    storeys: 2,
+    tags: ["800–1,200 sq ft", "one bedroom", "two storey", "secondary suite"],
+    features: ["Garage and workshop below", "Glazed gable to the lane", "9 ft overhead door"],
+    costBasis: {
+      status: "proxy",
+      label: "Garage-below proxy",
+      note: "The Alberta BOM prices every square foot as conditioned living space and half of this building is an unheated garage, so the range is high by an amount only a supplier quote on the overhead door, the slab and the fire-separation assembly can settle.",
+    },
+    volumes: [
+      volume({
+        width: 22,
+        depth: 24,
+        storeys: 2,
+        height: 9,
+        roof: "gable",
+        pitch: 32,
+        openings: [
+          opening("overhead-s", "s", "door", 9, 8, 2),
+          opening("door-s", "s", "door", 3, 6.8, 13),
+          opening("glass-s-upper", "s", "glazing-wall", 12, 7.5, 5, 9.5),
+          opening("glass-n-upper", "n", "glazing-wall", 8, 8, 7, 9.5),
+          opening("win-n", "n", "window", 4, 4, 2),
+          opening("win-e-upper", "e", "window", 4, 4, 4, 12),
+          opening("win-e-upper2", "e", "window", 4, 4, 15, 12),
+          opening("win-w-upper", "w", "window", 4, 4, 4, 12),
+          opening("win-w-upper2", "w", "window", 4, 4, 15, 12),
+        ],
+      }),
+    ],
+    deck: null,
+    notes:
+      "Aura-authored laneway-suite concept, modelled at 14% glazing — under the ceiling, because the ground floor is a garage and a garage does not want windows. Two things are modelled dishonestly here and both are stated rather than buried: the model counts the garage as conditioned floor area, so the published area and the cost range are both bigger than the home you would actually live in; and the fire separation between a garage and a dwelling above it is a real assembly with a real cost this shell does not draw. A secondary suite is a zoning question before it is an architectural one — height limits, lane setbacks, parking, and whether a suite is permitted at all differ by municipality, so confirm the parcel before this goes any further.",
+  }),
+  original({
+    id: "hyttetun-cluster",
+    title: "Hyttetun",
+    kicker: "756 sq ft · hall + three bunkies",
+    summary:
+      "One heated hall to cook, eat and sit in, and three small sleeping cabins you walk to — the Nordic yard arrangement, which heats only the room you are standing in.",
+    bestFor: "A family compound, a guiding operation, or a build done in stages",
+    bedrooms: 3,
+    bathrooms: 1.5,
+    sleeping: "Three separate sleeping cabins",
+    storeys: 1,
+    tags: ["400–800 sq ft", "three bedroom", "multi-volume", "phased build"],
+    features: ["Shared hall holds the only kitchen", "Three 120 sq ft sleeping cabins", "Build the hall first"],
+    volumes: [
+      volume({
+        id: "hall",
+        name: "Hall",
+        width: 22,
+        depth: 18,
+        height: 11,
+        roof: "gable",
+        pitch: 34,
+        openings: [
+          opening("glass-s", "s", "glazing-wall", 16, 9.5, 3),
+          opening("door-s", "s", "door", 3, 6.8, 19),
+          opening("win-e", "e", "window", 4, 4, 7),
+          opening("win-w", "w", "window", 4, 4, 7),
+          opening("win-n", "n", "window", 5, 4, 8, 4),
+        ],
+      }),
+      volume({
+        id: "bunk-a",
+        name: "Bunkie A",
+        width: 10,
+        depth: 12,
+        x: -16,
+        z: -16,
+        height: 8.5,
+        roof: "shed",
+        pitch: 14,
+        openings: [
+          opening("glass-s", "s", "glazing-wall", 6, 7, 2),
+          opening("door-e", "e", "door", 3, 6.8, 2),
+          opening("win-e", "e", "window", 2, 3, 7, 4),
+        ],
+      }),
+      volume({
+        id: "bunk-b",
+        name: "Bunkie B",
+        width: 10,
+        depth: 12,
+        z: -16,
+        height: 8.5,
+        roof: "shed",
+        pitch: 14,
+        openings: [
+          opening("glass-s", "s", "glazing-wall", 6, 7, 2),
+          opening("door-e", "e", "door", 3, 6.8, 2),
+          opening("win-e", "e", "window", 2, 3, 7, 4),
+        ],
+      }),
+      volume({
+        id: "bunk-c",
+        name: "Bunkie C",
+        width: 10,
+        depth: 12,
+        x: 16,
+        z: -16,
+        height: 8.5,
+        roof: "shed",
+        pitch: 14,
+        openings: [
+          opening("glass-s", "s", "glazing-wall", 6, 7, 2),
+          opening("door-e", "e", "door", 3, 6.8, 2),
+          opening("win-e", "e", "window", 2, 3, 7, 4),
+        ],
+      }),
+    ],
+    deck: { width: 18, depth: 10, hotTub: true },
+    notes:
+      "Aura-authored cluster concept, modelled at 17% glazing across four volumes. The idea is a heating strategy rather than a style: the hall carries the glass, the kitchen and the heat, and each bunkie is small enough to warm in twenty minutes and cheap enough to leave cold. The model does not know that — it counts all four volumes as conditioned floor area, so both the published area and the cost range assume you heat everything all winter. Four volumes also means four foundations, four roofs, four times the flashing, and a walk between the bed and the bathroom in January. That walk is the design. It is also exactly why this plan is the wrong one for anyone with limited mobility, and no amount of drawing fixes that.",
+  }),
+  original({
+    id: "karnapp-bay",
+    title: "Karnapp Bay",
+    kicker: "568 sq ft · one projecting bay",
+    summary:
+      "An ordinary one-bedroom bar with all of its view glass gathered into a single 8 ft bay that steps out of the east wall and sees three ways at once.",
+    bestFor: "A view that arrives from one corner, or a small home that wants one great seat",
+    bedrooms: 1,
+    bathrooms: 1,
+    sleeping: "One enclosed bedroom",
+    storeys: 1,
+    tags: ["400–800 sq ft", "one bedroom", "multi-volume", "nordic modern"],
+    features: ["48 sq ft glazed bay", "Three glazed faces in one place", "Punched windows everywhere else"],
+    volumes: [
+      volume({
+        width: 26,
+        depth: 20,
+        height: 9.5,
+        roof: "gable",
+        pitch: 34,
+        openings: [
+          opening("win-s", "s", "window", 4, 5, 1.5, 2.5),
+          opening("door-s", "s", "door", 3, 6.8, 20.5),
+          opening("win-n1", "n", "window", 4, 4, 4, 3.5),
+          opening("win-n2", "n", "window", 4, 4, 18, 3.5),
+          opening("win-e", "e", "window", 3, 4, 8),
+          opening("win-w", "w", "window", 3, 4, 8),
+        ],
+      }),
+      volume({
+        id: "bay",
+        name: "Bay",
+        width: 8,
+        depth: 6,
+        x: 17,
+        height: 8,
+        roof: "flat",
+        openings: [
+          opening("glass-bay-e", "e", "glazing-wall", 5, 7.5, 0.5),
+          opening("glass-bay-n", "n", "glazing-wall", 6, 7.5, 1),
+          opening("glass-bay-s", "s", "glazing-wall", 6, 7.5, 1),
+        ],
+      }),
+    ],
+    deck: { width: 18, depth: 9 },
+    notes:
+      "Aura-authored bay concept, modelled at 19% glazing — under the ceiling, and concentrated rather than spread. Glass gathered into one projecting box sees north-east through south-east; the same area laid flat along a wall sees one direction and reads as a strip. What the bay costs is worth saying plainly: 48 sq ft of floor wrapped in three walls and its own roof is the most expensive floor area in the building per square foot, and that floor is the coldest surface in the house unless the cantilever or the foundation under it is insulated and detailed properly. A bay also loses heat on three sides at once. Get the detail from a professional; it is the difference between a favourite seat and a draught nobody sits in.",
+  }),
+  original({
+    id: "midtglass-longhouse",
+    title: "Midtglass Longhouse",
+    kicker: "924 sq ft · glazed in the middle",
+    summary:
+      "Two solid end volumes for sleeping and a taller glazed hall between them, lit from both long sides — the glass is where people gather, not where they sleep.",
+    bestFor: "A household that wants one bright room and genuinely dark bedrooms",
+    bedrooms: 2,
+    bathrooms: 1.5,
+    sleeping: "Two bedrooms, one in each end",
+    storeys: 1,
+    tags: ["800–1,200 sq ft", "two bedroom", "multi-volume", "cross-lit"],
+    features: ["Cross-lit central hall", "Solid sleeping ends", "Three volumes, three simple roofs"],
+    volumes: [
+      volume({
+        id: "hall",
+        name: "Hall",
+        width: 20,
+        depth: 22,
+        height: 12,
+        roof: "gable",
+        pitch: 24,
+        openings: [
+          opening("glass-s", "s", "glazing-wall", 18, 11, 1),
+          opening("glass-n", "n", "glazing-wall", 18, 11, 1),
+        ],
+      }),
+      volume({
+        id: "end-w",
+        name: "West end",
+        width: 11,
+        depth: 22,
+        x: -15.5,
+        height: 9,
+        roof: "gable",
+        pitch: 34,
+        openings: [
+          opening("win-s", "s", "window", 3, 4, 4, 3.5),
+          opening("win-n", "n", "window", 3, 4, 4, 3.5),
+          opening("win-w", "w", "window", 3, 4, 9, 3.5),
+        ],
+      }),
+      volume({
+        id: "end-e",
+        name: "East end",
+        width: 11,
+        depth: 22,
+        x: 15.5,
+        height: 9,
+        roof: "gable",
+        pitch: 34,
+        openings: [
+          opening("win-s", "s", "window", 3, 4, 4, 3.5),
+          opening("win-n", "n", "window", 3, 4, 4, 3.5),
+          opening("door-e", "e", "door", 3, 6.8, 5),
+          opening("win-e", "e", "window", 3, 4, 13, 3.5),
+        ],
+      }),
+    ],
+    deck: { width: 18, depth: 9 },
+    notes:
+      "Aura-authored cross-lit concept, modelled at 21% glazing — under the ceiling, which is the argument rather than an accident. 468 sq ft of glass sounds extravagant until you notice that the two ends carry seven small windows between them: bedrooms need darkness and privacy more than they need a view, and not glazing them is exactly what pays for glazing the hall. The costs are real. A room glazed on both long sides has nothing to hold the gain and will swing hot in the afternoon and cold at night unless the floor is doing that work. The north glass is a straight heat-loss line that only a good glazing package makes tolerable. And three volumes at two eave heights means two junctions, which is where the flashing goes and where the snow ends up.",
+  }),
+  original({
+    id: "atriumgard",
+    title: "Atriumgård",
+    kicker: "680 sq ft · four bars, one court",
+    summary:
+      "Four narrow bars closed around a sheltered court, every room glazed inward and nearly blind outward — the courtyard house built for wind rather than for heat.",
+    bestFor: "An exposed prairie site, or a household that wants outdoor space it can use",
+    bedrooms: 2,
+    bathrooms: 1.5,
+    sleeping: "Two bedrooms in separate bars",
+    storeys: 1,
+    tags: ["400–800 sq ft", "two bedroom", "courtyard", "multi-volume"],
+    features: ["264 sq ft sheltered court", "Every roof falls away from the court", "Glass inward, small windows out"],
+    volumes: [
+      volume({
+        id: "bar-n",
+        name: "North bar",
+        width: 22,
+        depth: 10,
+        z: -11,
+        height: 9.5,
+        roof: "shed",
+        pitch: 14,
+        facing: "n",
+        openings: [
+          opening("glass-court", "s", "glazing-wall", 16, 9, 3),
+          opening("win-out", "n", "window", 4, 3.5, 9, 5),
+        ],
+      }),
+      volume({
+        id: "bar-s",
+        name: "South bar",
+        width: 22,
+        depth: 10,
+        z: 11,
+        height: 9.5,
+        roof: "shed",
+        pitch: 14,
+        facing: "s",
+        openings: [
+          opening("glass-court", "n", "glazing-wall", 16, 9, 3),
+          opening("door-out", "s", "door", 3, 6.8, 2),
+          opening("win-out", "s", "window", 5, 4, 13),
+        ],
+      }),
+      volume({
+        id: "bar-w",
+        name: "West bar",
+        width: 10,
+        depth: 12,
+        x: -16,
+        height: 9.5,
+        roof: "shed",
+        pitch: 14,
+        facing: "w",
+        openings: [
+          opening("glass-court", "e", "glazing-wall", 9, 9, 1.5),
+          opening("win-out", "w", "window", 3, 3.5, 4, 5),
+        ],
+      }),
+      volume({
+        id: "bar-e",
+        name: "East bar",
+        width: 10,
+        depth: 12,
+        x: 16,
+        height: 9.5,
+        roof: "shed",
+        pitch: 14,
+        facing: "e",
+        openings: [
+          opening("glass-court", "w", "glazing-wall", 9, 9, 1.5),
+          opening("win-out", "e", "window", 3, 3.5, 4, 5),
+        ],
+      }),
+    ],
+    deck: { width: 16, depth: 8 },
+    notes:
+      "Aura-authored courtyard concept. Modelled glazing is 25% of the modelled wall area — above the 22% NBC 9.36 prescriptive ceiling, because four bars facing a court have four inward elevations to glaze. The route is the performance path: a better glazing package and a tighter envelope on the eight outward walls are what buy the court back. Two costs, both real and both measured rather than asserted. No plan in this library over 400 sq ft carries more exterior wall per square foot of floor than this one — a little over twice what the near-square Kompakt Passiv carries — and every foot of that wall loses heat whether there is glass in it or not; the court is bought with wall area, not with glazing. And all four roofs are pitched to fall AWAY from the court on purpose, because a court that four roofs drain into is a snow trap with a drain in the middle of it.",
+  }),
+  original({
+    id: "soltak-offgrid",
+    title: "Soltak Off-Grid",
+    kicker: "680 sq ft · roof for panels",
+    summary:
+      "A single 35° south roof with almost nothing in the wall below it: the plan in this wave that spends its south face on electricity instead of on view.",
+    bestFor: "An off-grid site, a solar-first budget, or the coldest lot you own",
+    bedrooms: 2,
+    bathrooms: 1,
+    sleeping: "Two enclosed bedrooms",
+    storeys: 1,
+    tags: ["400–800 sq ft", "two bedroom", "off grid", "passive solar"],
+    features: ["One unbroken 35° south roof plane", "Small punched windows only", "No glass on the cold walls"],
+    volumes: [
+      volume({
+        width: 34,
+        depth: 20,
+        height: 9,
+        roof: "shed",
+        pitch: 35,
+        facing: "s",
+        openings: [
+          opening("win-s1", "s", "window", 4, 5, 3, 2.5),
+          opening("win-s2", "s", "window", 4, 5, 15, 2.5),
+          opening("win-s3", "s", "window", 4, 5, 27, 2.5),
+          opening("door-s", "s", "door", 3, 6.8, 9.5),
+          opening("win-n1", "n", "window", 2.5, 4, 6, 4),
+          opening("win-n2", "n", "window", 2.5, 4, 25, 4),
+          opening("win-e", "e", "window", 3, 4, 8),
+          opening("win-w", "w", "window", 3, 4, 8),
+        ],
+      }),
+    ],
+    deck: { width: 18, depth: 8 },
+    notes:
+      "Aura-authored off-grid concept, modelled at 11% glazing — the deliberate counter-argument to the rest of this wave. A single unbroken plane facing south sheds snow well and carries an array without a penetration in the middle of it, and every window cut into the wall underneath is a hole in the envelope that array exists to keep small. Two honest limits. This codebase models no array yield, tilt optimum, shading or generation whatsoever — the roof is drawn, the electricity is not, and only a site-specific solar study says whether the idea pays on your lot. And 11% glazing is a dark house on a December afternoon: it loses very little heat and it gains very little light, and if that trade sounds wrong to you then this is not your plan and several others in this wave are.",
+  }),
+  original({
+    id: "skrent-walkout",
+    title: "Skrent Walk-Out",
+    kicker: "1,232 sq ft · hillside walk-out",
+    summary:
+      "A two-storey box pushed into a slope: earth against the uphill walls, both floors opening downhill through glass, and a second storey that the grade pays for.",
+    bestFor: "A steep lot where levelling a pad would cost more than the house",
+    bedrooms: 3,
+    bathrooms: 2.5,
+    sleeping: "Three bedrooms upstairs",
+    storeys: 2,
+    tags: ["1,200+ sq ft", "three bedroom", "two storey", "steep site"],
+    features: ["Walk-out lower floor", "Glass on one elevation only", "Uphill walls carry none"],
+    costBasis: {
+      status: "proxy",
+      label: "Walk-out foundation proxy",
+      note: "A walk-out lower storey is a concrete foundation wall doing structural retaining work on three sides, and the Alberta BOM prices a SIP shell instead. The range is a floor; the difference belongs in a quote from a foundation supplier and in a geotechnical engineer's scope.",
+    },
+    volumes: [
+      volume({
+        width: 28,
+        depth: 22,
+        storeys: 2,
+        height: 9,
+        roof: "shed",
+        pitch: 16,
+        facing: "s",
+        openings: [
+          opening("glass-s", "s", "glazing-wall", 18, 8.5, 2),
+          opening("glass-s-upper", "s", "glazing-wall", 18, 8, 2, 9.5),
+          opening("door-s", "s", "door", 3, 6.8, 21),
+          opening("win-s-upper", "s", "window", 5, 4, 21, 10),
+          opening("win-e", "e", "window", 4, 4, 4),
+          opening("win-e-upper", "e", "window", 4, 4, 4, 12),
+          opening("win-w-upper", "w", "window", 4, 4, 4, 12),
+          opening("win-n-upper", "n", "window", 4, 3.5, 6, 12),
+        ],
+      }),
+    ],
+    deck: { width: 18, depth: 10, hotTub: true },
+    slope: "steep",
+    notes:
+      "Aura-authored hillside concept, modelled at 21% glazing — under the ceiling, and worth understanding why rather than just noting it. Two full floors of glass on one elevation is a lot of glass, but a two-storey box has twice the wall to measure it against, so a plan that looks far more glazed than a bungalow can sit under the same line. The uphill walls carry none of it deliberately: below grade there is nothing to see and a great deal of heat to lose. What the slope gives you is a second storey and a lower floor that opens onto grade; what it charges you is a retaining foundation, drainage behind the uphill walls, and a geotechnical opinion on whether the slope is stable at all. That opinion comes before the architecture, not after it.",
+  }),
+  original({
+    id: "dobbelgavl-bar",
+    title: "Dobbelgavl",
+    kicker: "612 sq ft · glazed at both ends",
+    summary:
+      "A narrow bar with both gable ends given entirely to glass and both long sides left almost solid — morning light at one end, evening at the other, nothing for the neighbours.",
+    bestFor: "A treed lot, a narrow parcel, or a view that runs along the axis",
+    bedrooms: 1,
+    bathrooms: 1,
+    sleeping: "One enclosed bedroom",
+    storeys: 1,
+    tags: ["400–800 sq ft", "one bedroom", "nordic modern", "narrow lot"],
+    features: ["Two full-height glazed ends", "Solid long elevations", "Steep 38° gable"],
+    volumes: [
+      volume({
+        width: 18,
+        depth: 34,
+        height: 9.5,
+        roof: "gable",
+        pitch: 38,
+        openings: [
+          opening("glass-s", "s", "glazing-wall", 12, 9.5, 3),
+          opening("glass-n", "n", "glazing-wall", 12, 9.5, 3),
+          opening("win-e1", "e", "window", 4, 4, 8),
+          opening("win-e2", "e", "window", 4, 4, 22),
+          opening("win-w1", "w", "window", 4, 4, 8),
+          opening("win-w2", "w", "window", 4, 4, 22),
+          opening("door-e", "e", "door", 3, 6.8, 14),
+        ],
+      }),
+    ],
+    deck: { width: 14, depth: 8 },
+    notes:
+      "Aura-authored double-gable concept. Modelled glazing is 30% of the modelled wall area — above the 22% NBC 9.36 prescriptive ceiling, and the highest ratio anywhere in this library. It goes to permit on the performance path, where triple glazing with a low-conductance frame, a thicker envelope on the two long walls and measured airtightness are what buy two glass ends back. Say the cost out loud: a north gable of glass loses heat every hour of every winter night and gives nothing back, and the only reason to accept that here is that the long sides — the walls facing the neighbours and the prevailing wind — carry four small windows between them. Two structural notes for the engineer, early: a full-height glazed gable end needs a header and a lateral system that glass cannot provide, and the triangle above the glazing in this model is wall, not glass.",
+  }),
+  original({
+    id: "solvegg-house",
+    title: "Solvegg",
+    kicker: "520 sq ft · glass you cannot see through",
+    summary:
+      "A rammed-earth mass wall set behind south glazing with an air gap between them — a solar collector that looks like a window and is not one.",
+    bestFor: "A sunny site, a patient owner, and anyone who likes a building that explains itself",
+    bedrooms: 1,
+    bathrooms: 1,
+    sleeping: "One enclosed bedroom",
+    storeys: 1,
+    material: "rammed_earth",
+    tags: ["400–800 sq ft", "one bedroom", "thermal mass", "passive solar"],
+    features: ["Trombe wall across the south face", "One real view window", "Rammed-earth mass behind the glass"],
+    volumes: [
+      volume({
+        width: 26,
+        depth: 20,
+        height: 10,
+        roof: "gable",
+        pitch: 30,
+        openings: [
+          opening("trombe-s", "s", "glazing-wall", 16, 8.5, 0.5),
+          opening("win-s", "s", "window", 4, 5, 17, 2.5),
+          opening("door-s", "s", "door", 3, 6.8, 22),
+          opening("win-n1", "n", "window", 3, 3.5, 5, 4.5),
+          opening("win-n2", "n", "window", 3, 3.5, 18, 4.5),
+          opening("win-e", "e", "window", 4, 4, 8),
+          opening("win-w", "w", "window", 4, 4, 8),
+        ],
+      }),
+    ],
+    deck: null,
+    notes:
+      "Aura-authored Trombe-wall concept. Modelled glazing is 23% of the modelled wall area — above the 22% NBC 9.36 prescriptive ceiling, and this is the plan where that number needs the most explaining, because most of the glass here is not a window. A Trombe wall is glazing hung a few inches in front of a dark mass wall: the sun heats the mass, the mass releases it after dark, and you cannot see through any of it. The builder has exactly one category for glass and counts it anyway, which is why the ratio reads high and why there is no deck on the south face — that face is a collector, not a patio. The compliance route is a full performance model, which is also the only place the wall gets credit for what it does. The costs are unforgiving: without night insulation the same assembly runs backwards after dark and loses heat all night, it will overheat a small room in the shoulder seasons unless it is vented, and it needs winter sun on it — one spruce to the south and it is a cold wall with glass in front of it.",
+  }),
+  original({
+    id: "skogsrom-cabin",
+    title: "Skogsrom",
+    kicker: "616 sq ft · eleven narrow slots",
+    summary:
+      "No picture window anywhere: eleven tall narrow openings that frame trunks vertically and put light on both long walls of a forest cabin.",
+    bestFor: "A dense treed lot where a wall of glass would look at bark",
+    bedrooms: 1,
+    bathrooms: 1,
+    sleeping: "One enclosed bedroom",
+    storeys: 1,
+    material: "timber_frame",
+    tags: ["400–800 sq ft", "one bedroom", "forest site", "nordic modern"],
+    features: ["Eleven glazing slots, none wider than 2'-6\"", "Light on both long walls", "Steep 40° gable"],
+    volumes: [
+      volume({
+        width: 22,
+        depth: 28,
+        height: 10.5,
+        roof: "gable",
+        pitch: 40,
+        openings: [
+          opening("slot-e1", "e", "window", 2, 8, 2, 1.5),
+          opening("slot-e2", "e", "window", 2, 8, 7, 1.5),
+          opening("slot-e3", "e", "window", 2, 8, 12, 1.5),
+          opening("slot-e4", "e", "window", 2, 8, 17, 1.5),
+          opening("slot-e5", "e", "window", 2, 8, 22, 1.5),
+          opening("slot-w1", "w", "window", 2, 8, 4, 1.5),
+          opening("slot-w2", "w", "window", 2, 8, 13, 1.5),
+          opening("slot-w3", "w", "window", 2, 8, 22, 1.5),
+          opening("slot-s1", "s", "window", 2.5, 9, 3, 0.75),
+          opening("slot-s2", "s", "window", 2.5, 9, 8, 0.75),
+          opening("door-s", "s", "door", 3, 6.8, 14),
+          opening("slot-n", "n", "window", 2, 8, 10, 1.5),
+        ],
+      }),
+    ],
+    deck: { width: 14, depth: 8 },
+    notes:
+      "Aura-authored forest concept, modelled at 18% glazing. In dense spruce a picture window frames bark; eleven tall narrow openings frame the trunks the way you actually see them, and putting them on both long walls means the room is lit from two sides instead of blown out on one. The honest counter-cost is that this is the expensive way to buy 189 sq ft of glass: eleven openings is eleven headers, eleven sets of flashing and eleven thermal bridges, and one large unit of the same area would cost less to buy and less to install and would lose less heat around its edges. What the difference buys is light without glare, and walls you can still put furniture against.",
+  }),
+  original({
+    id: "familie-fire",
+    title: "Familie Fire",
+    kicker: "1,752 sq ft · four bedrooms",
+    summary:
+      "The first four-bedroom plan in the library: a plain two-storey family box with a single-storey glazed dining pavilion pushed out to the east, so the best room is not inside the big box.",
+    bestFor: "A family of five or six, or a household running two home offices",
+    bedrooms: 4,
+    bathrooms: 2.5,
+    sleeping: "Four bedrooms upstairs",
+    storeys: 2,
+    tags: ["1,200+ sq ft", "four bedroom", "two storey", "multi-volume"],
+    features: ["Four bedrooms upstairs", "192 sq ft glazed pavilion", "Deliberately plain two-storey core"],
+    volumes: [
+      volume({
+        width: 26,
+        depth: 30,
+        storeys: 2,
+        height: 9,
+        roof: "gable",
+        pitch: 34,
+        openings: [
+          opening("glass-s", "s", "glazing-wall", 12, 8.5, 3),
+          opening("glass-s-upper", "s", "glazing-wall", 12, 8, 3, 9.5),
+          opening("door-s", "s", "door", 3, 6.8, 20),
+          opening("win-n1", "n", "window", 5, 4, 4),
+          opening("win-n-upper1", "n", "window", 4, 4, 4, 12),
+          opening("win-n-upper2", "n", "window", 4, 4, 18, 12),
+          opening("door-w", "w", "door", 3, 6.8, 4),
+          opening("win-w", "w", "window", 4, 4, 12),
+          opening("win-w-upper1", "w", "window", 4, 4, 12, 12),
+          opening("win-w-upper2", "w", "window", 4, 4, 22, 12),
+          opening("win-e-upper1", "e", "window", 4, 4, 20, 12),
+          opening("win-e-upper2", "e", "window", 4, 4, 25, 12),
+        ],
+      }),
+      volume({
+        id: "pavilion",
+        name: "Dining pavilion",
+        width: 16,
+        depth: 12,
+        x: 21,
+        z: 6,
+        height: 11,
+        roof: "flat",
+        openings: [
+          opening("glass-s", "s", "glazing-wall", 12, 10, 2),
+          opening("glass-e", "e", "glazing-wall", 8, 10, 2),
+          opening("win-n", "n", "window", 6, 5, 5),
+        ],
+      }),
+    ],
+    deck: { width: 18, depth: 10, hotTub: true },
+    notes:
+      "Aura-authored family concept, modelled at 21% glazing — under the ceiling. The move is to keep the two-storey box plain and cheap and spend the difference on one 192 sq ft room glazed on two sides, because a family house gets its character from one good room rather than from a complicated envelope. Three things this drawing does not do. It does not model the intermediate floor, the stair or the stair opening — those need graph editing and professional design. Four bedrooms upstairs means four bedroom egress windows, which have minimum openable dimensions this model never checks. And a flat pavilion roof meeting a two-storey wall is exactly where snow slides and drifts collect: that junction wants a real detail, a bigger drain than it looks like it needs, and a professional's eye on the ice.",
+  }),
+  original({
+    id: "skygge-veranda",
+    title: "Skygge Veranda",
+    kicker: "616 sq ft · four-foot eave",
+    summary:
+      "A wide south glass wall under a four-foot overhang — the plan whose summer-shading answer is the roof itself rather than a note telling you to buy blinds.",
+    bestFor: "A south-facing lot that cooks in July",
+    bedrooms: 2,
+    bathrooms: 1,
+    sleeping: "Two enclosed bedrooms",
+    storeys: 1,
+    tags: ["400–800 sq ft", "two bedroom", "passive solar", "summer shading"],
+    features: ["4 ft eave, drawn not promised", "20 ft south glazing wall", "Shade in July, sun in December"],
+    volumes: [
+      volume({
+        width: 28,
+        depth: 22,
+        height: 10,
+        roof: "gable",
+        pitch: 30,
+        overhang: 4,
+        openings: [
+          opening("glass-s", "s", "glazing-wall", 20, 9, 2),
+          opening("door-s", "s", "door", 3, 6.8, 23),
+          opening("win-n1", "n", "window", 4, 4, 5, 4),
+          opening("win-n2", "n", "window", 4, 4, 19, 4),
+          opening("win-e", "e", "window", 4, 4, 9),
+          opening("win-w", "w", "window", 4, 4, 9),
+        ],
+      }),
+    ],
+    deck: { width: 20, depth: 10 },
+    notes:
+      "Aura-authored deep-eave concept. Modelled glazing is 24% of the modelled wall area — above the 22% NBC 9.36 prescriptive ceiling, taken on the trade-off path with a better glazing package and a tighter envelope on the solid walls. The eave is what makes the glass defensible rather than decorative: at 53.5°N the sun stands about 60° above the horizon at noon on 21 June and about 13° at noon on 21 December, so a 4 ft overhang throws roughly 6.9 ft of shade down the wall in midsummer and about 0.9 ft at midwinter — most of a 9 ft glazing wall when shade is wanted, almost none of it when it is not. Two limits, stated rather than implied. That is hand geometry at solar noon, not a shading simulation: this codebase has no sun-path model at all, and none of it addresses the low morning and evening sun of a July afternoon. And the model draws the 4 ft eave on all four sides, where a real drawing would carry it deep on the south and ordinary elsewhere — the extra framing, the wind uplift and the snow it holds are all real costs. The glass still loses heat all night in January; an eave does nothing about that.",
+  }),
+  original({
+    id: "bygata-workshop",
+    title: "Bygata Live/Work",
+    kicker: "1,320 sq ft · shop below, home above",
+    summary:
+      "A flat-roofed two-storey street building with a 16 ft glazed shopfront on the ground floor and a two-bedroom home stacked over it.",
+    bestFor: "A trades business, a studio practice, or an eco-village main street",
+    bedrooms: 2,
+    bathrooms: 2,
+    sleeping: "Two bedrooms upstairs",
+    storeys: 2,
+    tags: ["1,200+ sq ft", "two bedroom", "two storey", "live work"],
+    features: ["16 ft glazed shopfront", "Separate yard entrance", "Flat roof and parapet"],
+    costBasis: {
+      status: "proxy",
+      label: "Dwelling-rate proxy",
+      note: "The Alberta BOM prices this as a house. A commercial ground floor carries different structure, a different fire and exiting standard and different mechanical loads, so the range is a starting point until a supplier and a designer who work in that occupancy quote it properly.",
+    },
+    volumes: [
+      volume({
+        width: 22,
+        depth: 30,
+        storeys: 2,
+        height: 10,
+        roof: "flat",
+        openings: [
+          opening("shopfront-n", "n", "glazing-wall", 16, 9.5, 3),
+          opening("door-n", "n", "door", 3, 7, 19),
+          opening("glass-n-upper", "n", "glazing-wall", 12, 7.5, 3, 10.5),
+          opening("win-n-upper", "n", "window", 4, 5, 16, 12),
+          opening("door-s", "s", "door", 3, 6.8, 2),
+          opening("win-s", "s", "window", 5, 4, 8),
+          opening("glass-s-upper", "s", "glazing-wall", 10, 7.5, 6, 10.5),
+          opening("win-e-upper1", "e", "window", 3, 4, 10, 12),
+          opening("win-e-upper2", "e", "window", 3, 4, 22, 12),
+          opening("win-w-upper1", "w", "window", 3, 4, 10, 12),
+          opening("win-w-upper2", "w", "window", 3, 4, 22, 12),
+        ],
+      }),
+    ],
+    deck: { width: 12, depth: 8 },
+    notes:
+      "Aura-authored live/work concept, modelled at 19% glazing. A shopfront is the one place in a cold climate where a big pane pays for itself in something other than daylight, and it is also the coldest square metre in the building: a full-height glazed wall at the sidewalk loses heat, catches every draught the door lets in, and needs a real entrance detail rather than one door in a hole. Mixed use is a zoning and building-code question before it is an architectural one — permitted use, the occupancy separation between the shop and the dwelling above it, exiting, and an accessible entrance at the street all change the plan and not just the paperwork. Confirm them for the actual parcel first; they can delete the shopfront.",
+  }),
+  original({
+    id: "modulhus",
+    title: "Modulhus",
+    kicker: "864 sq ft · everything on a 2 ft grid",
+    summary:
+      "A CLT plan drawn to the panel: every opening starts and stops on a two-foot line, because a header that lands mid-panel costs more than a window that moves six inches.",
+    bestFor: "A prefabricated build, a short site season, or anyone pricing panels",
+    bedrooms: 2,
+    bathrooms: 1.5,
+    sleeping: "Two enclosed bedrooms",
+    storeys: 1,
+    material: "clt",
+    tags: ["800–1,200 sq ft", "two bedroom", "mass timber", "prefab"],
+    features: ["Every opening on a 2 ft grid", "Single-storey CLT shell", "24 × 36 ft panel-friendly box"],
+    volumes: [
+      volume({
+        width: 24,
+        depth: 36,
+        height: 11,
+        roof: "gable",
+        pitch: 26,
+        openings: [
+          opening("glass-s", "s", "glazing-wall", 12, 10, 4),
+          opening("door-s", "s", "door", 4, 7, 18),
+          opening("win-n1", "n", "window", 4, 4, 4, 4),
+          opening("win-n2", "n", "window", 4, 4, 16, 4),
+          opening("win-e1", "e", "window", 4, 6, 6, 2),
+          opening("win-e2", "e", "window", 4, 6, 26, 2),
+          opening("win-w1", "w", "window", 4, 6, 6, 2),
+          opening("win-w2", "w", "window", 4, 6, 26, 2),
+        ],
+      }),
+    ],
+    deck: { width: 18, depth: 8 },
+    notes:
+      "Aura-authored mass-timber concept, modelled at 19% glazing. The discipline IS the design: every opening in this plan begins and ends on a two-foot line, and a test asserts it, because the moment one window slides six inches off the grid it crosses a panel joint and the saving that made CLT worth choosing goes straight into a header. What that discipline does not do is make the building cheap on its own — CLT is bought by the cubic metre, needs a crane and a prepared site, needs its exposure period and moisture managed during erection, and needs an acoustic and fire strategy from a supplier who has done it before. This shell draws a single-storey box; the panel layout, the connections and the roof diaphragm are the supplier's engineering, not this drawing's.",
+  }),
 ] as const;
 
 /* ===========================================================================
@@ -2259,22 +3186,38 @@ export const PLAN_TEMPLATES: readonly PlanTemplate[] = [
    THE RULE THAT DOES SEPARATE THEM. Those honest neighbours are close in size
    and different in kind: different elevations, different programmes, different
    materials, different roofs. The clone is a copy — nudging one dimension
-   changes NONE of that. So the property is conditional:
+   changes NONE of that. So the property is structural, and distance is not
+   part of it:
 
-       Two plans may be geometrically near-identical ONLY IF they differ on at
-       least one STRUCTURAL axis — elevation composition, programme, material,
-       or roof form. Prose deliberately does not count: a padder can rewrite a
-       summary in a minute, and cannot give a nudged copy a real elevation
-       without designing one.
+       Two plans must differ on at least one STRUCTURAL axis — elevation
+       composition, programme, material, or roof form. Prose deliberately does
+       not count: a padder can rewrite a summary in a minute, and cannot give a
+       nudged copy a real elevation without designing one.
 
-   CALIBRATION, FROM THE REAL LIBRARY. Across all 55 plans exactly ONE pair
-   differs on no structural axis at all — `meadow-one ~ solstice-cottage`, two
-   one-bedroom SIP gables — and they sit 0.25 apart (24 ft wide against 18 ft:
-   672 sq ft against 468). That 0.25 is the honest floor, so the nudge
-   threshold is set at 0.20, leaving 25% headroom above the real library and
-   roughly 3x margin over the clone. tests/plan-catalog.spec.ts pins BOTH ends
-   — the clone must be caught, that pair must stay acquitted — so the number
-   cannot be quietly retuned until it stops meaning anything.
+   WHY DISTANCE IS NOT IN THE RULE AT ALL, WHICH IS A CORRECTION. The rule used
+   to read "near-identical in size AND nothing structural to tell them apart",
+   and the AND was doing damage nobody had measured. A plan could then earn its
+   place by padding HARDER: get far enough from your twin in feet and the
+   structural test was never reached. The old note here said that across the
+   library exactly one pair — `meadow-one ~ solstice-cottage` — differed on no
+   structural axis. That was true when it was written at 55 plans and false by
+   the time it was read: at 72 there were THREE such pairs, because
+   `jordhus-berm` had joined them, and all three were being acquitted by
+   distance alone. Using a measurement the paragraph above proves CANNOT
+   separate padding from honest work to hand out acquittals was the same error
+   in the opposite direction, so it is gone. The library now measures ZERO
+   pairs that differ on no structural axis, which is the number the rule is
+   worth anything at.
+
+   WHAT CHANGED IN THE CATALOGUE TO GET THERE, because the honest half of the
+   answer is that two of those three pairs were the gate not looking rather
+   than the plans being clones. `jordhus-berm`'s vents sit 7.5 ft up, above its
+   earth berm, and the elevation signature knew only "window on the east wall";
+   it now records a sill BAND, and the bermed house reads as the different
+   building it always was. `solstice-cottage` was the real finding: a federal
+   passive-solar cottage whose entire argument is its south face, drawn with
+   the library's generic default openings. It has been given the elevation its
+   own summary describes.
 
    STATED LIMIT: this compares plans with the same VOLUME COUNT. Padding by
    bolting an extra shed onto a copy is a different shape and is not caught
@@ -2283,10 +3226,17 @@ export const PLAN_TEMPLATES: readonly PlanTemplate[] = [
    to be covered.
    ======================================================================== */
 
-/** The largest single normalised design move below which two same-shaped plans
- *  are treated as the same building. Calibrated against the real library — see
- *  the block above; the spec pins both the clone it must catch and the honest
- *  pair it must not. */
+/** The largest single normalised design move a ONE-DIMENSION NUDGE produces —
+ *  0.067 for the verifier's 14 ft plan re-listed at 15 ft, and 0.25 for the
+ *  widest-apart pair the library ever had with nothing structural to tell it
+ *  apart. 0.2 sits between them.
+ *
+ *  IT IS NOT A VERDICT THRESHOLD ANY MORE, and the name is kept only because
+ *  it is what the figure measures. `paddedPlanPairs` does not consult it: a
+ *  pair is padding when nothing structural separates it, at any distance. What
+ *  the number still does is let tests/plan-catalog.spec.ts prove its
+ *  counterexamples are the shapes it says they are — that the caught clone
+ *  really is a nudge, and that the far-apart clone really is not. */
 export const PLAN_NUDGE_DISTANCE = 0.2;
 
 /** Axes a dimension nudge cannot fake. Prose is excluded on purpose. */
@@ -2375,15 +3325,40 @@ export function planMassingDistance(a: PlanTemplate, b: PlanTemplate): number {
   return Math.min(1, best);
 }
 
-/** Which walls carry which kinds of opening — the shape of the elevation, not
- *  its dimensions. A width nudge slides a default opening along its wall and
+/* WHERE AN OPENING STARTS IS A DESIGN DECISION; ITS EXACT SILL IS NOT.
+   Three bands, because the signature has to survive two opposite attacks. Exact
+   sills would let a padder buy an acquittal by dropping one window an inch, and
+   would split a design drawn at 3 ft from the same design drawn at 3.25 ft. No
+   sill at all was the state this gate shipped in, and it could not tell a
+   clerestory from a window: "east wall, window" was the whole of what it knew.
+
+   The bands are the three things a sill can mean. Below 1 ft the opening starts
+   at the floor — a door, or a wall given to glass. Between 1 and 5 ft it is a
+   window you look out of standing up. At 5 ft and above it is a clerestory or a
+   vent: light and air, not a view. */
+const SILL_FLOOR_FT = 1;
+const SILL_HIGH_FT = 5;
+const sillBand = (sillFt: number): "floor" | "sill" | "high" =>
+  sillFt < SILL_FLOOR_FT ? "floor" : sillFt < SILL_HIGH_FT ? "sill" : "high";
+
+/** Which walls carry which kinds of opening, and at what height each one
+ *  starts — the shape of the elevation, not its dimensions.
+ *
+ *  A width nudge slides a default opening along its wall and resizes it, and
  *  changes nothing here, which is exactly the point: a plan that wants to be
- *  counted as a different design has to be drawn as one. */
+ *  counted as a different design has to be drawn as one.
+ *
+ *  THE SILL BAND IS WHY `jordhus-berm` IS NOT READ AS A CLONE. It is an
+ *  earth-sheltered box whose only openings above the berm line are two 2 ft
+ *  vents 7.5 ft up; `meadow-one` is a generic cottage with punched windows at
+ *  3 ft. Without the band those two elevations were the same string, and the
+ *  bermed house was indistinguishable from a cottage of another size — a real
+ *  difference the gate simply was not looking at. */
 const elevationComposition = (plan: PlanTemplate): string =>
   plan.spec.volumes
     .map((v) =>
       v.openings
-        .map((o) => `${o.wall}:${o.kind}`)
+        .map((o) => `${o.wall}:${o.kind}@${sillBand(o.sillFt)}`)
         .sort()
         .join(","),
     )
@@ -2432,6 +3407,18 @@ export function planStructuralAxes(a: PlanTemplate, b: PlanTemplate): PlanStruct
  * Every pair that is one plan wearing another plan's dimensions. Empty is the
  * healthy answer; anything in it names both ids, how close they are and the
  * fact that nothing structural separates them.
+ *
+ * DISTANCE NO LONGER ACQUITS, and that is the change this function most needs
+ * a reader to notice. It used to require BOTH a near-identical massing and no
+ * structural difference, which quietly meant a plan could earn its place by
+ * padding harder: `meadow-one`, `solstice-cottage` and `jordhus-berm` were
+ * three one-bedroom SIP gables with the same elevation string and the same
+ * programme, and all three were acquitted purely by sitting more than
+ * PLAN_NUDGE_DISTANCE apart in size. Using a measurement the block above
+ * proves CANNOT separate padding from honest work to hand out acquittals was
+ * the error in both directions. Two plans that differ on no structural axis
+ * differ only in dimensions, and differing only in dimensions is the
+ * definition of the thing this rule exists to reject.
  */
 export function paddedPlanPairs(
   plans: readonly PlanTemplate[] = PLAN_TEMPLATES,
@@ -2439,14 +3426,17 @@ export function paddedPlanPairs(
   const verdicts: PlanPairVerdict[] = [];
   for (let i = 0; i < plans.length; i++) {
     for (let j = i + 1; j < plans.length; j++) {
-      const massingDistance = planMassingDistance(plans[i], plans[j]);
-      if (massingDistance >= PLAN_NUDGE_DISTANCE) continue;
+      /* The stated limit, enforced rather than implied: a different NUMBER of
+         volumes is a different building, and this rule compares massings of
+         the same shape. Padding by bolting an extra shed onto a copy is a
+         different move and is still not caught here. */
+      if (plans[i].spec.volumes.length !== plans[j].spec.volumes.length) continue;
       const structuralAxes = planStructuralAxes(plans[i], plans[j]);
       if (structuralAxes.length > 0) continue;
       verdicts.push({
         a: plans[i].id,
         b: plans[j].id,
-        massingDistance,
+        massingDistance: planMassingDistance(plans[i], plans[j]),
         structuralAxes,
         padding: true,
       });

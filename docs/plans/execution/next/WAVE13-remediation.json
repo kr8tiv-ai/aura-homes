@@ -1,0 +1,45 @@
+{
+  "wave": 13,
+  "graphVersion": "1.2",
+  "shipped": ["AI01"],
+  "alsoInThisPass": ["OPEN01 mount defect", "WALK01 rig defect", "two gate holes", "one layout defect"],
+  "outcome": {
+    "verifiedAt": "2026-08-15",
+
+    "AI01": "The bounded co-pilot, and the first decision was what it must NOT be. This repo ships a static export to GitHub Pages with no server and no API key, so a co-pilot that quietly needed a model call would be a lie in the product's most trust-sensitive surface. It is a DETERMINISTIC advisor over engines that already exist: glazing against the NBC 9.36 prescriptive reference, footprint against the parcel's buildable envelope, budget against a stated cap, and an opening against its own legality check. No new edit primitive — it applies through `applyScenarioMove`, `applyPhrase` and `applyOpeningEdit`, so a confirmation costs exactly one undo step like every other edit. There is no `PreparedAction` type in this repo; the agent found the real confirm-before-act precedent in `guidance.ts` and extended that rather than inventing a second pattern.",
+
+    "theGateWorthCopying": "The node contract asked for 'a spec asserts no code path applies a suggestion without one'. A test that clicks Confirm and sees a change does not prove that — it proves the happy path. The gate proves the NEGATIVE in four layers: the module refuses a confirmation that does not quote the card's own text; every other export is serialised and searched for spec-shaped keys so nothing else can return a design; the apply call appears exactly once in the component, inside the armed branch; and a comment-stripped scan rejects every self-firing primitive (useEffect, setTimeout, setInterval, requestAnimationFrame, queueMicrotask). Six mutation proofs, including one that adds the exact bypass the contract forbids — a useEffect auto-apply — and watches three separate assertions go red.",
+
+    "whatItRefusesToSay": "Three suggestion kinds were designed and rejected, and they ship as named refusals rather than silent omissions. A fixture clearance clash is detected but no edit in this build resolves one, and moving a wood stove to a spot chosen by arithmetic that models neither the room nor the flue is a guess wearing the clothes of advice. A footprint or budget resize across more than one volume has no volume this build can name. An opening suggestion beyond the refit would leave a control that appears to fix something and does not."
+  },
+
+  "defectsFoundByTheNewGatesAndFixed": {
+    "WALK01-rig-drops-the-first-move": "PRESS NEXT BEFORE THE 3D VIEW FINISHES LOADING AND THE WALK DID NOTHING. The camera rig seeded its 'already applied' marker from the PENDING request, so a rig that mounted after the request dropped it — and the viewport is lazily loaded, which makes 'after' the ordinary case. The panel moved its index, said nothing, and the camera never went anywhere: a control that quietly does nothing, in the one panel whose whole argument is that it says what it does. Now seeded from what has LANDED, which keeps the behaviour the seeding was for (a rig remounting after a completed walk still will not replay it) while honouring a request nobody has honoured yet. Found only because WALK01's served-build block was moved into a gate that runs it.",
+
+    "walkthrough-test-asserted-a-number-nobody-observed": "The same block asserted `data-walk-writes === 4` after THREE keypresses. The count was wrong on its face and had never executed. Replaced with what the test actually means — each press lands the camera somewhere new, read off `data-walk-camera` which the rig writes from inside the canvas — plus a bound rather than an equality, because `frameloop=\"demand\"` coalesces rapid presses into one write on purpose and an exact count would measure the browser's frame scheduling instead of the walk.",
+
+    "visual-system-ui-locator-was-loose": "`getByRole('group', { name: 'View' })` passed for months by accident. Playwright's `name` is a case-insensitive SUBSTRING match, and the walkthrough shipped a group called 'Step between viewpoints' — which contains 'view'. Fixed with `exact: true`, which names the control the test means; renaming the other group would have left the loose locator waiting for the next word containing 'view'.",
+
+    "opening-numbers-asked-the-viewport-for-its-width": "`.opening-numbers__grid` took a second column at `@media (min-width: 40rem)`, but the panel's width comes from the column it sits in, not from the window. On a 1440px screen it put two columns inside a ~550px pane and each field's right-aligned value ran into the next field's label — literally `4'-0\"HEIGHT`. Replaced with `repeat(auto-fit, minmax(14rem, 1fr))`, which asks the container and has no breakpoint to keep in step with a layout change somewhere else. Observed in a screenshot, before and after."
+  },
+
+  "gateHolesClosed": {
+    "environment-conditional-skips-are-invisible-to-every-count": "THE THIRD TIME THIS CLASS COST A FEATURE ITS COVERAGE. buy-catalog.spec.ts was in no gate; walkthrough.spec.ts was in the UNIT gate with eight assertions behind a skip on a missing served build — listed, counted, green, executing nothing. The counter reads `test(` in source and the runner reports a skip as neither pass nor fail, so nothing we measure could see it. New gate: any spec whose source skips on a missing baseURL must be in playwright.ui.config.ts and must NOT be in package.json's list. Proven by putting walkthrough.spec.ts back where wave 12 shipped it and watching the gate name it.",
+    "the-scanner-found-itself-twice": "The new detector's first version matched `gate-coverage.spec.ts` and demanded the file policing the gates be moved into the UI gate. Twice: once because the regex literal contained the shape it hunts, and once because a COMMENT quoted the shape verbatim. Same bug as the spec counter, which counted its own regex. The pattern is now assembled from parts and the comment describes the shape in words.",
+    "plan-count-by-proximity": "`submission.includes(\"72\")` was satisfied by a video row reading '72-84s | Chain' — a timestamp passing a plan-count gate. The count must now appear within 40 characters of the word 'plan'."
+  },
+
+  "countsObserved": {
+    "npm test": "559 declared, 559 passed",
+    "npm run test:ui": "120 declared, was 97 before walkthrough.spec.ts moved into it",
+    "PLAN_TEMPLATES.length": 72,
+    "note": "Every one of these was re-run and written down rather than derived. The counter's own comment says why: a number nobody checked against the thing it counts is how the README got its numbers wrong in the first place."
+  },
+
+  "stillOpen": [
+    "OPEN01: `grabPx={5}` passes its own gate. The gate proves a grip's declared size, not that a five-pixel target is reachable by a real pointer.",
+    "PL02 (open since wave 8): `programme()` includes `plan.sleeping`, free prose, so one appended character acquits a padded clone. The real fix is structured sleeping data — a loft is a fact about a building and deserves a field, not a sentence. Reverting it collides two honest USDA adaptations; the reason is commented at the code.",
+    "The co-pilot has nothing to say about the default design, because the default design breaches nothing it can measure. That is correct and it is also the least convincing possible first impression. A demo path that starts from a design with a real problem would show the panel doing its job.",
+    "docs/research/PLAN-LIBRARY-SOURCES.md §11.1 describes solstice-cottage and the padding rule as they were before this wave."
+  ]
+}

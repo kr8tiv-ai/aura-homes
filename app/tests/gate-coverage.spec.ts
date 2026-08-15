@@ -49,6 +49,57 @@ const DELIBERATELY_UNGATED: Readonly<Record<string, string>> = {
 const inUnitGate = (file: string) => packageJson.includes(`tests/${file}`);
 const inUiGate = (file: string) => uiConfig.includes(`"${file}"`);
 
+/** A spec that needs a served build says so the same way every time: it calls
+ *  `test.skip` on the absence of a `baseURL`. Only the UI config supplies one,
+ *  so such a file in the unit gate declares its assertions and runs none.
+ *
+ *  THE PATTERN IS ASSEMBLED, NOT WRITTEN WHOLE, and for the same reason the
+ *  test counter below is: a scanner whose source contains the string it hunts
+ *  for finds itself. Written as one literal this matched gate-coverage.spec.ts
+ *  and demanded that the file policing the gates be moved into the UI gate.
+ *  Splitting `base`+`URL` means the shape being described never appears
+ *  contiguously in the file describing it. */
+const SKIPS_WITHOUT_BASE_URL = new RegExp(
+  `test\\.(?:skip|describe\\.skip)?\\s*\\(?[\\s\\S]{0,120}?\\{\\s*base` +
+    `URL\\s*\\}\\s*\\)\\s*=>\\s*!\\s*base` +
+    `URL`,
+);
+
+test("a spec that needs a served build is in the gate that serves one", () => {
+  /* THE THIRD TIME THIS CLASS HAS COST US A FEATURE'S COVERAGE.
+     buy-catalog.spec.ts was in no gate at all, which the file above now
+     catches. walkthrough.spec.ts was in the UNIT gate with eight assertions
+     behind a skip on a missing served build — so it was listed, counted,
+     green, and executed nothing that mattered. Membership in a gate is not
+     execution in that gate, and an environment-conditional skip is invisible to
+     every count this file keeps: the counter reads `test(` in source, and the
+     runner reports a skip as neither pass nor fail.
+
+     So the condition itself is the check. A file that skips without a baseURL
+     belongs in playwright.ui.config.ts, which supplies one, and nowhere else. */
+  const needsServer = specFiles.filter((file) =>
+    SKIPS_WITHOUT_BASE_URL.test(read(appRoot, "tests", file)),
+  );
+
+  /* The detector has to be discriminating before its verdict means anything —
+     if the regex stopped matching, this test would pass by finding nothing. */
+  expect(
+    needsServer.length,
+    "no spec matched the baseURL-skip shape, so this gate is asserting nothing. The pattern has probably drifted from how the specs are written.",
+  ).toBeGreaterThan(0);
+
+  for (const file of needsServer) {
+    expect(
+      inUiGate(file),
+      `${file} skips its own assertions without a baseURL, and only playwright.ui.config.ts supplies one — so wherever else it runs, those assertions never execute. Add it to that config's testMatch.`,
+    ).toBe(true);
+    expect(
+      inUnitGate(file),
+      `${file} needs a served build, but package.json's \`test\` list runs it without one. There it is counted as coverage and executes nothing.`,
+    ).toBe(false);
+  }
+});
+
 test("the gate detectors can actually fail", () => {
   /* Both halves below are membership checks against hand-maintained lists,
      which is exactly the kind of assertion that silently starts matching
@@ -147,20 +198,21 @@ test("the counter agrees with what the runners actually declare", () => {
   /* The counter is a regex over source, which is an approximation of what the
      runner does — and the first version of it was wrong by seven. So it is
      pinned against numbers OBSERVED from the runners themselves:
-       npm test        -> 480 declared (479 passed + the count assertion that
-                          was red while the number was being corrected), after
-                          wave 7 added export-pdf, furniture-fixtures and
-                          contributed-model
-       npm run test:ui -> 97 declared, on a full 6.7-minute run against a fresh
-                          static export, up from 63 as landing-film,
-                          plan-selection-visual and builder-viewer-tools
-                          joined the UI gate
+       npm test        -> 559 declared (558 passed + this assertion, which is
+                          red by construction while the number is being
+                          corrected), after waves 8-13 added margin-stack,
+                          builder-craft, builder-plans-first, opening-edit,
+                          variations, scenarios and copilot
+       npm run test:ui -> 120 declared, on a full 13.6-minute run against a
+                          fresh static export, up from 97 as walkthrough.spec
+                          moved here from the unit list — see the served-build
+                          gate above for why it had to
      If a spec is added or removed these numbers move, and moving them means
      re-running both suites and writing down what they said — which is the
      point. A counter nobody ever checked against the thing it counts is how
      the README got its numbers wrong in the first place. */
-  expect(UNIT_TESTS).toBe(480);
-  expect(UI_TESTS).toBe(97);
+  expect(UNIT_TESTS).toBe(559);
+  expect(UI_TESTS).toBe(120);
 
   const readme = read(repoRoot, "README.md");
   const submission = read(repoRoot, "docs", "SUBMISSION.md");
@@ -213,13 +265,32 @@ test("the published plan count is the real plan count", () => {
 
   const readme = read(repoRoot, "README.md");
   const submission = read(repoRoot, "docs", "SUBMISSION.md");
+
+  /* THE NUMBER HAS TO BE ABOUT PLANS. An `includes("72")` passed the moment
+     SUBMISSION.md grew a video row reading "72-84s | Chain" — a timestamp
+     satisfying a plan-count gate, which is the same presence-is-not-
+     correctness hole the README badge check had. So the count must appear
+     WITHIN A SENTENCE'S REACH of the word "plan": near enough that no
+     unrelated number can wander in, loose enough that "72-plan library",
+     "the plan library hit 72" and "Seventy-two-plan" all read as true. */
+  const NEAR = 40;
+  const statesPlanCount = (source: string, written: string): boolean => {
+    const hay = source.toLowerCase();
+    const needle = written.toLowerCase();
+    for (let at = hay.indexOf(needle); at >= 0; at = hay.indexOf(needle, at + 1)) {
+      const window = hay.slice(Math.max(0, at - NEAR), at + needle.length + NEAR);
+      if (window.includes("plan")) return true;
+    }
+    return false;
+  };
+
   expect(
-    readme.includes(String(total)) || readme.toLowerCase().includes(spelled(total)),
-    `README.md does not state the real plan count (${total}).`,
+    statesPlanCount(readme, String(total)) || statesPlanCount(readme, spelled(total)),
+    `README.md does not state the real plan count (${total}) anywhere near the word "plan".`,
   ).toBe(true);
   expect(
-    submission.includes(String(total)),
-    `docs/SUBMISSION.md does not state the real plan count (${total}) — it is the document a judge opens.`,
+    statesPlanCount(submission, String(total)),
+    `docs/SUBMISSION.md does not state the real plan count (${total}) near the word "plan" — it is the document a judge opens, and a number that happens to be in a timestamp is not a published count.`,
   ).toBe(true);
 });
 

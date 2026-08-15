@@ -361,6 +361,38 @@ file VW02 and VW03 both edit; and **VW03 writes a new `builder-mobile.spec.ts`**
 instead of editing VW01's `builder-viewer.spec.ts`, so a regression in the new
 work cannot be hidden by loosening the old pins.
 
+#### What wave 12 confirmed, and the rule it produced (Aug 14, evening)
+
+Five agents wrote nine new files with disjoint write-sets — `OpeningHandles.tsx`,
+`openingEdit.ts`, `Walkthrough.tsx`, `VariationStrip.tsx`, `ScenarioCompare.tsx`,
+`scenarios.ts`, `variations.ts` and four specs — and **not one of them could ship
+a feature**, because every one of them terminates in a mount inside
+`BuilderApp.tsx`. The orchestrator mounted all four. The `houseChildren` escape
+hatch worked exactly as §2b predicted for the two things that ride in the 3D
+scene, and did nothing for the two that are HTML panels.
+
+So the ownership-by-wave rule holds, with one amendment worth writing down:
+
+> **Rule 10 — an agent's deliverable is a mounted feature or a named mount.**
+> A node whose write-set excludes `BuilderApp.tsx` must end its report with the
+> verbatim JSX to paste and the exact anchor line to paste it against. Wave 12's
+> agents did this and the mount took minutes; a report that stops at "component
+> is ready" hands the orchestrator a search problem instead of an edit.
+
+Two things the mount caught that no agent could have, because each spans files
+no single write-set contained:
+
+- **Opening ids are unique per volume, not per design.** Three components took
+  `selectedOpeningId` as a bare string and `OpeningHandles` needed the owning
+  `volumeId` too. Resolved once in a memo at the mount rather than threaded
+  through every caller.
+- **`walkthrough.spec.ts` was declaring assertions and executing none of them.**
+  Its section 8 skips itself without a `baseURL`, and the spec had been added to
+  the unit gate, where there is none. Moved to `playwright.ui.config.ts`. This is
+  the second spec to be counted as coverage while running zero assertions, which
+  makes it a class: **a `test.skip` on an environment condition is invisible to
+  every count we keep.** `gate-coverage.spec.ts` should learn to see it.
+
 ---
 
 ## 3. Verification graph — anchor additions
@@ -628,6 +660,27 @@ hackathon-critical set can be lifted out untouched.
 | ID | Job | Gate |
 |---|---|---|
 | **AI01** | A sidebar over the existing deterministic brain / MCP tools that can read the current document and journey state, propose changes, explain trade-offs, and apply them only through `PreparedAction` confirmations. Evidence-grounded; never autonomous on anything consequential. | Every proposed write is a confirm-before-act card; a spec asserts no code path applies a suggestion without one. |
+
+**AI01 — SHIPPED, wave 13.** Two things the contract left open, decided and
+recorded. First, **there is no model call**: the app is a static export with no
+server and no key, so a co-pilot that quietly needed one would be a lie in the
+product's most trust-sensitive surface. It advises deterministically from
+engines that already exist — the NBC 9.36 prescriptive glazing reference, the
+parcel's buildable envelope, `createProjectBudget`, `checkOpening` — and every
+card prints the figures it read and the engine that produced them. Second,
+**`PreparedAction` did not exist**; the real confirm-before-act precedent is
+`GuidanceSuggestion` in `guidance.ts`, so that was extended rather than a second
+pattern invented.
+
+The gate is the part worth copying elsewhere. "No code path applies a suggestion
+without a confirmation" is a NEGATIVE, and a test that clicks Confirm and sees a
+change proves only the happy path. It is proven in four layers instead: the
+module refuses a confirmation that does not quote the card's own text; every
+other export is serialised and searched for spec-shaped keys, so nothing else
+can return a design; the apply call appears exactly once in the component,
+inside the armed branch; and a comment-stripped scan rejects every self-firing
+primitive. The mutation proof adds the exact bypass the contract forbids — a
+`useEffect` auto-apply — and three separate assertions go red.
 
 ### U8 — polish, linkage, resilience
 

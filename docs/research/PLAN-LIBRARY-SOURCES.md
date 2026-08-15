@@ -294,7 +294,9 @@ exist** — the style-targets lane came back empty on SIP, steel+polycarbonate a
 in the sweep covers contemporary Scandinavian houses. So all thirty are `kind: "aura-authored"`
 (`license: "MIT"`, `shareAlike: false`, `relationship: "original"`), authored from first principles.
 **No third-party plan geometry was copied, traced, or dimensionally adapted for any of them.** The
-library is now **55 templates: 44 aura-authored, 8 public-domain-adaptation, 3 licensed-adaptation.**
+library stood at **55 templates: 44 aura-authored, 8 public-domain-adaptation, 3 licensed-adaptation**
+at the end of this wave. (PL03 took it to 72 — see § 11. This paragraph is left as the record of where
+PL01 finished rather than rewritten, because the counts are dated facts, not a running total.)
 
 ### 9.1 The set
 
@@ -384,3 +386,145 @@ rather than silently fixed. **They still need one sentence each** — see the PL
   pattern lands in Aura as a deterministic phrase-to-edit layer over the builder's
   immutable document (each understood phrase becomes one labelled, undoable edit).
   Recorded here so the influence is credited even where the law requires nothing.
+- **chaos.com** (Enscape, Envision, Veras, Impact) — named by the founder Aug 14, 2026 as a
+  product study for wave 12. Nothing is licensed, bought or copied: the three verbs their
+  suite sells (explore, present, compare) map onto engines this repo already has. The one
+  line that is not crossed is recorded in the wave manifest — Veras generates renderings
+  with a diffusion model and **Aura's variation work is deterministic and parametric, never
+  AI-generated, and must never be described as such.**
+
+## 11. The second glass wave — seventeen Aura originals, Aug 14, 2026 (PL03)
+
+The founder asked for "cooler ones, more glass ... beautiful stunning designs that are modern and eco
+friendly". Same rights position as § 9 and § 6: no rights-cleared source exists for any of this, so all
+seventeen are `kind: "aura-authored"` (`license: "MIT"`, `shareAlike: false`, `relationship: "original"`),
+authored from first principles, and **no third-party plan geometry was copied, traced or dimensionally
+adapted for any of them.** The library is now **72 templates: 61 aura-authored, 8 public-domain-adaptation,
+3 licensed-adaptation.**
+
+**Seventeen, not thirty, and that is the headline.** The node's own contract said the anti-padding gate
+is still defeatable through a prose field, which makes the author's judgement the real control. The test
+applied to every candidate was one sentence: *what does this building know that no other plan in the
+library knows?* Seventeen ideas answered it. The ones that did not are listed in § 11.2 — a rejected idea
+with its reason is worth more to the next wave than a thirtieth plan would have been to this one.
+
+### 11.1 The set
+
+| # | Template id | Idea it exists for | Storeys | Area | Glazing |
+|---|---|---|---|---|---|
+| 1 | `jordhus-berm` | earth against three walls pays for glass on the fourth | 1 | 540 | 21% |
+| 2 | `lysrygg-monitor` | a clerestory spine lights the middle of a deep plan | 1 | 1,140 | 14% |
+| 3 | `vertikal-tower` | the smallest footprint that still holds two storeys | 2 | 576 | **23%** |
+| 4 | `bakgate-adu` | laneway suite over a garage — the Edmonton infill case | 2 | 1,056 | 14% |
+| 5 | `hyttetun-cluster` | heat the hall, not the beds: one hall + three bunkies | 1 | 756 | 17% |
+| 6 | `karnapp-bay` | all the view glass gathered into one projecting bay | 1 | 568 | 19% |
+| 7 | `midtglass-longhouse` | glass where people gather, none where they sleep | 1 | 924 | 21% |
+| 8 | `atriumgard` | four bars closed around a court; wind, not heat | 1 | 680 | **25%** |
+| 9 | `soltak-offgrid` | the south face spent on an array instead of a view | 1 | 680 | 11% |
+| 10 | `skrent-walkout` | a slope buys the second storey; earth takes the uphill walls | 2 | 1,232 | 21% |
+| 11 | `dobbelgavl-bar` | both gable ends glazed, both long sides shut | 1 | 612 | **30%** |
+| 12 | `solvegg-house` | a Trombe wall: glass the model counts and you cannot see through | 1 | 520 | **23%** |
+| 13 | `skogsrom-cabin` | eleven narrow slots instead of one picture window | 1 | 616 | 18% |
+| 14 | `familie-fire` | the library's first four-bedroom plan + a glazed pavilion | 2 | 1,752 | 21% |
+| 15 | `skygge-veranda` | the shading answer is the eave, drawn at 4 ft | 1 | 616 | **24%** |
+| 16 | `bygata-workshop` | shopfront below, home above — mixed use on a village street | 2 | 1,320 | 19% |
+| 17 | `modulhus` | CLT drawn to the panel: every opening on a 2 ft line | 1 | 864 | 19% |
+
+Two `volume()` inputs are new and both reach the engine rather than sitting in the data: `overhang`
+(every one of the previous 55 plans used 1.5 ft, so the roof's own shading power was a constant nobody
+could spend) and `facing` (a court's roofs must fall outward; no pitch achieves that). `geometry.ts`
+grows `boundsWithRoof` with the overhang and reads the shed fall direction from `facing`; `toPlan.ts`
+prints both on the roof note a buyer reads. Assertions cover all of it — see § 11.4.
+
+### 11.2 What was deliberately NOT drawn, and why
+
+- **No fifth A-frame.** § 9.3's ruling stands; the library already carries four.
+- **No butterfly roof.** Two sheds falling into a shared valley is a lovely section and an internal
+  gutter in a snow climate. `lysrygg-monitor` does the same daylight job with the water going outward.
+  Rejected on the merits, not on the modelling.
+- **No house-in-house** (an insulated core inside a lightly-tempered glass shell — the Naturhus idea).
+  The volume model would count the inner box's walls as exterior and its footprint twice. It cannot be
+  drawn honestly here, so it was not drawn at all.
+- **No north-facing glazed cold porch.** `vindfang-cabin` (airlock) and `vinterhage-house` (sunspace)
+  already hold both halves of that argument.
+- **No second "solid base, glazed floor above" plan.** A lakeshore plinth beside `bakgate-adu` is the
+  same section wearing a different label. One shipped.
+- **No green/turf roof plan.** The roof model has no such category, so the only thing that would change
+  is a sentence — and a plan whose whole idea lives in prose is padding with a nice name.
+- **No rotated sun-trap.** `planCatalog.ts`'s overlap clip is exact only for quarter turns, and the spec
+  asserts it; a 30° or 45° volume would silently make three published footprints wrong. Blocked until
+  that clip is upgraded, and named here so the block is findable.
+- **No slot-glazed chapel retreat.** Same thesis as `skogsrom-cabin` with a steeper roof. One idea, one
+  plan.
+- **No second two-storey passive house.** `north-family-two` and `kompakt-passiv` already carry it.
+- **No retrofit/addition plan.** The model cannot represent the existing house a glazed link would
+  attach to, so the drawing would misrepresent what is being built.
+
+### 11.3 The glazing disclosures
+
+Five of the seventeen model above the 22% NBC 9.36 **prescriptive** ceiling, and each names the ceiling,
+states its own ratio within a point of its geometry, names its compliance path and says what the glass
+costs in a zone 7A winter — the sentence shape § 9.2 established, held by the same gate.
+
+| Template | Modelled ratio | Compliance path named in `notes` | What it says the glass costs |
+|---|---|---|---|
+| `dobbelgavl-bar` | 30% | performance path | a north gable of glass losing heat every winter night |
+| `atriumgard` | 25% | performance path | over twice `kompakt-passiv`'s exterior wall per sq ft of floor |
+| `skygge-veranda` | 24% | trade-off path | the eave shades July, not January; the glass still loses heat |
+| `vertikal-tower` | 23% | performance path | a small building loses heat per sq ft faster than a large one |
+| `solvegg-house` | 23% | performance model | without night insulation the Trombe wall runs backwards after dark |
+
+The library-wide over-ceiling count is now **15** (8 disclosed from PL01, 5 from PL03, plus the two
+grandfathered records `fjell-cube` and `lys-lantern`, which **still need one sentence each** — that
+handoff is still open from PL01).
+
+### 11.4 New gates, and the two false claims building them uncovered
+
+Five assertions were added to `app/tests/plan-catalog.spec.ts`, and every one was mutation-tested (break
+the thing it guards, watch it go red, restore):
+
+1. **The area on the card is the area the geometry models.** Every kicker opens with "N sq ft" and is now
+   compared to `totalFloorAreaSqFt`. No exemption list.
+2. **No plan claims more glass than the model draws.** "N sq ft of glass" in `notes` must be ≤ the plan's
+   `glazedAreaSqFt`; two PL03 notes that mean the whole house are pinned to exact equality by id. The
+   weaker universal bound is deliberate — two PL01 notes describe *one part* of a building and prose
+   cannot tell a test which part.
+3. **The deep eave is real.** `skygge-veranda`'s 4 ft overhang must (a) grow `boundsWithRoof` by exactly
+   2 × (4 − 1.5) against the same spec at the default, (b) print as 4 ft rather than 1.5 ft on
+   `planFromSpec`'s roof note, and (c) match the shade depths its notes state, recomputed from latitude
+   53.5°N and 23.44° axial tilt. The notes say plainly that this is hand geometry at solar noon: **this
+   codebase has no sun-path model.**
+4. **The panel grid is real and discriminating.** Every `modulhus` opening lands on a 2 ft line, and
+   fewer than three other plans in the library may — measured today at **zero** of the other 71, which
+   is what makes it a decision rather than a coincidence. A property everything satisfies is not a
+   design choice, so the gate checks both halves.
+5. **The courtyard's roofs fall outward.** Each `atriumgard` bar's `facing` is derived from its position
+   relative to the court and checked, then checked again in the drawing note.
+
+Building #1 and the exterior-wall measurement turned up **two claims already in the library that were
+false**, neither caught by reading:
+
+- `beltsville-farmhouse` published **1,292 sq ft** against a 26×38 + 14×22 envelope that is **1,296**.
+  The kicker moved to the geometry.
+- `kompakt-passiv` claimed a near-square plan "has the least exterior wall per square foot of anything
+  else in this library". False under **both** readings: per square foot of floor, `north-family-two`
+  (0.073) and four other two-storey plans beat its 0.154; per square foot of footprint,
+  `hearth-accessible` (0.134) beats it. The sentence now makes the comparison that is true — Atriumgård
+  carries a little over twice its exterior wall per square foot of floor — and a test holds the ratio.
+  `atriumgard`'s own note was written to the measurement rather than the other way round, which is why
+  it claims "no plan over 400 sq ft", not a superlative: `libertiny-study`, a 165 sq ft towable, beats
+  everything on this measure and always will.
+
+Renegotiated floors (raised, with the reason recorded beside each): library size 55 → 72, aura-authored
+44 → 61, over-ceiling plans 8 → 15, self-stated glazing percentages 25 → 42, distinct first-volume
+elevations 50 → 65. The anti-padding counterexample gained a third shape — a PL03 plan cloned one foot
+wider — so the gate is tested against the wave people are actually adding to.
+
+### 11.5 Open items handed on
+
+- **`README.md` and `docs/SUBMISSION.md` must state 72.** `tests/gate-coverage.spec.ts`'s
+  "the published plan count is the real plan count" is red until they do. Both files are the
+  orchestrator's to edit.
+- **`fjell-cube` (29%) and `lys-lantern` (23%)** are still grandfathered without disclosure sentences,
+  carried over from PL01.
+- **The overlap clip is still quarter-turn only**, which is what blocks any rotated plan (§ 11.2).

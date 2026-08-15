@@ -15,7 +15,7 @@
 [![Live](https://img.shields.io/badge/live-aurahomes.fun-047857?style=flat-square&labelColor=f5f5f4)](https://aurahomes.fun)
 [![HOMES](https://img.shields.io/badge/%24HOMES-live_on_X_Layer_196-047857?style=flat-square&labelColor=f5f5f4)](https://aurahomes.fun/homes)
 [![X Layer](https://img.shields.io/badge/labs-X_Layer_testnet_1952-171a18?style=flat-square&labelColor=f5f5f4)](#x-layer-experiments)
-[![Tests](https://img.shields.io/badge/gates-480_unit_%2B_97_UI_%2B_hardware_proof-171a18?style=flat-square&labelColor=f5f5f4)](#verification)
+[![Tests](https://img.shields.io/badge/gates-559_unit_%2B_120_UI_%2B_hardware_proof-171a18?style=flat-square&labelColor=f5f5f4)](#verification)
 [![License](https://img.shields.io/badge/license-MIT-171a18?style=flat-square&labelColor=f5f5f4)](LICENSE)
 
 <sub>Open-source product and hackathon submission by <a href="https://github.com/Matt-Aurora-Ventures">Matt Haynes / Aura Ventures</a>. Alberta first; designed to travel.</sub>
@@ -89,8 +89,11 @@ Aura uses explicit status language throughout the interface and this submission:
 | Local-first project intake, library, autosave, archive, duplicate, recovery | **Live** | Projects stay in IndexedDB unless the person exports them. No account or cloud sync. |
 | Plain and AES-256-GCM encrypted `.aura-project.json` bundles | **Live** | The passphrase is never recoverable by Aura; future file versions fail visibly without overwriting local work. |
 | Guided and Pro editor modes over one `BuilderDocument` | **Live** | Design intent only. It does not certify structure, energy, manufacturing, or permits. |
-| Fifty-five-plan editable library with Alberta material/system ranges | **Live** | Aura originals (including the Nordic square set), three attributed open-source studies, and eight USDA/public-domain adaptations; source and licence notices travel inside every project. |
+| Seventy-two-plan editable library with Alberta material/system ranges | **Live** | Aura originals (including the Nordic square set), three attributed open-source studies, and eight USDA/public-domain adaptations; source and licence notices travel inside every project. |
 | Polygon footprints, partitions, openings, rooms, roofs, and multi-storey graph intent | **Live / in build** | The graph editor is usable; some professional export paths still describe the legacy rectangular shell and say so in the UI. |
+| Every opening editable three ways — grips in 3D, handles in the plan, typed figures | **Live** | One edit, one undo step, whichever way you reach it. A change that would break a wall stops and prints the reason instead of silently refusing. |
+| Design variations, a derived walkthrough, and a side-by-side impact comparison | **Live** | All three are parametric and deterministic: no image model, no rendering service, and no number the codebase does not compute. Daylight autonomy, energy use intensity and heating load are named as not modelled, in rows of the same table. |
+| A co-pilot that proposes and never applies | **Live** | Deterministic, offline, and evidence-first: every card prints the figures it read and the engine that produced them. Applying anything takes an explicit confirmation, which a spec proves is the only path in. |
 | Drawings, JSON, DXF, IFC4, ifcJSON, glTF/OBJ and comfort handoff | **Live / in build** | Export scope varies by geometry mode. Outputs are review-ready, never construction-ready. |
 | Alberta budget ranges and quote snapshots | **Pilot** | Cost bands are explicit assumptions, not supplier offers or fixed manufacturing promises. |
 | Parcel-fit discovery | **Pilot** | Demonstration/public records only today. No unauthorized MLS, REALTOR.ca, AlbertaLand, or listing-site scraping. |
@@ -298,8 +301,8 @@ The current release checkpoint (August 14, 2026, deploy `8e98b68`) produced:
 | Suite | Result |
 | --- | ---: |
 | TypeScript / production compilation | Passed |
-| Deterministic app + contract-truth specs | **480 passed** |
-| Playwright UI specs against a fresh static export | **97 passed** |
+| Deterministic app + contract-truth specs | **559 passed** |
+| Playwright UI specs against a fresh static export | **120 passed** |
 | Hardware scene proof (real GPU, desktop + mobile) | **Passed at `3e00c66`** — meadow settled both tiers, wind measured at 26% pixel motion on an idle scene, render p95 8.3 ms at the full tier. Not re-run since; it needs a quiet machine and a real GPU, so it is dated rather than implied. |
 | Money anchor (`agent/` `npm run demo`) | **Reconciles to the dollar** — ex-land $199,100 / $301,280 / $443,900 vs `data/alberta/cost-model.json` |
 | Release tooling (`npm run test:release`) | Passed — append-only two-phase gh-pages publishing with chunk recovery |
