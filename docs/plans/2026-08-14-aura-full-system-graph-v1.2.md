@@ -476,6 +476,84 @@ scenario comparison implying an energy result we never computed would be the
 most dangerous sentence on the site, and it is exactly the sentence a
 sustainability feature invites.
 
+### VAR02 — the diffusion half, PLANNED, with its preconditions written down
+
+*Founder direction, 2026-08-14 evening: "we can use a diffusion model via
+[an API] or the thing where you pay the costs and charge a 10 percent uplift on
+the api — add that to the graph for future implementation."*
+
+So the line above is not "we will never render"; it is **"VAR01 does not, and
+nothing in it may imply otherwise."** Generated imagery becomes a separate,
+later, honestly-labelled node. Recorded now because the constraints below are
+easy to discover late and expensive to discover late.
+
+| Precondition | Why it blocks today |
+|---|---|
+| **A server** | The site is a static GitHub Pages export. There is no runtime to hold a key, and a key in a static bundle is a published key. `DEPLOYMENTS.md` already reserves the Hostinger VPS for "the later evidence-grounded API" — that is this. |
+| **A founder decision on spend** | Every data node in this project so far is free-tier by standing constraint. Paid inference reverses that, so it needs a dated row in `decisions.json` rather than an inference from a chat message. |
+| **A metering path** | `agent/src/mcp/payment.ts` already models per-call metering — and says of itself, in its own words, that no wallet is contacted and settlement is `"simulated"`. Real cost pass-through plus a 10% uplift means real settlement, and the honest version tells a person the estimated cost **before** the call, not after. |
+| **A rights answer** | This is the one most likely to be skipped. Every plan record carries `source`, `licence`, `attribution` and `changes`, and `plan-catalog.spec.ts` refuses a record without them. A diffusion output has no provenance chain of that kind. **A generated image may therefore never enter `PLAN_TEMPLATES`.** |
+
+**The vocabulary already exists and should be reused rather than reinvented:**
+`data/plans/candidates.json` distinguishes `tier: "editable" | "inspiration"`.
+A diffusion render is **inspiration** — a mood, a facade study, something to
+show a client — and it is never an editable, costable design. VAR01's variants
+are editable. Keeping those two words apart is the whole of the honesty here,
+and the failure mode is obvious: a beautiful render sitting next to a real plan,
+with nothing telling the reader that one can be built and priced and the other
+cannot.
+
+### AI-STREAM — one gateway, models only at the edges
+
+*Founder direction, 2026-08-14 evening: "with OpenRouter we can charge crypto or
+even payments. Let's put that on the roadmap and see which models can help
+enhance our product in a later version."*
+
+**Why a gateway rather than a provider.** One API across many models means no
+lock-in, per-token pricing that is legible enough to pass through with an
+uplift, and the ability to route a cheap task to a cheap model — which matters
+because most of what this product needs is extraction, not genius. It also
+routes crypto top-ups, which is the first thing in this project where the token
+rails and the product would actually touch rather than sit beside each other.
+
+**THE ARCHITECTURAL RULE, and it is already the shape of this codebase:**
+
+> **Models at the boundary. Determinism at the core.**
+
+`guidance.ts` says it of itself today — *"This function SUGGESTS. It writes
+nothing, applies nothing… A guided default that quietly rewrote the home would
+be the autonomous behaviour this product refuses everywhere else."* Every node
+below either READS something fuzzy into structure, or PHRASES something the
+deterministic engine already computed. None of them decides. The moment a model
+picks a wall thickness, the money anchor and every gate behind it become
+decoration.
+
+| Node | What the model does | What stays deterministic | Value |
+|---|---|---|---|
+| **AI-S1 · semantic search** | Embeddings over the 55 plans, the supplier records and the zoning districts | Ranking, filtering and every figure shown | **Highest, and FREE — see below** |
+| **AI-S2 · quote extraction** | Read a contractor's PDF into line items | `quoteReconciliation.ts` already reconciles line items against the budget and SHA-256s the evidence | High. The fuzzy half is reading a PDF; the half that matters is already built |
+| **AI-S3 · sketch and site photo intake** | Vision: a napkin sketch or a site photo into a starting envelope | Everything after: validation, geometry, cost | High. "Photograph your sketch, get a document you can price" |
+| **AI-S4 · the bounded co-pilot (AI01)** | Naturalise `explain()` and `defaultsFor()` output; draft an RFQ | Every number, every suggestion, every apply through `PreparedAction` | Already scoped as a node; the gateway makes it hosted rather than local |
+| **AI-S5 · bylaw and document reading** | Summarise a zoning section a person is looking at | The zoning data itself, which is baked and cited | Medium. Must link the clause, never paraphrase it as the rule |
+| **VAR02 · diffusion** | Facade and interior inspiration | Nothing — it produces an image, not a design | See VAR02 above: `tier: "inspiration"`, never `PLAN_TEMPLATES` |
+
+### AI-S1 is free and should not wait for any of this
+
+Embeddings can be computed **at bake time** and shipped as a static artifact,
+exactly like `data/land/` and `data/alberta/`. No server, no key at runtime, no
+per-call cost, no spend decision — the same free-tier pattern already used
+three times in this repo. And it addresses the failure the founder hit twice in
+one day: he could not find the contractor directory, and did not know the land
+tool existed. Semantic search over a 55-plan library and a growing set of
+records is the discoverability fix, and it is available now.
+
+**Everything else in this table needs the VAR02 preconditions first** — a
+server, a dated spend decision, real settlement rather than the simulated
+metering `payment.ts` currently models, and a rights answer per capability. The
+uplift model is the same one the founder described: pass the real cost through,
+add 10%, and quote the estimate **before** the call rather than reporting it
+after.
+
 **PL03** runs alongside: more diversity, more glass, on the founder's ask for
 "beautiful stunning designs that are modern and eco friendly". Authored under a
 known-weak anti-padding gate — PL02's replacement is still defeatable through a
