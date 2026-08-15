@@ -1,0 +1,570 @@
+"use client";
+
+/** @jsxImportSource react */
+
+/* WHY THE PRAGMA ABOVE. React is already the JSX source for the Next build, so
+ * for the app this line changes nothing. It is here for the test runner:
+ * Playwright transforms every .tsx it loads with its OWN jsx runtime
+ * (`playwright/jsx-runtime.js`, which returns `{__pw_type: "jsx", …}` objects),
+ * so importing this component into a spec and rendering it produced "Objects
+ * are not valid as a React child" instead of markup. Babel honours a per-file
+ * `@jsxImportSource` over the runner's default, which is what lets
+ * `tests/land-ui.spec.ts` render this component for real and read the text a
+ * browser would show — the gap LAND01's verifier found, where the
+ * forbidden-vocabulary guard covered the artifact and not the page.
+ */
+
+/* THE ZONING LOOKUP — the on-screen half of the Edmonton constraint data.
+ *
+ * WHY IT LOOKS LIKE THIS. The founder asked why he cannot search for land. The
+ * honest answer has two halves and this surface has to carry both.
+ *
+ *   1. There is no point-in-parcel lookup and there cannot be one here. The
+ *      City's polygon geometry measured about 8 MB and a static export will not
+ *      carry it, so an address box would be a lie made of JavaScript: it would
+ *      accept an address, return a zone, and have guessed. What this offers
+ *      instead is a DISTRICT lookup — you bring the zone code (or reach the
+ *      City's map, linked at the point where geometry is needed) and the
+ *      authority's own published rules come back.
+ *
+ *   2. A district answers ONE of the seven questions the fit engine asks, and
+ *      only when the zone code carries an `h` modifier. Six stay open. So the
+ *      unanswered count is the headline number on this surface and the verified
+ *      ceiling sits underneath it. A design that led with one green tick and
+ *      buried six unknowns would be worse than the four fictionalized records it
+ *      sits beside, because those at least announce themselves as a
+ *      demonstration.
+ *
+ * TWO VERDICTS, NEVER A MATCH. `evaluateEdmontonDistrict` returns exactly
+ * `district-rule-blocks` or `parcel-evidence-required` and no 0–100 score. This
+ * file adds neither. The single most useful sentence it can produce is a
+ * citable refusal — and note what that refusal can actually be about: the
+ * height ceiling, and nothing else. Minimum Site area lives in Zoning Bylaw
+ * 20001's text rather than in any open dataset, so it is recorded `unknown` for
+ * every one of the 156 districts and can never refuse anything. That is stated
+ * on screen rather than hidden behind an empty row.
+ *
+ * EVERY FIGURE CARRIES ITS LINK. `districtFigures` returns a non-nullable
+ * `sourceHref` per figure, so an unsourced number cannot be constructed, let
+ * alone rendered. `tests/land-ui.spec.ts` walks all 156 districts through it and
+ * then checks the rendered DOM, because a rule the component forgets to honour
+ * is a rule that only exists in a comment.
+ */
+
+import { useMemo, useState } from "react";
+
+import type { LandDesignRequirements, LandFitFinding } from "@/lib/marketplace/discovery";
+import {
+  CITY_ZONING_MAP_URL,
+  EDMONTON_CONSTRAINT_SET,
+  EDMONTON_DISTRICTS,
+  EDMONTON_OVERLAYS,
+  LAND_CONSTRAINT_BOUNDARY,
+  districtConstraintFacts,
+  districtMaxHeightFt,
+  evaluateEdmontonDistrict,
+  findEdmontonDistrict,
+  landConstraintAttribution,
+  type EdmontonDistrictVerdict,
+  type EdmontonZoningDistrict,
+  type EdmontonZoningOverlay,
+} from "@/lib/marketplace/landData";
+
+const NUM = new Intl.NumberFormat("en-CA");
+
+/* ------------------------------------------------------------ the sources */
+
+/** A dataset's catalogue page, by portal id. Never null: a claim this surface
+ *  makes about the City's data always resolves to something a reader can open,
+ *  and the City's zoning map is the backstop rather than a dead `href`. */
+function catalogueUrl(sourceId: string): string {
+  const source = EDMONTON_CONSTRAINT_SET.sources.find((candidate) => candidate.id === sourceId);
+  return source?.catalogueUrl ?? EDMONTON_CONSTRAINT_SET.sources[0]?.catalogueUrl ?? CITY_ZONING_MAP_URL;
+}
+
+const ZONING_MAP_DATASET = catalogueUrl("fixa-tstc");
+const OVERLAY_DATASET = catalogueUrl("6w3s-58pv");
+
+/** The extract date as the artifact records it, sliced rather than formatted.
+ *  `Intl.DateTimeFormat` resolves against the runtime's zone, which differs
+ *  between the export build and the reader's browser — a hydration mismatch on
+ *  a date is the kind of defect nobody looks for. */
+const EXTRACT_DATE = EDMONTON_CONSTRAINT_SET.retrievedAtISO.slice(0, 10);
+
+/* ------------------------------------------------------------- the figures */
+
+/** One published number, with the authority page it came from. */
+export interface ZoningFigure {
+  id: string;
+  label: string;
+  /** The value exactly as it is shown. */
+  value: string;
+  /** Where the number came from. Deliberately NOT nullable — an unsourced
+   *  figure is the thing this project refuses, so it cannot be built. */
+  sourceHref: string;
+  sourceLabel: string;
+}
+
+/**
+ * Everything this district publishes as a number, each bound to its source.
+ *
+ * The height ceiling's source is the district's own section of Zoning Bylaw
+ * 20001. Every district that carries an `h` modifier currently has one; the
+ * fallback names the section that publishes the modifier CONVENTION instead, so
+ * a future extract that drops a section still cannot produce a bare number.
+ */
+export function districtFigures(district: EdmontonZoningDistrict): ZoningFigure[] {
+  const figures: ZoningFigure[] = [];
+  const heightFt = districtMaxHeightFt(district);
+
+  if (district.maxHeightM !== null && heightFt !== null) {
+    figures.push({
+      id: "height",
+      label: "Maximum Height",
+      value: `${district.maxHeightM.toFixed(1)} m · ${heightFt.toFixed(1)} ft`,
+      sourceHref: district.bylawUrl ?? EDMONTON_CONSTRAINT_SET.modifierConvention.sourceUrl,
+      sourceLabel: district.bylawUrl
+        ? "Zoning Bylaw 20001 · this district's section"
+        : "Zoning Bylaw 20001 · the Modifier convention",
+    });
+  }
+
+  if (district.floorAreaRatio !== null) {
+    figures.push({
+      id: "far",
+      label: "Maximum Floor Area Ratio",
+      value: district.floorAreaRatio.toFixed(1),
+      sourceHref: district.bylawUrl ?? EDMONTON_CONSTRAINT_SET.modifierConvention.sourceUrl,
+      sourceLabel: district.bylawUrl
+        ? "Zoning Bylaw 20001 · this district's section"
+        : "Zoning Bylaw 20001 · the Modifier convention",
+    });
+  }
+
+  figures.push({
+    id: "mapped-areas",
+    label: "Areas on the zoning map",
+    value: NUM.format(district.mappedAreas),
+    sourceHref: ZONING_MAP_DATASET,
+    sourceLabel: `City of Edmonton weekly extract · read ${EXTRACT_DATE}`,
+  });
+
+  return figures;
+}
+
+/** Where this district's rules are written, and what to do when they are not
+ *  written in one place. "No link" and "no single section" are different
+ *  situations for a reader, and collapsing them into a blank throws that away. */
+export function districtSection(district: EdmontonZoningDistrict): {
+  href: string;
+  label: string;
+  note: string | null;
+} {
+  if (district.bylawUrl) {
+    return {
+      href: district.bylawUrl,
+      label: "Read this district in Zoning Bylaw 20001",
+      note: null,
+    };
+  }
+  if (district.bylawUrlState === "site-specific") {
+    return {
+      href: CITY_ZONING_MAP_URL,
+      label: "Open the City's zoning map",
+      note: `The City writes this district's rules per site rather than as one section — the current extract points at ${NUM.format(district.bylawUrlCount)} of them — so there is no single section to link.`,
+    };
+  }
+  return {
+    href: CITY_ZONING_MAP_URL,
+    label: "Open the City's zoning map",
+    note: "The current extract publishes no bylaw section for this district.",
+  };
+}
+
+/* ------------------------------------------------------------ the verdicts */
+
+/**
+ * The two things a district can say. There is no third entry and there must
+ * never be one: a district governs every parcel inside it and knows nothing
+ * about the one you are standing on, so "this land works" is not a sentence it
+ * is entitled to. `tests/land-ui.spec.ts` pins the key count and reads both
+ * strings for the vocabulary that would imply otherwise.
+ */
+export const ZONING_VERDICT_COPY: Record<EdmontonDistrictVerdict, { title: string; body: string }> = {
+  "district-rule-blocks": {
+    title: "Refused by a published rule",
+    body: "A rule the City published refuses the design as drawn. This is a real refusal with a section behind it — read the section, then change the design or look at another district.",
+  },
+  "parcel-evidence-required": {
+    title: "Parcel evidence required",
+    body: "Nothing the City publishes about this district refuses the design. That is emphatically not the same as land here working: the questions below that stay open are answered by the parcel, the survey and the utility, never by the zone code.",
+  },
+};
+
+/* ------------------------------------------------------- the seven questions */
+
+/** Each finding's fact, so the reason a question is open travels with it. The
+ *  map is exhaustive on purpose: a finding id the engine adds and this file has
+ *  never seen renders with no reason, and the spec goes red rather than the
+ *  reader quietly getting a blank. */
+const FACT_OF_FINDING: Record<string, keyof ReturnType<typeof districtConstraintFacts>> = {
+  "district-minimum": "districtMinimumSqft",
+  "buildable-envelope": "buildableWidthFt",
+  height: "maximumHeightFt",
+  road: "yearRoundRoadAccess",
+  water: "potableWater",
+  septic: "septicSuitability",
+  grid: "gridDistanceKm",
+};
+
+/** Why a question is open, in the words the data module already wrote. */
+export function reasonForFinding(district: EdmontonZoningDistrict, finding: LandFitFinding): string | null {
+  const key = FACT_OF_FINDING[finding.id];
+  if (!key) return null;
+  const fact = districtConstraintFacts(district)[key];
+  return fact.status === "unknown" ? fact.sourceLabel : null;
+}
+
+const STATE_OF_SEVERITY: Record<LandFitFinding["severity"], { text: string; className: string }> = {
+  pass: { text: "Published by the City", className: "zoning-state zoning-state-published" },
+  block: { text: "Refuses this design", className: "zoning-state zoning-state-blocked" },
+  check: { text: "Unanswered", className: "zoning-state zoning-state-open" },
+};
+
+/* ------------------------------------------------------------- the overlays */
+
+/**
+ * The artifact records `bylawInForce` on every overlay record; the
+ * `EdmontonZoningOverlay` interface in `lib/marketplace/landData.ts` does not
+ * declare it yet, and that module is outside this node's write set. So the
+ * field is read through a local type AND a runtime guard rather than an
+ * unchecked cast: anything that is not exactly `true` or `false` comes back
+ * null and renders as "status not recorded" instead of quietly reading as in
+ * force. `tests/land-ui.spec.ts` fails if the field ever goes missing, so the
+ * guard cannot become a silent shrug.
+ */
+type OverlayRecord = EdmontonZoningOverlay & { bylawInForce?: unknown };
+
+export function overlayInForce(overlay: EdmontonZoningOverlay): boolean | null {
+  const raw = (overlay as OverlayRecord).bylawInForce;
+  return raw === true ? true : raw === false ? false : null;
+}
+
+export function overlayStatusText(overlay: EdmontonZoningOverlay): string {
+  const inForce = overlayInForce(overlay);
+  const bylaw = overlay.bylawNumber === null ? "no bylaw recorded" : `Bylaw ${overlay.bylawNumber}`;
+  if (inForce === null) return `Status not recorded · ${bylaw}`;
+  return inForce ? `In force · ${bylaw}` : `Not in force · ${bylaw}`;
+}
+
+/* ------------------------------------------------------------- the default */
+
+/** Opens on the most-mapped district that publishes anything at all: 960 areas
+ *  on the current map and an h16 ceiling. Opening on a district that publishes
+ *  nothing would hide the mechanism; opening on a rare one would misrepresent
+ *  the city. The fallbacks keep the panel alive if a later extract renames it. */
+export const ZONING_DEFAULT_CODE = "RM h16";
+
+function defaultDistrict(): EdmontonZoningDistrict | null {
+  return (
+    findEdmontonDistrict(ZONING_DEFAULT_CODE) ??
+    EDMONTON_DISTRICTS.find((district) => district.maxHeightM !== null) ??
+    EDMONTON_DISTRICTS[0] ??
+    null
+  );
+}
+
+const RESULT_LIMIT = 10;
+
+function searchDistricts(query: string): EdmontonZoningDistrict[] {
+  const needle = query.trim().toLowerCase().replace(/\s+/g, " ");
+  const pool = needle
+    ? EDMONTON_DISTRICTS.filter(
+        (district) =>
+          district.code.toLowerCase().includes(needle) ||
+          district.code.toLowerCase().replace(/\s+/g, "").includes(needle.replace(/\s+/g, "")) ||
+          district.name.toLowerCase().includes(needle),
+      )
+    : EDMONTON_DISTRICTS.slice();
+  return pool.sort((a, b) => b.mappedAreas - a.mappedAreas);
+}
+
+/* ------------------------------------------------------------ the component */
+
+export default function ZoningLookup({
+  requirements,
+  initialCode,
+}: {
+  requirements: LandDesignRequirements;
+  /** The district the panel opens on. /land does not pass one and gets
+   *  `ZONING_DEFAULT_CODE`; the spec passes one so it can render the branches a
+   *  single default can never reach — a district that publishes nothing at all,
+   *  and one whose rules are written per site rather than as one section.
+   *  Stated plainly because a prop that exists only for a test should say so. */
+  initialCode?: string;
+}) {
+  const [query, setQuery] = useState("");
+  const [code, setCode] = useState<string | null>(
+    (initialCode ? findEdmontonDistrict(initialCode)?.code : null) ?? defaultDistrict()?.code ?? null,
+  );
+
+  const found = useMemo(() => searchDistricts(query), [query]);
+  const district = useMemo(() => (code ? findEdmontonDistrict(code) : null), [code]);
+  const check = useMemo(
+    () => (district ? evaluateEdmontonDistrict(district, requirements) : null),
+    [district, requirements],
+  );
+
+  const attribution = landConstraintAttribution();
+  const notInForce = EDMONTON_OVERLAYS.filter((overlay) => overlayInForce(overlay) === false);
+  const repealedBylaw = notInForce.filter((overlay) => overlay.bylawNumber === "12800").length;
+  const heightPublishing = EDMONTON_DISTRICTS.filter((item) => item.maxHeightM !== null).length;
+  const mappedAreas = EDMONTON_DISTRICTS.reduce((sum, item) => sum + item.mappedAreas, 0);
+
+  return (
+    <section className="zoning" aria-labelledby="zoning-heading" data-slot="zoning-lookup">
+      <header className="zoning-head">
+        <p className="zoning-eyebrow">City of Edmonton · authority data, not inventory</p>
+        <h2 id="zoning-heading" className="zoning-title">
+          Look up what a zoning district actually publishes
+        </h2>
+        <p className="zoning-boundary">{LAND_CONSTRAINT_BOUNDARY}</p>
+        <p className="zoning-lede">
+          This is the real half of this page. Every figure below is the City&rsquo;s own, read from
+          its weekly open-data extract on {EXTRACT_DATE}, and every one of them links to the
+          authority page it came from. A district answers one of the seven questions the fit engine
+          asks. The other six are answered by a parcel, and this screen says so on every district
+          rather than at the bottom in small print.
+        </p>
+      </header>
+
+      <div className="zoning-counts">
+        {[
+          { id: "districts", value: NUM.format(EDMONTON_DISTRICTS.length), label: "Zoning districts", href: ZONING_MAP_DATASET },
+          { id: "heights", value: NUM.format(heightPublishing), label: "Publish a Height on the map", href: ZONING_MAP_DATASET },
+          { id: "areas", value: NUM.format(mappedAreas), label: "Mapped zone areas", href: ZONING_MAP_DATASET },
+          { id: "overlays", value: NUM.format(EDMONTON_OVERLAYS.length), label: "Overlay records", href: OVERLAY_DATASET },
+        ].map((item) => (
+          <p key={item.id} className="zoning-figure">
+            <strong className="zoning-figure-value">{item.value}</strong>
+            <span className="zoning-figure-label">{item.label}</span>
+            <a className="zoning-source" href={item.href} target="_blank" rel="noreferrer">
+              Source
+            </a>
+          </p>
+        ))}
+      </div>
+
+      {/* WHY THERE IS NO ADDRESS BOX, said where a reader would look for one
+          rather than in a footnote — and said in the artifact's own words, so
+          the sentence on screen cannot drift from the data behind it. */}
+      <div className="zoning-cannot">
+        <p className="zoning-cannot-head">What this data cannot answer</p>
+        <ul>
+          {EDMONTON_CONSTRAINT_SET.whatThisCannotAnswer.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+        <a className="zoning-map-link" href={CITY_ZONING_MAP_URL} target="_blank" rel="noreferrer">
+          Open the City&rsquo;s zoning map for a specific parcel
+        </a>
+      </div>
+
+      <form className="zoning-search" role="search" onSubmit={(event) => event.preventDefault()}>
+        <label className="zoning-search-label" htmlFor="zoning-code">
+          Zone code or district name
+        </label>
+        <input
+          id="zoning-code"
+          className="zoning-input"
+          type="search"
+          autoComplete="off"
+          placeholder="RS · RM h16 · River Valley"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+        <p className="zoning-search-note">
+          This searches the {NUM.format(EDMONTON_DISTRICTS.length)} zone codes the City publishes. It
+          cannot find a district from a street address: Aura holds no parcel geometry, so an address
+          box here would be returning a guess with a confident face on it.
+        </p>
+      </form>
+
+      <p className="zoning-count-line">
+        {found.length === 0
+          ? "No zone code or district name contains that."
+          : `Showing ${NUM.format(Math.min(found.length, RESULT_LIMIT))} of ${NUM.format(found.length)} districts, most-mapped first.`}
+      </p>
+
+      <ul className="zoning-results">
+        {found.slice(0, RESULT_LIMIT).map((item) => (
+          <li key={item.code}>
+            <button
+              type="button"
+              className="zoning-result"
+              aria-pressed={item.code === code}
+              onClick={() => setCode(item.code)}
+            >
+              <span className="zoning-result-code">{item.code}</span>
+              <span className="zoning-result-name">{item.name}</span>
+              <span className="zoning-result-meta">
+                {item.maxHeightM === null
+                  ? "no Height on the map"
+                  : `${item.maxHeightM.toFixed(1)} m Height`}
+                {" · "}
+                {NUM.format(item.mappedAreas)} areas
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      {district && check ? (
+        <article className="zoning-panel" aria-live="polite">
+          <div className="zoning-panel-head">
+            <div>
+              <p className="zoning-code">{district.code}</p>
+              <h3 className="zoning-name">{district.name}</h3>
+            </div>
+            <p
+              className={
+                check.verdict === "district-rule-blocks"
+                  ? "zoning-verdict zoning-verdict-blocks"
+                  : "zoning-verdict zoning-verdict-open"
+              }
+            >
+              {ZONING_VERDICT_COPY[check.verdict].title}
+            </p>
+          </div>
+
+          {/* THE UNANSWERED COUNT LEADS. The one verified figure sits under it,
+              never above it — that ordering is the whole point of this block,
+              and tests/land-ui.spec.ts compares the two positions in the
+              rendered text rather than just checking both are present. */}
+          <div className="zoning-ratio">
+            <p className="zoning-ratio-big">
+              {NUM.format(check.outstanding)} of {NUM.format(check.findings.length)} questions
+              unanswered
+            </p>
+            <p className="zoning-ratio-small">
+              {check.evidenced === 0
+                ? "This district publishes none of them. Everything below needs parcel evidence."
+                : `${NUM.format(check.evidenced)} answered by the City's published rules · read on the City's extract of ${EXTRACT_DATE}`}
+            </p>
+            <p className="zoning-verdict-body">{ZONING_VERDICT_COPY[check.verdict].body}</p>
+          </div>
+
+          <div className="zoning-design">
+            <p className="zoning-design-head">Checked against the design on this page</p>
+            <p className="zoning-design-figure">
+              {NUM.format(Math.round(requirements.floorAreaSqft))} sqft floor area ·{" "}
+              {NUM.format(Math.round(requirements.footprintSqft))} sqft footprint ·{" "}
+              {requirements.maxHeightFt.toFixed(1)} ft tall · {requirements.storeys === 1 ? "one" : "two"} storey
+            </p>
+            <p className="zoning-design-note">
+              Those four numbers come from your design, not from the City. Change them in the Design
+              fit controls above and this answer changes with them.
+            </p>
+          </div>
+
+          <div className="zoning-published">
+            <p className="zoning-section-head">What the City publishes about {district.code}</p>
+            <div className="zoning-figures">
+              {districtFigures(district).map((figure) => (
+                <p key={figure.id} className="zoning-figure">
+                  <strong className="zoning-figure-value">{figure.value}</strong>
+                  <span className="zoning-figure-label">{figure.label}</span>
+                  <a className="zoning-source" href={figure.sourceHref} target="_blank" rel="noreferrer">
+                    {figure.sourceLabel}
+                  </a>
+                </p>
+              ))}
+            </div>
+            {(() => {
+              const section = districtSection(district);
+              return (
+                <p className="zoning-section-link">
+                  <a href={section.href} target="_blank" rel="noreferrer">
+                    {section.label}
+                  </a>
+                  {section.note ? <span className="zoning-reason">{section.note}</span> : null}
+                </p>
+              );
+            })()}
+            <p className="zoning-caution">{EDMONTON_CONSTRAINT_SET.modifierConvention.caution}</p>
+          </div>
+
+          <ol className="zoning-questions">
+            {check.findings.map((finding) => {
+              const state = STATE_OF_SEVERITY[finding.severity];
+              const reason = reasonForFinding(district, finding);
+              return (
+                <li key={finding.id} className="zoning-question">
+                  <div className="zoning-question-head">
+                    <p className="zoning-question-label">{finding.label}</p>
+                    <span className={state.className}>{state.text}</span>
+                  </div>
+                  <p className="zoning-detail">{finding.detail}</p>
+                  {reason ? <p className="zoning-reason">{reason}</p> : null}
+                  {finding.sourceUrl ? (
+                    <a className="zoning-source" href={finding.sourceUrl} target="_blank" rel="noreferrer">
+                      Zoning Bylaw 20001 · this district&rsquo;s section
+                    </a>
+                  ) : (
+                    <span className="zoning-reason">
+                      This district has no single bylaw section in the current extract, so this
+                      question carries no link of its own.
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+        </article>
+      ) : null}
+
+      <div className="zoning-overlays">
+        <p className="zoning-section-head">Overlays and special areas</p>
+        <p className="zoning-overlays-note">
+          An overlay adds to or overrides the district underneath it, so a ceiling read without them
+          is an overstatement. The extract does not say which overlays touch which district — that
+          join needs the parcel geometry Aura does not hold — so these are shown whole rather than
+          attached to the zone above.{" "}
+          {NUM.format(notInForce.length)} of the {NUM.format(EDMONTON_OVERLAYS.length)} records are
+          recorded as not in force, {NUM.format(repealedBylaw)} of them under the repealed Zoning
+          Bylaw 12800. They are on screen because they are in the City&rsquo;s own extract, not
+          because they still govern anything.
+        </p>
+        <ul>
+          {EDMONTON_OVERLAYS.map((overlay) => (
+            <li
+              key={`${overlay.code}-${overlay.bylawNumber ?? "none"}`}
+              className={
+                overlayInForce(overlay) === true
+                  ? "zoning-overlay zoning-overlay-live"
+                  : "zoning-overlay zoning-overlay-dead"
+              }
+            >
+              <span className="zoning-overlay-code">{overlay.code}</span>
+              <span className="zoning-overlay-name">
+                {overlay.name}
+                {overlay.specialArea ? " · special area" : ""}
+              </span>
+              <span className="zoning-overlay-status">{overlayStatusText(overlay)}</span>
+            </li>
+          ))}
+        </ul>
+        <a className="zoning-source" href={OVERLAY_DATASET} target="_blank" rel="noreferrer">
+          City of Edmonton Zoning Overlays · read {EXTRACT_DATE}
+        </a>
+      </div>
+
+      <p className="zoning-attrib">
+        {attribution.text}{" "}
+        <a href={attribution.termsUrl} target="_blank" rel="noreferrer">
+          Open Data Terms of Use
+        </a>
+      </p>
+    </section>
+  );
+}

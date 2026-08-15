@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Counter, GrowBar, Reveal, Stagger, StaggerItem } from "@/components/Reveal";
 import LandMap from "@/components/land/LandMap";
+import ZoningLookup from "@/components/land/ZoningLookup";
 import {
   PLOT_SETBACK_NOTE,
   PLOT_UNKNOWN_NOTE,
@@ -204,6 +205,19 @@ export default function LandPage() {
           with parcel evidence. Unknown zoning, setbacks, access, water or wastewater stays
           unknown. A high fit score is a screening result, never a permit or purchase opinion.
         </p>
+        {/* The honest signpost. Everything above this line is a demonstration;
+            the zoning lookup below is authority data, and a reader who only
+            wants the real half should be told where it is rather than having to
+            scroll past four fictionalized cards to find out it exists. */}
+        <p className="mt-3 text-[0.95rem] leading-[1.65] text-aura-text/75">
+          The one thing on this page that is not a demonstration is the{" "}
+          <a href="#zoning-heading" className="text-aura-emerald underline underline-offset-4">
+            City of Edmonton zoning lookup
+          </a>
+          . It is real published data, it can refuse a design with a bylaw section behind the
+          refusal, and it cannot find a district from a street address — that needs parcel
+          geometry Aura does not hold.
+        </p>
       </Reveal>
 
       <Reveal className="mt-8" y={14}>
@@ -314,6 +328,14 @@ export default function LandPage() {
             </label>
           </div>
         </section>
+      </Reveal>
+
+      {/* THE REAL DATA SITS ABOVE THE FIXTURE, deliberately. The design-fit
+          controls are directly overhead because they drive both, and the four
+          demonstration records are below because a fictionalized card should
+          never be the first evidence a reader meets. */}
+      <Reveal className="mt-8" delay={0.18} y={16}>
+        <ZoningLookup requirements={requirements} />
       </Reveal>
 
       <Stagger className="mt-6 grid gap-4 sm:grid-cols-3">

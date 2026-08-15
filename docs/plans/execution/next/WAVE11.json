@@ -1,0 +1,82 @@
+{
+  "wave": 11,
+  "graphVersion": "1.2",
+  "theme": "The founder's most visible ask (stunning editors) alongside the four residual gate holes that fresh-context reviews proved real. Every one of the four is a gate that catches its named defect and misses a variant — recorded, not guessed.",
+  "sharedRules": {
+    "orchestratorOwns": ["README.md", "docs/SUBMISSION.md", "app/package.json", "app/playwright.ui.config.ts", "app/tests/gate-coverage.spec.ts"],
+    "note": "Four other agents work this same checkout. Write only your declared files. Never run git. Never run npm run build, test:ui, meadow proof, or npm install. Run npx tsc --noEmit and your own spec by path."
+  },
+
+  "ED01": {
+    "job": "Make the editors stunning.",
+    "founderWords": "'make the editors stunning'. The builder is the product's centre of gravity and where a judge spends the most time. It reads as capable rather than considered.",
+    "context": [
+      "THIS IS A CRAFT NODE. No new capability, no new component, no new dependency. The design system already exists and is good — a token ladder (--tone-* raw triplets wrapped by --aura-*/--st-*), three named motion durations in a 150-250ms band with one damped house curve, a single focus ring, and a spacing scale on a 1.5 ratio. The job is to USE it properly in the builder.",
+      "READ FIRST: docs/BRAND-VOICE-GUIDE.md before touching a word, and the token block at the top of globals.css before touching a colour. If you find yourself typing a hex literal, stop — that is the signal you are working outside the system rather than in it.",
+      "STUNNING HERE MEANS CALMER, NOT LOUDER. This brand's own guardrails ban Apple-fragment cosplay, superlatives, and decoration carrying no information. Hierarchy, spacing, restraint and type doing the work. A page that is easier to read IS the deliverable.",
+      "AX01 just built a keyboard path through these exact controls — arrow-key vertex movement, numeric fields, a named object list, one aria-live region. Run tests/graph-keyboard.spec.ts before you finish. Breaking it to make something prettier is the worst possible trade."
+    ],
+    "writeSet": [
+      "app/app/globals.css (.builder-* selectors only — NOT the token blocks, NOT .margin-*, NOT .zoning-*)",
+      "app/components/builder/Segmented.tsx",
+      "app/components/builder/Readout.tsx",
+      "app/components/builder/LiveReadout.tsx",
+      "app/tests/builder-craft.spec.ts (new)"
+    ],
+    "rejectionGates": [
+      "NOT ONE NEW HEX LITERAL. Every colour from the token ladder. css-tokens.spec.ts catches an undefined variable; nothing catches a hardcoded colour except you and the spec you write.",
+      "NOT ONE NEW HAND-TUNED DURATION. interface-motion.spec.ts already fails the build on a literal duration in an app-surface transition.",
+      "prefers-reduced-motion must still still everything from the tokens, with no per-rule opt-in.",
+      "THE FOCUS RING IS DECIDED: one solid outline from --focus-ring-*, and it never glows. Do not restyle it.",
+      "MEASURE, DO NOT ASSERT, ANY HIERARCHY CLAIM YOU MAKE. A sibling node in the last wave wrote 'the unanswered count is the largest type' in a CSS comment and it was false on every phone, because a clamp resolved to its floor. If you claim one thing outranks another, assert it with computed font sizes at 390, 768 and 1280 — the claim in the comment is worth nothing."
+    ]
+  },
+
+  "EX06": {
+    "parent": "EX05",
+    "job": "Close the structural hole in the PDF completeness assertion — the one the review called wider than the gap the node itself disclosed.",
+    "theFinding": "`paintedPaths` reduces every path to an UNORDERED BAG of points and `markPlacementProblems` compares only (first point, bounding box). Order, point count, connectivity and the paint operator are all invisible. Proven by injection: permuting two vertices of every path turns the A3 floor-plan wall poche into a bowtie and all 17 tests stay green. Three more misses were demonstrated the same way.",
+    "writeSet": ["app/lib/builder/exportPdf.ts", "app/tests/export-pdf.spec.ts"],
+    "rejectionGates": [
+      "THE ASSERTION MUST FAIL ON A VERTEX PERMUTATION. Build the bowtie, watch it go red, restore, paste the failure text. A drawing set whose walls can render as bowties and pass is not a drawing set.",
+      "Order and point count must enter the comparison — a bag of points is not a path. Keep the bounding-box and first-point checks alongside; they are real properties, just insufficient.",
+      "Do not weaken any existing assertion to make room."
+    ]
+  },
+
+  "TR02": {
+    "parent": "TR01",
+    "job": "Finish the truth gate: guard deployment and token STATUS prose, not just numbers.",
+    "theFinding": "TR01 closed the spec-count and plan-count half. The half that motivated it is still open: docs/DEPLOYMENTS.md read 'Aura remains testnet-only ... no HOMES token' a full day after the token went live, and nothing would catch that recurring. release-truth.spec.ts pins WORDING and never reads DEPLOYMENTS.md at all.",
+    "writeSet": ["app/tests/release-truth.spec.ts"],
+    "rejectionGates": [
+      "EVERY EXPECTED VALUE DERIVES FROM CODE. Assert documents against the constants in lib/homes/token.ts and the status in lib/homes/fund.ts — never against a second hand-typed constant in the spec, which would only prove two people typed the same thing.",
+      "PROVE IT ON THE HISTORICAL DEFECT. Temporarily restore the old 'Aura remains testnet-only' wording to DEPLOYMENTS.md, watch the gate go red, restore, and paste what you saw. A truth gate that would not have caught the drift that motivated it is decoration.",
+      "NO NETWORK. The suite runs offline and the site is a static export. The on-chain facts live in lib/homes/token.ts as constants; assert documents against those.",
+      "Do not weaken release-truth's existing wording pins — they caught real banned-phrase regressions. Add, do not replace."
+    ]
+  },
+
+  "FURN03": {
+    "parent": "FURN02",
+    "job": "Close the AWG-spout breach and the methodological flaw behind it.",
+    "theFinding": "The per-part morph rule catches the vanity counterexample but misses the AWG spout (fixtures.ts:3173) — which sits under the source's own comment 'Louvre and spout are CONSTANT', the identical authorial pattern to the vanity's. AND the review named a flaw worth more than the breach: the threshold analysis established margin by measuring honest parts that CHANGE and showing each clears a bound. It never measured honest parts that are CONSTANT, which is the population the rule actually governs.",
+    "writeSet": ["app/lib/builder/fixtures.ts", "app/tests/furniture-fixtures.spec.ts"],
+    "rejectionGates": [
+      "REDO THE THRESHOLD ANALYSIS OVER THE RIGHT POPULATION — the constant parts. Report the separation you measure. If the thresholds cannot separate honest constants from breaches, say so plainly and pin the weaker property rather than shipping a number that looks measured and is not.",
+      "THE AWG SPOUT BREACH MUST GO RED. Build it, watch it fail, restore, paste the text.",
+      "Do not weaken the vanity counterexample that already works."
+    ]
+  },
+
+  "MK03": {
+    "parent": "MK02",
+    "job": "Make the round-trip gate see nested loss.",
+    "theFinding": "The `lost`/`survived` check runs against the top-level key list only; nested losslessness rests entirely on a toEqual that a sub-object comparison can satisfy. Demonstrated by adding a field the converter does not know.",
+    "writeSet": ["app/lib/builder/contributedModel.ts", "app/tests/contributed-model.spec.ts"],
+    "rejectionGates": [
+      "THE GATE MUST FAIL ON A NESTED UNKNOWN FIELD. Build it, watch it go red, restore, paste the text.",
+      "Rejecting unknown keys should be recursive, and the refusal should name the PATH to the offending key, not just its name — a contributor told 'unknown key' about a field three levels down learns nothing."
+    ]
+  }
+}

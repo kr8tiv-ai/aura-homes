@@ -1,0 +1,39 @@
+{
+  "node": "LAND02",
+  "graphVersion": "1.2",
+  "job": "Put the Edmonton zoning data on screen, so 'why can I not search for land' has a visible answer instead of a data file.",
+  "origin": "LAND01 shipped the data layer and said so plainly: 'only the data layer shipped — the /land page is not in my write set, so what he will SEE this wave is two new source cards, not a new search box. That gap is the top handoff.' This node is that handoff.",
+  "context": [
+    "WHAT ALREADY EXISTS, shipped and gated: data/land/edmonton-zoning-districts.json carries 156 districts, 35 overlays, 11,518 mapped areas, and 62 districts with a VERIFIED maximum height decoded from the bylaw's own 'Modifier on Zoning Map' convention (h16.0 -> 16.0 m). lib/marketplace/landData.ts reads it. tests/land-data.spec.ts guards it.",
+    "THE SCORING RULE IS ALREADY SHARED. LAND01 extracted evaluateLandFacts(facts, requirements) out of evaluateLandListing so a district and a listing run through ONE rule — evaluateLandListing calls it and adds the score a record needs. Do not add a second evaluation path.",
+    "evaluateEdmontonDistrict RETURNS NO 0-100 SCORE, deliberately. A district answers 1 of 7 questions, and a number out of 100 built from that would read as a verdict on the land. It returns exactly two verdicts: 'district-rule-blocks' (a real, citable refusal) or 'parcel-evidence-required'. A district can NEVER come back as a match, and that is already a test. Do not add a score in the UI either.",
+    "THE HONEST RATIO IS 7 UNKNOWN FACTS TO 1 VERIFIED and LAND01 refused to paper over it. The UI must not either — an interface that shows one green tick and hides six unknowns is worse than the fixture it replaced, because the fixture at least announced itself as a demonstration.",
+    "EvidenceStatus is 'verified' | 'declared' | 'unknown' (discovery.ts:4) and district facts emit only 'verified' and 'unknown' — an authority published it or Aura does not know. Nothing is 'declared'. Keep that.",
+    "THE EXISTING PAGE: app/app/land/page.tsx with ParcelPanel and the provider descriptors. LAND_LISTING_PROVIDERS gained two entries with access 'open-constraint-data' and status 'reference-only' — deliberately NOT 'available', which on that surface reads as browsable inventory.",
+    "NO POINT-IN-PARCEL LOOKUP EXISTS. Polygon geometry was measured at ~8 MB and refused; the static export cannot carry it. So a person cannot type an address and get their zone. They can look up a DISTRICT they already know, or reach the City's map. Do not build an address search — it would be a lie made of JavaScript."
+  ],
+  "writeSet": [
+    "app/app/land/page.tsx",
+    "app/components/land/ZoningLookup.tsx (new)",
+    "app/tests/land-ui.spec.ts",
+    "app/app/globals.css — ONLY new .zoning-* selectors. MARGIN01 owns .margin-* in this same wave and ED01 owns .builder-* next; stay in your prefix."
+  ],
+  "rejectionGates": [
+    "NEVER PRESENT THIS AS LISTINGS. LAND01 enforced that at three layers including a bake-time vocabulary refusal on 'for sale', 'listing', 'listed', 'available', 'asking price', 'realtor' and 'mls'. Extend the same check to the strings THIS node puts on screen — the verifier of LAND01 found that the existing guard covers the artifact and not the rendered page, which is the only surface a user sees. Close that.",
+    "SHOW THE UNKNOWNS. Every district view states how many of its facts are unknown, in the same view as the one that is verified. A design that leads with the verified height and buries the rest fails this node.",
+    "A DISTRICT MAY NEVER READ AS A MATCH. Two verdicts only. If the copy anywhere implies 'this land works for your home', it is wrong — the district answers one question and the parcel answers the rest.",
+    "CITE THE AUTHORITY AT THE POINT OF THE CLAIM. Every district carries its bylaw section URL; a height that appears without the link it came from is exactly the unsourced number this project refuses.",
+    "REPEALED OVERLAYS MUST READ AS REPEALED. 17 of the 35 overlays carry Bylaw 12800 and each record now states bylawInForce: false. If an overlay appears on screen, its status appears with it.",
+    "no new dependency; no address search; no map library."
+  ],
+  "instructions": [
+    "1. Read landData.ts and land-data.spec.ts before designing. The vocabulary is already decided; match it.",
+    "2. A district lookup: choose or search a zone code, see what the authority actually publishes about it, and see plainly what it does not answer. The empty half is the honest half and should not look like an error state.",
+    "3. Where a person's current design is available, run evaluateEdmontonDistrict against it and show the refusal when the district blocks it — a citable 'this district's minimum site area is larger than your footprint' is the most useful sentence this feature can produce.",
+    "4. Link out to the City's zoning map for anything needing geometry, and say why Aura does not do it here.",
+    "5. Spec: the market-vocabulary check over rendered text; unknown counts visible; no district reads as a match; every stated figure carries its source link; a repealed overlay says so."
+  ],
+  "verify": { "commands": ["npx tsc --noEmit", "npm test"], "note": "orchestrator runs test:ui and gates the spec" },
+  "sideEffect": "local",
+  "status": "ready"
+}

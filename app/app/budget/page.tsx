@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import MarginStack from "@/components/budget/MarginStack";
 import { useAuraProject } from "@/components/project/ProjectContext";
 import QuoteWorkbench from "@/components/project/QuoteWorkbench";
 import { defaultBuilderDocument } from "@/lib/builder/document";
@@ -131,6 +132,14 @@ export default function BudgetPage() {
           <Link href={project ? "/build" : "/start"}>{project ? "Edit this home" : "Start a project"} →</Link>
         </aside>
       </header>
+
+      {/* THE COST STORY, FIRST. This is the reference model — one 800 sq ft
+          off-grid SIP home, priced owner-orchestrated against builder-
+          delivered — and it sits above the project's own range on purpose:
+          it is the argument this whole page exists to serve, and the block
+          names its reference build in its first sentence so nobody mistakes
+          it for their own numbers. The project's live range follows. */}
+      <MarginStack />
 
       <section className="budget-range" aria-label="Current project range">
         {(["low", "mid", "high"] as const).map((key) => (

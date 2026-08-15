@@ -689,6 +689,261 @@ main p {
 .quote-no-file { display: inline-flex; margin-top: 0.7rem; font-family: var(--st-mono-font); font-size: 0.53rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--aura-emerald); }
 .quote-no-file { color: color-mix(in srgb, var(--aura-text) 48%, transparent); }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   THE COST STORY — MARGIN01 (.margin-* only)
+
+   One axis, two columns, and the labour that pays for the distance between
+   them. Every rule here is self-sufficient: no @apply, no Tailwind utility,
+   no token borrowed from a neighbouring prefix — margin-stack.spec.ts
+   renders this component with nothing but this stylesheet attached, and a
+   rule that only worked inside .budget-page would silently stop describing
+   what the spec measures.
+
+   TWO STRUCTURAL RULES, both about not lying with pixels:
+   · The track has a FIXED height and every bar's real width is a plain CSS
+     percentage. Motion is scaleX and opacity only (see GrowBar), so nothing
+     here can contribute layout shift — the CLS <= 0.08 gate is pinned.
+   · The owner column is drawn in the sanctioned emerald MARK role and the
+     builder column in neutral ink. Builder-delivered is not the villain of
+     this page; it is the alternative that costs money instead of months.
+     Painting it in the warning ink would be an argument the data does not
+     make.
+   ═══════════════════════════════════════════════════════════════════════ */
+.margin-stack {
+  --margin-rule: color-mix(in srgb, var(--aura-text) 16%, transparent);
+  --margin-rule-soft: color-mix(in srgb, var(--aura-text) 9%, transparent);
+  --margin-dim: color-mix(in srgb, var(--aura-text) 62%, transparent);
+  --margin-faint: color-mix(in srgb, var(--aura-text) 48%, transparent);
+  --margin-track-height: 0.6rem;
+  --margin-label-col: minmax(9rem, 17rem);
+  --margin-figure-col: minmax(5.5rem, 7.5rem);
+  display: grid;
+  gap: clamp(1.5rem, 3.5vw, 2.75rem);
+  margin-top: clamp(2.5rem, 7vw, 6.5rem);
+  padding-block: clamp(1.75rem, 4vw, 3rem);
+  border-block: 1px solid var(--margin-rule);
+}
+.margin-head { max-width: 46rem; }
+.margin-eyebrow {
+  font-family: var(--st-mono-font);
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--margin-dim);
+}
+.margin-title {
+  margin-top: 0.6rem;
+  font-family: var(--st-display-font);
+  font-size: clamp(1.9rem, 4.6vw, 3.4rem);
+  font-weight: 520;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+}
+.margin-reference {
+  margin-top: 0.85rem;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--margin-dim);
+}
+
+/* ---- the verdict: both figures AND the trade, one block, no disclosure -- */
+.margin-verdict {
+  padding: clamp(1.1rem, 3vw, 2rem);
+  border: 1px solid var(--margin-rule);
+  background: linear-gradient(145deg, rgb(var(--tone-floating) / 0.8), rgb(var(--tone-base) / 0.55));
+  box-shadow: var(--shadow-1);
+}
+.margin-verdict-figures {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(1rem, 3vw, 2.5rem);
+}
+.margin-side { min-width: 0; }
+.margin-side.is-builder {
+  padding-left: clamp(1rem, 3vw, 2.5rem);
+  border-left: 1px solid var(--margin-rule);
+}
+.margin-side-label {
+  display: block;
+  font-family: var(--st-mono-font);
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--margin-dim);
+}
+.margin-side-figure {
+  display: block;
+  margin-top: 0.5rem;
+  font-family: var(--st-display-font);
+  font-size: clamp(1.55rem, 3.6vw, 2.7rem);
+  font-weight: 520;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.margin-side[data-margin-side="owner"] .margin-side-figure { color: var(--st-emerald-deep); }
+.margin-side-band {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--margin-faint);
+  font-variant-numeric: tabular-nums;
+}
+.margin-trade {
+  margin-top: clamp(1rem, 2.5vw, 1.5rem);
+  padding-top: clamp(0.9rem, 2.2vw, 1.25rem);
+  border-top: 2px solid var(--st-emerald);
+  font-size: 0.9rem;
+  line-height: 1.62;
+  color: var(--aura-text);
+}
+.margin-trade b {
+  font-weight: 650;
+  color: var(--st-emerald-deep);
+}
+.margin-basis,
+.margin-label {
+  margin-top: 0.75rem;
+  font-size: 0.72rem;
+  line-height: 1.55;
+  color: var(--margin-faint);
+  overflow-wrap: anywhere;
+}
+.margin-label {
+  font-family: var(--st-mono-font);
+  font-size: 0.62rem;
+  letter-spacing: 0.05em;
+}
+
+/* ---- the stack ------------------------------------------------------- */
+.margin-axis-head h3 {
+  font-family: var(--st-display-font);
+  font-size: clamp(1.1rem, 2.4vw, 1.5rem);
+  font-weight: 520;
+  letter-spacing: -0.02em;
+}
+.margin-axis-head p {
+  max-width: 44rem;
+  margin-top: 0.5rem;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--margin-dim);
+}
+.margin-owner-mark { color: var(--st-emerald-deep); font-weight: 650; }
+.margin-lines,
+.margin-compare { display: grid; }
+.margin-line {
+  display: grid;
+  grid-template-columns: var(--margin-label-col) minmax(0, 1fr) var(--margin-figure-col);
+  align-items: center;
+  gap: clamp(0.6rem, 2vw, 1.4rem);
+  padding-block: 0.55rem;
+  border-bottom: 1px solid var(--margin-rule-soft);
+}
+.margin-line:last-child { border-bottom: 0; }
+.margin-line-label {
+  min-width: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.margin-line-tag {
+  display: block;
+  margin-top: 0.18rem;
+  font-family: var(--st-mono-font);
+  font-size: 0.52rem;
+  font-style: normal;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--margin-faint);
+}
+.margin-line-tag.is-owner { color: var(--st-emerald-deep); }
+.margin-line-track {
+  position: relative;
+  display: block;
+  height: var(--margin-track-height);
+  min-width: 0;
+  background: var(--margin-rule-soft);
+}
+/* Two bars, one width. `.margin-line-rest` is plain CSS at the real value and
+   is what a reader sees before (or without) JavaScript; `.margin-line-fill` is
+   the GrowBar that draws over it. Neither animates its width. */
+.margin-line-rest,
+.margin-line-fill {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  display: block;
+  height: 100%;
+}
+.margin-line-rest { background: color-mix(in srgb, var(--st-emerald) 26%, transparent); }
+.margin-line-fill { background: var(--st-emerald); }
+.margin-line-figure {
+  font-family: var(--st-mono-font);
+  font-size: 0.72rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.margin-line-figure-quiet { color: var(--margin-faint); }
+.margin-line.is-sum { border-top: 1px solid var(--margin-rule); }
+.margin-line.is-sum .margin-line-label { font-weight: 650; }
+.margin-line.is-total { padding-block: 0.85rem; }
+.margin-line.is-total .margin-line-label,
+.margin-line.is-total .margin-line-figure { font-weight: 650; }
+.margin-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: block;
+}
+.margin-band.is-owner { background: color-mix(in srgb, var(--st-emerald) 45%, transparent); }
+.margin-band.is-builder { background: color-mix(in srgb, var(--aura-text) 30%, transparent); }
+.margin-band.is-gap {
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--st-emerald) 30%, transparent) 0 3px,
+    transparent 3px 7px
+  );
+}
+.margin-tick {
+  position: absolute;
+  top: -0.2rem;
+  bottom: -0.2rem;
+  width: 2px;
+  background: var(--st-emerald-deep);
+}
+.margin-honesty p {
+  max-width: 46rem;
+  font-size: 0.8rem;
+  line-height: 1.62;
+  color: var(--margin-dim);
+}
+
+@media (max-width: 720px) {
+  .margin-verdict-figures { grid-template-columns: 1fr; }
+  .margin-side.is-builder {
+    padding-left: 0;
+    padding-top: 1rem;
+    border-left: 0;
+    border-top: 1px solid var(--margin-rule);
+  }
+  .margin-line {
+    grid-template-columns: minmax(0, 1fr) var(--margin-figure-col);
+    align-items: start;
+    gap: 0.5rem 0.75rem;
+  }
+  /* Placed EXPLICITLY. Auto-placement pushed the figure onto a third row
+     (the full-width track claims row 2, so the next item starts row 3 col 1)
+     and it then right-aligned inside the label column, reading as a stray
+     centred number. Label and figure share row 1; the track spans row 2. */
+  .margin-line-label { grid-column: 1; grid-row: 1; }
+  .margin-line-figure { grid-column: 2; grid-row: 1; }
+  .margin-line-track { grid-column: 1 / -1; grid-row: 2; margin-top: 0.35rem; }
+}
+
 @media (max-width: 860px) {
   .budget-hero,
   .budget-workbench { grid-template-columns: 1fr; }
@@ -3941,4 +4196,404 @@ html.story-gated body { overflow: hidden; }
   font-size: 0.7rem;
   line-height: 1.55;
   color: var(--st-faint);
+}
+/* ═══════════════════════════════════════════════════════════════════════
+   THE ZONING LOOKUP  ·  .zoning-*  (components/land/ZoningLookup.tsx)
+   ───────────────────────────────────────────────────────────────────────
+   The surface exists to make an EMPTY answer read as an answer. Seven
+   questions, six of them unanswerable by any zoning district, and the
+   design brief is that the six must not look like an error state or like
+   something still loading — they are the finding.
+
+   So type does the work rather than colour: the unanswered rows keep
+   full-strength labels and a neutral chip, while the single published row
+   gets the emerald mark. Nothing is greyed to the point of reading as
+   disabled, and nothing is red except an actual refusal.
+
+   Every width here is fluid and every grid track is minmax(min(…),1fr):
+   marketplace-ui.spec.ts asserts /land has no horizontal overflow at
+   390 px, and one fixed min-width in this block would break that for the
+   whole page.
+   ═══════════════════════════════════════════════════════════════════════ */
+.zoning {
+  display: grid;
+  gap: var(--space-5);
+  padding: clamp(1.25rem, 3vw, 2.1rem);
+  border: 1px solid var(--st-hair);
+  background: rgb(var(--tone-raised));
+}
+.zoning-head {
+  display: grid;
+  gap: 0.6rem;
+  max-width: 46rem;
+}
+.zoning-eyebrow {
+  font-family: var(--st-mono-font);
+  font-size: 0.59rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--st-emerald-deep);
+}
+.zoning-title {
+  font-family: var(--st-display-font);
+  font-size: clamp(1.3rem, 3.2vw, 1.75rem);
+  font-weight: 520;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+/* The boundary sentence is set as a statement, not as fine print — it is
+   the one line that must survive every rewrite of this surface. */
+.zoning-boundary {
+  padding-left: 0.85rem;
+  border-left: 2px solid var(--st-emerald-deep);
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--aura-text);
+}
+.zoning-lede {
+  font-size: 0.82rem;
+  line-height: 1.65;
+  color: var(--st-ink-dim);
+}
+
+/* ---- figures: a number is never shown without the link beside it ------ */
+.zoning-counts,
+.zoning-figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(11rem, 100%), 1fr));
+  gap: 0.75rem;
+}
+.zoning-figure {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--st-hair-soft);
+  background: rgb(var(--tone-base));
+}
+.zoning-figure-value {
+  font-family: var(--st-display-font);
+  font-size: 1.15rem;
+  font-weight: 520;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.zoning-figure-label {
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--st-ink-dim);
+}
+.zoning-source {
+  font-family: var(--st-mono-font);
+  font-size: 0.56rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--st-emerald-deep);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+
+/* ---- what it cannot answer: the missing address box, explained -------- */
+.zoning-cannot {
+  display: grid;
+  gap: 0.5rem;
+  padding: clamp(0.9rem, 2vw, 1.2rem);
+  border: 1px solid var(--st-hair-soft);
+  background: rgb(var(--tone-sunken));
+}
+.zoning-cannot-head,
+.zoning-section-head,
+.zoning-design-head {
+  font-family: var(--st-mono-font);
+  font-size: 0.59rem;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--st-ink-dim);
+}
+.zoning-cannot li {
+  padding-block: 0.45rem;
+  border-top: 1px solid var(--st-hair-soft);
+  font-size: 0.76rem;
+  line-height: 1.55;
+  color: var(--st-ink-dim);
+}
+.zoning-map-link {
+  justify-self: start;
+  font-size: 0.76rem;
+  color: var(--st-emerald-deep);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---- the search: zone codes, and it says so ---------------------------- */
+.zoning-search {
+  display: grid;
+  gap: 0.4rem;
+  max-width: 34rem;
+}
+.zoning-search-label {
+  font-family: var(--st-mono-font);
+  font-size: 0.59rem;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--st-ink-dim);
+}
+.zoning-input {
+  inline-size: 100%;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--st-hair);
+  background: rgb(var(--tone-base));
+  color: var(--aura-text);
+  font-family: var(--st-body-font);
+  font-size: 0.85rem;
+}
+.zoning-input:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset-tight);
+}
+.zoning-search-note,
+.zoning-count-line {
+  font-size: 0.73rem;
+  line-height: 1.55;
+  color: var(--st-faint);
+}
+
+/* ---- results --------------------------------------------------------- */
+.zoning-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
+  gap: 0.5rem;
+}
+.zoning-result {
+  display: grid;
+  gap: 0.15rem;
+  inline-size: 100%;
+  min-width: 0;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--st-hair-soft);
+  background: rgb(var(--tone-base));
+  text-align: left;
+  transition-property: border-color, color;
+  transition-duration: var(--motion-echo);
+  transition-timing-function: var(--motion-ease);
+}
+.zoning-result:hover {
+  border-color: var(--st-emerald-deep);
+}
+.zoning-result[aria-pressed="true"] {
+  border-color: var(--st-emerald-deep);
+  background: rgb(var(--tone-raised));
+}
+.zoning-result-code {
+  font-family: var(--st-mono-font);
+  font-size: 0.74rem;
+  overflow-wrap: anywhere;
+}
+.zoning-result-name {
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: var(--aura-text);
+}
+.zoning-result-meta {
+  font-size: 0.66rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--st-faint);
+}
+
+/* ---- the district panel ---------------------------------------------- */
+.zoning-panel {
+  display: grid;
+  gap: var(--space-4);
+  padding: clamp(1rem, 2.5vw, 1.5rem);
+  border: 1px solid var(--st-hair);
+  background: rgb(var(--tone-base));
+}
+.zoning-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.zoning-code {
+  font-family: var(--st-mono-font);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  color: var(--st-ink-dim);
+  overflow-wrap: anywhere;
+}
+.zoning-name {
+  margin-top: 0.25rem;
+  font-family: var(--st-display-font);
+  font-size: 1.1rem;
+  font-weight: 520;
+}
+.zoning-verdict {
+  padding: 0.3rem 0.55rem;
+  border: 1px solid currentColor;
+  font-family: var(--st-mono-font);
+  font-size: 0.58rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.zoning-verdict-blocks { color: var(--st-danger); }
+.zoning-verdict-open { color: var(--st-ink-dim); }
+
+/* THE RATIO BLOCK. The unanswered count is the largest type in the panel
+   and the published figure is smaller and below it. That ordering is a
+   rule, not a taste: this data answers one question in seven, and a
+   layout that led with the answered one would be lying by hierarchy. */
+.zoning-ratio {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.95rem 1rem;
+  border-left: 2px solid var(--st-ink-dim);
+  background: rgb(var(--tone-sunken));
+}
+.zoning-ratio-big {
+  font-family: var(--st-display-font);
+  /* The floor is 1.35rem, NOT 1.1rem, and the difference is the whole point of
+     this element. This panel's stated rule is that the unanswered count is the
+     largest type in it — a district publishes one of seven facts, and leading
+     with the one it does publish would misrepresent the data. At 1.1rem the
+     clamp resolved to its minimum on any phone (3vw is under 12px at 390px),
+     which put it BELOW .zoning-figure-value at 1.15rem and silently inverted
+     the hierarchy on every handset. The claim lived in a comment and nothing
+     measured it. 1.35rem clears 1.15rem at every viewport width. */
+  font-size: clamp(1.35rem, 3vw, 1.6rem);
+  font-weight: 520;
+  font-variant-numeric: tabular-nums;
+}
+.zoning-ratio-small {
+  font-size: 0.74rem;
+  line-height: 1.5;
+  color: var(--st-emerald-deep);
+}
+.zoning-verdict-body {
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--st-ink-dim);
+}
+
+.zoning-design {
+  display: grid;
+  gap: 0.3rem;
+}
+.zoning-design-figure {
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.zoning-design-note,
+.zoning-reason,
+.zoning-caution,
+.zoning-overlays-note {
+  font-size: 0.72rem;
+  line-height: 1.55;
+  color: var(--st-faint);
+}
+.zoning-published {
+  display: grid;
+  gap: 0.6rem;
+}
+.zoning-section-link {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.76rem;
+}
+.zoning-section-link a {
+  justify-self: start;
+  color: var(--st-emerald-deep);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---- the seven questions --------------------------------------------- */
+.zoning-questions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr));
+  gap: 0.6rem;
+}
+.zoning-question {
+  display: grid;
+  gap: 0.3rem;
+  align-content: start;
+  min-width: 0;
+  padding: 0.8rem 0.85rem;
+  border: 1px solid var(--st-hair-soft);
+}
+.zoning-question-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+.zoning-question-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.zoning-state {
+  font-family: var(--st-mono-font);
+  font-size: 0.54rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.zoning-state-published { color: var(--st-emerald-deep); }
+.zoning-state-blocked { color: var(--st-danger); }
+.zoning-state-open { color: var(--st-ink-dim); }
+.zoning-detail {
+  font-size: 0.74rem;
+  line-height: 1.55;
+  color: var(--st-ink-dim);
+}
+
+/* ---- overlays: the status travels with every row --------------------- */
+.zoning-overlays {
+  display: grid;
+  gap: 0.5rem;
+}
+.zoning-overlay {
+  display: grid;
+  grid-template-columns: minmax(2.5rem, auto) minmax(0, 1fr);
+  gap: 0.2rem 0.7rem;
+  padding-block: 0.5rem;
+  border-top: 1px solid var(--st-hair-soft);
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+.zoning-overlay-code {
+  font-family: var(--st-mono-font);
+  font-size: 0.68rem;
+  color: var(--st-ink-dim);
+}
+.zoning-overlay-name {
+  overflow-wrap: anywhere;
+}
+.zoning-overlay-status {
+  grid-column: 2;
+  font-family: var(--st-mono-font);
+  font-size: 0.56rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.zoning-overlay-live .zoning-overlay-status { color: var(--st-emerald-deep); }
+/* A repealed record is struck through as well as labelled: the label is
+   the claim, the strike is what a reader takes in without reading. */
+.zoning-overlay-dead .zoning-overlay-name { text-decoration: line-through; }
+.zoning-overlay-dead .zoning-overlay-status { color: var(--st-danger); }
+
+.zoning-attrib {
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--st-hair-soft);
+  font-size: 0.71rem;
+  line-height: 1.55;
+  color: var(--st-faint);
+}
+.zoning-attrib a {
+  color: var(--st-emerald-deep);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
