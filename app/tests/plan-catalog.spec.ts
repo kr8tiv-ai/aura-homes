@@ -2,10 +2,17 @@ import { expect, test } from "playwright/test";
 
 import { validateBuilderDocument } from "@/lib/builder/document";
 import {
+  PLAN_NUDGE_DISTANCE,
   PLAN_TEMPLATES,
   estimatePlanTemplate,
   instantiatePlanTemplate,
+  paddedPlanPairs,
+  planFootprintOverlapSqFt,
+  planMassingDistance,
+  planStructuralAxes,
+  type PlanTemplate,
 } from "@/lib/builder/planCatalog";
+import { summarizeHome } from "@/lib/builder/geometry";
 import { totalFloorAreaSqFt } from "@/lib/builder/spec";
 import { modelledGlazingRatio } from "@/lib/builder/toPlan";
 import { FDWR_MAX } from "@/lib/design/materials";
@@ -327,6 +334,112 @@ test("no two plans are the same building wearing a different name", () => {
     ),
   );
   expect(elevations.size).toBeGreaterThanOrEqual(50);
+
+  /* NEITHER GUARD ABOVE IS THE RULE THIS TEST IS NAMED AFTER, and a verifier
+     proved it in one line: a 56th plan that was an existing plan with `widthFt`
+     14 -> 15 and everything else identical passed both. The signature check
+     compares EXACT dimension strings, so one changed digit makes a new key; the
+     elevation set only needs 50 distinct patterns out of 55 and has slack for
+     five collisions. "Real designs, not permutations" was enforced by judgement.
+
+     It is now enforced by measurement — see the block over `paddedPlanPairs` in
+     planCatalog.ts for why the rule is CONDITIONAL rather than a distance
+     threshold (a threshold that catches the clone also rejects two USDA plan
+     sets). The two guards above stay: an exact clone and a collapsing elevation
+     set are real defects too, and this replaces neither. */
+  expect(paddedPlanPairs()).toEqual([]);
+});
+
+test("the anti-padding gate catches a plan that is another plan with one dimension nudged", () => {
+  /* THE GATE'S OWN COUNTEREXAMPLE, KEPT.
+
+     The gate above asserts an empty list, and a gate that asserts emptiness on
+     a healthy library is indistinguishable from a gate that can never fire. So
+     the thing it exists to reject is built here, every run, and the gate is
+     required to reject it. If `paddedPlanPairs` is ever loosened into a no-op,
+     this test — not a future verifier — is what says so. */
+  const clone = (id: string, mutate: (plan: PlanTemplate) => void): PlanTemplate => {
+    const source = PLAN_TEMPLATES.find((plan) => plan.id === id);
+    expect(source, `${id} has been renamed or removed; this counterexample is stale`).toBeDefined();
+    const copy = JSON.parse(JSON.stringify(source)) as PlanTemplate;
+    mutate(copy);
+    return copy;
+  };
+
+  /* SHAPE 1 — the verifier's own: a 14 ft wide plan re-listed at 15 ft. Its
+     openings are hand-authored, so the nudge leaves the elevation untouched. */
+  const nudgedAuthored = clone("glasrum-studio", (plan) => {
+    plan.id = "glasrum-studio-xl";
+    plan.title = "Glasrum Studio XL";
+    plan.spec.volumes[0].widthFt = 15;
+  });
+
+  /* SHAPE 2 — the one an exact-string elevation check would miss. `meadow-one`
+     takes the DEFAULT openings, which the volume() helper derives from width,
+     so nudging 24 -> 25 silently redraws every opening on the plan. Different
+     opening numbers, same building. */
+  const nudgedDefault = clone("meadow-one", (plan) => {
+    plan.id = "meadow-one-plus";
+    plan.title = "Meadow One Plus";
+    plan.spec.volumes[0].widthFt = 25;
+  });
+
+  for (const padded of [nudgedAuthored, nudgedDefault]) {
+    const verdicts = paddedPlanPairs([...PLAN_TEMPLATES, padded]);
+    expect(
+      verdicts.map((v) => `${v.a} ~ ${v.b}`),
+      `${padded.id} is an existing plan with one dimension nudged and the gate did not catch it`,
+    ).toHaveLength(1);
+    expect(verdicts[0].b).toBe(padded.id);
+    expect(verdicts[0].structuralAxes).toEqual([]);
+    expect(verdicts[0].massingDistance).toBeLessThan(PLAN_NUDGE_DISTANCE);
+  }
+
+  /* THE OTHER HALF, WHICH MATTERS JUST AS MUCH: the threshold is pinned to the
+     honest library, not chosen. Across all 55 plans exactly ONE pair differs on
+     no structural axis — two one-bedroom SIP gables — and the only thing
+     telling them apart is 204 sq ft of floor area. That pair is what sets the
+     ceiling on how strict this can get, so it is named. If a future plan drags
+     these two closer than PLAN_NUDGE_DISTANCE, this goes red and the threshold
+     must be re-argued rather than quietly nudged down. */
+  const meadow = PLAN_TEMPLATES.find((plan) => plan.id === "meadow-one")!;
+  const solstice = PLAN_TEMPLATES.find((plan) => plan.id === "solstice-cottage")!;
+  expect(planStructuralAxes(meadow, solstice)).toEqual([]);
+  expect(planMassingDistance(meadow, solstice)).toBeCloseTo(0.25, 4);
+  expect(planMassingDistance(meadow, solstice)).toBeGreaterThan(PLAN_NUDGE_DISTANCE);
+
+  /* WHY THE RULE IS NOT A DISTANCE THRESHOLD, asserted rather than claimed.
+     These three honest pairs all sit inside the nudge radius, so only their
+     structural differences acquit them — and `open-farmhouse-study ~
+     smalhus-infill` is measurably CLOSER than the clone the gate just rejected.
+     Any threshold tuned to catch that clone throws two federal plan sets and a
+     licensed adaptation out with it. If this ever stops being true the comment
+     in planCatalog.ts is wrong and the rule can be simplified. */
+  for (const [a, b] of [
+    ["open-farmhouse-study", "smalhus-infill"],
+    ["postcard-a-frame", "lakeview-a-frame"],
+    ["meadow-one", "kompakt-passiv"],
+  ] as const) {
+    const left = PLAN_TEMPLATES.find((plan) => plan.id === a)!;
+    const right = PLAN_TEMPLATES.find((plan) => plan.id === b)!;
+    expect(planMassingDistance(left, right)).toBeLessThan(PLAN_NUDGE_DISTANCE);
+    expect(
+      planStructuralAxes(left, right).length,
+      `${a} ~ ${b} is inside the nudge radius, so only a structural difference acquits it`,
+    ).toBeGreaterThan(0);
+  }
+  const honestFloor = planMassingDistance(
+    PLAN_TEMPLATES.find((plan) => plan.id === "open-farmhouse-study")!,
+    PLAN_TEMPLATES.find((plan) => plan.id === "smalhus-infill")!,
+  );
+  const clonedGap = planMassingDistance(
+    PLAN_TEMPLATES.find((plan) => plan.id === "glasrum-studio")!,
+    nudgedAuthored,
+  );
+  expect(
+    honestFloor,
+    "two honestly different plans are no longer closer than a nudged clone — a plain distance threshold may now be possible, and this rule can be simplified",
+  ).toBeLessThan(clonedGap);
 });
 
 test("no plan is so large that it shrinks every thumbnail in the catalog", () => {
@@ -355,6 +468,101 @@ test("no plan is so large that it shrinks every thumbnail in the catalog", () =>
     if (span > 44) oversized.push(`${plan.id} spans ${span.toFixed(1)} ft`);
   }
   expect(oversized).toEqual([]);
+});
+
+/* ---------------------------------------------------------------------------
+   THE OVER-REPORT GATE
+
+   `groundFootprintSqFt` sums volume footprints instead of unioning them, and
+   geometry.ts has computed the consequence all along as `overlapAreaSqFt`,
+   documented as "how much groundFootprintSqFt over-reports". Nothing outside
+   the 3D readout consumed it, so three catalogue plans published a footprint —
+   and a cost range priced off it — bigger than the ground they cover, to
+   somebody making a budget decision.
+
+   Redrawing them was the other option and was rejected: an L-plan whose wings
+   meet at a hinge overlaps ON PURPOSE, and shrinking three records would have
+   hidden the general problem instead of fixing it. The number is surfaced
+   instead, and these assertions are what stop it going quiet again.
+   ------------------------------------------------------------------------ */
+
+test("a plan whose volumes overlap says how much its own footprint over-reports", () => {
+  /* THE CHEAP CLIP CANNOT DRIFT FROM THE AUTHORITY. planCatalog.ts computes the
+     overlap with an axis-aligned clip rather than calling summarizeHome,
+     because geometry.ts imports `three` and this module is in the plan-catalogue
+     client bundle. That is a real reason and also a real risk, so every plan's
+     number is checked against geometry.ts's on every run. */
+  const disagreements: string[] = [];
+  for (const plan of PLAN_TEMPLATES) {
+    const authority = summarizeHome(plan.spec).overlapAreaSqFt;
+    const cheap = planFootprintOverlapSqFt(plan);
+    if (Math.abs(authority - cheap) > 1e-6) {
+      disagreements.push(`${plan.id}: planCatalog says ${cheap}, geometry.ts says ${authority}`);
+    }
+  }
+  expect(disagreements).toEqual([]);
+
+  /* The precondition that makes the cheap clip exact. A rectangle turned by a
+     quarter turn is still axis-aligned; one turned by 30 degrees is not, and
+     the numbers above would silently start being wrong. */
+  const skewed = PLAN_TEMPLATES.flatMap((plan) =>
+    plan.spec.volumes
+      .filter((v) => v.rotationDeg % 90 !== 0)
+      .map((v) => `${plan.id}/${v.id} is rotated ${v.rotationDeg}°`),
+  );
+  expect(
+    skewed,
+    "planCatalog.ts's overlap clip is only exact for quarter turns — upgrade it before shipping this plan",
+  ).toEqual([]);
+
+  /* THE MEASURED VALUES, PINNED. Not a "> 0" check: these three numbers are the
+     size of the lie, and a plan that grew its overlap by 50% would sail through
+     a presence test. Redrawing any of these is allowed — it just has to be a
+     decision somebody makes on purpose, with this list re-read. */
+  const overReporting = PLAN_TEMPLATES.filter((plan) => planFootprintOverlapSqFt(plan) > 0.01)
+    .map((plan) => `${plan.id}: ${planFootprintOverlapSqFt(plan).toFixed(2)}`)
+    .sort();
+  expect(overReporting).toEqual([
+    "gardstun-court: 24.00",
+    "lakeside-l: 28.00",
+    "wilson-court: 42.00",
+  ]);
+
+  /* Every one of them is single-storey, which is why the footprint over-report
+     and the FLOOR-AREA over-report are the same number and the sentence in the
+     estimate can say so. A two-storey overlapping plan would need the storey
+     multiplier and would fail here first. */
+  for (const id of ["gardstun-court", "lakeside-l", "wilson-court"]) {
+    const plan = PLAN_TEMPLATES.find((candidate) => candidate.id === id)!;
+    expect(plan.spec.volumes.every((v) => v.storeys === 1)).toBe(true);
+  }
+});
+
+test("the over-report reaches the estimate a buyer reads, with the number in it", () => {
+  for (const plan of PLAN_TEMPLATES) {
+    const estimate = estimatePlanTemplate(plan.id);
+    const overlap = planFootprintOverlapSqFt(plan);
+    expect(estimate.footprintOverlapSqFt).toBeCloseTo(overlap, 6);
+
+    const prose = estimate.assumptions.join(" ");
+    if (overlap > 0.01) {
+      /* The number, the corrected number, and the admission that the RANGE is
+         priced off the inflated one — a footnote saying "volumes overlap" with
+         no arithmetic in it is not a disclosure. */
+      expect(prose, `${plan.id} over-reports by ${overlap} sq ft and never says so`).toContain(
+        `${Math.round(overlap)} sq ft`,
+      );
+      expect(prose).toContain(`${Math.round(estimate.footprintSqFt - overlap)} sq ft`);
+      expect(prose).toMatch(/over-?report|too big/i);
+    } else {
+      /* The mirror: a clean plan must not wear the warning. Pasting it
+         everywhere would make it invisible where it is true. */
+      expect(prose, `${plan.id} does not overlap but carries the over-report note`).not.toMatch(
+        /volumes overlap by/i,
+      );
+      expect(estimate.footprintOverlapSqFt).toBe(0);
+    }
+  }
 });
 
 test("a proxy cost basis names what the Alberta BOM is not modelling", () => {

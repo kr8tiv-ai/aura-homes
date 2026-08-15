@@ -65,8 +65,19 @@ export interface LandFitResult {
 export interface LandListingProviderDescriptor {
   id: string;
   name: string;
-  access: "licensed-feed" | "external-search" | "demonstration";
-  status: "not-connected" | "link-out" | "available";
+  /**
+   * `open-constraint-data` is NOT a fourth way to obtain inventory. It names a
+   * source that publishes the RULES governing land — zoning districts,
+   * overlays — under a licence that permits redistribution. Such a source can
+   * never say what is purchasable and must never be described as if it could.
+   */
+  access: "licensed-feed" | "external-search" | "demonstration" | "open-constraint-data";
+  /**
+   * `reference-only` means the data is baked into Aura and answers questions,
+   * while nothing in it is on offer. It is deliberately not `available`, which
+   * on this surface reads as "inventory you can browse".
+   */
+  status: "not-connected" | "link-out" | "available" | "reference-only";
   inAppBrowse: boolean;
   note: string;
   sourceUrl: string;
@@ -107,6 +118,36 @@ export const LAND_LISTING_PROVIDERS: LandListingProviderDescriptor[] = [
     sourceUrl: "https://github.com/kr8tiv-ai/aura-homes",
     termsUrl: "https://github.com/kr8tiv-ai/aura-homes/blob/main/LICENSE",
   },
+  /**
+   * The two entries below are the reason the land-fit pilot now has something
+   * real to check a design against. Neither is a source of inventory, and the
+   * distinction is load-bearing: the City of Edmonton publishes the rules that
+   * govern land, not the land itself. Baked by `app/scripts/bake-land-data.mjs`
+   * into `data/land/edmonton-zoning-districts.json`, which carries the licence
+   * grant verbatim and a retrieval date on every source.
+   */
+  {
+    id: "edmonton-zoning-bylaw-geographical-data",
+    name: "City of Edmonton zoning districts",
+    access: "open-constraint-data",
+    status: "reference-only",
+    inAppBrowse: false,
+    note:
+      "Every zoning district in the City's own weekly extract. Where the zone code carries a height modifier, that ceiling is evidence; every other rule links to the district's section of Zoning Bylaw 20001 rather than being guessed. It says what the rules are, never what is on the market.",
+    sourceUrl: "https://data.edmonton.ca/d/fixa-tstc",
+    termsUrl: "https://data.edmonton.ca/stories/s/msh8-if28",
+  },
+  {
+    id: "edmonton-zoning-overlays",
+    name: "City of Edmonton zoning overlays",
+    access: "open-constraint-data",
+    status: "reference-only",
+    inAppBrowse: false,
+    note:
+      "The overlays and special areas that add to or override an underlying district — the river valley protection overlay among them. A district ceiling read without its overlays is an overstatement.",
+    sourceUrl: "https://data.edmonton.ca/d/6w3s-58pv",
+    termsUrl: "https://data.edmonton.ca/stories/s/msh8-if28",
+  },
 ];
 
 function finding<T>(
@@ -143,12 +184,20 @@ function finding<T>(
   };
 }
 
-export function evaluateLandListing(
-  listing: LandDiscoveryListing,
+/**
+ * The scoring rule, over facts alone.
+ *
+ * Extracted from `evaluateLandListing` so that open-government CONSTRAINT data
+ * can be judged by exactly this rule without being dressed up as a listing to
+ * get here. `lib/marketplace/landData.ts` calls it with zoning-district facts;
+ * `evaluateLandListing` calls it with a record's facts and adds the score and
+ * verdict a record needs. One rule, two callers, no second opinion.
+ */
+export function evaluateLandFacts(
+  facts: LandDiscoveryListing["facts"],
   requirements: LandDesignRequirements,
-): LandFitResult {
-  const { facts } = listing;
-  const findings: LandFitFinding[] = [
+): LandFitFinding[] {
+  return [
     finding("district-minimum", "District dwelling minimum", facts.districtMinimumSqft, 22, (minimum) =>
       requirements.floorAreaSqft + 0.01 >= minimum
         ? {
@@ -244,6 +293,13 @@ export function evaluateLandListing(
           : `The grid is reported about ${distance} km away; the off-grid design avoids assuming an economical tie-in.`,
     })),
   ];
+}
+
+export function evaluateLandListing(
+  listing: LandDiscoveryListing,
+  requirements: LandDesignRequirements,
+): LandFitResult {
+  const findings = evaluateLandFacts(listing.facts, requirements);
   const score = Math.min(100, findings.reduce((sum, item) => sum + item.points, 0));
   const hasBlock = findings.some((item) => item.severity === "block");
   const hasCheck = findings.some((item) => item.severity === "check");

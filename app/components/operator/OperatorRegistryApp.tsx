@@ -13,6 +13,7 @@ import {
 } from "wagmi";
 import { zeroAddress, type Hex } from "viem";
 
+import WalletProvider from "@/components/chain/WalletProvider";
 import type { BuilderOrderSnapshot } from "@/lib/builder/orderSnapshot";
 import { loadLatestBuilderOrderSnapshot } from "@/lib/builder/orderSnapshot";
 import { auraBuildRegistryAbi } from "@/lib/escrowAbi";
@@ -44,7 +45,20 @@ const registryContract = {
   chainId: CHAIN_ID,
 } as const;
 
+/* BN01 — the wallet boundary. wagmi no longer wraps the whole application
+   from app/app/providers.tsx, so each surface that calls wagmi hooks mounts
+   its own. The hooks MUST sit in a child component: a component cannot read a
+   context it renders itself, and that mistake throws at runtime, not at build
+   time, so tsc would not have caught it. */
 export default function OperatorRegistryApp() {
+  return (
+    <WalletProvider>
+      <OperatorRegistryConsole />
+    </WalletProvider>
+  );
+}
+
+function OperatorRegistryConsole() {
   const [projectId, setProjectId] = useState("");
   const [snapshot, setSnapshot] = useState<BuilderOrderSnapshot | null>(null);
   const [notice, setNotice] = useState(

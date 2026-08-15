@@ -51,11 +51,45 @@
    such a record is refused with a problem string that says why. Closing that
    gap means adding a fourth arm to PlanSource in planCatalog.ts, which this
    module does not do.
+
+   ---------------------------------------------------------------------------
+   TWO LAYERS OF CHECKING, AND WHY THE SEAM IS WHERE IT IS (MK02).
+
+   `collectContributedModelProblems` is the whole check and is what every
+   caller should use. Underneath it are two layers that answer two different
+   questions, and they are separately exported because they have different
+   owners:
+
+   1. SHAPE — `collectContributedModelShapeProblems`. "Is this a well-formed
+      record?" This is the layer agent/src/mcp/tools.ts mirrors message for
+      message, because an MCP client must get the same refusals without a
+      checkout. tests/contributed-model.spec.ts pins the two implementations
+      against each other, string for string, and names every divergence.
+
+   2. CATALOGUE ADMISSION — `collectCatalogueAdmissionProblems`. "Would the
+      record this converts to survive tests/plan-catalog.spec.ts?" It runs on
+      the CONVERTED PlanTemplate — the actual artefact that lands — rather
+      than on a paraphrase of it, and it needs `modelledGlazingRatio` and the
+      NBC ceiling, neither of which agent/ can reach. A contribution that
+      passes here and fails there would be a promise broken at the worst
+      possible moment: after somebody did the work. The gates it mirrors, and
+      the ones it deliberately cannot, are listed in CATALOGUE_GATES_MIRRORED
+      and CATALOGUE_GATES_NOT_MIRRORED below.
+
+   UNKNOWN KEYS ARE REFUSED BY NAME. Every record shape in this file carries an
+   explicit key list, and a key outside it is a refusal that quotes the key.
+   The alternative — the behaviour this replaced — was the worst of the three
+   options available: `contributedModelToPlanTemplate` builds its output from a
+   fixed field list, so a top-level field a contributor added was DROPPED, in
+   silence, and the round-trip assertion could not see it because both
+   directions went through the same fixed list. It neither worked nor said so.
    ============================================================================= */
 
 import type { ClimateZone, EcoMaterial } from "@/lib/designApi";
+import { FDWR_MAX } from "@/lib/design/materials";
 import type { PlanCostBasis, PlanSource, PlanTemplate } from "./planCatalog";
-import { totalFloorAreaSqFt, type HomeSpec, type RoofForm } from "./spec";
+import { totalFloorAreaSqFt, type Deck, type HomeSpec, type Opening, type Roof, type RoofForm, type Siting, type Volume } from "./spec";
+import { modelledGlazingRatio } from "./toPlan";
 
 /** Self-describing envelope. A record without it is refused: an unversioned
  *  blob cannot be migrated later, and "which version is this?" is not a
@@ -154,6 +188,104 @@ export interface ContributedModel {
 export type ContributionRefusal = { ok: false; problem: string };
 export type ContributionCheck = { ok: true; model: ContributedModel } | ContributionRefusal;
 
+/* ------------------------------------------------------------- the key sets
+
+   THE CONTRACT IS THE KEY LIST, NOT JUST THE TYPES. A TypeScript interface
+   disappears at runtime, and JSON arrives at runtime. These lists are the
+   runtime half of the same contract: they drive the unknown-key refusals
+   below, and each is proved against its own interface at compile time by the
+   `…_KEYS_ARE_COMPLETE` constants, using the same technique as
+   CONTRIBUTED_RIGHTS_ARE_PLAN_SOURCE above. Adding a field to an interface
+   without adding it here stops `npx tsc --noEmit`; adding it here without
+   teaching `contributedModelToPlanTemplate` about it fails the round-trip
+   assertion in tests/contributed-model.spec.ts, by name. */
+
+export const CONTRIBUTED_MODEL_KEYS = [
+  "contract",
+  "id",
+  "title",
+  "kicker",
+  "summary",
+  "bestFor",
+  "bedrooms",
+  "bathrooms",
+  "sleeping",
+  "storeys",
+  "tags",
+  "features",
+  "costBasis",
+  "envelope",
+  "notes",
+  "rights",
+] as const;
+
+export const CONTRIBUTED_RIGHTS_KEYS = [
+  "kind",
+  "name",
+  "url",
+  "license",
+  "licenseUrl",
+  "attribution",
+  "changes",
+  "shareAlike",
+  "relationship",
+] as const;
+
+export const CONTRIBUTED_ENVELOPE_KEYS = ["material", "climateZone", "volumes", "deck", "siting"] as const;
+
+export const CONTRIBUTED_VOLUME_KEYS = [
+  "id",
+  "name",
+  "widthFt",
+  "depthFt",
+  "x",
+  "z",
+  "rotationDeg",
+  "storeys",
+  "wallHeightFt",
+  "roof",
+  "openings",
+] as const;
+
+export const CONTRIBUTED_ROOF_KEYS = ["form", "pitchDeg", "overhangFt", "facing"] as const;
+
+export const CONTRIBUTED_OPENING_KEYS = [
+  "id",
+  "wall",
+  "kind",
+  "widthFt",
+  "heightFt",
+  "offsetFt",
+  "sillFt",
+] as const;
+
+export const CONTRIBUTED_DECK_KEYS = ["wall", "widthFt", "depthFt", "hotTub"] as const;
+
+export const CONTRIBUTED_SITING_KEYS = ["frontFacesDeg", "slope"] as const;
+
+export const CONTRIBUTED_COST_BASIS_KEYS = ["status", "label", "note"] as const;
+
+/** `true` only when the list and the interface name exactly the same keys in
+ *  both directions. A missing key and a stale key are both errors here. */
+type KeysMatch<Interface, Listed extends string> = [
+  Exclude<keyof Interface, Listed>,
+  Exclude<Listed, keyof Interface>,
+] extends [never, never]
+  ? true
+  : never;
+
+export const CONTRIBUTED_KEY_SETS_ARE_COMPLETE: [
+  KeysMatch<ContributedModel, (typeof CONTRIBUTED_MODEL_KEYS)[number]>,
+  KeysMatch<ContributedRights, (typeof CONTRIBUTED_RIGHTS_KEYS)[number]>,
+  KeysMatch<ContributedEnvelope, (typeof CONTRIBUTED_ENVELOPE_KEYS)[number]>,
+  KeysMatch<Volume, (typeof CONTRIBUTED_VOLUME_KEYS)[number]>,
+  KeysMatch<Roof, (typeof CONTRIBUTED_ROOF_KEYS)[number]>,
+  KeysMatch<Opening, (typeof CONTRIBUTED_OPENING_KEYS)[number]>,
+  KeysMatch<Deck, (typeof CONTRIBUTED_DECK_KEYS)[number]>,
+  KeysMatch<Siting, (typeof CONTRIBUTED_SITING_KEYS)[number]>,
+  KeysMatch<PlanCostBasis, (typeof CONTRIBUTED_COST_BASIS_KEYS)[number]>,
+] = [true, true, true, true, true, true, true, true, true];
+
 /* ----------------------------------------------------------------- checking */
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
@@ -187,23 +319,64 @@ const PUBLIC_DOMAIN_BASIS = /17 USC 105|public domain|not in copyright/i;
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
+/**
+ * Every key on this record that the contract does not name, refused BY NAME.
+ *
+ * WHY REFUSE RATHER THAN IGNORE. Three options exist for a field nobody asked
+ * for: carry it (this contract cannot — `contributedModelToPlanTemplate` emits
+ * exactly the PlanTemplate interface, and a catalog record with mystery keys is
+ * a catalog nobody can migrate), drop it, or refuse it. Dropping is the one
+ * that is silently wrong: the contributor's file still has the field, the
+ * catalog record does not, nothing anywhere says so, and the loss only ever
+ * surfaces as a bug report about missing data months later. Refusing costs the
+ * contributor one edit and tells them exactly which one.
+ */
+function unknownKeyProblems(record: Record<string, unknown>, allowed: readonly string[], at: string): string[] {
+  const unknown = Object.keys(record).filter((key) => !allowed.includes(key));
+  return unknown.map(
+    (key) =>
+      `${at}.${key} is not a field of ${CONTRIBUTED_MODEL_CONTRACT}. This contract carries exactly: ` +
+      `${allowed.join(", ")}. A field it does not name cannot be carried into the catalog, so it is ` +
+      `refused rather than dropped in silence.`,
+  );
+}
+
+/** The same, for the record's own top level, where there is no path prefix. */
+function unknownTopLevelKeyProblems(record: Record<string, unknown>): string[] {
+  const unknown = Object.keys(record).filter((key) => !(CONTRIBUTED_MODEL_KEYS as readonly string[]).includes(key));
+  return unknown.map(
+    (key) =>
+      `${key} is not a field of ${CONTRIBUTED_MODEL_CONTRACT}. This contract carries exactly: ` +
+      `${CONTRIBUTED_MODEL_KEYS.join(", ")}. A field it does not name cannot be carried into the catalog, ` +
+      `so it is refused rather than dropped in silence.`,
+  );
+}
+
 function rightsProblems(value: unknown): string[] {
   if (!isObject(value)) return ["rights is missing — a model with no stated provenance cannot be accepted."];
   const problems: string[] = [];
   const kind = value.kind;
 
+  /* THESE TWO WERE EARLY RETURNS, AND THAT MADE THE DOCSTRING FALSE (MK02).
+     `collectContributedModelProblems` promises every reason in one pass; a
+     record with a bad `kind` AND a missing attribution used to be handed back
+     one problem, fixed, and then handed the next one — exactly the loop the
+     list form exists to avoid. The kind problem is now recorded and the rest
+     of the block is still checked. Only the ARM-SPECIFIC checks (which arm's
+     shareAlike rule applies, whether a public-domain basis is named) are
+     skipped, because without a valid arm there is no arm rule to apply. */
+  const namedArm = kind === "licensed-adaptation" || kind === "public-domain-adaptation";
   if (kind === "aura-authored") {
-    return [
+    problems.push(
       "rights.kind is \"aura-authored\", which only Aura Homes may sign. Contribute under " +
         "\"licensed-adaptation\" (naming a share-alike licence) or \"public-domain-adaptation\" " +
         "(naming a public-domain dedication).",
-    ];
+    );
+  } else if (!namedArm) {
+    problems.push("rights.kind must be \"licensed-adaptation\" or \"public-domain-adaptation\".");
   }
-  if (kind !== "licensed-adaptation" && kind !== "public-domain-adaptation") {
-    return [
-      "rights.kind must be \"licensed-adaptation\" or \"public-domain-adaptation\".",
-    ];
-  }
+
+  problems.push(...unknownKeyProblems(value, CONTRIBUTED_RIGHTS_KEYS, "rights"));
 
   if (!filled(value.name)) problems.push("rights.name does not say whose work this is.");
   if (!filled(value.url) || !/^https:\/\//.test(value.url as string))
@@ -266,6 +439,7 @@ function openingProblems(volumeIndex: number, volume: Record<string, unknown>): 
       problems.push(`${where} is not a record.`);
       return;
     }
+    problems.push(...unknownKeyProblems(raw, CONTRIBUTED_OPENING_KEYS, where));
     if (!filled(raw.id)) problems.push(`${where}.id is missing.`);
     else if (seen.has(raw.id)) problems.push(`${where}.id "${raw.id}" is used twice in the same volume.`);
     else seen.add(raw.id);
@@ -299,6 +473,7 @@ function envelopeProblems(value: unknown): string[] {
   if (!isObject(value)) return ["envelope is missing — a model with no dimensions is not a model."];
   const problems: string[] = [];
 
+  problems.push(...unknownKeyProblems(value, CONTRIBUTED_ENVELOPE_KEYS, "envelope"));
   if (!MATERIALS.includes(value.material as EcoMaterial))
     problems.push(`envelope.material must be one of ${MATERIALS.join(", ")}.`);
   if (!CLIMATE_ZONES.includes(value.climateZone as ClimateZone))
@@ -308,6 +483,7 @@ function envelopeProblems(value: unknown): string[] {
   if (!isObject(siting)) {
     problems.push("envelope.siting is missing.");
   } else {
+    problems.push(...unknownKeyProblems(siting, CONTRIBUTED_SITING_KEYS, "envelope.siting"));
     if (!finite(siting.frontFacesDeg) || siting.frontFacesDeg < 0 || siting.frontFacesDeg > 360)
       problems.push("envelope.siting.frontFacesDeg must be a compass bearing between 0 and 360.");
     if (!SLOPES.includes(siting.slope as (typeof SLOPES)[number]))
@@ -319,6 +495,7 @@ function envelopeProblems(value: unknown): string[] {
     if (!isObject(deck)) {
       problems.push("envelope.deck must be a deck record or an explicit null.");
     } else {
+      problems.push(...unknownKeyProblems(deck, CONTRIBUTED_DECK_KEYS, "envelope.deck"));
       if (!WALLS.includes(deck.wall as (typeof WALLS)[number]))
         problems.push("envelope.deck.wall must be one of n, s, e, w.");
       if (!finite(deck.widthFt) || deck.widthFt <= 0)
@@ -342,6 +519,7 @@ function envelopeProblems(value: unknown): string[] {
       problems.push(`${at} is not a record.`);
       return;
     }
+    problems.push(...unknownKeyProblems(raw, CONTRIBUTED_VOLUME_KEYS, at));
     if (!filled(raw.id)) problems.push(`${at}.id is missing.`);
     else if (ids.has(raw.id)) problems.push(`${at}.id "${raw.id}" is used twice.`);
     else ids.add(raw.id);
@@ -358,6 +536,7 @@ function envelopeProblems(value: unknown): string[] {
     if (!isObject(roof)) {
       problems.push(`${at}.roof is missing.`);
     } else {
+      problems.push(...unknownKeyProblems(roof, CONTRIBUTED_ROOF_KEYS, `${at}.roof`));
       if (!ROOF_FORMS.includes(roof.form as RoofForm))
         problems.push(`${at}.roof.form must be one of ${ROOF_FORMS.join(", ")}.`);
       if (!finite(roof.pitchDeg) || roof.pitchDeg < 0 || roof.pitchDeg >= 90)
@@ -385,20 +564,26 @@ function envelopeProblems(value: unknown): string[] {
 }
 
 /**
- * Every reason this record cannot be accepted, in one pass.
+ * Every reason this record is not a WELL-FORMED contributed model, in one pass.
  *
  * The list form is the primary one because it is what a contributor — human or
  * agent — actually needs: fixing one refusal only to be handed the next one is
  * a bad loop to put a person in, and a worse one to put a model in.
- * `validateContributedModel` is the repo-standard single-refusal wrapper over
- * this. The MCP tool `validate_contributed_model` reimplements these same
- * checks on the agent side (it cannot import this file) and
- * tests/contributed-model.spec.ts pins the two lists against each other.
+ *
+ * THIS IS THE MIRRORED LAYER. The MCP tool `validate_contributed_model`
+ * reimplements exactly these checks on the agent side (agent/ cannot import
+ * this file) and tests/contributed-model.spec.ts pins the two lists against
+ * each other, string for string, over ~200 mutated records.
+ *
+ * It is deliberately NOT the whole check. `collectContributedModelProblems`
+ * adds the catalogue-admission layer on top; call that one unless you are
+ * specifically comparing against the agent.
  */
-export function collectContributedModelProblems(value: unknown): string[] {
+export function collectContributedModelShapeProblems(value: unknown): string[] {
   if (!isObject(value)) return ["A contributed model must be a JSON object."];
   const problems: string[] = [];
 
+  problems.push(...unknownTopLevelKeyProblems(value));
   if (value.contract !== CONTRIBUTED_MODEL_CONTRACT)
     problems.push(`contract must be "${CONTRIBUTED_MODEL_CONTRACT}".`);
   if (!filled(value.id)) {
@@ -432,6 +617,7 @@ export function collectContributedModelProblems(value: unknown): string[] {
     if (!isObject(basis)) {
       problems.push("costBasis, when present, must be a record.");
     } else {
+      problems.push(...unknownKeyProblems(basis, CONTRIBUTED_COST_BASIS_KEYS, "costBasis"));
       if (basis.status !== "modelled" && basis.status !== "proxy")
         problems.push("costBasis.status must be \"modelled\" or \"proxy\".");
       if (!filled(basis.label)) problems.push("costBasis.label is missing.");
@@ -441,6 +627,24 @@ export function collectContributedModelProblems(value: unknown): string[] {
   problems.push(...rightsProblems(value.rights));
   problems.push(...envelopeProblems(value.envelope));
   return problems;
+}
+
+/**
+ * EVERY reason this record cannot be accepted: well-formedness AND catalogue
+ * admission, in one pass.
+ *
+ * This is the function every caller in the app uses, and the one whose
+ * emptiness `validateContributedModel` and `listContributedModel` treat as
+ * "yes". The catalogue layer runs only once the shape layer is clean, and that
+ * is not the early-return sin the shape layer was just cured of: the catalogue
+ * checks run on the CONVERTED PlanTemplate, and a record that is not a
+ * well-formed ContributedModel cannot be converted at all. There is no
+ * catalogue answer being withheld — there is no catalogue answer yet.
+ */
+export function collectContributedModelProblems(value: unknown): string[] {
+  const shape = collectContributedModelShapeProblems(value);
+  if (shape.length > 0) return shape;
+  return collectCatalogueAdmissionProblems(contributedModelToPlanTemplate(value as ContributedModel));
 }
 
 /** The repo-standard refusal shape: the FIRST problem, named. */
@@ -558,6 +762,207 @@ export function planTemplateToContributedModel(
     rights,
   };
   return { ok: true, model };
+}
+
+/* -------------------------------------------------- catalogue admission
+
+   THE PROMISE THIS SECTION KEEPS. Everything above answers "is this record
+   well-formed?". This answers the question the contributor actually cares
+   about: "if I hand this in, does it land?" tests/plan-catalog.spec.ts holds
+   the catalog to a set of gates. A contribution that validates here and then
+   fails one of those is a promise broken at the worst possible moment — after
+   somebody did the work, and in a pull request they cannot debug.
+
+   THESE PREDICATES MIRROR tests/plan-catalog.spec.ts, WHICH THIS NODE DOES NOT
+   OWN, and a mirror drifts. The drift is made loud rather than trusted, the
+   same way `provenanceNotice` handles it: tests/contributed-model.spec.ts runs
+   this function over every shipped PLAN_TEMPLATES record and asserts it refuses
+   none of them except the two the catalog spec itself grandfathers. A gate that
+   fails honest work goes red immediately; a gate the catalog ADDS and this
+   misses can only be caught by re-reading, which is why the two lists below are
+   written down instead of being implied by the code. */
+
+/** The shared thumbnail span in components/builder/PlanDiagram.tsx. One
+ *  oversized record silently shrinks every diagram in the catalog. */
+export const CATALOG_MAX_SPAN_FT = 44;
+
+/** A proxy cost basis that does not say what it is a proxy FOR is just a
+ *  label; the catalog spec requires a real sentence. */
+export const CATALOG_PROXY_NOTE_MIN_CHARS = 60;
+
+/** Gates of tests/plan-catalog.spec.ts that a contribution is checked against
+ *  BEFORE it is accepted, so it cannot fail them after landing. */
+export const CATALOGUE_GATES_MIRRORED = [
+  "floor area over the catalog minimum",
+  "openings inside their walls, ids unique per volume",
+  "no two openings interpenetrate on the same wall in both axes",
+  "glazing disclosure above the NBC 9.36 prescriptive ceiling",
+  "no over-ceiling disclosure worn by a plan under the ceiling",
+  "every glazing percentage a plan states about itself tracks its geometry",
+  "no plan wider than the shared thumbnail span",
+  "a proxy cost basis names what the Alberta BOM is not modelling",
+  "https source and licence urls, non-NC licence, attribution and change notice",
+] as const;
+
+/** Gates this module CANNOT mirror, named rather than left as a surprise.
+ *  Both are cross-record properties: they are facts about a contribution's
+ *  relationship to the other 55 plans, and this module deliberately holds no
+ *  reference to the catalog's data (see CONTRIBUTED_ID_PREFIX above). They are
+ *  the submissions queue's job, not the record validator's. */
+export const CATALOGUE_GATES_NOT_MIRRORED = [
+  "no two plans are the same building wearing a different name — needs PLAN_TEMPLATES to compare against",
+  "first-volume elevations do not collapse onto a handful of patterns — needs the whole library",
+] as const;
+
+/* The catalog spec's own wording, restated. Each is the exact expression
+   tests/plan-catalog.spec.ts uses; changing one here without changing it there
+   makes this module refuse records the catalog would accept. */
+const GLAZING_CEILING_NAMED = /22% NBC 9\.36 prescriptive ceiling/;
+const GLAZING_OVER_CEILING_CLAIM = /above the 22% NBC 9\.36 prescriptive ceiling/;
+const GLAZING_COMPLIANCE_PATH = /performance path|performance model|trade-off path/i;
+const GLAZING_COLD_COST = /heat loss|heat-loss|loses heat|overheat/i;
+const GLAZING_STATED_PATTERNS = [/modelled at (\d{1,3})% glazing/, /(\d{1,3})% of the modelled wall area/];
+const PROXY_LABEL = /proxy/i;
+const PROXY_NOTE_NAMES_ITS_LIMIT = /quote|supplier|advisor|engineering/i;
+
+/** The plan's bounding span in feet, rotation included — the same computation
+ *  the catalog spec makes, and the same one PlanDiagram draws with. */
+function planSpanFt(spec: HomeSpec): number {
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minZ = Infinity;
+  let maxZ = -Infinity;
+  for (const v of spec.volumes) {
+    const rad = (v.rotationDeg * Math.PI) / 180;
+    const c = Math.abs(Math.cos(rad));
+    const s = Math.abs(Math.sin(rad));
+    const halfW = (v.widthFt * c + v.depthFt * s) / 2;
+    const halfD = (v.widthFt * s + v.depthFt * c) / 2;
+    minX = Math.min(minX, v.x - halfW);
+    maxX = Math.max(maxX, v.x + halfW);
+    minZ = Math.min(minZ, v.z - halfD);
+    maxZ = Math.max(maxZ, v.z + halfD);
+  }
+  return Math.max(maxX - minX, maxZ - minZ);
+}
+
+/**
+ * Every gate of tests/plan-catalog.spec.ts this record would fail once it was
+ * in the catalog, named here instead of there.
+ *
+ * It takes the CONVERTED PlanTemplate rather than the ContributedModel on
+ * purpose: the catalog spec reads `plan.spec.notes`, which is the provenance
+ * notice AND the contributor's note joined, and `plan.costBasis`, which is
+ * only present after conversion. Checking a paraphrase of the artefact is how
+ * a pre-flight check passes and the flight fails.
+ */
+export function collectCatalogueAdmissionProblems(plan: PlanTemplate): string[] {
+  const problems: string[] = [];
+  const notes = plan.spec.notes;
+  const ratio = modelledGlazingRatio(plan.spec);
+  const actualPct = Math.round(ratio * 100);
+
+  if (ratio > FDWR_MAX) {
+    if (!GLAZING_CEILING_NAMED.test(notes))
+      problems.push(
+        `notes must name the 22% NBC 9.36 prescriptive ceiling: this envelope models ${actualPct}% glazing, ` +
+          "which is over it. The catalog allows a glass-forward home and refuses a silent one.",
+      );
+    const stated = GLAZING_STATED_PATTERNS[1].exec(notes);
+    if (!stated)
+      problems.push(
+        `notes must state "${actualPct}% of the modelled wall area" — a disclosure without the plan's own ` +
+          "number is boilerplate, and the catalog checks the number against the geometry.",
+      );
+    else if (Math.abs(Number(stated[1]) - actualPct) > 1)
+      problems.push(
+        `notes claim ${stated[1]}% of the modelled wall area but this envelope models ${actualPct}%.`,
+      );
+    if (!GLAZING_COMPLIANCE_PATH.test(notes))
+      problems.push(
+        "notes must name the compliance path an over-ceiling design would take (a performance path, " +
+          "performance model or trade-off path).",
+      );
+    if (!GLAZING_COLD_COST.test(notes))
+      problems.push(
+        "notes must say what the glass costs in a cold climate — heat loss, or summer overheating. " +
+          "A ceiling named without its consequence tells a reader nothing.",
+      );
+  } else if (GLAZING_OVER_CEILING_CLAIM.test(notes)) {
+    problems.push(
+      `notes wear the over-ceiling disclosure but this envelope models ${actualPct}% glazing, which is ` +
+        "under the ceiling. Pasting the sentence onto a compliant plan makes it meaningless everywhere.",
+    );
+  }
+
+  for (const pattern of GLAZING_STATED_PATTERNS) {
+    const match = pattern.exec(notes);
+    if (!match) continue;
+    if (Math.abs(Number(match[1]) - actualPct) > 1)
+      problems.push(
+        `notes state ${match[1]}% glazing but this envelope models ${actualPct}%. A number in prose rots ` +
+          "the moment somebody drags a window.",
+      );
+  }
+
+  /* Two openings may share a mullion — touching is a building. Only a genuine
+     interpenetration, horizontal AND vertical, is a defect: the six two-storey
+     plans in the catalog legitimately stack windows on the same wall run. */
+  for (const volume of plan.spec.volumes) {
+    const byWall = new Map<string, { id: string; x0: number; x1: number; y0: number; y1: number }[]>();
+    for (const o of volume.openings) {
+      const box = {
+        id: o.id,
+        x0: o.offsetFt,
+        x1: o.offsetFt + o.widthFt,
+        y0: o.sillFt,
+        y1: o.sillFt + o.heightFt,
+      };
+      byWall.set(o.wall, [...(byWall.get(o.wall) ?? []), box]);
+    }
+    byWall.forEach((boxes, wall) => {
+      for (let i = 0; i < boxes.length; i += 1) {
+        for (let j = i + 1; j < boxes.length; j += 1) {
+          const a = boxes[i];
+          const b = boxes[j];
+          const overlapX = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0);
+          const overlapY = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0);
+          if (overlapX > 1e-9 && overlapY > 1e-9)
+            problems.push(
+              `envelope.volumes[${volume.id}] openings "${a.id}" and "${b.id}" occupy the same piece of the ` +
+                `${wall} wall in both axes — a door set into a pane of glass. Touching on a mullion is fine; ` +
+                "interpenetrating is not.",
+            );
+        }
+      }
+    });
+  }
+
+  const span = planSpanFt(plan.spec);
+  if (span > CATALOG_MAX_SPAN_FT)
+    problems.push(
+      `envelope.volumes span ${span.toFixed(1)} ft; the catalog draws every card at one shared scale and ` +
+        `holds the whole library inside ${CATALOG_MAX_SPAN_FT} ft, so one oversized record shrinks every ` +
+        "other diagram.",
+    );
+
+  if (plan.costBasis?.status === "proxy") {
+    const basis = plan.costBasis;
+    if (!PROXY_LABEL.test(basis.label))
+      problems.push('costBasis.label on a proxy basis must contain the word "proxy".');
+    if (basis.note.trim().length <= CATALOG_PROXY_NOTE_MIN_CHARS)
+      problems.push(
+        `costBasis.note must be more than ${CATALOG_PROXY_NOTE_MIN_CHARS} characters on a proxy basis: a ` +
+          "proxy that does not say what it is a proxy FOR is just a label.",
+      );
+    if (!PROXY_NOTE_NAMES_ITS_LIMIT.test(basis.note))
+      problems.push(
+        "costBasis.note on a proxy basis must name what closes the gap — a quote, a supplier, an advisor " +
+          "or engineering.",
+      );
+  }
+
+  return problems;
 }
 
 /** Floor area of a contributed envelope, using the single definition in

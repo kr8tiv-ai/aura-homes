@@ -9,6 +9,22 @@
       already ships, because a format that can only express records written to
       fit it has not been tested.
 
+      MK02 CLOSED THE HOLE IN THIS. The round-trip assertion used to be unable
+      to fail on the one class of loss that actually happens: a contributor
+      adds a top-level field, `contributedModelToPlanTemplate` builds its
+      output from a fixed field list and drops it, `planTemplateToContributed
+      Model` builds ITS output from the same fixed list, and both fixtures were
+      written from that same list — so the comparison never saw a key that
+      neither side carried. Two things replace it: unknown keys are now REFUSED
+      BY NAME, and the round trip is now driven off the validator's own
+      accepted-key lists rather than off a hand-written fixture, so a key the
+      validator accepts and the converter does not know fails by name.
+
+   5. THE CATALOGUE GATE, PRE-ENFORCED. A contribution that validates here and
+      then fails tests/plan-catalog.spec.ts is a promise broken after somebody
+      did the work. An 80%-glazed contribution used to validate clean and would
+      have failed the glazing-disclosure gate the moment it landed.
+
    2. REFUSAL BY NAME. A record without provenance must be IMPOSSIBLE to
       accept, not discouraged. Every refusal path is fed a record and the
       problem string is asserted to name the field it refused.
@@ -25,11 +41,25 @@
 import { expect, test } from "playwright/test";
 
 import {
+  CATALOG_MAX_SPAN_FT,
   CATALOG_MINIMUM_FLOOR_AREA_SQFT,
+  CATALOGUE_GATES_MIRRORED,
+  CATALOGUE_GATES_NOT_MIRRORED,
+  CONTRIBUTED_COST_BASIS_KEYS,
+  CONTRIBUTED_DECK_KEYS,
+  CONTRIBUTED_ENVELOPE_KEYS,
   CONTRIBUTED_ID_PREFIX,
+  CONTRIBUTED_KEY_SETS_ARE_COMPLETE,
   CONTRIBUTED_MODEL_CONTRACT,
+  CONTRIBUTED_MODEL_KEYS,
+  CONTRIBUTED_OPENING_KEYS,
   CONTRIBUTED_RIGHTS_ARE_PLAN_SOURCE,
+  CONTRIBUTED_RIGHTS_KEYS,
+  CONTRIBUTED_SITING_KEYS,
+  CONTRIBUTED_VOLUME_KEYS,
+  collectCatalogueAdmissionProblems,
   collectContributedModelProblems,
+  collectContributedModelShapeProblems,
   contributedFloorAreaSqFt,
   contributedModelToPlanTemplate,
   planTemplateToContributedModel,
@@ -40,6 +70,8 @@ import {
 } from "@/lib/builder/contributedModel";
 import { PLAN_TEMPLATES, type PlanTemplate } from "@/lib/builder/planCatalog";
 import { validateBuilderDocument } from "@/lib/builder/document";
+import { modelledGlazingRatio } from "@/lib/builder/toPlan";
+import { FDWR_MAX } from "@/lib/design/materials";
 import { totalFloorAreaSqFt, type Volume } from "@/lib/builder/spec";
 import {
   CONTRIBUTED_LISTING_NOTICE,
@@ -47,6 +79,7 @@ import {
   CONTRIBUTED_MODEL_LISTINGS,
   NO_RECORDED_PRICE_SENTENCE,
   contributedListingFromPlanTemplate,
+  contributedPriceRefusal,
   contributorProblems,
   listContributedModel,
   recordedPriceLine,
@@ -126,6 +159,50 @@ function fixtureModel(overrides: Partial<ContributedModel> = {}): ContributedMod
     rights: LICENSED_RIGHTS,
     ...overrides,
   };
+}
+
+/* A proxy basis that would ACTUALLY survive tests/plan-catalog.spec.ts: that
+   gate wants more than 60 characters and a named way to close the gap. The
+   first version of this fixture read "Steel packages need supplier quotes." —
+   36 characters — which is exactly the contribution MK02 exists to stop:
+   structurally valid, and refused by the catalog the moment it landed. */
+const PROXY_COST_BASIS = {
+  status: "proxy" as const,
+  label: "Timber/SIP proxy",
+  note:
+    "The Alberta BOM prices a timber and SIP shell; a steel frame and polycarbonate glazing package " +
+    "needs supplier quotes and an engineering review before this range means anything.",
+};
+
+/**
+ * An 80%-glazed contribution with nothing in its notes about it.
+ *
+ * THIS IS THE COUNTEREXAMPLE MK02 WAS GIVEN. Every wall of a 24 × 16 shell is
+ * glass except the west one: 228 + 228 + 152 = 608 sq ft of glass over 760 sq
+ * ft of modelled wall. It is well-formed in every way the shape validator
+ * checks — openings sit inside their walls, ids are unique, floor area clears
+ * the minimum — so it validated CLEAN before this node, and would then have
+ * failed the glazing-disclosure gate in tests/plan-catalog.spec.ts inside the
+ * pull request that added it.
+ */
+function overGlazedModel(overrides: Partial<ContributedModel> = {}): ContributedModel {
+  return fixtureModel({
+    id: "contributed-glass-box",
+    title: "Glass Box",
+    envelope: {
+      ...fixtureModel().envelope,
+      volumes: [
+        mainVolume({
+          openings: [
+            { id: "s-wall", wall: "s", kind: "glazing-wall", widthFt: 24, heightFt: 9.5, offsetFt: 0, sillFt: 0 },
+            { id: "n-wall", wall: "n", kind: "glazing-wall", widthFt: 24, heightFt: 9.5, offsetFt: 0, sillFt: 0 },
+            { id: "e-wall", wall: "e", kind: "glazing-wall", widthFt: 16, heightFt: 9.5, offsetFt: 0, sillFt: 0 },
+          ],
+        }),
+      ],
+    },
+    ...overrides,
+  });
 }
 
 const CONTRIBUTOR: ContributedContributor = {
@@ -235,10 +312,7 @@ const agentProblems = (model: unknown): string[] =>
 
 test("a contributed model becomes a PlanTemplate and comes back identical", () => {
   for (const rights of [LICENSED_RIGHTS, PUBLIC_DOMAIN_RIGHTS]) {
-    for (const costBasis of [
-      undefined,
-      { status: "proxy" as const, label: "Timber/SIP proxy", note: "Steel packages need supplier quotes." },
-    ]) {
+    for (const costBasis of [undefined, PROXY_COST_BASIS]) {
       const model = fixtureModel({
         rights,
         ...(costBasis ? { costBasis } : {}),
@@ -255,6 +329,149 @@ test("a contributed model becomes a PlanTemplate and comes back identical", () =
       expect(plan.spec.volumes).not.toBe(model.envelope.volumes);
       expect("costBasis" in back.model).toBe(costBasis !== undefined);
     }
+  }
+});
+
+/* --------------------------------------------------------------------------
+   1a. THE ROUND TRIP, DRIVEN OFF THE CONTRACT RATHER THAN OFF A FIXTURE
+
+   The assertion above compares two records that were both built from the same
+   fixed field list. That is exactly why it could not see the loss it was named
+   after. These three drive off the validator's OWN accepted-key lists, so the
+   fixture cannot quietly stop exercising a field, and a key the validator
+   accepts that the converter does not know fails by name.
+   ------------------------------------------------------------------------ */
+
+/** The fixture with every optional field present, so it exercises the whole
+ *  accepted key set rather than the subset somebody happened to type. */
+const fullyExercisedModel = (): ContributedModel => fixtureModel({ costBasis: PROXY_COST_BASIS });
+
+test("the fixture exercises every key the contract accepts, at every level", () => {
+  /* Without this, adding a key to the contract and forgetting to add it to the
+     fixture would leave the round-trip assertion below testing the old shape
+     and reporting success. The fixture is not allowed to fall behind. */
+  const model = fullyExercisedModel();
+  expect(Object.keys(model).sort()).toEqual([...CONTRIBUTED_MODEL_KEYS].sort());
+  expect(Object.keys(model.rights).sort()).toEqual([...CONTRIBUTED_RIGHTS_KEYS].sort());
+  expect(Object.keys(model.envelope).sort()).toEqual([...CONTRIBUTED_ENVELOPE_KEYS].sort());
+  expect(Object.keys(model.costBasis!).sort()).toEqual([...CONTRIBUTED_COST_BASIS_KEYS].sort());
+  expect(Object.keys(model.envelope.siting).sort()).toEqual([...CONTRIBUTED_SITING_KEYS].sort());
+  expect(Object.keys(model.envelope.deck!).sort()).toEqual([...CONTRIBUTED_DECK_KEYS].sort());
+  /* `facing` is genuinely optional on Roof and the fixture's gable has none,
+     so volumes are compared as a subset in that one direction only. */
+  const volume = model.envelope.volumes[0];
+  expect(Object.keys(volume).sort()).toEqual([...CONTRIBUTED_VOLUME_KEYS].sort());
+  expect(Object.keys(volume.openings[0]).sort()).toEqual([...CONTRIBUTED_OPENING_KEYS].sort());
+  expect(CONTRIBUTED_KEY_SETS_ARE_COMPLETE.every((proof) => proof === true)).toBe(true);
+});
+
+test("every key the contract accepts survives the round trip — a field the converter does not know fails here", () => {
+  /* THE GATE THAT REPLACED THE VACUOUS ONE.
+
+     `contributedModelToPlanTemplate` copies a fixed list of fields. If the
+     contract ever accepts a key that list does not mention, the key is dropped
+     on the way in and never comes back — and the old assertion could not see
+     it, because its fixture was written from the converter's list too. Here
+     the accepted list is the source of truth on BOTH sides: the record must
+     carry every accepted key (asserted above), and the record that comes back
+     must carry them all again, with the same values. */
+  const model = fullyExercisedModel();
+  const back = planTemplateToContributedModel(contributedModelToPlanTemplate(model));
+  expect(back.ok, back.ok ? "" : back.problem).toBe(true);
+  if (!back.ok) return;
+
+  const survived = Object.keys(back.model);
+  const lost = [...CONTRIBUTED_MODEL_KEYS].filter((key) => !survived.includes(key));
+  expect(
+    lost,
+    "these keys are accepted by collectContributedModelProblems and dropped by " +
+      "contributedModelToPlanTemplate — a contributor's field would vanish in silence",
+  ).toEqual([]);
+  expect(survived.sort()).toEqual([...CONTRIBUTED_MODEL_KEYS].sort());
+  expect(back.model).toEqual(model);
+});
+
+test("a field the contract does not name is refused by name, not dropped", () => {
+  /* The other half of the same hole. Dropping is the worst of the three
+     options: it neither carries the contributor's data nor tells them. */
+  const withStrayField = { ...fixtureModel(), energyRating: "Net zero ready" } as unknown;
+  const problems = collectContributedModelProblems(withStrayField);
+  expect(problems.length).toBeGreaterThan(0);
+  expect(problems.join(" | ")).toContain("energyRating");
+  expect(problems.join(" | ")).toContain(CONTRIBUTED_MODEL_CONTRACT);
+  expect(validateContributedModel(withStrayField).ok).toBe(false);
+
+  /* and the record without it is accepted, so the refusal is about the stray
+     key rather than about the fixture */
+  expect(validateContributedModel(fixtureModel()).ok).toBe(true);
+
+  // every nested record shape is covered too, each naming its own path
+  const nested: Array<[string, unknown]> = [
+    ["rights.trustMe", fixtureModel({ rights: { ...LICENSED_RIGHTS, trustMe: true } as never })],
+    [
+      "envelope.orientation",
+      fixtureModel({ envelope: { ...fixtureModel().envelope, orientation: "south" } as never }),
+    ],
+    [
+      "envelope.volumes[0].wallThicknessMm",
+      fixtureModel({
+        envelope: {
+          ...fixtureModel().envelope,
+          volumes: [{ ...mainVolume(), wallThicknessMm: 240 } as never],
+        },
+      }),
+    ],
+    [
+      "envelope.volumes[0].roof.colour",
+      fixtureModel({
+        envelope: {
+          ...fixtureModel().envelope,
+          volumes: [mainVolume({ roof: { form: "gable", pitchDeg: 35, overhangFt: 1.5, colour: "black" } as never })],
+        },
+      }),
+    ],
+    [
+      "envelope.volumes[0].openings[0].uValue",
+      fixtureModel({
+        envelope: {
+          ...fixtureModel().envelope,
+          volumes: [
+            mainVolume({
+              openings: [
+                { id: "main-glass", wall: "s", kind: "glazing-wall", widthFt: 10, heightFt: 8, offsetFt: 2, sillFt: 0, uValue: 0.8 } as never,
+              ],
+            }),
+          ],
+        },
+      }),
+    ],
+    [
+      "envelope.deck.pergola",
+      fixtureModel({
+        envelope: {
+          ...fixtureModel().envelope,
+          deck: { wall: "s", widthFt: 12, depthFt: 8, hotTub: false, pergola: true } as never,
+        },
+      }),
+    ],
+    [
+      "envelope.siting.elevationFt",
+      fixtureModel({
+        envelope: {
+          ...fixtureModel().envelope,
+          siting: { frontFacesDeg: 180, slope: "flat", elevationFt: 2200 } as never,
+        },
+      }),
+    ],
+    [
+      "costBasis.currency",
+      fixtureModel({ costBasis: { ...PROXY_COST_BASIS, currency: "CAD" } as never }),
+    ],
+  ];
+  for (const [path, model] of nested) {
+    const key = path.slice(path.lastIndexOf(".") + 1);
+    const joined = collectContributedModelProblems(model).join(" | ");
+    expect(joined, `${path} must be refused by name`).toContain(key);
   }
 });
 
@@ -377,6 +594,149 @@ test("the contributed id prefix cannot collide with any catalog plan id", () => 
     expect(plan.id.startsWith(CONTRIBUTED_ID_PREFIX)).toBe(false);
   }
   expect(CONTRIBUTED_RIGHTS_ARE_PLAN_SOURCE).toBe(true);
+});
+
+/* ==========================================================================
+   1b. THE CATALOGUE GATE, PRE-ENFORCED
+
+   The contract's promise is that a record which validates here lands. A
+   contribution that passes this validator and then fails
+   tests/plan-catalog.spec.ts is a promise broken after somebody did the work,
+   inside a pull request they cannot debug.
+   ========================================================================== */
+
+test("an 80%-glazed contribution is refused HERE, not in the pull request that adds it", () => {
+  /* THE COUNTEREXAMPLE. Before MK02 this record validated clean: it is
+     well-formed in every way the shape layer checks. It would then have failed
+     tests/plan-catalog.spec.ts's glazing-disclosure gate on landing. */
+  const model = overGlazedModel();
+  expect(collectContributedModelShapeProblems(model), "the counterexample must be WELL-FORMED — a record refused for its shape would prove nothing about the catalogue layer").toEqual([]);
+
+  const ratio = modelledGlazingRatio(contributedModelToPlanTemplate(model).spec);
+  expect(ratio).toBeGreaterThan(FDWR_MAX);
+  expect(Math.round(ratio * 100)).toBe(80);
+
+  const problems = collectContributedModelProblems(model);
+  expect(problems.length).toBeGreaterThanOrEqual(4);
+  const joined = problems.join(" | ");
+  expect(joined).toContain("22% NBC 9.36 prescriptive ceiling");
+  expect(joined).toContain("80% of the modelled wall area");
+  expect(joined).toMatch(/performance path/);
+  expect(joined).toMatch(/heat loss|overheat/);
+  expect(validateContributedModel(model).ok).toBe(false);
+
+  /* and it is ACCEPTED once it discloses, so the gate is about the silence
+     rather than about the glass — the catalog allows a glass-forward home */
+  const disclosed = overGlazedModel({
+    notes:
+      "This envelope is glazed to 80% of the modelled wall area, well above the 22% NBC 9.36 " +
+      "prescriptive ceiling. It needs the performance path rather than the prescriptive one, and in " +
+      "a zone 7A winter that glass is where the heat loss is — triple glazing and a real heating " +
+      "strategy are not optional here.",
+  });
+  expect(collectContributedModelProblems(disclosed), "a disclosed over-glazed contribution is allowed").toEqual([]);
+});
+
+test("a contribution cannot wear a disclosure it did not earn, or state a percentage that has rotted", () => {
+  const liar = fixtureModel({
+    notes:
+      "Glazed well above the 22% NBC 9.36 prescriptive ceiling, on the performance path, with the " +
+      "heat loss that implies.",
+  });
+  expect(modelledGlazingRatio(contributedModelToPlanTemplate(liar).spec)).toBeLessThanOrEqual(FDWR_MAX);
+  expect(collectContributedModelProblems(liar).join(" | ")).toContain("under the ceiling");
+
+  const drifted = fixtureModel({ notes: "A compact cabin modelled at 41% glazing across its envelope." });
+  expect(collectContributedModelProblems(drifted).join(" | ")).toContain("13%");
+});
+
+test("the other catalogue gates are pre-enforced too — overlap, span and a proxy that says nothing", () => {
+  const overlapping = fixtureModel({
+    envelope: {
+      ...fixtureModel().envelope,
+      volumes: [
+        mainVolume({
+          openings: [
+            { id: "glass", wall: "s", kind: "glazing-wall", widthFt: 10, heightFt: 8, offsetFt: 2, sillFt: 0 },
+            { id: "door", wall: "s", kind: "door", widthFt: 3, heightFt: 6.8, offsetFt: 9.7, sillFt: 0 },
+          ],
+        }),
+      ],
+    },
+  });
+  expect(collectContributedModelProblems(overlapping).join(" | ")).toContain("same piece of the s wall");
+
+  const oversized = fixtureModel({
+    envelope: {
+      ...fixtureModel().envelope,
+      volumes: [mainVolume({ widthFt: 46, openings: [] })],
+    },
+  });
+  expect(collectContributedModelProblems(oversized).join(" | ")).toContain(`${CATALOG_MAX_SPAN_FT} ft`);
+
+  for (const [label, basis] of [
+    ["a note too short to say anything", { ...PROXY_COST_BASIS, note: "Steel packages need supplier quotes." }],
+    ["a label that does not say proxy", { ...PROXY_COST_BASIS, label: "Alberta basis" }],
+    [
+      "a note that never names what closes the gap",
+      {
+        ...PROXY_COST_BASIS,
+        note:
+          "The range comes from the shared Alberta bill of materials and does not represent this " +
+          "design's intended construction in any way at all.",
+      },
+    ],
+  ] as const) {
+    const problems = collectContributedModelProblems(fixtureModel({ costBasis: basis }));
+    expect(problems.join(" | "), `${label} must be refused`).toContain("costBasis");
+  }
+
+  // and the compliant proxy basis is accepted
+  expect(collectContributedModelProblems(fixtureModel({ costBasis: PROXY_COST_BASIS }))).toEqual([]);
+});
+
+/** The two ids tests/plan-catalog.spec.ts grandfathers by name in
+ *  OVER_GLAZED_BEFORE_THIS_GATE. Both are `aura-authored`, so no contribution
+ *  can ever be one of them; they are restated here only so this spec can say
+ *  which library records its mirror is allowed to refuse. */
+const CATALOG_GRANDFATHERED_OVER_GLAZED = ["fjell-cube", "lys-lantern"] as const;
+
+test("the pre-enforced mirror refuses none of the plans the catalog already ships", () => {
+  /* THE OTHER HALF OF A GATE THAT WORKS. It is not enough that the mirror
+     catches the counterexample — it must not reject honest work. If it refused
+     a shipped record, this mirror would be stricter than the gate it mirrors
+     and would block real contributions for no reason. */
+  const refused = PLAN_TEMPLATES.filter((plan) => collectCatalogueAdmissionProblems(plan).length > 0).map(
+    (plan) => plan.id,
+  );
+  const unexpected = refused.filter(
+    (id) => !(CATALOG_GRANDFATHERED_OVER_GLAZED as readonly string[]).includes(id),
+  );
+  expect(
+    unexpected,
+    "the pre-enforced catalogue mirror refuses a plan the catalog itself accepts — it is stricter than tests/plan-catalog.spec.ts and would block honest contributions",
+  ).toEqual([]);
+  expect(PLAN_TEMPLATES.length - refused.length).toBeGreaterThanOrEqual(53);
+
+  /* Not a vacuous sweep: every refusal it does make is the glazing disclosure
+     the catalog spec grandfathers by the same two names. */
+  for (const id of refused) {
+    const plan = PLAN_TEMPLATES.find((candidate) => candidate.id === id)!;
+    expect(modelledGlazingRatio(plan.spec)).toBeGreaterThan(FDWR_MAX);
+    expect(collectCatalogueAdmissionProblems(plan).join(" | ")).toContain("NBC 9.36");
+  }
+});
+
+test("the gates this module cannot pre-enforce are written down rather than left as a surprise", () => {
+  expect(CATALOGUE_GATES_MIRRORED.length).toBeGreaterThanOrEqual(8);
+  expect(CATALOGUE_GATES_NOT_MIRRORED.length).toBeGreaterThan(0);
+  /* Both unmirrored gates are cross-record: they are facts about a
+     contribution's relationship to the other plans, and this module holds no
+     reference to the catalog's data on purpose. Naming them is the handoff. */
+  for (const gate of CATALOGUE_GATES_NOT_MIRRORED) {
+    expect(gate).toMatch(/needs PLAN_TEMPLATES|needs the whole library/);
+  }
+  expect(CATALOGUE_GATES_NOT_MIRRORED.join(" ")).toContain("same building wearing a different name");
 });
 
 /* ==========================================================================
@@ -746,24 +1106,109 @@ function parityCorpus(): Array<{ label: string; model: unknown }> {
   return corpus;
 }
 
+/**
+ * The one corpus record the two implementations no longer agree on, and the
+ * exact string that differs.
+ *
+ * RENEGOTIATED IN PLACE, NOT WEAKENED (MK02). The parity target moved from
+ * `collectContributedModelProblems` to `collectContributedModelShapeProblems`,
+ * because the app grew a second layer — catalogue admission — that agent/
+ * cannot compute: it needs `modelledGlazingRatio` and the NBC ceiling out of
+ * app/lib, which agent/ has zero imports from by design. The SHAPE layer is
+ * still compared string for string across the whole corpus.
+ *
+ * Within that layer there is now exactly one divergence, and it is written
+ * down rather than tolerated. MK02 fixed the early return in `rightsProblems`
+ * that stopped after the `kind` refusal and never checked the rest of the
+ * block — so an "aura-authored" contribution whose `relationship` is also
+ * wrong now gets both reasons at once. The mirror in
+ * agent/src/mcp/tools.ts `cmRightsProblems` still returns early, and that file
+ * is outside this node's write set. This list is closed and asserted exactly:
+ * a NEW divergence fails, and so does a stale entry.
+ */
+const KNOWN_AGENT_SHAPE_DIVERGENCES: Record<string, string[]> = {
+  "a contributor signing as Aura Homes": [
+    "rights.relationship must be \"dimensional-adaptation\" or \"system-informed-study\".",
+  ],
+};
+
 test("the agent's validator and the app's agree, string for string, on every refusal", () => {
   /* agent/ cannot import app/lib/builder, so these are two implementations of
      one contract. Mirrored logic drifts; this is the detector. */
   const corpus = parityCorpus();
   expect(corpus.length).toBeGreaterThan(150);
   let sawProblems = 0;
+  let sawDivergence = 0;
   for (const item of corpus) {
-    const mine = collectContributedModelProblems(item.model);
-    expect(agentProblems(item.model), `the agent and the app disagree about "${item.label}"`).toEqual(mine);
+    const mine = collectContributedModelShapeProblems(item.model);
+    const theirs = agentProblems(item.model);
+    const pinned = KNOWN_AGENT_SHAPE_DIVERGENCES[item.label];
+    if (pinned) {
+      sawDivergence += 1;
+      expect(
+        mine.filter((problem) => !theirs.includes(problem)),
+        `the pinned divergence for "${item.label}" is not the one recorded — re-read agent/src/mcp/tools.ts cmRightsProblems`,
+      ).toEqual(pinned);
+      expect(
+        theirs.filter((problem) => !mine.includes(problem)),
+        `the agent reports something the app does not for "${item.label}"`,
+      ).toEqual([]);
+    } else {
+      expect(theirs, `the agent and the app disagree about "${item.label}"`).toEqual(mine);
+    }
     if (mine.length > 0) sawProblems += 1;
   }
   /* the corpus really does break things — a sweep that produced only valid
      records would compare two empty lists and prove nothing */
   expect(sawProblems).toBeGreaterThan(corpus.length - 12);
+  /* a stale exemption is worse than no exemption: every pinned divergence must
+     still be a real one, reached by a real corpus record */
+  expect(sawDivergence).toBe(Object.keys(KNOWN_AGENT_SHAPE_DIVERGENCES).length);
 
   // and they agree that a sound record has nothing wrong with it
   expect(agentProblems(fixtureModel())).toEqual([]);
   expect(agentProblems(fixtureModel({ rights: PUBLIC_DOMAIN_RIGHTS }))).toEqual([]);
+});
+
+test("a bad rights kind no longer hides the rest of the block — every reason, in one pass", () => {
+  /* The early return this replaces handed back ONE problem and stopped, so a
+     contributor with two things wrong fixed one and was handed the next. The
+     list form exists precisely to avoid that loop. */
+  const model = fixtureModel({
+    rights: { ...LICENSED_RIGHTS, kind: "trust-me" as never, attribution: "", url: "http://example.org" },
+  });
+  const problems = collectContributedModelShapeProblems(model);
+  expect(problems.join(" | ")).toContain("rights.kind");
+  expect(problems.join(" | ")).toContain("rights.attribution");
+  expect(problems.join(" | ")).toContain("rights.url");
+  expect(problems.length).toBeGreaterThanOrEqual(3);
+
+  /* the arm-specific rules stay skipped, and that is not the same defect: with
+     no valid arm there is no arm rule to apply, so reporting one would be
+     inventing a requirement */
+  expect(problems.join(" | ")).not.toContain("shareAlike");
+});
+
+test("two whole classes of refusal the agent's mirror does not yet make, named with the file to change", () => {
+  /* HONESTY OVER COMPLETION. agent/src/mcp/tools.ts is outside this node's
+     write set, so its `contributedModelProblems` is now a STRICT SUBSET of the
+     app's. Rather than let that be discovered by a contributor whose record
+     the MCP tool called valid and the app refused, both classes are pinned
+     here. When agent/ gains them, these assertions go red and must be flipped
+     — which is the point. */
+  const strayKey = { ...fixtureModel(), energyRating: "Net zero ready" } as unknown;
+  expect(collectContributedModelProblems(strayKey).join(" | ")).toContain("energyRating");
+  expect(
+    agentProblems(strayKey),
+    "agent/src/mcp/tools.ts contributedModelProblems now rejects unknown keys — delete this pin and fold the case back into the parity corpus",
+  ).toEqual([]);
+
+  const overGlazed = overGlazedModel();
+  expect(collectContributedModelProblems(overGlazed).join(" | ")).toContain("NBC 9.36");
+  expect(
+    agentProblems(overGlazed),
+    "agent/src/mcp/tools.ts now pre-enforces the catalogue glazing gate — delete this pin",
+  ).toEqual([]);
 });
 
 test("the agent's validate tool returns every refusal, not just the first", () => {
@@ -776,7 +1221,9 @@ test("the agent's validate tool returns every refusal, not just the first", () =
   expect(result.ok).toBe(false);
   expect(result.problemCount).toBe((result.problems as string[]).length);
   expect((result.problems as string[]).length).toBeGreaterThan(4);
-  expect(result.problemCount).toBe(collectContributedModelProblems(broken).length);
+  /* compared against the SHAPE layer, which is the layer the agent mirrors —
+     see KNOWN_AGENT_SHAPE_DIVERGENCES above for why the target moved */
+  expect(result.problemCount).toBe(collectContributedModelShapeProblems(broken).length);
 });
 
 /* ==========================================================================
@@ -842,6 +1289,39 @@ test("a price is recorded with a basis and a date, or it is not recorded at all"
   ).toBe("refused");
 });
 
+test("a price refusal names the field the contributor actually submitted", () => {
+  /* The rule is homeModels' — one definition of "a price needs a date and a
+     basis". Its MESSAGES were written for FinishedHomeModel, where the price
+     lives at `price.numeric`. A contributed submission has no `numeric`, so an
+     unmodified message pointed the contributor at a field they never wrote:
+     refusing without naming a real field, dressed up as naming one. */
+  const cases: Array<[string, unknown]> = [
+    ["price.asOfISO", { amount: 750, currency: "CAD", basis: "maker-published" }],
+    ["price.basis", { amount: 750, currency: "CAD", asOfISO: "2026-08-14T00:00:00.000Z" }],
+    ["price.amount", { amount: -1, currency: "CAD", asOfISO: "2026-08-14T00:00:00.000Z", basis: "maker-published" }],
+    ["price.currency", { amount: 750, currency: "dollars", asOfISO: "2026-08-14T00:00:00.000Z", basis: "maker-published" }],
+    ["price is not a record", "seven hundred and fifty"],
+  ];
+  for (const [names, price] of cases) {
+    const listing = listContributedModel({ model: fixtureModel(), contributor: CONTRIBUTOR, price });
+    expect(listing.status).toBe("refused");
+    const joined = listing.refusals.join(" | ");
+    expect(joined, `a bad price must be refused as ${names}`).toContain(names.split(" ")[0]);
+    expect(
+      joined,
+      "a contributed price refusal must never name price.numeric — that field belongs to FinishedHomeModel and the contributor never wrote it",
+    ).not.toContain("price.numeric");
+  }
+
+  /* the rewrite is anchored on the prefix and passes anything else through
+     untouched, rather than guessing — so a reworded message upstream arrives
+     visibly unanchored instead of silently mangled */
+  expect(contributedPriceRefusal("price.numeric.amount is not a positive finite number.")).toBe(
+    "price.amount is not a positive finite number.",
+  );
+  expect(contributedPriceRefusal("something else entirely.")).toBe("something else entirely.");
+});
+
 test("a refused submission is listed as refused, with every reason and no half-facts", () => {
   const listing = listContributedModel({
     model: fixtureModel({ rights: { ...LICENSED_RIGHTS, attribution: "" } }),
@@ -882,6 +1362,29 @@ test("the shipped listing set is empty rather than seeded with an invented contr
   const refused = contributedListingFromPlanTemplate(aura!, CONTRIBUTOR);
   expect(refused.status).toBe("refused");
   expect(refused.refusals.join(" ")).toContain("aura-authored");
+
+  /* THE REFUSAL IS THE ONE THAT WAS ACTUALLY MADE (MK02).
+
+     This path used to validate a stub record — `{ contract }` and nothing else
+     — purely to obtain the listing shape, then throw away the dozen refusals
+     that stub produced and substitute the reversal's. The returned listing
+     therefore carried a `refusals` array that had not come from the check that
+     produced the rest of it, contradicting listContributedModel's own
+     docstring. It is built directly now: exactly one thing was checked and
+     exactly one thing failed, so exactly one reason comes back — and none of
+     the stub's consequential noise about a record nobody submitted. */
+  expect(refused.refusals.length).toBe(1);
+  expect(refused.refusals.join(" ")).not.toContain("envelope");
+  expect(refused.refusals.join(" ")).not.toContain("contract must be");
+  expect(refused.id).toBe(aura!.id);
+  expect(refused.model).toBeNull();
+  expect(refused.rights).toBeNull();
+  expect(refused.contributor).toBeNull();
+  for (const fact of Object.values(refused.facts)) {
+    expect(fact.status).toBe("unknown");
+    expect(fact.value).toBeNull();
+  }
+  expect(contributedListingFromPlanTemplate(aura!, CONTRIBUTOR, { demonstration: true }).demonstration).toBe(true);
 });
 
 /* ==========================================================================

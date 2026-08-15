@@ -28,7 +28,6 @@
    ============================================================================= */
 
 import {
-  CONTRIBUTED_MODEL_CONTRACT,
   collectContributedModelProblems,
   contributedFloorAreaSqFt,
   planTemplateToContributedModel,
@@ -168,20 +167,84 @@ export function recordedPriceLine(price: NumericPrice | null): string {
 }
 
 /**
- * Turn a submission into a listing. Never throws, never partially accepts: a
- * record that does not validate becomes a `refused` listing carrying every
- * reason, so a submissions queue can show a contributor exactly what to fix.
+ * `validateNumericPrice` re-anchored onto the field a contributor actually
+ * submitted.
+ *
+ * WHY THIS EXISTS. The RULES come from homeModels.ts and must not be
+ * duplicated — one definition of "a price needs a date and a basis", not two
+ * that can disagree. But its MESSAGES were written for `FinishedHomeModel`,
+ * where the price lives at `price.numeric`. A contributed submission has no
+ * `numeric`; it has `price`. Handing a contributor "price.numeric.asOfISO is
+ * missing" points them at a field they never wrote and cannot find, which is
+ * the same failure as refusing without naming the field — it just looks like
+ * it named one.
+ *
+ * So the rule is reused and only the path is corrected. The `price.numeric`
+ * prefix is rewritten to `price`; a message that does not carry that prefix is
+ * passed through untouched rather than guessed at, and the fallthrough is
+ * asserted in tests/contributed-model.spec.ts so a reworded message upstream
+ * cannot quietly start arriving unanchored.
+ */
+export function contributedPriceRefusal(problem: string): string {
+  return problem.startsWith("price.numeric") ? `price${problem.slice("price.numeric".length)}` : problem;
+}
+
+/**
+ * The one shape a refused listing has, built once.
  *
  * A refused listing's facts are all `unknown` rather than half-filled from the
  * parts that happened to parse. Half a provenance chain reads as a provenance
  * chain, which is how a catalog ends up shipping somebody else's drawings.
+ *
+ * It is a named function rather than an inline literal because two callers
+ * need it, and the second one used to fake a submission to get at it — see
+ * `contributedListingFromPlanTemplate`.
+ */
+function refusedListing(
+  id: string,
+  refusals: string[],
+  demonstration: boolean,
+): ContributedModelListing {
+  return {
+    id,
+    status: "refused",
+    refusals,
+    model: null,
+    contributor: null,
+    rights: null,
+    facts: {
+      authorship: unknownFact<string>("Refused submission"),
+      licenceTerms: unknownFact<string>("Refused submission"),
+      changesFromSource: unknownFact<string>("Refused submission"),
+      floorAreaSqFt: unknownFact<number>("Refused submission"),
+      recordedPrice: unknownFact<NumericPrice>("Refused submission"),
+    },
+    priceLine: NO_RECORDED_PRICE_SENTENCE,
+    notice: CONTRIBUTED_LISTING_NOTICE,
+    demonstration,
+  };
+}
+
+/**
+ * Turn a submission into a listing. Never throws, never partially accepts: a
+ * record that does not validate becomes a `refused` listing carrying every
+ * reason THIS FUNCTION FOUND, so a submissions queue can show a contributor
+ * everything to fix in one pass rather than one item per round trip.
+ *
+ * "Every reason" is scoped to what was actually checked, and that scope is
+ * stated rather than implied: `collectContributedModelProblems` is the whole
+ * record check (shape and catalogue admission), the contributor block is
+ * checked in full, and the price — when one was submitted — is checked by
+ * homeModels' single definition. A caller that refuses a submission BEFORE it
+ * reaches here has one reason, not none, and says so; see
+ * `contributedListingFromPlanTemplate`.
  */
 export function listContributedModel(submission: ContributedSubmission): ContributedModelListing {
   const modelProblems = collectContributedModelProblems(submission.model);
   const personProblems = contributorProblems(submission.contributor);
   const priceProvided = submission.price !== undefined && submission.price !== null;
   const priceCheck = priceProvided ? validateNumericPrice(submission.price) : null;
-  const priceProblems = priceCheck && !priceCheck.ok ? [priceCheck.problem] : [];
+  const priceProblems = priceCheck && !priceCheck.ok ? [contributedPriceRefusal(priceCheck.problem)] : [];
   const refusals = [...modelProblems, ...personProblems, ...priceProblems];
   const demonstration = submission.demonstration === true;
 
@@ -192,26 +255,7 @@ export function listContributedModel(submission: ContributedSubmission): Contrib
       ? ((submission.model as { id: string }).id)
       : "unidentified-submission";
 
-  if (refusals.length > 0) {
-    return {
-      id: rawId,
-      status: "refused",
-      refusals,
-      model: null,
-      contributor: null,
-      rights: null,
-      facts: {
-        authorship: unknownFact<string>("Refused submission"),
-        licenceTerms: unknownFact<string>("Refused submission"),
-        changesFromSource: unknownFact<string>("Refused submission"),
-        floorAreaSqFt: unknownFact<number>("Refused submission"),
-        recordedPrice: unknownFact<NumericPrice>("Refused submission"),
-      },
-      priceLine: NO_RECORDED_PRICE_SENTENCE,
-      notice: CONTRIBUTED_LISTING_NOTICE,
-      demonstration,
-    };
-  }
+  if (refusals.length > 0) return refusedListing(rawId, refusals, demonstration);
 
   const model = submission.model as ContributedModel;
   const contributor = submission.contributor as ContributedContributor;
@@ -265,15 +309,20 @@ export function contributedListingFromPlanTemplate(
 ): ContributedModelListing {
   const reversed = planTemplateToContributedModel(plan);
   if (!reversed.ok) {
-    /* The reversal's own reason is the refusal — running an unreversible plan
-       through the model validator would bury it under a pile of consequential
-       problems about a record that was never built. */
-    const refused = listContributedModel({
-      model: { contract: CONTRIBUTED_MODEL_CONTRACT },
-      contributor,
-      demonstration: options.demonstration,
-    });
-    return { ...refused, id: plan.id, refusals: [reversed.problem] };
+    /* THE REVERSAL'S OWN REASON IS THE WHOLE REFUSAL, and that is now said in
+       one place instead of being assembled from a discarded one.
+
+       This path used to validate a stub record — `{ contract }` and nothing
+       else — purely to obtain the listing SHAPE, then throw away the dozen
+       refusals that stub produced and substitute this one. The returned object
+       therefore carried a `refusals` array that did not come from the check
+       that produced the rest of it, which is precisely what
+       `listContributedModel`'s docstring promises never happens. It builds the
+       refused listing directly now: one reason, because exactly one thing was
+       checked and exactly one thing failed. Running the model validator over a
+       plan that could not be reversed would bury the real reason under a pile
+       of consequential problems about a record that was never built. */
+    return refusedListing(plan.id, [reversed.problem], options.demonstration === true);
   }
   /* The catalog's own ids have no contributed- prefix, so a reversed catalog
      plan is namespaced on the way in rather than being allowed to shadow the

@@ -69,9 +69,29 @@
    UNCOMPRESSED CONTENT STREAMS, ON PURPOSE. Flate would cut the file by
    roughly 4x, and it would do it through zlib in Node and CompressionStream in
    the browser — two implementations that agree on the decoded bytes and not on
-   the encoded ones. Byte-identical output across environments is worth more
-   here than a smaller file, and the per-sheet SVG downloads remain for anyone
-   who wants one light sheet.
+   the encoded ones. Skipping compression REMOVES that divergence rather than
+   managing it, and the per-sheet SVG downloads remain for anyone who wants one
+   light sheet.
+
+   WHAT IS AND IS NOT PROVEN ABOUT CROSS-ENGINE IDENTITY. This block used to
+   claim byte-identical output ACROSS ENVIRONMENTS. Nobody has ever run this
+   writer in a second engine and diffed the result, so that claim is withdrawn
+   and replaced with the two things `tests/export-pdf.spec.ts` actually
+   executes. One: byte identity of repeated generations IN ONE ENGINE, under a
+   stubbed Date thirty years apart and two different Math.random streams. Two:
+   a source check that nothing here reaches an API whose bytes are known to
+   differ between engines — no zlib, no CompressionStream, no Buffer, no
+   TextEncoder, no Intl or locale formatting, no clock, no randomness, no Node
+   built-in. That is a structural argument, not a measurement, and it stops
+   where this file stops: `viem`'s keccak is taken on the same terms.
+
+   THE RESIDUAL RISK, NAMED RATHER THAN IMPLIED. `arcToBeziers` and
+   `parseTransform` call Math.cos/sin/tan/acos/hypot, and ECMA-262 leaves the
+   precision of those implementation-defined. Two engines may differ in the
+   last ULP, and a value sitting exactly on a 0.0005 boundary would then round
+   differently in `n()`. Only door-swing arcs and rotated labels are exposed;
+   every straight mark on every sheet is exact decimal arithmetic and cannot
+   move. Proving the rest needs a second engine, not a stronger sentence here.
    =========================================================================== */
 
 import { keccak256, stringToHex, type Hex } from "viem";

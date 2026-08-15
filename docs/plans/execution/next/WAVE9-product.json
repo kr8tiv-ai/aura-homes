@@ -1,0 +1,68 @@
+{
+  "wave": 9,
+  "graphVersion": "1.2",
+  "theme": "Founder direction 2026-08-14: prioritise the most dramatic and useful change in each stream. Three of these came from the founder failing to find his own features, which is the most reliable usability signal available.",
+  "sharedRules": {
+    "orchestratorOwns": ["README.md", "docs/SUBMISSION.md", "app/package.json", "app/playwright.ui.config.ts", "app/tests/gate-coverage.spec.ts"],
+    "note": "Several agents work this same checkout. Write only your declared files. Never run git. Never run npm run build or test:ui or npm install. Run npx tsc --noEmit and your own spec by path."
+  },
+
+  "LAND01": {
+    "job": "Give the land tool real inventory, from open government data, without scraping anything.",
+    "theProblem": "The founder asked why he cannot search for land. The answer: the fit engine works and has nothing real to point at. LAND_LISTING_PROVIDERS (lib/marketplace/discovery.ts:76) has exactly three entries — REALTOR.ca DDF is `not-connected` because it lawfully requires a REALTOR/broker relationship and approved DDF permissions before Aura may display inventory; Alberta Site Selector is `link-out` with no reusable feed rights; and the only `available` provider is `aura-demo-land`, whose own note says 'Four fictionalized records ... are not active listings and cannot be purchased.'",
+    "theOpening": "Alberta and Edmonton publish REAL parcel, zoning and servicing data under open licences — the Alberta Open Government Portal (Open Government Licence – Alberta) and the City of Edmonton Open Data Portal. That is not a listing feed and must never be described as one: it is authoritative CONSTRAINT data. A person who has found a parcel, or is looking at one, can have its district minimums, zoning, servicing and access checked against their design for real instead of against a fixture. That is a bigger product than a listing feed and it is legally clean.",
+    "writeSet": [
+      "app/lib/marketplace/landData.ts (new)",
+      "app/lib/marketplace/discovery.ts",
+      "data/land/ (new baked artifacts + a README recording licence and retrieval date per source)",
+      "app/scripts/bake-land-data.mjs (new)",
+      "app/tests/land-data.spec.ts (new)"
+    ],
+    "rejectionGates": [
+      "EVERY RECORD CARRIES ITS SOURCE, ITS LICENCE AND ITS RETRIEVAL DATE, or it does not ship. This repo already refuses undated numbers — 'an undated number with no stated origin is a rumour' — and land data is the highest-stakes version of that.",
+      "NEVER CALL IT A LISTING. It is constraint and reference data. The words 'for sale', 'listing' and 'available' must not attach to it. The existing provider descriptors already model this distinction; extend them, do not blur them.",
+      "REUSE EvidenceStatus EXACTLY (discovery.ts:4). Authority-published zoning is 'verified'; anything inferred is 'declared'; absent is 'unknown' and scores zero. Do not invent a parallel confidence vocabulary — suppliers.ts already has a separate one and conflating them is a known trap.",
+      "BAKE IT, DO NOT FETCH IT AT RUNTIME. The site is a static export with no server and must work offline. Follow the existing bake pattern in data/alberta.",
+      "THE BAKE SCRIPT MUST REFUSE STALE SOURCES the way the StatCan bake does — it discovered its named table had been archived and replaced, and refuses to run if its source stops being current. Same discipline here.",
+      "NO SCRAPING. Open data portals with published licences only. If a source's terms do not clearly permit redistribution, link out instead and say why."
+    ]
+  },
+
+  "ED01": {
+    "job": "Make the editors stunning.",
+    "theProblem": "Founder direction, verbatim: 'make the editors stunning'. The builder is the product's centre of gravity and the surface a judge spends the most time in, and it currently reads as capable rather than considered.",
+    "context": [
+      "This is a CRAFT node, not a feature node. No new capability. The design system already exists and is good: a token ladder (--tone-* raw triplets, --aura-*/--st-* wrappers), a motion system of three named durations in the 150-250ms band with one damped house curve, a single focus ring, and a spacing scale on a 1.5 ratio. The job is to USE it properly in the builder, not to add to it.",
+      "Read BRAND-VOICE-GUIDE.md before touching copy. Read globals.css's token block before touching colour. If you find yourself writing a hex literal, stop.",
+      "The builder stage is .builder-stage / .builder-stage__view / .builder-stage__controls, two columns above 64rem, one below. VW03 may be changing the mobile half in this same wave — coordinate by staying out of the phone block."
+    ],
+    "writeSet": [
+      "app/app/globals.css (builder surfaces only — .builder-*, and NOT the .builder-stage grid rules or the phone block, which VW03 owns this wave)",
+      "app/components/builder/Segmented.tsx",
+      "app/components/builder/Readout.tsx",
+      "app/components/builder/LiveReadout.tsx",
+      "app/tests/builder-craft.spec.ts (new)"
+    ],
+    "rejectionGates": [
+      "NOT ONE NEW HEX LITERAL. Every colour from the token ladder. The css-tokens gate will catch an undefined variable; nothing catches a hardcoded colour except you.",
+      "NOT ONE NEW HAND-TUNED DURATION. interface-motion.spec.ts already fails the build on a literal duration in an app-surface transition — it will catch you, and it is right to.",
+      "prefers-reduced-motion must still still everything, from the tokens, with no per-rule opt-in.",
+      "THE FOCUS RING IS ALREADY DECIDED: one solid outline from --focus-ring-*, and it never glows. AX01 just built the keyboard path through these controls; do not break it. Run tests/graph-keyboard.spec.ts before you finish.",
+      "STUNNING IS NOT LOUDER. This brand's own guardrails ban Apple-fragment cosplay, superlatives and decoration that carries no information. Restraint, hierarchy, spacing, and type doing the work — a page that is calmer and easier to read IS the deliverable. If a change makes a number harder to find, it is wrong."
+    ]
+  },
+
+  "NAV01": {
+    "job": "Make the land tool and the contractor directory findable by the person who needs them.",
+    "theProblem": "The founder — who commissioned both features — asked where the contractor directory was and why he could not search for land. Both are live and both are in the nav (SiteShell.tsx:44-45) under 'Land fit pilot' and 'Check a contractor', in a secondary menu. If the person who ordered the feature cannot find it, no visitor will. This is the most reliable usability signal this project has received and it should be treated as data, not as a mistake by the reader.",
+    "writeSet": [
+      "app/components/SiteShell.tsx",
+      "app/tests/navigation.spec.ts"
+    ],
+    "rejectionGates": [
+      "NAVIGATION IS SPEC-PINNED AND THE PINS ARE THERE FOR REASONS. navigation.spec.ts and visual-system-ui.spec.ts assert the header stays concise, that tools live in More, and that no Buy entry appears in the More menu. Read every assertion before changing a label, and if you change one, change it WITH its reason written beside it. The 'no Buy in More' pin in particular encodes a founder decision and must not be collateral damage.",
+      "LABELS SHOULD SAY WHAT THE THING IS. 'Check a contractor' does not read as a directory; 'Land fit pilot' does not read as somewhere to look at land. Locked terms exist — BRAND-VOICE-GUIDE.md §4 names 'the land-fit pilot' as the ONE name for the land tool — so if you propose a different label you are proposing a vocabulary change, and it goes in the report as a founder decision rather than into the diff.",
+      "DO NOT SOLVE THIS BY MAKING THE HEADER LONGER. The concise header is itself a pinned decision. Discoverability from a shorter header is the harder and better answer."
+    ]
+  }
+}

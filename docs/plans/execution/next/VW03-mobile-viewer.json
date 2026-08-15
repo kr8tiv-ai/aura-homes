@@ -42,5 +42,13 @@
     "note": "the orchestrator runs npm run test:ui — which is where builder-viewer.spec.ts lives, so state plainly in your report that you did not modify it"
   },
   "sideEffect": "local",
-  "status": "ready"
+  "status": "verified-with-open-decision",
+  "evidence": {
+    "verifiedAt": "2026-08-14",
+    "theFindingWasTheWholeNode": "The manifest's premise held: the dimensioned plan already existed and was unreachable. Sheet A3 renders in the `drawings` pane, the workspace tab strip renders only under editorMode === 'pro', no guided step maps to `drawings`, and guided is what a phone lands in. No drawing code was written, and there is still exactly ONE drawingSet( call site in the builder — asserted, because a second renderer for one drawing is the divergence class this repo has been bitten by three times.",
+    "delivered": "A plan route reachable in one tap from ANY guided step, rather than a ninth stop at the end of a seven-Next walk — which is what someone standing on a site actually needs. The set auto-generates on arrival when nothing has been drawn, because arriving at a 'Generate the drawing' button is the wrong answer to 'let me see the plan'; a REDRAW stays a deliberate press. DrawingSheets now opens on A3 FLOOR PLAN rather than the cover, and that is ONE default shared by guided and Pro, not a mobile special case.",
+    "refusedRatherThanReached": "It did NOT add a ninth guided step, because that would have required renegotiating three 'Step N of 8' assertions in tests/project-ui.spec.ts — outside its write-set. It reported the decision instead. That is rule 1 working exactly as intended.",
+    "openDecisionForTheFounder": "Should the guided walk gain a ninth Drawings step, in addition to the always-available route control? The two are not mutually exclusive and the node would keep the route control either way. Answering it means renegotiating those three assertions IN PLACE with the reason written beside them.",
+    "gates": "tsc clean; builder-mobile.spec.ts wired into the UI gate by the orchestrator (agents cannot edit playwright.ui.config.ts) and running against a served export."
+  }
 }

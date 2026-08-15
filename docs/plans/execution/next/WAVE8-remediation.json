@@ -1,0 +1,70 @@
+{
+  "wave": 8,
+  "graphVersion": "1.2",
+  "outcome": {
+    "verifiedAt": "2026-08-14",
+    "verdicts": "All four: GATE-WORKS-WITH-GAPS. Write-sets respected, counterexamples independently reproduced by a fresh context that built them itself rather than trusting the report, and every temporary mutation restored cleanly.",
+    "whatThisWaveActuallyProved": "Each gate moved from 'cannot catch the defect it is named after' to 'catches it, and misses a narrower variant'. That is a real improvement and it is worth being precise about, because the second state reads like the first to anyone skimming.",
+    "FURN02": "A per-part rule replaced the whole-object heuristic: an axis is material thickness if it is small absolutely (<=0.4 ft) AND small relative to the object's extent (<=0.15) at the default size, and such axes must stay constant across every dimension's full range. Both thresholds measured, not guessed. The verifier confirmed the finding by OBSERVATION first — the proportional-slab vanity passed all 17 original tests — then watched three tests go red on the new gate. NEW BREACH IT STILL MISSES: the AWG spout (fixtures.ts:3173), sitting under the source's own comment 'Louvre and spout are CONSTANT', can be made to scale undetected. The verifier also named a methodological flaw worth more than the breach: the threshold analysis measured honest parts that CHANGE and showed each clears a bound, but never measured honest parts that are CONSTANT, which is the population the rule actually governs.",
+    "MK02": "Unknown keys are now rejected by name. NEW BREACH: the round-trip gate is TOP-LEVEL ONLY — it checks Object.keys against the known key list, so nested losslessness rests entirely on a toEqual that a sub-object comparison can satisfy. The verifier proved it by adding a field the converter does not know.",
+    "PL02": "A padding gate that catches a byte-copy with one dimension nudged, calibrated against the real 55 (exactly one honest pair sits near the threshold). NEW BREACH, and it is one character: `programme` includes `plan.sleeping`, which is free prose, so appending an 's' to 'occasional guest' acquits a padded clone. THE ORCHESTRATOR TRIED TO FIX THIS AND REVERTED — dropping `sleeping` immediately collided postcard-a-frame with lakeview-a-frame, two adaptations of two different USDA drawings whose real difference is that one has a loft. A gate that rejects honest work to catch a hypothetical padder is the worse trade, and this contract said so. The weaker property is pinned and the hole is named at the code. The real fix is structured sleeping data: a loft is a fact about a building and deserves a field, not a sentence.",
+    "EX05": "Placement now enters the completeness assertion, and the verifier independently built a wrong-place converter with its own offsets and watched it go red. NEW BREACHES, four, all proven by injection: `paintedPaths` reduces every path to an UNORDERED BAG of points and compares only (first point, bounding box), so vertex order, point count, connectivity and the paint operator are all invisible. Permuting two vertices turns the A3 floor-plan wall poche into a bowtie and passes. That is a structural weakness in the assertion's design rather than a narrow variant, and it is the most worthwhile single item left in this group.",
+    "stoppingHere": "Four gates, four residual holes, and a verifier will always find a fifth. The judgement call, recorded rather than left implicit: EX05's unordered-bag design is the one genuinely structural weakness and is worth another pass; the other three are narrower variants of a rule that now works on its main case. With the August 21 deadline, shipping the cost-margin story the founder has never seen beats a fifth iteration on a gate that already caught its defect."
+  },
+  "whyOneFile": "Rule 7 wants a manifest per node before dispatch. These four are REMEDIATION of nodes that already have manifests, and each open finding is already written down in its parent's evidence block — so a separate file per node would restate what is already recorded. One file, four clearly separated contracts, each naming its parent. VW03 keeps its own manifest because it is new work, not remediation.",
+  "sharedRules": {
+    "orchestratorOwns": ["README.md", "docs/SUBMISSION.md", "app/package.json", "app/playwright.ui.config.ts", "app/tests/gate-coverage.spec.ts"],
+    "note": "Four other agents are working in this same checkout. Write only your declared files. Never run git. Never run npm run build or test:ui. Run npx tsc --noEmit and your own spec by path — `npm test` will show other agents' in-flight state."
+  },
+
+  "FURN02": {
+    "parent": "FURN01",
+    "job": "Give MORPH-NOT-SCALE a gate that can actually catch a breach.",
+    "theFinding": "The verifier proved test 8 near-vacuous BY CONSTRUCTION. `scalesUniformly` reports 'this is scaling' only if EVERY part changes on ALL THREE axes between a dimension's min and max, so it bails to false the moment any single part keeps any single axis. A vanity whose countertop slab thickness is proportional to width — a real violation of the rule this entire subsystem is built on — shipped green through all 17 tests.",
+    "writeSet": ["app/lib/builder/fixtures.ts", "app/tests/furniture-fixtures.spec.ts"],
+    "rejectionGates": [
+      "THE NEW GATE MUST FAIL ON THE VERIFIER'S OWN COUNTEREXAMPLE. Build the proportional-slab vanity, watch the gate go red, then restore. If it does not catch that, it has not replaced anything.",
+      "The right invariant is not 'nothing scales' — a table top SHOULD get longer with the table. It is that DETAIL THICKNESSES ARE CONSTANT: the parts representing material thickness must not vary with a dimension. Express that per part, rather than as a whole-object heuristic.",
+      "Do not weaken the existing 17 assertions to make room. Add and replace, and say which you replaced and why.",
+      "Also close the two smaller ones: test 5 runs only at defaultOpts and two new kinds violate the extents contract under a selectable option; and the bed-overhang allowance is 0.25 ft against a measured 0.20, so the pinned defect could grow 25% and stay green."
+    ]
+  },
+
+  "MK02": {
+    "parent": "MK01",
+    "job": "Close the round-trip hole and stop a contribution that would break the catalogue from validating clean.",
+    "theFinding": "collectContributedModelProblems never rejects unknown keys and the converter builds its output from an explicit field list, so a top-level field a contributor adds is silently dropped — and the round-trip assertion cannot see it because both sides go through the same lossy path. MK01's own manifest called a lossy format a broken promise. Separately, an 80%-glazed contribution validates clean today and would fail plan-catalog.spec.ts the moment it landed, because contributedModel.ts pre-enforces the floor-area assertion but not the glazing-disclosure gate PL01 added in the same wave.",
+    "writeSet": ["app/lib/builder/contributedModel.ts", "app/lib/marketplace/modelListings.ts", "app/tests/contributed-model.spec.ts"],
+    "rejectionGates": [
+      "REJECT UNKNOWN KEYS at validation, by name, with the key listed in the problem. Silently dropping a contributor's field is the worst option: it neither works nor tells them.",
+      "PROVE THE ROUND TRIP WITH A FIELD THE CONVERTER DOES NOT KNOW. The current assertion cannot fail on this class; the new one must.",
+      "PRE-ENFORCE EVERY CATALOGUE GATE, NOT SOME. A contribution that validates here and fails plan-catalog.spec.ts there is a promise broken at the worst moment — after someone did the work. Glazing disclosure is the known gap; check whether there are others and say so.",
+      "Fix the three smaller ones: contributedListingFromPlanTemplate contradicting listContributedModel's own docstring about refused submissions; price refusals naming fields the contributor never submitted, because they borrow homeModels' messages written for a different shape; and 'returns every refusal in one pass' being false in two early-return paths."
+    ]
+  },
+
+  "PL02": {
+    "parent": "PL01",
+    "job": "Make the anti-padding rule enforceable, and stop volumes double-counting their own floor area.",
+    "theFinding": "plan-catalog.spec.ts's 'no two plans are the same building wearing a different name' compares exact dimension strings. The verifier added a 56th plan that was an existing one with widthFt 14 -> 15 and everything else identical, and it passed every gate. The manifest's first rejection gate — real designs, not permutations — is currently enforced by judgement alone. Separately, gardstun-court's wings each overlap the living bar by 12 sq ft in plan; lakeside-l overlaps 28 and wilson-court 42. SiteSummary ALREADY computes overlapAreaSqFt, documented as 'how much groundFootprintSqFt over-reports', and nothing consumes it.",
+    "writeSet": ["app/lib/builder/planCatalog.ts", "app/tests/plan-catalog.spec.ts"],
+    "rejectionGates": [
+      "THE NEW SIMILARITY GATE MUST REJECT THE VERIFIER'S 56TH PLAN — an existing plan with one dimension nudged. Build it, watch it fail, remove it. A gate that only catches an exact duplicate catches nothing anybody would actually ship.",
+      "IT MUST NOT REJECT THE 55 THAT EXIST. Two plans may legitimately share a footprint and differ in roof, glazing, storeys or programme. Tune on the real library, and if you cannot separate padding from legitimate similarity by measurement, SAY SO and pin the weaker property rather than shipping a gate that fails honest work.",
+      "SURFACE THE OVERLAP RATHER THAN SILENTLY FIXING IT. overlapAreaSqFt already exists; a plan whose volumes overlap is over-reporting its own floor area to a person making a budget decision. Either redraw the three plans or make the over-report visible — and whichever you choose, assert it."
+    ]
+  },
+
+  "EX05": {
+    "parent": "EX04",
+    "job": "Close the constructible bypass in the PDF completeness assertion.",
+    "theFinding": "Test 7 ('every mark the sheet draws reaches the PDF as a painted path') is the assertion the node leans on hardest. It counts only paint operators and no geometry operators, so a converter that emitted geometry without painting it — or painted it in the wrong place — would satisfy the count exactly.",
+    "writeSet": ["app/lib/builder/exportPdf.ts", "app/tests/export-pdf.spec.ts"],
+    "rejectionGates": [
+      "THE STRENGTHENED ASSERTION MUST FAIL ON A CONVERTER THAT DRAWS IN THE WRONG PLACE, not merely one that draws the wrong number of things. Counting is necessary and not sufficient; position or extent has to enter the assertion.",
+      "Do not lose what test 7 already does — an exactly matching count is a real property and worth keeping alongside.",
+      "Also fix test 11: its import-shape regex requires a `from` clause, so a bare side-effect import would pull the converter and its 256-entry metric table into the main bundle without the guard noticing. Verify against the PB01 first-load baseline (88.2 kB shared) either way.",
+      "Cross-engine byte identity is currently ASSERTED rather than proven. If you can cheaply prove it, do; if not, downgrade the claim in the comment to what was actually tested. Do not leave a stated proof that is not one."
+    ]
+  }
+}

@@ -88,8 +88,10 @@ on any unreceipted number.
   says so explicitly.
 - [ ] Approve/voice the 90-second video (the longest remaining pole); upload;
   paste the URL below.
-- [ ] Submit the Google Form (answers below).
-- [ ] Post the submission tweet tagging @XLayerOfficial.
+- [x] Submit the Google Form (answers below) — **submitted August 14, 2026**
+  (founder-reported).
+- [x] Post the submission tweet tagging @XLayerOfficial — **posted August 14,
+  2026** (founder-reported).
 - [ ] KYC with OKX if/when prizes call.
 
 **Build gates (AI-executable):**
@@ -258,8 +260,8 @@ At the August 14, 2026 checkpoint:
 | Gate | Result |
 |---|---|
 | `npx tsc --noEmit` (app) | Passes |
-| `npm test` (app) — deterministic app + contract-truth specs | 388 passed |
-| `npm run test:ui` (app) — Playwright against a fresh static export | 89 passed |
+| `npm test` (app) — deterministic app + contract-truth specs | 427 passed |
+| `npm run test:ui` (app) — Playwright against a fresh static export | 97 passed |
 | `node scripts/meadow-proof.mjs` — hardware scene proof, real GPU | Passed at `3e00c66` on desktop and mobile tiers; needs a quiet machine and a real GPU, so it is dated rather than re-run per commit |
 | `npm run demo` (agent) — the money anchor | Reconciles to the dollar: ex-land $199,100 / $301,280 / $443,900 |
 | `npm test` (contracts) | 25 passing |

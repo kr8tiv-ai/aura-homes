@@ -33,22 +33,75 @@ const loadDomAnimation = () => import("./motion-features").then((mod) => mod.def
    · "Design questionnaire" (/design) — the route now redirects to the
      guided editor (/build?mode=guided).
    · "How Aura works" (/overview) — replaced by /how-it-works. */
-const JOURNEY_NAV = [
+/** One navigation entry. `what` is a plain sentence saying what the thing IS;
+ *  it is optional on purpose — see the note above UTILITY_NAV. */
+type NavItem = {
+  readonly href: string;
+  readonly label: string;
+  readonly what?: string;
+};
+
+const JOURNEY_NAV: readonly NavItem[] = [
   { href: "/buy", label: "Explore homes" },
   { href: "/build", label: "Design a home" },
   { href: "/how-it-works", label: "How it works" },
   { href: "/projects", label: "My projects" },
-] as const;
+];
 
-const UTILITY_NAV = [
-  { href: "/land", label: "Land fit pilot" },
-  { href: "/contractors", label: "Check a contractor" },
+/* ---------------------------------------------------------------------
+   WHY TWO ENTRIES CARRY A SENTENCE AND THREE DO NOT (NAV01, Aug 14 2026)
+
+   The founder — who commissioned both features — asked where the contractor
+   directory was and why he could not search for land. Both were live, both
+   were in this menu, under these labels. Read as data rather than as a
+   misread by the reader, that says the labels do not tell anyone what the
+   things ARE: "Check a contractor" is an action with no object, and "Land
+   fit pilot" reads as a programme rather than as somewhere to look at land.
+
+   Three obvious fixes were already decided against, by someone else:
+   · THE LABEL. BRAND-VOICE-GUIDE.md §4 locks "the land-fit pilot" as the ONE
+     name for the land tool, and these exact strings are asserted by
+     navigation.spec.ts, by visual-system-ui.spec.ts (twice, with exact:true)
+     and by project-ui.spec.ts. Renaming is a vocabulary change and belongs
+     in a founder decision, not in this file.
+   · A SECOND ENTRY POINT. visual-system-ui.spec.ts:168 asserts /build shows
+     zero links named "Check a contractor" before More is opened, and :172
+     together with project-ui.spec.ts:13-14 use single-match toBeVisible(),
+     so a duplicate anywhere on the page is a strict-mode failure. Each tool
+     appears exactly once, in More, by test.
+   · A LONGER HEADER. Pinned, and rightly.
+
+   What remains is the sentence. It renders visibly under the label and is
+   wired as the link's aria-DESCRIPTION: aria-label pins the accessible NAME
+   to the locked string (aria-label beats name-from-content), so every
+   exact-match assertion above keeps holding, while a screen reader still
+   hears what the thing is. Roadmap, FAQ and About already say what they are,
+   and a gloss that carries no information is decoration this brand bans.
+--------------------------------------------------------------------- */
+const UTILITY_NAV: readonly NavItem[] = [
+  { href: "/land", label: "Land fit pilot", what: "Does a parcel allow the home you drew?" },
+  /* NOT "a directory of trades and suppliers", which is what this said first
+     and is half untrue. The supplier half IS a directory — real Alberta
+     records. The contractor half is not: it scores a contractor YOU bring, or
+     shows demonstration profiles labelled as such, which is why the page calls
+     itself "Check a contractor". Promising a directory of trades and handing
+     someone a scoring tool is the small overstatement this project spends its
+     whole gate budget refusing elsewhere. */
+  {
+    href: "/contractors",
+    label: "Check a contractor",
+    what: "Alberta suppliers, and evidence checks on a trade you are considering",
+  },
   { href: "/roadmap", label: "Roadmap" },
   { href: "/faq", label: "FAQ" },
   { href: "/about", label: "About" },
-] as const;
+];
 
-const ALL_NAV = [...JOURNEY_NAV, ...UTILITY_NAV] as const;
+/** Ids for the description elements. `surface` keeps the landing sheet and
+ *  the More menu from colliding when both are mounted on the same page. */
+function whatId(surface: string, href: string): string {
+  return `nav-what-${surface}-${href.replace(/[^a-z0-9]+/gi, "")}`;
+}
 
 /* The journey spine is workspace chrome. It mounts only on the routes where
    an active project is actually worked — never on education, marketplace,
@@ -77,16 +130,33 @@ function UtilityMenu({ pathname, story = false }: { pathname: string; story?: bo
     <details key={pathname} className={`site-utility${story ? " site-utility-story" : ""}`}>
       <summary className={hasCurrent ? "is-current" : ""}>More</summary>
       <nav aria-label="More Aura tools">
-        {UTILITY_NAV.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            aria-current={pathname === item.href ? "page" : undefined}
-          >
-            <span>{item.label}</span>
-            <i aria-hidden>&rarr;</i>
-          </Link>
-        ))}
+        {UTILITY_NAV.map((item) => {
+          const describedBy = item.what ? whatId("more", item.href) : undefined;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-current={pathname === item.href ? "page" : undefined}
+              aria-label={item.what ? item.label : undefined}
+              aria-describedby={describedBy}
+            >
+              {/* The label and its sentence stack; the arrow keeps its place
+                  because the pair is one flex child, not two. */}
+              <span className="flex min-w-0 flex-col gap-0.5">
+                <span>{item.label}</span>
+                {item.what ? (
+                  <span
+                    id={describedBy}
+                    className="text-[0.68rem] font-normal leading-snug text-aura-text/60"
+                  >
+                    {item.what}
+                  </span>
+                ) : null}
+              </span>
+              <i aria-hidden>&rarr;</i>
+            </Link>
+          );
+        })}
       </nav>
     </details>
   );
@@ -156,15 +226,71 @@ function StoryHeader() {
           own NIGHT button sits at the bottom of the scroll, which is a long
           way to travel to undo an accidental flip. */}
       <div id="story-menu" className={`story-sheet${open ? " on" : ""}`} hidden={!open}>
-        <nav aria-label="All pages">
-          {ALL_NAV.map((item, i) => (
-            <Link key={item.href} href={item.href} onClick={() => setOpen(false)}>
-              <span className="story-sheet-n">{String(i + 1).padStart(2, "0")}</span>
-              <span className="story-sheet-l">{item.label}</span>
-              <i aria-hidden>&rarr;</i>
-            </Link>
-          ))}
-        </nav>
+        {/* TWO BANDS, NOT ONE RUN OF NINE (NAV01, Aug 14 2026).
+            This sheet is the front door's only menu, and it used to flatten
+            JOURNEY_NAV and UTILITY_NAV into a single ALL_NAV numbered 01–09 —
+            which is precisely where the two tools went invisible: item 05 of
+            nine, with nothing saying it was a tool. The bands are the ones the
+            standard sheet already uses, and NOTHING was dropped in the split:
+            ALL_NAV's whole purpose was completeness (four routes had once
+            silently disappeared below 640px), the numbering is unchanged with
+            tools still at 05–09, and navigation.spec.ts now asserts the count
+            of both bands so a future edit cannot quietly lose an entry. */}
+        {/* min-h-0 + overflow-y-auto, on this wrapper rather than on
+            .story-sheet: the sheet is fixed at inset:0 and has no overflow
+            rule of its own, so at 390×844 the nine rows plus the two band
+            labels run past the bottom and the last entry lands under the
+            story HUD. Containing the scroll in the element this file owns
+            keeps globals.css untouched — another node holds it this wave. The
+            proper home for it is `overflow-y: auto` on .story-sheet itself,
+            handed to whoever owns globals.css next. SEPARATE and NOT fixed
+            here: the story HUD is fixed above this sheet's z-index, so the
+            sheet's own footer line still sits under it. That predates this
+            change and needs a stacking or bottom-inset decision, not an
+            overflow rule. */}
+        <div className="min-h-0 overflow-y-auto">
+          <p className="site-nav-sheet-label">Your route</p>
+          <nav aria-label="Your route">
+            {JOURNEY_NAV.map((item, i) => (
+              <Link key={item.href} href={item.href} onClick={() => setOpen(false)}>
+                <span className="story-sheet-n">{String(i + 1).padStart(2, "0")}</span>
+                <span className="story-sheet-l">{item.label}</span>
+                <i aria-hidden>&rarr;</i>
+              </Link>
+            ))}
+          </nav>
+          <p className="site-nav-sheet-label site-nav-sheet-label-secondary">Tools and records</p>
+          <nav aria-label="Aura tools">
+            {UTILITY_NAV.map((item, i) => {
+              const describedBy = item.what ? whatId("storysheet", item.href) : undefined;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  aria-label={item.what ? item.label : undefined}
+                  aria-describedby={describedBy}
+                >
+                  <span className="story-sheet-n">
+                    {String(JOURNEY_NAV.length + i + 1).padStart(2, "0")}
+                  </span>
+                  <span className="story-sheet-l">
+                    {item.label}
+                    {item.what ? (
+                      <span
+                        id={describedBy}
+                        className="mt-1 block font-sans text-[0.8rem] font-normal leading-snug tracking-normal text-aura-text/60"
+                      >
+                        {item.what}
+                      </span>
+                    ) : null}
+                  </span>
+                  <i aria-hidden>&rarr;</i>
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
         <div className="story-sheet-tools">
           <ThemeToggle />
         </div>
@@ -238,12 +364,31 @@ function StandardHeader() {
           </nav>
           <p className="site-nav-sheet-label site-nav-sheet-label-secondary">Tools and records</p>
           <nav aria-label="Aura tools">
-            {UTILITY_NAV.map((item) => (
-              <Link key={item.href} href={item.href} onClick={() => setOpen(false)}>
-                <span className="story-sheet-l">{item.label}</span>
-                <i aria-hidden>&rarr;</i>
-              </Link>
-            ))}
+            {UTILITY_NAV.map((item) => {
+              const describedBy = item.what ? whatId("sheet", item.href) : undefined;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  aria-label={item.what ? item.label : undefined}
+                  aria-describedby={describedBy}
+                >
+                  <span className="story-sheet-l">
+                    {item.label}
+                    {item.what ? (
+                      <span
+                        id={describedBy}
+                        className="mt-1 block font-sans text-[0.8rem] font-normal leading-snug tracking-normal text-aura-text/60"
+                      >
+                        {item.what}
+                      </span>
+                    ) : null}
+                  </span>
+                  <i aria-hidden>&rarr;</i>
+                </Link>
+              );
+            })}
           </nav>
         </div>
         <div>

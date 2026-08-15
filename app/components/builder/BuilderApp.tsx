@@ -113,6 +113,33 @@
       one that opens. It decides nothing and restores nothing. Restoring stays
       a press, and it arrives through the same `load` action a share link does,
       so Ctrl+Z undoes it like anything else.
+   9. VW03 — THE PLAN ROUTE IS REACHABILITY, NOT A SECOND DRAWING. The
+      dimensioned sheet a person wants on a site visit already existed: A3
+      FLOOR PLAN, in the drawing set `lib/builder/drawings/` produces. What did
+      not exist was a way to reach it from the mode a phone lands in. The
+      workspace tab strip renders only in Pro (see the `editorMode === "pro"`
+      gate below) and no entry in GUIDED_STEPS maps to the `drawings`
+      workspace, so in guided mode the whole set was unreachable.
+
+      WHAT CHANGED, AND WHAT DELIBERATELY DID NOT. GUIDED_STEPS is untouched —
+      the walk is still eight steps, `tests/project-ui.spec.ts` still counts
+      eight, and a ninth step would have made the drawings a stop on a walk
+      rather than a place you can get to from anywhere. Instead the guided
+      shell carries ONE route control that sets `workspace` to the existing
+      `drawings` pane and back again. Same pane, same `drawingSet()` call, same
+      PDF — there is no mobile renderer, because two renderers for one drawing
+      is a divergence this repo has paid for before.
+
+      AND THE ROUTE IS READ-ONLY, WHICH COSTS MORE THAN THE ROUTE DID. While
+      it is open, every control that can move `hashBuilderDocument` is off the
+      screen rather than merely awkward: the surface picker, the site panel,
+      the undo/redo/start-over bar, the quick finish switch, and the 2D plan
+      editor (the view is pinned to the model — see `viewMode`). What is left
+      is a viewer, an eight-sheet index, a per-sheet SVG and the whole set as
+      one PDF. "No editing affordance a thumb cannot honestly drive" is only a
+      real claim if the affordances are actually gone, so
+      `tests/builder-mobile.spec.ts` presses every control that remains and
+      asserts the document hash never moves.
    =========================================================================== */
 
 import dynamic from "next/dynamic";
@@ -1207,6 +1234,37 @@ export default function BuilderApp() {
     if (step.view) setMode(step.view);
   }, []);
 
+  /* ------------------------------------------------------- VW03: the plan route
+
+     Guided mode standing on the `drawings` workspace. Derived rather than
+     stored, so there is no fourth piece of state that can disagree with the
+     other three: every existing path that sets a workspace — a guided step, the
+     command palette, the clash panel's "Open the fixtures" — leaves the route
+     by construction, and none of them had to learn about it. */
+  const planRoute = editorMode === "guided" && workspace === "drawings";
+
+  /* The view is PINNED to the model while the route is open. `mode` is left
+     alone rather than forced, so leaving the route puts back whichever view the
+     step had; this is what everything on the stage actually renders against. */
+  const viewMode: ViewMode = planRoute ? "3d" : mode;
+
+  const openPlanRoute = useCallback(() => {
+    setWorkspace("drawings");
+    /* Arriving at a "Generate the drawing" button is the wrong answer to "let
+       me see the plan". The set is generated on arrival when there is none —
+       once, and never again on its own, because a REDRAW is a judgement about
+       a model that has since moved and the pane already offers that as a
+       press. `generate` is a no-op in graph mode, where the sheets honestly
+       cannot be drawn at all. */
+    if (drawn === null) generate();
+  }, [drawn, generate]);
+
+  const leavePlanRoute = useCallback(() => {
+    const step = GUIDED_STEPS.find((candidate) => candidate.id === guidedStep);
+    setWorkspace(step ? step.workspace : "plans");
+    if (step?.view) setMode(step.view);
+  }, [guidedStep]);
+
   const choosePlan = useCallback(async (document: BuilderDocument, plan: { title: string }) => {
     const signature = documentSignature(document);
     await writeAutosave(document);
@@ -1389,6 +1447,34 @@ export default function BuilderApp() {
                 </Button>
               )}
             </div>
+
+            {/* ------------------------------------------- VW03: the plan route
+
+                Beside the walk rather than inside it. The drawings are not a
+                NINTH DECISION — they are the thing the eight decisions were
+                for, and somebody standing in a field with a phone wants them
+                from wherever the walk happens to be, not after seven Nexts.
+                One control, one tap each way, and the label says which sheet
+                arrives so the promise is checkable before it is pressed. */}
+            <div
+              className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-aura-teal px-4 py-3"
+              data-plan-route={planRoute ? "open" : "closed"}
+            >
+              <p className="max-w-md text-xs leading-relaxed text-aura-text/65">
+                {planRoute
+                  ? "Read-only. Nothing on this screen can change the design — the editors are on the step you came from."
+                  : "Sheet A3 FLOOR PLAN — dimensioned inside and out — plus the other seven sheets and the whole set as one PDF. Read-only, and it fits a phone."}
+              </p>
+              {planRoute ? (
+                <Button onClick={leavePlanRoute} title="Back to the step you were on">
+                  Back to {activeGuidedStep.label}
+                </Button>
+              ) : (
+                <Button tone="loud" onClick={openPlanRoute} title="The dimensioned floor plan and the rest of the set">
+                  Open the drawings
+                </Button>
+              )}
+            </div>
           </>
         ) : null}
       </section>
@@ -1415,12 +1501,30 @@ export default function BuilderApp() {
           {/* ------------------------------------------------------- the toggle */}
           <div className="builder-view-switch rounded-2xl px-4 py-3 sm:px-5 sm:py-4">
             <div className="flex flex-wrap items-end justify-between gap-4">
-              <Segmented<ViewMode> label="View" value={mode} options={VIEW_MODES} onChange={setMode} />
-              <p className="max-w-md text-xs leading-relaxed text-aura-text/55">
-                {mode === "3d"
-                  ? "Orbit the massing, move the sun, click any surface to say what it is made of, and click a fixture to edit it."
-                  : "North up and to scale. Drag a corner to resize, a wall to push one face, an opening to slide it, or draw an interior partition inside a mass."}
-              </p>
+              {/* The View toggle is an editing affordance in disguise: its
+                  second option IS the plan editor, where a drag moves a wall.
+                  So the route does not disable it, it does not show it — and
+                  `viewMode` above keeps the model as the rendered view whatever
+                  `mode` happens to be holding for the step underneath. */}
+              {planRoute ? (
+                <div>
+                  <p className="aura-label text-aura-teal">The model, read-only</p>
+                  <p className="mt-2 max-w-md text-xs leading-relaxed text-aura-text/60">
+                    Orbit it as much as you like. The plan editor, the finishes and the undo bar are
+                    on the step you came from — they are not on this screen, so there is nothing here
+                    a thumb can change by accident.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <Segmented<ViewMode> label="View" value={mode} options={VIEW_MODES} onChange={setMode} />
+                  <p className="max-w-md text-xs leading-relaxed text-aura-text/55">
+                    {mode === "3d"
+                      ? "Orbit the massing, move the sun, click any surface to say what it is made of, and click a fixture to edit it."
+                      : "North up and to scale. Drag a corner to resize, a wall to push one face, an opening to slide it, or draw an interior partition inside a mass."}
+                  </p>
+                </>
+              )}
             </div>
 
             {/* Two views over one durable project document. */}
@@ -1444,7 +1548,7 @@ export default function BuilderApp() {
 
           {/* The 3D canvas is never unmounted — it is the export root. See
               decision 4 in the header. */}
-          <div className={mode === "3d" ? "block" : "hidden"}>
+          <div className={viewMode === "3d" ? "block" : "hidden"}>
             <Viewport
               home={home}
               sun={sunPos}
@@ -1462,7 +1566,7 @@ export default function BuilderApp() {
                       overrides,
                       picked: pickedSurface,
                       onPick: setPickedSurface,
-                      enabled: mode === "3d",
+                      enabled: viewMode === "3d",
                     }
               }
               comfort={comfortOverlay}
@@ -1487,7 +1591,7 @@ export default function BuilderApp() {
               on. Rendered only in 3D, because none of them mean anything over
               a 2D plan, and as a sibling SLOT so the canvas above keeps its
               parent and its position on every toggle. */}
-          {mode === "3d" ? (
+          {viewMode === "3d" ? (
             <ViewerToolRow
               tools={viewerTools}
               onTools={setViewerTools}
@@ -1505,15 +1609,22 @@ export default function BuilderApp() {
                  match the storey ids the graph geometry emits. Opening the
                  picker here would let somebody paint a wall and lose it the
                  next time anything touched the spec. */
+              /* Two reasons a finish cannot be assigned here, and the geometry
+                 one is named first because it is a limit rather than a choice.
+                 The route's reason is a choice, and it says so: this is the
+                 one writer left in the view column, and a read-only screen
+                 that still repaints a wall is not read-only. */
               finishesUnavailable={
                 graphMode
                   ? "Finishes are a legacy-geometry feature today. This project uses planar graph geometry, where a surface belongs to a storey rather than to a spec volume, and Aura will not offer a paint it cannot promise to keep."
-                  : null
+                  : planRoute
+                    ? "This is the read-only drawing view. Nothing here writes to the design — go back to the step you came from to change a finish, and it will be one undo step like every other edit."
+                    : null
               }
             />
           ) : null}
 
-          <div className={mode === "2d" ? "block" : "hidden"}>
+          <div className={viewMode === "2d" ? "block" : "hidden"}>
             {graphGeometry ? (
               <GraphPlanEditor graph={graphGeometry.graph} onEdit={editGraph} />
             ) : (
@@ -1591,7 +1702,7 @@ export default function BuilderApp() {
           {/* The Site step's own panel. Mounted only while the walk is standing
               on Site, because it owns form state that should start from the
               document each time somebody arrives. */}
-          {editorMode === "guided" && guidedStep === "site" ? (
+          {editorMode === "guided" && guidedStep === "site" && !planRoute ? (
             <SitePanel site={state.doc.site} onSite={editSite} check={siteCheck} />
           ) : null}
 
@@ -1635,7 +1746,7 @@ export default function BuilderApp() {
               above", and in plan mode there is no such view to click. Every
               assignment already made survives the switch — it is in the document,
               not in this panel. */}
-          {mode === "3d" && !graphMode ? (
+          {viewMode === "3d" && !graphMode && !planRoute ? (
             <SurfacePicker
               index={surfaceIndex}
               overrides={overrides}
@@ -1645,7 +1756,16 @@ export default function BuilderApp() {
             />
           ) : null}
 
-          {/* ------------------------------------------------------- toolbar */}
+          {/* ------------------------------------------------------- toolbar
+
+              OFF in the plan route, and "Start over" is the reason it is the
+              whole bar rather than that one button. `dispatch({type:"load", doc:
+              defaultBuilderDocument()})` replaces the document outright: on a
+              phone that control sits a thumb-width from the sheet index, and it
+              is the single most expensive thing on this page to press by
+              mistake. Undo and Redo go with it because a bar that offers to
+              take back edits nobody can make here is furniture. */}
+          {planRoute ? null : (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border aura-hairline px-5 py-4">
             <p className="text-xs leading-relaxed text-aura-text/55">
               {state.past.length === 0
@@ -1676,6 +1796,7 @@ export default function BuilderApp() {
               </Button>
             </div>
           </div>
+          )}
 
           {/* ------------------------------------------------------ the workspaces */}
           {editorMode === "pro" ? <nav role="tablist" aria-label="Builder workspaces" className="rounded-xl border aura-hairline p-2">
@@ -1826,8 +1947,30 @@ export default function BuilderApp() {
 
           {/* =========================================================== DRAWINGS */}
           <Pane on={workspace === "drawings"}>
+          {/* VW03. The way back, at the top of the pane rather than only in the
+              shell above it: on a phone the guided step strip is a scroll away
+              by the time somebody has read a sheet, and a read-only view with
+              no visible exit is a trap. In Pro the workspace tabs are the exit
+              and this renders nothing. */}
+          {planRoute ? (
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-aura-teal px-4 py-3">
+              <p className="text-xs leading-relaxed text-aura-text/65">
+                The drawing set, read-only. Same sheets, same PDF and the same generator Pro uses —
+                this is a route to them, not a second drawing of your home.
+              </p>
+              <Button onClick={leavePlanRoute}>Back to {activeGuidedStep.label}</Button>
+            </div>
+          ) : null}
           {graphMode ? (
-            <GraphPending feature="Professional drawings" />
+            <GraphPending
+              feature="Professional drawings"
+              /* Gate 3 of the VW03 contract: the block stays, and it names what
+                 the person can do instead of leaving them at a dead end. Both
+                 sentences are things this build actually offers — the
+                 conversion is an ordinary undoable edit (see the Shape pane's
+                 own copy), and `.aura.json` carries the graph itself. */
+              instead="Undo returns through the conversion to the recovery HomeSpec, and the eight-sheet set draws from that. To keep the graph and still hand somebody a file today, the Export workspace writes .aura.json, which carries the exact planar geometry."
+            />
           ) : (
           <>
           <section className="rounded-xl border border-aura-emerald p-6">
@@ -2076,7 +2219,7 @@ export default function BuilderApp() {
    read-before-write handshake on mount that must not be re-run every time
    somebody looks at the exports. The two genuinely expensive children are
    conditionally mounted INSIDE their pane instead. See decision 6. */
-function GraphPending({ feature }: { feature: string }) {
+function GraphPending({ feature, instead = null }: { feature: string; instead?: string | null }) {
   return (
     <section className="rounded-xl border border-aura-violet p-5">
       <p className="aura-label text-aura-violet">{feature} is held at this boundary</p>
@@ -2085,6 +2228,15 @@ function GraphPending({ feature }: { feature: string }) {
         calculation against its recovery copy and present that as the current design. The graph and
         recovery source remain safely stored while this consumer is upgraded.
       </p>
+      {/* WHAT TO DO INSTEAD, when the caller knows. Optional on purpose: a
+          refusal with a made-up alternative is worse than a refusal, so a
+          consumer that has no honest second door passes nothing and this
+          renders nothing. */}
+      {instead ? (
+        <p className="mt-4 max-w-3xl border-t aura-hairline pt-4 text-sm leading-relaxed text-aura-text/70">
+          {instead}
+        </p>
+      ) : null}
     </section>
   );
 }

@@ -147,11 +147,11 @@ test("the counter agrees with what the runners actually declare", () => {
   /* The counter is a regex over source, which is an approximation of what the
      runner does — and the first version of it was wrong by seven. So it is
      pinned against numbers OBSERVED from the runners themselves:
-       npm test        -> 388 declared (387 passed + the count assertion that
+       npm test        -> 427 declared (424 passed + the count assertion that
                           was red while the number was being corrected), after
                           wave 7 added export-pdf, furniture-fixtures and
                           contributed-model
-       npm run test:ui -> 89 passed, on a full 6.7-minute run against a fresh
+       npm run test:ui -> 97 declared, on a full 6.7-minute run against a fresh
                           static export, up from 63 as landing-film,
                           plan-selection-visual and builder-viewer-tools
                           joined the UI gate
@@ -159,8 +159,8 @@ test("the counter agrees with what the runners actually declare", () => {
      re-running both suites and writing down what they said — which is the
      point. A counter nobody ever checked against the thing it counts is how
      the README got its numbers wrong in the first place. */
-  expect(UNIT_TESTS).toBe(388);
-  expect(UI_TESTS).toBe(89);
+  expect(UNIT_TESTS).toBe(427);
+  expect(UI_TESTS).toBe(97);
 
   const readme = read(repoRoot, "README.md");
   const submission = read(repoRoot, "docs", "SUBMISSION.md");

@@ -1,0 +1,2606 @@
+{
+  "$schema": "aura-homes land constraint set v1",
+  "retrievedAtISO": "2026-08-15T00:53:14.294Z",
+  "jurisdiction": {
+    "id": "city-of-edmonton",
+    "name": "City of Edmonton",
+    "province": "AB",
+    "country": "CA"
+  },
+  "whatThisIs": "Zoning constraint and reference data published by the City of Edmonton under an open licence. It carries no price, no offer, no ownership and no market status of any kind, and it is not inventory. It answers what rules govern a parcel, not what a person may buy.",
+  "whatThisCannotAnswer": [
+    "Which district a specific parcel falls in. Polygon geometry is not baked (about 8 MB of GeoJSON, measured 2026-08-14), so Aura links to the City's own zoning map for the parcel-specific answer.",
+    "Minimum Site area, Setbacks, minimum Site width and minimum dwelling size. Those are in Zoning Bylaw 20001 text rather than in an open dataset, so each district carries the City's URL for its own section and Aura records the numbers as unknown.",
+    "Servicing, potable water, private sewage and legal access. Those are parcel and utility facts; no district record can stand in for them."
+  ],
+  "licence": {
+    "name": "City of Edmonton Open Data Terms of Use, version 2.1 (January 2016)",
+    "url": "https://data.edmonton.ca/stories/s/msh8-if28",
+    "documentUrl": "https://www.edmonton.ca/public-files/assets/document?path=Web-version2.1-OpenDataAgreement.pdf",
+    "grant": "The City of Edmonton (the City) grants you a worldwide, royalty-free, non-exclusive licence to use, modify, and distribute the datasets in all current and future media and formats for any lawful purpose, including for commercial purposes.",
+    "redistributionCondition": "If you distribute or provide access to the datasets to any other person, whether in original or modified form, you agree to include a copy of, or this Uniform Resource Locator (URL) for, these Terms of Use and to ensure any such person agrees to, and is bound by, them without introducing any further restrictions of any kind.",
+    "attribution": "Contains information published by the City of Edmonton under the City of Edmonton Open Data Terms of Use. The City does not endorse Aura or this use of the data.",
+    "portalLicenceId": "SEE_TERMS_OF_USE"
+  },
+  "modifierConvention": {
+    "note": "Zoning Bylaw 20001 states the convention in its own text. The MU Zone's Table 4.1 gives the maximum Height as “The number (in metres) following the Modifier ‘h’ as indicated on the Zoning Map”, and the maximum Floor Area Ratio as the number following the Modifier ‘f’. Zones that carry an h modifier therefore publish their own height ceiling on the map itself. Zones that do not carry one leave it in bylaw text, and Aura records it as unknown.",
+    "sourceUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+    "interpreted": {
+      "h": "Maximum Height, in metres, per the zone's own Site and Building Regulations table.",
+      "f": "Maximum Floor Area Ratio, per the same table."
+    },
+    "uninterpreted": [
+      "cf"
+    ],
+    "caution": "A district ceiling is not a parcel permission. Overlays, special areas, Direct Control provisions and site-specific rules can lower it, and none of that is decided by the zone code alone."
+  },
+  "sources": [
+    {
+      "id": "fixa-tstc",
+      "title": "Zoning Bylaw Geographical Data",
+      "publisher": "City of Edmonton",
+      "catalogueUrl": "https://data.edmonton.ca/d/fixa-tstc",
+      "apiEndpoint": "https://data.edmonton.ca/resource/fixa-tstc.json",
+      "updateFrequency": "Weekly",
+      "portalRowsUpdatedAtISO": "2026-07-27T08:45:11.000Z",
+      "newestExtractAtISO": "2026-07-27T02:43:52.000",
+      "extractAgeDays": 18.7,
+      "bylawUrlOnHostShare": 0.989,
+      "retrievedAtISO": "2026-08-15T00:53:14.294Z"
+    },
+    {
+      "id": "6w3s-58pv",
+      "title": "Zoning Overlays",
+      "publisher": "City of Edmonton",
+      "catalogueUrl": "https://data.edmonton.ca/d/6w3s-58pv",
+      "apiEndpoint": "https://data.edmonton.ca/resource/6w3s-58pv.json",
+      "updateFrequency": "Weekly",
+      "portalRowsUpdatedAtISO": "2026-07-27T09:19:02.000Z",
+      "retrievedAtISO": "2026-08-15T00:53:14.294Z"
+    }
+  ],
+  "refusedSources": [
+    {
+      "id": "svsw-2ub7",
+      "title": "Vacant Land Inventory",
+      "publisher": "City of Edmonton",
+      "catalogueUrl": "https://data.edmonton.ca/d/svsw-2ub7",
+      "periodOfCoverage": "May 2014",
+      "portalRowsUpdatedAtISO": "2021-06-21T22:50:07.000Z",
+      "reason": "A snapshot whose zone codes are mostly from the repealed Zoning Bylaw 12800. Only 11 of its 36 zone codes still exist on the current zoning map (31%), so joining it to Bylaw 20001 districts would have published decade-old zoning under today's retrieval date.",
+      "checkedAtISO": "2026-08-15T00:53:14.294Z"
+    }
+  ],
+  "overlayBylaws": {
+    "bylawInForce": "20001",
+    "overlaysUnderBylawInForce": 18,
+    "overlaysUnderARepealedBylaw": 17,
+    "note": "17 of 35 overlays carry a bylaw number other than 20001 — these are special areas the City carried forward under their original number, and the number is reproduced as the City publishes it. Bylaw 12800 is REPEALED. Each overlay states its own bylawInForce so this cannot be read as current regulation. Aura does not interpret a repealed overlay's rules."
+  },
+  "counts": {
+    "districts": 156,
+    "districtsWithEvidencedHeight": 62,
+    "districtsWithOneBylawSection": 144,
+    "mappedZoneAreas": 11518,
+    "overlays": 35,
+    "overlaysUnderARepealedBylaw": 17
+  },
+  "districts": [
+    {
+      "code": "A",
+      "baseCode": "A",
+      "name": "River Valley",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/open-space-and-urban-services-zones/2150-river-valley-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 324
+    },
+    {
+      "code": "A1",
+      "baseCode": "A1",
+      "name": "Fort Edmonton Park Special Area",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/river-valley-special-area/311-a1-fort-edmonton-park-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "A2",
+      "baseCode": "A2",
+      "name": "Muttart Conservatory Special Area",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/river-valley-special-area/312-a2-muttart-conservatory-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "A3",
+      "baseCode": "A3",
+      "name": "Louise McKinney Riverfront Special Area",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/river-valley-special-area/313-a3-louise-mckinney-riverfront-park-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "A4",
+      "baseCode": "A4",
+      "name": "Edmonton Valley Zoo Special Area",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/river-valley-special-area/314-a4-edmonton-valley-zoo-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "A5",
+      "baseCode": "A5",
+      "name": "Buena Vista Park Special Area",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/river-valley-special-area/315-a5-buena-vista-park-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "A6",
+      "baseCode": "A6",
+      "name": "River Crossing Special Area",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/river-valley-special-area/316-a6-river-crossing-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 5
+    },
+    {
+      "code": "A7",
+      "baseCode": "A7",
+      "name": "William Hawrelak Park Zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": null,
+      "bylawUrlState": "not-published",
+      "bylawUrlCount": 0,
+      "mappedAreas": 1
+    },
+    {
+      "code": "AED",
+      "baseCode": "AED",
+      "name": "Arena and Entertainment District Zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/downtown-special-area/325-aed-arena-entertainment-district-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 3
+    },
+    {
+      "code": "AES",
+      "baseCode": "AES",
+      "name": "Agricultural Edmonton South",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/edmonton-south-special-area/361-aes-agricultural-edmonton-south-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 3
+    },
+    {
+      "code": "AG",
+      "baseCode": "AG",
+      "name": "Agriculture Zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/agricultural-zones/2230-ag-agriculture-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 102
+    },
+    {
+      "code": "AJ",
+      "baseCode": "AJ",
+      "name": "Alternative Jurisdiction",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/open-space-and-urban-services-zones/2220-aj-alternative",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 32
+    },
+    {
+      "code": "ALA",
+      "baseCode": "ALA",
+      "name": "Ambleside Low Rise Apartment",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/ambleside-special-area/3161-ala-ambleside-low-rise-apartment-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 5
+    },
+    {
+      "code": "ASC",
+      "baseCode": "ASC",
+      "name": "Ambleside Shopping Centre",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/ambleside-special-area/3162-asc-ambleside-shopping-centre-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 4
+    },
+    {
+      "code": "AUVC",
+      "baseCode": "AUVC",
+      "name": "Ambleside Urban Village Commercial",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/ambleside-special-area/3163-auvc-ambleside-urban-village-commercial-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 2
+    },
+    {
+      "code": "BE",
+      "baseCode": "BE",
+      "name": "Business Employment",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/industrial-zones/2120-be-business-employment-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 472
+    },
+    {
+      "code": "BLMR",
+      "baseCode": "BLMR",
+      "name": "Blatchford Low to Medium Rise Residential",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/blatchford-special-area/343-blmr-blatchford-low-medium-rise-residential",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 12
+    },
+    {
+      "code": "BMR",
+      "baseCode": "BMR",
+      "name": "Blatchford Medium Rise Residential Zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": null,
+      "bylawUrlState": "not-published",
+      "bylawUrlCount": 0,
+      "mappedAreas": 2
+    },
+    {
+      "code": "BP",
+      "baseCode": "BP",
+      "name": "Blatchford Parks",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/blatchford-special-area/341-bp-blatchford-parks-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 11
+    },
+    {
+      "code": "BRH",
+      "baseCode": "BRH",
+      "name": "Blatchford Row Housing",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/blatchford-special-area/342-brh-blatchford-row-housing-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 10
+    },
+    {
+      "code": "CB",
+      "baseCode": "CB",
+      "name": "Business Commercial",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/commercial-zones/2110-cb-business-commercial-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 73
+    },
+    {
+      "code": "CCA",
+      "baseCode": "CCA",
+      "name": "Core Commercial Arts Zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/downtown-special-area/327-cca-core-commercial-arts-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 4
+    },
+    {
+      "code": "CCHD",
+      "baseCode": "CCHD",
+      "name": "Clareview Campus High Density Residential",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/clareview-campus-special-area/371-cchd-clareview-campus-high-density",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "CCLD",
+      "baseCode": "CCLD",
+      "name": "Clareview Campus Low Density Residential",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/clareview-campus-special-area/373-ccld-clareview-campus-low-density",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "CCMD",
+      "baseCode": "CCMD",
+      "name": "Clareview Campus Medium Density Residential",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/clareview-campus-special-area/372-ccmd-clareview-campus-medium-density",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "CCNC",
+      "baseCode": "CCNC",
+      "name": "Clareview Campus Neighbourhood Commercial",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/clareview-campus-special-area/375-ccnc-clareview-campus-neighbourhood",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "CCSD",
+      "baseCode": "CCSD",
+      "name": "Clareview Campus Single Detached Residential",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/clareview-campus-special-area/374-ccsd-clareview-campus-single-detached",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "CG",
+      "baseCode": "CG",
+      "name": "General Commercial",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/commercial-zones/2100-cg-general-commercial-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 205
+    },
+    {
+      "code": "CMU",
+      "baseCode": "CMU",
+      "name": "Commercial Mixed Use",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/downtown-special-area/322-cmu-commercial-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "CMUV",
+      "baseCode": "CMUV",
+      "name": "Central McDougall Urban Village Special Area",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/central-mcdougall-urban-village-special-area/3141-cmuv-central-mcdougall",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "CN",
+      "baseCode": "CN",
+      "name": "Neighbourhood Commercial",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/commercial-zones/290-cn-neighbourhood-commercial-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 289
+    },
+    {
+      "code": "CPMU",
+      "baseCode": "CPMU",
+      "name": "Century Park Mixed Use Zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": null,
+      "bylawUrlState": "not-published",
+      "bylawUrlCount": 0,
+      "mappedAreas": 1
+    },
+    {
+      "code": "CPT",
+      "baseCode": "CPT",
+      "name": "Century Park Transition Zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": null,
+      "bylawUrlState": "not-published",
+      "bylawUrlCount": 0,
+      "mappedAreas": 1
+    },
+    {
+      "code": "DC",
+      "baseCode": "DC",
+      "name": "Direct Control",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": null,
+      "bylawUrlState": "site-specific",
+      "bylawUrlCount": 49,
+      "mappedAreas": 88
+    },
+    {
+      "code": "DC/INDES",
+      "baseCode": "DC/INDES",
+      "name": "Direct Control / Industrial District Edmonton South",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/edmonton-south-special-area/368-dcind-direct-controlindustrial-district",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "DC1",
+      "baseCode": "DC1",
+      "name": "Direct Development Control Provision",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": null,
+      "bylawUrlState": "site-specific",
+      "bylawUrlCount": 225,
+      "mappedAreas": 277
+    },
+    {
+      "code": "DC2",
+      "baseCode": "DC2",
+      "name": "Site Specific Development Control Provision",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": null,
+      "bylawUrlState": "site-specific",
+      "bylawUrlCount": 659,
+      "mappedAreas": 704
+    },
+    {
+      "code": "ECB",
+      "baseCode": "ECB",
+      "name": "Ellerslie Commercial Business Zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/ellerslie-industrial-special-area/3183-ecb-ellerslie-business-commercial",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "EETC",
+      "baseCode": "EETC",
+      "name": "Edmonton Energy & Technology ParkChemical Cluster Zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/edmonton-energy-and-technology-park-special-area/352-eetc-edmonton-energy",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 6
+    },
+    {
+      "code": "EETIM",
+      "baseCode": "EETIM",
+      "name": "Edmonton Energy and Technology Medium Industrial",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/edmonton-energy-and-technology-park-special-area/356-eetim-edmonton",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 4
+    },
+    {
+      "code": "EETL",
+      "baseCode": "EETL",
+      "name": "Edmonton Energy & Technology Park Logistics zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/edmonton-energy-and-technology-park-special-area/353-eetl-edmonton-energy",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 3
+    },
+    {
+      "code": "EETM",
+      "baseCode": "EETM",
+      "name": "Edmonton Energy & Technology Park Manufacturing Zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/edmonton-energy-and-technology-park-special-area/354-eetm-edmonton-energy",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 4
+    },
+    {
+      "code": "EETR",
+      "baseCode": "EETR",
+      "name": "Edmonton Energy & Technology Park Industrial Reserve Zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/edmonton-energy-and-technology-park-special-area/355-eetr-edmonton-energy",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "EIB",
+      "baseCode": "EIB",
+      "name": "Ellerslie Industrial Business Zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/ellerslie-industrial-special-area/3181-eib-ellerslie-industrial-business",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 19
+    },
+    {
+      "code": "EIM",
+      "baseCode": "EIM",
+      "name": "Ellerslie Medium Industrial Zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/ellerslie-industrial-special-area/3182-eim-ellerslie-medium-industrial",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 7
+    },
+    {
+      "code": "FD",
+      "baseCode": "FD",
+      "name": "Future Urban Development",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/agricultural-zones/2240-fd-future-urban-development-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 109
+    },
+    {
+      "code": "GLD",
+      "baseCode": "GLD",
+      "name": "Griesbach Low Density Residential Zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/griesbach-special-area/3172-gld-griesbach-low-density-residential-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 3
+    },
+    {
+      "code": "GLDF",
+      "baseCode": "GLDF",
+      "name": "Griesbach Low Density Residential Flex",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/griesbach-special-area/3175-gldf-griesbach-low-density-residential-flex",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 22
+    },
+    {
+      "code": "GLRA",
+      "baseCode": "GLRA",
+      "name": "Griesbach Low Rise Apartment",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/griesbach-special-area/3174-glra-griesbach-low-rise-apartment-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 8
+    },
+    {
+      "code": "GMRA",
+      "baseCode": "GMRA",
+      "name": "Griesbach Medium Rise Apartment",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/griesbach-special-area/3176-gmra-griesbach-medium-rise-apartment-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 5
+    },
+    {
+      "code": "GRH",
+      "baseCode": "GRH",
+      "name": "Griesbach Row Housing",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/griesbach-special-area/3173-grh-griesbach-row-housing-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 18
+    },
+    {
+      "code": "GVC",
+      "baseCode": "GVC",
+      "name": "Griesbach Village Centre Zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/griesbach-special-area/3171-gvc-griesbach-village-centre-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 3
+    },
+    {
+      "code": "HA",
+      "baseCode": "HA",
+      "name": "Heritage Area Zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/downtown-special-area/326-ha-heritage-area-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "HDR",
+      "baseCode": "HDR",
+      "name": "High Density Residential Zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/downtown-special-area/321-hdr-high-density-residential-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 3
+    },
+    {
+      "code": "IBES",
+      "baseCode": "IBES",
+      "name": "Industrial Business Edmonton South",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/edmonton-south-special-area/365-ibes-industrial-business-edmonton-south",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "IH",
+      "baseCode": "IH",
+      "name": "Heavy Industrial",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/industrial-zones/2140-ih-heavy-industrial-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 43
+    },
+    {
+      "code": "ILES",
+      "baseCode": "ILES",
+      "name": "Light Industrial Edmonton South",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/edmonton-south-special-area/366-iles-industrial-light-edmonton-south-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 3
+    },
+    {
+      "code": "IM",
+      "baseCode": "IM",
+      "name": "Medium Industrial",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/industrial-zones/2130-im-medium-industrial-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 212
+    },
+    {
+      "code": "JAMSC",
+      "baseCode": "JAMSC",
+      "name": "Jasper Avenue Main Street Commercial Zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/downtown-special-area/328-jamsc-jasper-avenue-main-street-commercial-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 2
+    },
+    {
+      "code": "MED",
+      "baseCode": "MED",
+      "name": "Marquis Entertainment District",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/marquis-town-centre-special-area/3134-med-marquis-entertainment-district",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MMS",
+      "baseCode": "MMS",
+      "name": "Marquis Main Street Zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/marquis-town-centre-special-area/3133-mms-marquis-main-street-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MMUT",
+      "baseCode": "MMUT",
+      "name": "Marquis Mixed Use Transition Zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/marquis-town-centre-special-area/3132-mmut-marquis-mixed-use-transition",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 2
+    },
+    {
+      "code": "MRC",
+      "baseCode": "MRC",
+      "name": "Marquis Retail Centre Zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/marquis-town-centre-special-area/3131-mrc-marquis-retail-centre-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 7
+    },
+    {
+      "code": "MU",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MU h12 f2.2 cf",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h12",
+        "f2.2",
+        "cf"
+      ],
+      "maxHeightM": 12,
+      "floorAreaRatio": 2.2,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MU h12 f3",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h12",
+        "f3"
+      ],
+      "maxHeightM": 12,
+      "floorAreaRatio": 3,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 2
+    },
+    {
+      "code": "MU h12 f3.5 cf",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h12",
+        "f3.5",
+        "cf"
+      ],
+      "maxHeightM": 12,
+      "floorAreaRatio": 3.5,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MU h14 f1.8",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h14",
+        "f1.8"
+      ],
+      "maxHeightM": 14,
+      "floorAreaRatio": 1.8,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MU h14 f2.5 cf",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h14",
+        "f2.5",
+        "cf"
+      ],
+      "maxHeightM": 14,
+      "floorAreaRatio": 2.5,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 2
+    },
+    {
+      "code": "MU h16 f0.5",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h16",
+        "f0.5"
+      ],
+      "maxHeightM": 16,
+      "floorAreaRatio": 0.5,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MU h16 f2",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h16",
+        "f2"
+      ],
+      "maxHeightM": 16,
+      "floorAreaRatio": 2,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 2
+    },
+    {
+      "code": "MU h16 f2.3",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h16",
+        "f2.3"
+      ],
+      "maxHeightM": 16,
+      "floorAreaRatio": 2.3,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MU h16 f2.3 cf",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h16",
+        "f2.3",
+        "cf"
+      ],
+      "maxHeightM": 16,
+      "floorAreaRatio": 2.3,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MU h16 f3",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h16",
+        "f3"
+      ],
+      "maxHeightM": 16,
+      "floorAreaRatio": 3,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 3
+    },
+    {
+      "code": "MU h16 f3.5",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h16",
+        "f3.5"
+      ],
+      "maxHeightM": 16,
+      "floorAreaRatio": 3.5,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 11
+    },
+    {
+      "code": "MU h16 f3.5 cf",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h16",
+        "f3.5",
+        "cf"
+      ],
+      "maxHeightM": 16,
+      "floorAreaRatio": 3.5,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 171
+    },
+    {
+      "code": "MU h18 f3.5 cf",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h18",
+        "f3.5",
+        "cf"
+      ],
+      "maxHeightM": 18,
+      "floorAreaRatio": 3.5,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MU h20 f3.5 cf",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h20",
+        "f3.5",
+        "cf"
+      ],
+      "maxHeightM": 20,
+      "floorAreaRatio": 3.5,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MU h21 f3.8 cf",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h21",
+        "f3.8",
+        "cf"
+      ],
+      "maxHeightM": 21,
+      "floorAreaRatio": 3.8,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MU h21 f4.5",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h21",
+        "f4.5"
+      ],
+      "maxHeightM": 21,
+      "floorAreaRatio": 4.5,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MU h23 f3",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h23",
+        "f3"
+      ],
+      "maxHeightM": 23,
+      "floorAreaRatio": 3,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 5
+    },
+    {
+      "code": "MU h23 f3 cf",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h23",
+        "f3",
+        "cf"
+      ],
+      "maxHeightM": 23,
+      "floorAreaRatio": 3,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 2
+    },
+    {
+      "code": "MU h23 f3.5 cf",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h23",
+        "f3.5",
+        "cf"
+      ],
+      "maxHeightM": 23,
+      "floorAreaRatio": 3.5,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MU h23 f3.7",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h23",
+        "f3.7"
+      ],
+      "maxHeightM": 23,
+      "floorAreaRatio": 3.7,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 2
+    },
+    {
+      "code": "MU h23 f3.8",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h23",
+        "f3.8"
+      ],
+      "maxHeightM": 23,
+      "floorAreaRatio": 3.8,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 3
+    },
+    {
+      "code": "MU h23 f4.5",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h23",
+        "f4.5"
+      ],
+      "maxHeightM": 23,
+      "floorAreaRatio": 4.5,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 3
+    },
+    {
+      "code": "MU h23 f4.5 cf",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h23",
+        "f4.5",
+        "cf"
+      ],
+      "maxHeightM": 23,
+      "floorAreaRatio": 4.5,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 2
+    },
+    {
+      "code": "MU h23 f5",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h23",
+        "f5"
+      ],
+      "maxHeightM": 23,
+      "floorAreaRatio": 5,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MU h23 f5.1 cf",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h23",
+        "f5.1",
+        "cf"
+      ],
+      "maxHeightM": 23,
+      "floorAreaRatio": 5.1,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MU h25 f3.5",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h25",
+        "f3.5"
+      ],
+      "maxHeightM": 25,
+      "floorAreaRatio": 3.5,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MU h28 f4",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h28",
+        "f4"
+      ],
+      "maxHeightM": 28,
+      "floorAreaRatio": 4,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 12
+    },
+    {
+      "code": "MU h28 f4 cf",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h28",
+        "f4",
+        "cf"
+      ],
+      "maxHeightM": 28,
+      "floorAreaRatio": 4,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 12
+    },
+    {
+      "code": "MU h28 f4.5",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h28",
+        "f4.5"
+      ],
+      "maxHeightM": 28,
+      "floorAreaRatio": 4.5,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MU h28 f5",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h28",
+        "f5"
+      ],
+      "maxHeightM": 28,
+      "floorAreaRatio": 5,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MU h28 f5 cf",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h28",
+        "f5",
+        "cf"
+      ],
+      "maxHeightM": 28,
+      "floorAreaRatio": 5,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MU h30 f5.5",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h30",
+        "f5.5"
+      ],
+      "maxHeightM": 30,
+      "floorAreaRatio": 5.5,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MU h40 f6.5",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h40",
+        "f6.5"
+      ],
+      "maxHeightM": 40,
+      "floorAreaRatio": 6.5,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 3
+    },
+    {
+      "code": "MU h40 f7",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h40",
+        "f7"
+      ],
+      "maxHeightM": 40,
+      "floorAreaRatio": 7,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 7
+    },
+    {
+      "code": "MU h40 f7 cf",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h40",
+        "f7",
+        "cf"
+      ],
+      "maxHeightM": 40,
+      "floorAreaRatio": 7,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 13
+    },
+    {
+      "code": "MU h45 f7",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h45",
+        "f7"
+      ],
+      "maxHeightM": 45,
+      "floorAreaRatio": 7,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 2
+    },
+    {
+      "code": "MU h45 f7 cf",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h45",
+        "f7",
+        "cf"
+      ],
+      "maxHeightM": 45,
+      "floorAreaRatio": 7,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 17
+    },
+    {
+      "code": "MU h50 f4.5 cf",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h50",
+        "f4.5",
+        "cf"
+      ],
+      "maxHeightM": 50,
+      "floorAreaRatio": 4.5,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MU h50 f6",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h50",
+        "f6"
+      ],
+      "maxHeightM": 50,
+      "floorAreaRatio": 6,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MU h50 f6 cf",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h50",
+        "f6",
+        "cf"
+      ],
+      "maxHeightM": 50,
+      "floorAreaRatio": 6,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MU h50 f7",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h50",
+        "f7"
+      ],
+      "maxHeightM": 50,
+      "floorAreaRatio": 7,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 5
+    },
+    {
+      "code": "MU h50 f7 cf",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h50",
+        "f7",
+        "cf"
+      ],
+      "maxHeightM": 50,
+      "floorAreaRatio": 7,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 4
+    },
+    {
+      "code": "MU h60 f9.5 cf",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h60",
+        "f9.5",
+        "cf"
+      ],
+      "maxHeightM": 60,
+      "floorAreaRatio": 9.5,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MU h65 f5.5 cf",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h65",
+        "f5.5",
+        "cf"
+      ],
+      "maxHeightM": 65,
+      "floorAreaRatio": 5.5,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MU h70 f8",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h70",
+        "f8"
+      ],
+      "maxHeightM": 70,
+      "floorAreaRatio": 8,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MU h75 f7 cf",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h75",
+        "f7",
+        "cf"
+      ],
+      "maxHeightM": 75,
+      "floorAreaRatio": 7,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 13
+    },
+    {
+      "code": "MU h75 f7.5",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h75",
+        "f7.5"
+      ],
+      "maxHeightM": 75,
+      "floorAreaRatio": 7.5,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MU h75 f7.5 cf",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h75",
+        "f7.5",
+        "cf"
+      ],
+      "maxHeightM": 75,
+      "floorAreaRatio": 7.5,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MU h77 f8",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h77",
+        "f8"
+      ],
+      "maxHeightM": 77,
+      "floorAreaRatio": 8,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MU h77 f8 cf",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h77",
+        "f8",
+        "cf"
+      ],
+      "maxHeightM": 77,
+      "floorAreaRatio": 8,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 2
+    },
+    {
+      "code": "MU h85 f11",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h85",
+        "f11"
+      ],
+      "maxHeightM": 85,
+      "floorAreaRatio": 11,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 2
+    },
+    {
+      "code": "MU h85 f11 cf",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h85",
+        "f11",
+        "cf"
+      ],
+      "maxHeightM": 85,
+      "floorAreaRatio": 11,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 7
+    },
+    {
+      "code": "MU h85 f8",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h85",
+        "f8"
+      ],
+      "maxHeightM": 85,
+      "floorAreaRatio": 8,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 5
+    },
+    {
+      "code": "MU h85 f8 cf",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h85",
+        "f8",
+        "cf"
+      ],
+      "maxHeightM": 85,
+      "floorAreaRatio": 8,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MU h88 f11 cf",
+      "baseCode": "MU",
+      "name": "Mixed Use",
+      "nameVariants": [],
+      "modifiers": [
+        "h88",
+        "f11",
+        "cf"
+      ],
+      "maxHeightM": 88,
+      "floorAreaRatio": 11,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/280-mu-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MUN",
+      "baseCode": "MUN",
+      "name": "Neighbourhood Mixed Use",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/mixed-use-zones/270-mun-neighbourhood-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 16
+    },
+    {
+      "code": "NA",
+      "baseCode": "NA",
+      "name": "Natural Areas",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/open-space-and-urban-services-zones/2160-na-natural-areas-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 99
+    },
+    {
+      "code": "NSRVES",
+      "baseCode": "NSRVES",
+      "name": "North Saskatchewan River Valley Edmonton South",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": null,
+      "bylawUrlState": "not-published",
+      "bylawUrlCount": 0,
+      "mappedAreas": 3
+    },
+    {
+      "code": "PLD",
+      "baseCode": "PLD",
+      "name": "Paisley Low Density",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/paisley-special-area/3151-pld-paisley-low-density-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 6
+    },
+    {
+      "code": "PRH",
+      "baseCode": "PRH",
+      "name": "Paisley Row Housing",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/paisley-special-area/3152-prh-paisley-row-housing-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 5
+    },
+    {
+      "code": "PS",
+      "baseCode": "PS",
+      "name": "Parks and Services",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/open-space-and-urban-services-zones/2180-ps-parks-and-services",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 706
+    },
+    {
+      "code": "PSN",
+      "baseCode": "PSN",
+      "name": "Neighbourhood Parks and Services",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/open-space-and-urban-services-zones/2170-psn-neighbourhood-parks",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 898
+    },
+    {
+      "code": "PU",
+      "baseCode": "PU",
+      "name": "Public Utility",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/open-space-and-urban-services-zones/2190-pu-public-utility-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 885
+    },
+    {
+      "code": "RAES",
+      "baseCode": "RAES",
+      "name": "Acreage Residential Edmonton South",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/edmonton-south-special-area/363-raes-acreage-residential-edmonton-south",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "RCES",
+      "baseCode": "RCES",
+      "name": "Country Residential Edmonton South",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/edmonton-south-special-area/362-rces-country-residential-edmonton-south",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "RCRL",
+      "baseCode": "RCRL",
+      "name": "River Crossing Large Scale Zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": null,
+      "bylawUrlState": "not-published",
+      "bylawUrlCount": 0,
+      "mappedAreas": 1
+    },
+    {
+      "code": "RCRM",
+      "baseCode": "RCRM",
+      "name": "River Crossing Medium Scale Zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": null,
+      "bylawUrlState": "not-published",
+      "bylawUrlCount": 0,
+      "mappedAreas": 1
+    },
+    {
+      "code": "RL h50",
+      "baseCode": "RL",
+      "name": "Large Scale Residential",
+      "nameVariants": [],
+      "modifiers": [
+        "h50"
+      ],
+      "maxHeightM": 50,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/residential-zones/250-rl-large-scale-residential-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 10
+    },
+    {
+      "code": "RL h65",
+      "baseCode": "RL",
+      "name": "Large Scale Residential",
+      "nameVariants": [],
+      "modifiers": [
+        "h65"
+      ],
+      "maxHeightM": 65,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/residential-zones/250-rl-large-scale-residential-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 79
+    },
+    {
+      "code": "RM",
+      "baseCode": "RM",
+      "name": "Medium Scale Residential",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/residential-zones/240-rm-medium-scale-residential-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "RM h16",
+      "baseCode": "RM",
+      "name": "Medium Scale Residential",
+      "nameVariants": [],
+      "modifiers": [
+        "h16"
+      ],
+      "maxHeightM": 16,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/residential-zones/240-rm-medium-scale-residential-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 960
+    },
+    {
+      "code": "RM h23",
+      "baseCode": "RM",
+      "name": "Medium Scale Residential",
+      "nameVariants": [],
+      "modifiers": [
+        "h23"
+      ],
+      "maxHeightM": 23,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/residential-zones/240-rm-medium-scale-residential-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 234
+    },
+    {
+      "code": "RM h28",
+      "baseCode": "RM",
+      "name": "Medium Scale Residential",
+      "nameVariants": [],
+      "modifiers": [
+        "h28"
+      ],
+      "maxHeightM": 28,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/residential-zones/240-rm-medium-scale-residential-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 27
+    },
+    {
+      "code": "RMU",
+      "baseCode": "RMU",
+      "name": "Residential Mixed Use Zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/downtown-special-area/323-rmu-residential-mixed-use-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "RR",
+      "baseCode": "RR",
+      "name": "Rural Residential",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/residential-zones/260-rr-rural-residential-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 44
+    },
+    {
+      "code": "RS",
+      "baseCode": "RS",
+      "name": "Small Scale Residential",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/residential-zones/210-rs-small-scale-residential-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1149
+    },
+    {
+      "code": "RSF",
+      "baseCode": "RSF",
+      "name": "Small Scale Flex Residential",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/residential-zones/220-rsf-small-scale-flex-residential-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1922
+    },
+    {
+      "code": "RSM",
+      "baseCode": "RSM",
+      "name": "Small-Medium Scale Transition Residential",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/residential-zones/230-rsm-small-medium-scale-transition",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 2
+    },
+    {
+      "code": "RSM h12",
+      "baseCode": "RSM",
+      "name": "Small-Medium Scale Transition Residential",
+      "nameVariants": [],
+      "modifiers": [
+        "h12"
+      ],
+      "maxHeightM": 12,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/residential-zones/230-rsm-small-medium-scale-transition",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 683
+    },
+    {
+      "code": "RSM h14",
+      "baseCode": "RSM",
+      "name": "Small-Medium Scale Transition Residential",
+      "nameVariants": [],
+      "modifiers": [
+        "h14"
+      ],
+      "maxHeightM": 14,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/residential-zones/230-rsm-small-medium-scale-transition",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 51
+    },
+    {
+      "code": "RTCMR",
+      "baseCode": "RTCMR",
+      "name": "Riverview Town Centre Medium Rise Residential",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/riverview-town-centre-special-area/3103-rtcmr-riverview-town-centre",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 2
+    },
+    {
+      "code": "RTCR",
+      "baseCode": "RTCR",
+      "name": "Riverview Town Centre Residential Zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": null,
+      "bylawUrlState": "not-published",
+      "bylawUrlCount": 0,
+      "mappedAreas": 1
+    },
+    {
+      "code": "RVRH",
+      "baseCode": "RVRH",
+      "name": "Riverview Row Housing Zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/riverview-special-area/3111-rvrh-riverview-row-housing-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 5
+    },
+    {
+      "code": "SLD",
+      "baseCode": "SLD",
+      "name": "Stillwater Low Density Residential Zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/stillwater-special-area/391-sld-stillwater-low-density-residential-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 9
+    },
+    {
+      "code": "SRA",
+      "baseCode": "SRA",
+      "name": "Stillwater Rear Attached Housing Zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/stillwater-special-area/393-sra-stillwater-rear-attached-row-housing-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 5
+    },
+    {
+      "code": "SRH",
+      "baseCode": "SRH",
+      "name": "Stillwater Row Housing Zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/stillwater-special-area/392-srh-stillwater-row-housing-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 10
+    },
+    {
+      "code": "TC-C",
+      "baseCode": "TC-C",
+      "name": "Town Center Commercial",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/heritage-valley-town-centre-special-area/3121-tc-c-heritage-valley-town",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 1
+    },
+    {
+      "code": "TC-MU",
+      "baseCode": "TC-MU",
+      "name": "Town Center Mixed Use",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": null,
+      "bylawUrlState": "not-published",
+      "bylawUrlCount": 0,
+      "mappedAreas": 1
+    },
+    {
+      "code": "UC3ES",
+      "baseCode": "UC3ES",
+      "name": "Urban Commercial 3 Edmonton South",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/edmonton-south-special-area/367-uc3es-urban-commercial-3-edmonton-south",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 2
+    },
+    {
+      "code": "UF",
+      "baseCode": "UF",
+      "name": "Urban Facilities",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/open-space-and-urban-services-zones/2200-uf-urban-facilities",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 208
+    },
+    {
+      "code": "UI",
+      "baseCode": "UI",
+      "name": "Urban Institution",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-2-standard-zones-and-overlays/open-space-and-urban-services-zones/2210-ui-urban-institution",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 11
+    },
+    {
+      "code": "UW",
+      "baseCode": "UW",
+      "name": "Urban Warehouse Zone",
+      "nameVariants": [],
+      "modifiers": [],
+      "maxHeightM": null,
+      "floorAreaRatio": null,
+      "bylawUrl": "https://zoningbylaw.edmonton.ca/part-3-special-area-zones/downtown-special-area/324-uw-urban-warehouse-zone",
+      "bylawUrlState": "single",
+      "bylawUrlCount": 1,
+      "mappedAreas": 4
+    }
+  ],
+  "overlays": [
+    {
+      "code": "AM",
+      "name": "Ambleside Special Area",
+      "bylawNumber": "12800",
+      "bylawInForce": false,
+      "specialArea": true,
+      "mappedAreas": 1
+    },
+    {
+      "code": "BF",
+      "name": "Blatchford Special Area",
+      "bylawNumber": "12800",
+      "bylawInForce": false,
+      "specialArea": true,
+      "mappedAreas": 1
+    },
+    {
+      "code": "BF",
+      "name": "Blatchford Special Area",
+      "bylawNumber": "20001",
+      "bylawInForce": true,
+      "specialArea": true,
+      "mappedAreas": 1
+    },
+    {
+      "code": "BH",
+      "name": "Bird Hazard Area - Airport Protection Overlay",
+      "bylawNumber": "20001",
+      "bylawInForce": true,
+      "specialArea": false,
+      "mappedAreas": 1
+    },
+    {
+      "code": "BV",
+      "name": "River Valley Special Area - Buena Vista Park Zone",
+      "bylawNumber": "20001",
+      "bylawInForce": true,
+      "specialArea": true,
+      "mappedAreas": 1
+    },
+    {
+      "code": "CM",
+      "name": "Central McDougall Urban Village Special Area",
+      "bylawNumber": "20001",
+      "bylawInForce": true,
+      "specialArea": true,
+      "mappedAreas": 1
+    },
+    {
+      "code": "CV",
+      "name": "Clareview Campus Special Area",
+      "bylawNumber": "12800",
+      "bylawInForce": false,
+      "specialArea": true,
+      "mappedAreas": 1
+    },
+    {
+      "code": "DN",
+      "name": "Downtown Special Area",
+      "bylawNumber": "12800",
+      "bylawInForce": false,
+      "specialArea": true,
+      "mappedAreas": 1
+    },
+    {
+      "code": "EDC",
+      "name": "Edmonton Design Committee",
+      "bylawNumber": "12190",
+      "bylawInForce": false,
+      "specialArea": false,
+      "mappedAreas": 1
+    },
+    {
+      "code": "EI",
+      "name": "Ellerslie Industrial Special Area",
+      "bylawNumber": "12800",
+      "bylawInForce": false,
+      "specialArea": true,
+      "mappedAreas": 1
+    },
+    {
+      "code": "EIA",
+      "name": "Edmonton International Airport - Airport Protection Overlay",
+      "bylawNumber": "20001",
+      "bylawInForce": true,
+      "specialArea": false,
+      "mappedAreas": 1
+    },
+    {
+      "code": "ES",
+      "name": "Edmonton South Special Area",
+      "bylawNumber": "12800",
+      "bylawInForce": false,
+      "specialArea": true,
+      "mappedAreas": 1
+    },
+    {
+      "code": "ET",
+      "name": "Edmonton Energy and Technology Park Special Area",
+      "bylawNumber": "12800",
+      "bylawInForce": false,
+      "specialArea": true,
+      "mappedAreas": 1
+    },
+    {
+      "code": "FE",
+      "name": "River Valley Special Area - Fort Edmonton Park Zone",
+      "bylawNumber": "20001",
+      "bylawInForce": true,
+      "specialArea": true,
+      "mappedAreas": 1
+    },
+    {
+      "code": "FP",
+      "name": "Floodplain Protection Overlay",
+      "bylawNumber": "12800",
+      "bylawInForce": false,
+      "specialArea": false,
+      "mappedAreas": 1
+    },
+    {
+      "code": "GB",
+      "name": "Griesbach Special Area",
+      "bylawNumber": "12800",
+      "bylawInForce": false,
+      "specialArea": true,
+      "mappedAreas": 1
+    },
+    {
+      "code": "GH",
+      "name": "Garrison Heliport - Airport Protection Overlay",
+      "bylawNumber": "20001",
+      "bylawInForce": true,
+      "specialArea": false,
+      "mappedAreas": 1
+    },
+    {
+      "code": "HV",
+      "name": "Heritage Valley Town Centre Special Area",
+      "bylawNumber": "12800",
+      "bylawInForce": false,
+      "specialArea": true,
+      "mappedAreas": 1
+    },
+    {
+      "code": "LMR",
+      "name": "River Valley Special Area - Louise McKinney Riverfront Park Zone",
+      "bylawNumber": "20001",
+      "bylawInForce": true,
+      "specialArea": true,
+      "mappedAreas": 1
+    },
+    {
+      "code": "LS",
+      "name": "Liquor Stores Non-exemption Area to 500m Separation Distance",
+      "bylawNumber": "20001",
+      "bylawInForce": true,
+      "specialArea": false,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MC",
+      "name": "River Valley Special Area - Muttart Conservatory Zone",
+      "bylawNumber": "20001",
+      "bylawInForce": true,
+      "specialArea": true,
+      "mappedAreas": 1
+    },
+    {
+      "code": "MQ",
+      "name": "Marquis Town Centre Special Area",
+      "bylawNumber": "12800",
+      "bylawInForce": false,
+      "specialArea": true,
+      "mappedAreas": 1
+    },
+    {
+      "code": "NS10",
+      "name": "All Lands within 10.0m of the North Saskatchewan River Valley and Ravine System Protection Overlay (Area 2)",
+      "bylawNumber": "20001",
+      "bylawInForce": true,
+      "specialArea": false,
+      "mappedAreas": 2
+    },
+    {
+      "code": "NSRV",
+      "name": "North Saskatchewan River Valley and Ravine System Protection Overlay (Area 1)",
+      "bylawNumber": "12800",
+      "bylawInForce": false,
+      "specialArea": false,
+      "mappedAreas": 1
+    },
+    {
+      "code": "OR",
+      "name": "Orchards Special Area",
+      "bylawNumber": "12800",
+      "bylawInForce": false,
+      "specialArea": true,
+      "mappedAreas": 1
+    },
+    {
+      "code": "OR",
+      "name": "Orchards Special Area",
+      "bylawNumber": "20001",
+      "bylawInForce": true,
+      "specialArea": true,
+      "mappedAreas": 1
+    },
+    {
+      "code": "PA",
+      "name": "Paisley Special Area",
+      "bylawNumber": "20001",
+      "bylawInForce": true,
+      "specialArea": true,
+      "mappedAreas": 1
+    },
+    {
+      "code": "PGA",
+      "name": "Priority Growth Area Rezoning",
+      "bylawNumber": "12800",
+      "bylawInForce": false,
+      "specialArea": false,
+      "mappedAreas": 1
+    },
+    {
+      "code": "PM",
+      "name": "Parking Maximums",
+      "bylawNumber": "20001",
+      "bylawInForce": true,
+      "specialArea": false,
+      "mappedAreas": 1
+    },
+    {
+      "code": "RC",
+      "name": "River Valley Special Area - River Crossing Zone",
+      "bylawNumber": "20001",
+      "bylawInForce": true,
+      "specialArea": true,
+      "mappedAreas": 1
+    },
+    {
+      "code": "RT",
+      "name": "Riverview Town Centre Special Area",
+      "bylawNumber": "12800",
+      "bylawInForce": false,
+      "specialArea": true,
+      "mappedAreas": 1
+    },
+    {
+      "code": "RV",
+      "name": "Riverview Special Area",
+      "bylawNumber": "20001",
+      "bylawInForce": true,
+      "specialArea": true,
+      "mappedAreas": 1
+    },
+    {
+      "code": "SW",
+      "name": "Stillwater Special Area",
+      "bylawNumber": "20001",
+      "bylawInForce": true,
+      "specialArea": true,
+      "mappedAreas": 1
+    },
+    {
+      "code": "SW",
+      "name": "Stillwater Special Area",
+      "bylawNumber": "12800",
+      "bylawInForce": false,
+      "specialArea": true,
+      "mappedAreas": 1
+    },
+    {
+      "code": "VZ",
+      "name": "River Valley Special Area - Edmonton Valley Zoo Zone",
+      "bylawNumber": "20001",
+      "bylawInForce": true,
+      "specialArea": true,
+      "mappedAreas": 1
+    }
+  ]
+}

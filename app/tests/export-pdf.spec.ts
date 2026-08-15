@@ -414,6 +414,483 @@ test("every mark the sheet draws reaches the PDF as a painted path", () => {
 });
 
 /* =========================================================================
+   3b. …AND IN THE PLACE THE SHEET DREW IT
+
+   EX05. The assertion above counts. A count is necessary and it is not
+   sufficient: a converter that emitted every mark at the origin, or shifted
+   twelve points right, or with x and y swapped, satisfies it EXACTLY. The
+   whole of the drawing's meaning is where the marks are, so position and
+   extent have to enter the assertion, and the two readers below put them
+   there. `markPlacementProblems` is a pure function of (sheet SVG, page
+   content stream), which is what lets the last test in this section prove on
+   synthetic input that it really can go red — see "counting cannot tell them
+   apart" below.
+
+   WHAT FRAME THE COMPARISON HAPPENS IN. The converter's own note is that the
+   SVG coordinate system IS the PDF coordinate system at 1:1, reached by one
+   flipping `cm` per page and one more `cm` per rotation. So a mark's operands
+   in the content stream should be the sheet's own attribute numbers, byte for
+   byte, and they are compared here in that LOCAL frame. The transforms
+   themselves — the page flip and every rotation — are then checked separately
+   and exactly, so "ignored the flip" and "rotated the wrong way" are caught
+   by the test after this one rather than falling through the gap.
+   ========================================================================= */
+
+interface Box {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+type Pt = readonly [number, number];
+
+const boxOf = (pts: readonly Pt[]): Box | null => {
+  if (pts.length === 0) return null;
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (const [x, y] of pts) {
+    x0 = Math.min(x0, x);
+    y0 = Math.min(y0, y);
+    x1 = Math.max(x1, x);
+    y1 = Math.max(y1, y);
+  }
+  return { x0, y0, x1, y1 };
+};
+
+const r3 = (v: number): string => String(Math.round(v * 1000) / 1000);
+const showBox = (b: Box | null): string =>
+  b === null ? "nothing drawn" : `x ${r3(b.x0)}…${r3(b.x1)}, y ${r3(b.y0)}…${r3(b.y1)}`;
+const showPt = (p: Pt | null): string => (p === null ? "nowhere" : `(${r3(p[0])}, ${r3(p[1])})`);
+
+/** Three decimals is all `n()` in the writer keeps, so half a thousandth is
+ *  the largest honest disagreement between a rounded operand and the exact
+ *  attribute it came from. Doubled, and no more: the point of this gate is
+ *  that a mark twelve points out of place fails, and a tolerance wide enough
+ *  to be comfortable is a tolerance wide enough to hide one. */
+const PLACE_EPS = 0.002;
+
+interface SvgMark {
+  tag: string;
+  /** Where the sheet says the mark begins, when the element pins that down.
+   *  A <circle> does not — its start point is the converter's own choice of
+   *  which quadrant to open at — so circles are matched on extent alone. */
+  first: Pt | null;
+  box: Box | null;
+  /** How far outside its own stated coordinates a mark may legitimately
+   *  reach. Zero for everything straight. */
+  slack: number;
+}
+
+const D_TOKENS = /[A-Za-z]|-?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/g;
+
+/**
+ * The coordinates a path `d` states, and how far a curve inside it may bulge
+ * past them.
+ *
+ * Deliberately intolerant of any command outside the M/L/Z/A vocabulary
+ * `drawings/kit.ts` emits: a reader that shrugged at an unknown command would
+ * silently stop measuring the mark it was asked to measure.
+ */
+function readPathData(d: string): { pts: Pt[]; slack: number } {
+  const tokens = d.match(D_TOKENS) ?? [];
+  const pts: Pt[] = [];
+  let slack = 0;
+  let i = 0;
+  const num = (): number => {
+    const v = Number(tokens[i]);
+    i += 1;
+    if (!Number.isFinite(v)) throw new Error(`path data ${JSON.stringify(d)} is missing a number`);
+    return v;
+  };
+  const moreNumbers = (): boolean => i < tokens.length && !/^[A-Za-z]$/.test(tokens[i]);
+  while (i < tokens.length) {
+    const cmd = tokens[i];
+    i += 1;
+    if (cmd === "M" || cmd === "L") {
+      while (moreNumbers()) {
+        const x = num();
+        pts.push([x, num()]);
+      }
+    } else if (cmd === "Z") {
+      /* closes back onto a point already recorded */
+    } else if (cmd === "A") {
+      while (moreNumbers()) {
+        const rx = Math.abs(num());
+        const ry = Math.abs(num());
+        num(); // x-axis rotation
+        num(); // large-arc flag
+        num(); // sweep flag
+        const x = num();
+        pts.push([x, num()]);
+        /* An arc has to become cubics in a PDF, and a quadrant's control
+           points sit at most (4/3)·tan(π/8) = 0.5523 of a radius outside the
+           arc itself. That is the entire legitimate bulge, so it is the entire
+           allowance — not a round number chosen to make the test pass. */
+        slack = Math.max(slack, 0.5523 * Math.max(rx, ry));
+      }
+    } else {
+      throw new Error(
+        `the sheet drew path command "${cmd}", which this reader does not measure; ` +
+          `teach it that command rather than letting the gate guess`,
+      );
+    }
+  }
+  return { pts, slack };
+}
+
+/** Six-number affine matrix in SVG/PDF order. */
+type Matrix6 = readonly [number, number, number, number, number, number];
+
+/**
+ * `rotate(angle,cx,cy)` as a matrix, composed here from translate · rotate ·
+ * translate rather than copied from the writer's closed form, so agreement
+ * between the two is evidence rather than tautology.
+ */
+function rotateMatrix(spec: string): Matrix6 {
+  const m = /^rotate\(\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*\)$/.exec(spec.trim());
+  if (m === null) throw new Error(`the sheet carries the transform ${JSON.stringify(spec)}`);
+  const a = (Number(m[1]) * Math.PI) / 180;
+  const cx = Number(m[2]);
+  const cy = Number(m[3]);
+  const cos = Math.cos(a);
+  const sin = Math.sin(a);
+  return [cos, sin, -sin, cos, cx - (cos * cx - sin * cy), cy - (sin * cx + cos * cy)];
+}
+
+const ATTRS = /([a-zA-Z][a-zA-Z0-9-]*)="([^"]*)"/g;
+
+const attrsOf = (source: string): Record<string, string> => {
+  const out: Record<string, string> = {};
+  ATTRS.lastIndex = 0;
+  let m = ATTRS.exec(source);
+  while (m !== null) {
+    out[m[1]] = m[2];
+    m = ATTRS.exec(source);
+  }
+  return out;
+};
+
+const numAttr = (a: Record<string, string>, key: string): number => {
+  const v = Number.parseFloat(a[key] ?? "0");
+  return Number.isFinite(v) ? v : 0;
+};
+
+interface ReadSheet {
+  marks: SvgMark[];
+  /** Every rotation the sheet asks for, in the order the sheet asks for it. */
+  transforms: Matrix6[];
+  /** The page the sheet says it is, from its own viewBox. */
+  viewBox: number[];
+}
+
+/**
+ * The sheet's own markup, read as geometry.
+ *
+ * `kit.ts` escapes "<" and ">" inside every body and every attribute value, so
+ * an element scan of this shape is exact for these sheets rather than
+ * approximate — the same bargain the converter itself makes, reached
+ * independently.
+ */
+function readSheetSvg(svg: string): ReadSheet {
+  const EL = /<([a-zA-Z][a-zA-Z0-9]*)([^>]*)>/g;
+  const marks: SvgMark[] = [];
+  const transforms: Matrix6[] = [];
+  let viewBox: number[] = [];
+  let m = EL.exec(svg);
+  while (m !== null) {
+    const tag = m[1];
+    const attrs = attrsOf(m[2]);
+    if (tag === "svg") {
+      viewBox = (attrs.viewBox ?? "").trim().split(/[\s,]+/).map(Number);
+    } else if (tag === "title" || tag === "style") {
+      const close = svg.indexOf(`</${tag}>`, EL.lastIndex);
+      EL.lastIndex = close === -1 ? svg.length : close + tag.length + 3;
+    } else if (tag === "g") {
+      if (attrs.transform !== undefined) transforms.push(rotateMatrix(attrs.transform));
+    } else if (tag === "text") {
+      const close = svg.indexOf("</text>", EL.lastIndex);
+      const body = close === -1 ? "" : svg.slice(EL.lastIndex, close);
+      EL.lastIndex = close === -1 ? svg.length : close + 7;
+      /* An empty label is not lettered and so asks for no transform — the
+         converter returns before it saves the state. Mirrored here so the
+         two sequences stay comparable element for element. */
+      if (attrs.transform !== undefined && body.length > 0) {
+        transforms.push(rotateMatrix(attrs.transform));
+      }
+    } else if (tag === "rect") {
+      const x = numAttr(attrs, "x");
+      const y = numAttr(attrs, "y");
+      const w = numAttr(attrs, "width");
+      const h = numAttr(attrs, "height");
+      marks.push({
+        tag,
+        first: [x, y],
+        box: boxOf([
+          [x, y],
+          [x + w, y + h],
+        ]),
+        slack: 0,
+      });
+    } else if (tag === "line") {
+      const x1 = numAttr(attrs, "x1");
+      const y1 = numAttr(attrs, "y1");
+      marks.push({
+        tag,
+        first: [x1, y1],
+        box: boxOf([
+          [x1, y1],
+          [numAttr(attrs, "x2"), numAttr(attrs, "y2")],
+        ]),
+        slack: 0,
+      });
+    } else if (tag === "circle") {
+      const cx = numAttr(attrs, "cx");
+      const cy = numAttr(attrs, "cy");
+      const r = numAttr(attrs, "r");
+      marks.push({
+        tag,
+        first: null,
+        box: boxOf([
+          [cx - r, cy - r],
+          [cx + r, cy + r],
+        ]),
+        slack: 0,
+      });
+    } else if (tag === "path") {
+      const read = readPathData(attrs.d ?? "");
+      marks.push({ tag, first: read.pts[0] ?? null, box: boxOf(read.pts), slack: read.slack });
+    }
+    m = EL.exec(svg);
+  }
+  return { marks, transforms, viewBox };
+}
+
+const GEOMETRY_OPS = new Set(["m", "l", "c", "re", "h"]);
+const PAINT_OPS = new Set(["f", "f*", "S", "B", "B*"]);
+/** `n` ends a path and paints NOTHING. It is a terminator, not a mark, so the
+ *  geometry under it is discarded rather than counted — which is what makes
+ *  "emitted the geometry and never painted it" show up below as a missing
+ *  path rather than as a present one. */
+const DISCARD_OPS = new Set(["n"]);
+
+interface PaintedPath {
+  op: string;
+  first: Pt | null;
+  box: Box | null;
+}
+
+/**
+ * Every painted path on a page, with the geometry that was painted.
+ *
+ * Control points are collected alongside on-path points on purpose: for the
+ * four-Bézier circle the converter draws, the control hull's extent IS the
+ * circle's extent, and for an arc it is the bulge the slack above budgets for.
+ * Nothing here reads a `cm`; the transforms are checked on their own.
+ */
+function paintedPaths(content: string): PaintedPath[] {
+  const out: PaintedPath[] = [];
+  let pts: Pt[] = [];
+  for (const line of content.split("\n")) {
+    const tokens = line.trim().split(/\s+/);
+    const op = tokens[tokens.length - 1];
+    if (GEOMETRY_OPS.has(op)) {
+      const v = tokens.slice(0, -1).map(Number);
+      if (op === "m" || op === "l") pts.push([v[0], v[1]]);
+      else if (op === "c") pts.push([v[0], v[1]], [v[2], v[3]], [v[4], v[5]]);
+      else if (op === "re") pts.push([v[0], v[1]], [v[0] + v[2], v[1] + v[3]]);
+      // "h" closes onto a point already recorded
+    } else if (PAINT_OPS.has(op)) {
+      out.push({ op, first: pts[0] ?? null, box: boxOf(pts) });
+      pts = [];
+    } else if (DISCARD_OPS.has(op)) {
+      pts = [];
+    }
+  }
+  return out;
+}
+
+/** Every `cm` on a page, in order. */
+const pdfTransforms = (content: string): Matrix6[] =>
+  content
+    .split("\n")
+    .filter((line) => line.trim().endsWith(" cm"))
+    .map((line) => line.trim().split(/\s+/).slice(0, 6).map(Number) as unknown as Matrix6);
+
+/**
+ * What the sheet drew, against what the page painted — matched one to one, in
+ * order, on POSITION and EXTENT. Returns one sentence per disagreement.
+ */
+function markPlacementProblems(svg: string, content: string): string[] {
+  const { marks } = readSheetSvg(svg);
+  const paths = paintedPaths(content);
+  const problems: string[] = [];
+  if (marks.length !== paths.length) {
+    problems.push(`the sheet draws ${marks.length} marks and the page paints ${paths.length} paths`);
+  }
+  const pairs = Math.min(marks.length, paths.length);
+  for (let i = 0; i < pairs; i += 1) {
+    const mark = marks[i];
+    const path = paths[i];
+    const where = `mark ${i} (<${mark.tag}>)`;
+    /* A <circle> carries no stated start point — which quadrant a converter
+       opens the four Béziers at is its own business — so a circle is matched
+       on extent alone and skips this half. Everything else states where it
+       begins, and a mark that begins somewhere else is a mark in the wrong
+       place even when its extent happens to match. */
+    if (mark.first !== null) {
+      if (path.first === null) {
+        problems.push(`${where} starts at ${showPt(mark.first)} on the sheet and paints no geometry at all`);
+      } else {
+        const off = Math.max(
+          Math.abs(mark.first[0] - path.first[0]),
+          Math.abs(mark.first[1] - path.first[1]),
+        );
+        if (off > PLACE_EPS) {
+          problems.push(
+            `${where} starts at ${showPt(mark.first)} on the sheet and at ${showPt(path.first)} on the page`,
+          );
+        }
+      }
+    }
+    if (mark.box === null || path.box === null) {
+      if (mark.box !== path.box) {
+        problems.push(`${where} covers ${showBox(mark.box)} on the sheet and ${showBox(path.box)} on the page`);
+      }
+      continue;
+    }
+    const grew = mark.slack + PLACE_EPS;
+    const inside =
+      path.box.x0 >= mark.box.x0 - grew &&
+      path.box.y0 >= mark.box.y0 - grew &&
+      path.box.x1 <= mark.box.x1 + grew &&
+      path.box.y1 <= mark.box.y1 + grew;
+    const covers =
+      path.box.x0 <= mark.box.x0 + PLACE_EPS &&
+      path.box.y0 <= mark.box.y0 + PLACE_EPS &&
+      path.box.x1 >= mark.box.x1 - PLACE_EPS &&
+      path.box.y1 >= mark.box.y1 - PLACE_EPS;
+    if (!inside || !covers) {
+      problems.push(
+        `${where} covers ${showBox(mark.box)} on the sheet and ${showBox(path.box)} on the page` +
+          (mark.slack > 0 ? ` (curve allowance ${r3(mark.slack)} pt)` : ""),
+      );
+    }
+  }
+  return problems;
+}
+
+test("every mark reaches the PDF at the position and the extent the sheet drew it", () => {
+  const set = buildSet();
+  const pdf = readPdf(buildDrawingSetPdf(set, meta()).bytes);
+  let measured = 0;
+  set.sheets.forEach((sheet, i) => {
+    const problems = markPlacementProblems(sheet.svg, pdf.pages[i].content);
+    expect(problems, `sheet ${sheet.number} ${sheet.title}:\n  ${problems.join("\n  ")}`).toEqual([]);
+    measured += readSheetSvg(sheet.svg).marks.length;
+  });
+  /* Not a formality. If the readers above ever stop finding marks, every
+     comparison becomes trivially true and this gate becomes the vacuum it
+     was written to replace. */
+  expect(measured).toBeGreaterThan(600);
+});
+
+test("the page flip and every rotation reach the PDF as the transform the sheet asked for", () => {
+  const set = buildSet();
+  const pdf = readPdf(buildDrawingSetPdf(set, meta()).bytes);
+  let rotations = 0;
+  set.sheets.forEach((sheet, i) => {
+    const { transforms, viewBox } = readSheetSvg(sheet.svg);
+    const applied = pdfTransforms(pdf.pages[i].content);
+    const where = `sheet ${sheet.number}`;
+
+    /* The page opens with the one matrix that turns SVG's downward y into
+       PDF's upward y. Get this wrong and every mark on the sheet is in the
+       wrong place while every count stays right — which is precisely the
+       failure the count above cannot see. */
+    const flip: Matrix6 = [1, 0, 0, -1, -viewBox[0], viewBox[1] + viewBox[3]];
+    expect(applied.length, `${where}: no transform at all`).toBeGreaterThan(0);
+    applied[0].forEach((v, k) => {
+      expect(Math.abs(v - flip[k]), `${where}: page flip is ${applied[0].join(" ")}, expected ${flip.join(" ")}`)
+        .toBeLessThan(0.0011);
+    });
+
+    expect(applied.length - 1, `${where}: rotations`).toBe(transforms.length);
+    transforms.forEach((want, t) => {
+      const got = applied[t + 1];
+      got.forEach((v, k) => {
+        expect(
+          Math.abs(v - want[k]),
+          `${where}: rotation ${t} is ${got.join(" ")}, the sheet asked for ${want.map(r3).join(" ")}`,
+        ).toBeLessThan(0.0011);
+      });
+    });
+    rotations += transforms.length;
+  });
+  // A0 carries none; the site plan's north arrow and every rotated dimension
+  // string across the set carry the rest.
+  expect(rotations).toBeGreaterThan(20);
+});
+
+test("counting cannot tell a right drawing from a displaced one, and the placement reader can", () => {
+  /* The falsifiability proof for the two tests above, on input small enough to
+     read. Both streams below paint exactly the same number of paths with
+     exactly the same operators; the second one draws the rectangle twelve
+     points to the right. `countPaints` — the whole of the old assertion —
+     reports the two as identical. */
+  const svg =
+    '<svg viewBox="0 0 100 100"><rect x="10" y="20" width="30" height="40" class="adw-ink" stroke-width="1"/>' +
+    '<line x1="5" y1="6" x2="7" y2="8" class="adw-ink" stroke-width="1"/></svg>';
+  const faithful = ["1 0 0 -1 0 100 cm", "0 0 0 RG", "1 w", "10 20 30 40 re", "S", "5 6 m", "7 8 l", "S"].join("\n");
+  const displaced = faithful.replace("10 20 30 40 re", "22 20 30 40 re");
+
+  expect(countPaints(faithful)).toBe(2);
+  expect(countPaints(displaced)).toBe(countPaints(faithful));
+  expect(countSvgMarks(svg)).toBe(2);
+
+  expect(markPlacementProblems(svg, faithful)).toEqual([]);
+  const caught = markPlacementProblems(svg, displaced);
+  /* Both halves of the reader fire, and they name the rectangle, where the
+     sheet put it, and where the page put it instead. */
+  expect(caught).toEqual([
+    "mark 0 (<rect>) starts at (10, 20) on the sheet and at (22, 20) on the page",
+    "mark 0 (<rect>) covers x 10…40, y 20…60 on the sheet and x 22…52, y 20…60 on the page",
+  ]);
+
+  /* And extent alone catches a mark whose start point is untouched: the same
+     rectangle drawn at twice the width begins in exactly the right place. */
+  const stretched = markPlacementProblems(svg, faithful.replace("10 20 30 40 re", "10 20 60 40 re"));
+  expect(stretched).toEqual([
+    "mark 0 (<rect>) covers x 10…40, y 20…60 on the sheet and x 10…70, y 20…60 on the page",
+  ]);
+
+  /* The other half of the finding this gate was written for: a converter that
+     PAINTS THE RIGHT NUMBER OF THINGS AND DRAWS NONE OF THEM. `countPaints`
+     reads two and two here as well. */
+  const hollow = ["1 0 0 -1 0 100 cm", "0 0 0 RG", "1 w", "S", "S"].join("\n");
+  expect(countPaints(hollow)).toBe(countPaints(faithful));
+  expect(markPlacementProblems(svg, hollow)).toEqual([
+    "mark 0 (<rect>) starts at (10, 20) on the sheet and paints no geometry at all",
+    "mark 0 (<rect>) covers x 10…40, y 20…60 on the sheet and nothing drawn on the page",
+    "mark 1 (<line>) starts at (5, 6) on the sheet and paints no geometry at all",
+    "mark 1 (<line>) covers x 5…7, y 6…8 on the sheet and nothing drawn on the page",
+  ]);
+
+  /* And the mirror image: geometry emitted, then ended with `n`, which paints
+     nothing. The page looks busy in a hex dump and blank on paper. */
+  const unpainted = faithful.replace(/^S$/gm, "n");
+  expect(markPlacementProblems(svg, unpainted)).toEqual([
+    "the sheet draws 2 marks and the page paints 0 paths",
+  ]);
+
+  // …and half a thousandth of a point, which is all the writer's rounding can
+  // account for, is NOT a failure. A gate that fires on rounding gets muted.
+  expect(markPlacementProblems(svg, faithful.replace("10 20 30 40 re", "10.0005 20 30 40 re"))).toEqual([]);
+});
+
+/* =========================================================================
    4. THE DISCLAIMER AND THE DESIGN HASH TRAVEL IN THE FILE
    ========================================================================= */
 
@@ -473,6 +950,50 @@ test("the artifact is the same shape every other export returns, over the same b
 const drawingSheetsSource = (): string =>
   readFileSync(join(__dirname, "..", "components", "builder", "DrawingSheets.tsx"), "utf8");
 
+const exportPdfSource = (): string =>
+  readFileSync(join(__dirname, "..", "lib", "builder", "exportPdf.ts"), "utf8");
+
+/**
+ * Every module a source pulls in STATICALLY — by specifier, not by line.
+ *
+ * EX05 REPLACED the shape this used to be tested with. The old matcher was
+ * `/^import\s[^;]*?from\s+"[^"]+";/gm`, and the `from` in it was load-bearing
+ * in the wrong direction: `import "@/lib/builder/exportPdf";` — a bare
+ * side-effect import, which puts the converter and its 256-entry Helvetica
+ * table in the entry graph exactly as firmly as a named one — matched nothing,
+ * so the loop below it ran over a list the offending line was not in and the
+ * guard reported clean. `export … from` had the same hole. Both are matched
+ * here; the dynamic `import(...)` form deliberately is not, because that is
+ * the shape the whole arrangement exists to require.
+ */
+function staticModuleSpecifiers(source: string): string[] {
+  const code = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^[ \t]*\/\/.*$/gm, "");
+  return Array.from(
+    code.matchAll(/^[ \t]*(?:import|export)\s+(?:[^;'"]*?\bfrom\s+)?["']([^"']+)["']\s*;?/gm),
+    (m) => m[1],
+  );
+}
+
+test("the import-shape guard sees a bare side-effect import, which the shape it replaced could not", () => {
+  const bare = 'import "@/lib/builder/exportPdf";\nexport const A = 1;\n';
+  const named = 'import { buildDrawingSetPdf } from "@/lib/builder/exportPdf";\n';
+  const reexported = 'export * from "@/lib/builder/exportPdf";\n';
+  const spread = 'import {\n  a,\n  b,\n} from "@/lib/builder/exportPdf";\n';
+  const dynamic = 'const m = await import("@/lib/builder/exportPdf");\n';
+
+  for (const shape of [bare, named, reexported, spread]) {
+    expect(staticModuleSpecifiers(shape)).toEqual(["@/lib/builder/exportPdf"]);
+  }
+  // The one shape that is allowed, and the reason the module is off the first
+  // load at all: a dynamic import is not a static edge.
+  expect(staticModuleSpecifiers(dynamic)).toEqual([]);
+  // Ordinary exports are not imports and must not be mistaken for them.
+  expect(staticModuleSpecifiers('export const PDF = "exportPdf";\n')).toEqual([]);
+
+  /* The defect itself, pinned so it cannot come back by accident: the matcher
+     this replaced is blind to the first shape. */
+  expect(bare.match(/^import\s[^;]*?from\s+"[^"]+";/gm)).toBeNull();
+});
 
 test("the PDF writer is loaded dynamically, never at module scope", () => {
   const source = drawingSheetsSource();
@@ -480,13 +1001,78 @@ test("the PDF writer is loaded dynamically, never at module scope", () => {
   // The bargain exportSpec.ts makes with GLTFExporter: a page that merely
   // offers the download does not pay for the converter.
   expect(source).toContain('import("@/lib/builder/exportPdf")');
-  const staticImports = source.match(/^import\s[^;]*?from\s+"[^"]+";/gm) ?? [];
-  expect(staticImports.length).toBeGreaterThan(0);
-  for (const line of staticImports) {
-    expect(line).not.toContain("exportPdf");
-    expect(line).not.toContain("jspdf");
-    expect(line).not.toContain("svg2pdf");
+  const specifiers = staticModuleSpecifiers(source);
+  /* Named, not counted. A loop over a list the extractor failed to build is
+     the same silent pass the `from`-anchored matcher used to give, so the real
+     three edges are pinned here — and `export default function DrawingSheets`
+     is pinned OUT, since a matcher that swallowed it would be reporting on
+     something that is not an import. */
+  expect(specifiers).toEqual(["react", "@/lib/builder/drawings", "./ui"]);
+  for (const specifier of specifiers) {
+    expect(specifier, `${specifier} is a STATIC edge into the first load`).not.toContain("exportPdf");
+    expect(specifier).not.toContain("jspdf");
+    expect(specifier).not.toContain("svg2pdf");
   }
+
+  /* AGAINST THE PB01 BASELINE, AND HONEST ABOUT HOW. The figure this guard
+     protects is `buildSharedFirstLoadKb` in perf/PB01-baseline-2026-08-14.json,
+     pinned below so a silent edit to the baseline is as visible as a silent
+     edit to the import. No production build was run in this wave — running one
+     is a heavyweight gate — so the guarantee here is STRUCTURAL, not measured:
+     the converter can only enter the shared bundle through a static edge, and
+     there is no static edge of any of the three shapes above. The measured
+     half of the claim is whatever the next real `next build` reports against
+     this same number. */
+  const baseline = JSON.parse(
+    readFileSync(join(__dirname, "..", "..", "perf", "PB01-baseline-2026-08-14.json"), "utf8"),
+  ) as { buildSharedFirstLoadKb: number };
+  expect(baseline.buildSharedFirstLoadKb).toBe(88.2);
+});
+
+/**
+ * Every API in the writer whose bytes are known to differ between a Node build
+ * and a browser build. `\b` matters: `Uint8Array<ArrayBuffer>` is a type, not a
+ * `Buffer`.
+ */
+const CROSS_ENGINE_HAZARDS: readonly RegExp[] = [
+  /\bCompressionStream\b/,
+  /\bDecompressionStream\b/,
+  /\bzlib\b/,
+  /\bBuffer\b/,
+  /\bTextEncoder\b/,
+  /\bTextDecoder\b/,
+  /\btoLocale[A-Za-z]*\(/,
+  /\bIntl\./,
+  /\bDate\.now\b/,
+  /\bMath\.random\b/,
+  /\bprocess\./,
+  /\brequire\(/,
+  /["']node:/,
+];
+
+test("the cross-engine claim is only as wide as what was actually checked", () => {
+  /* EX05. The header used to assert that output is byte-identical ACROSS
+     ENVIRONMENTS. Nothing ever ran this writer in a second engine, so that was
+     a stated proof that was not one. The header now says what is true, and
+     this test holds it to it: what is executed is same-engine byte identity
+     (three tests up at the top of this file) plus the absence, here, of every
+     API that would make two engines disagree on purpose. */
+  const code = exportPdfSource()
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^[ \t]*\/\/.*$/gm, "")
+    .replace(/[ \t]+\/\/.*$/gm, "");
+  for (const hazard of CROSS_ENGINE_HAZARDS) {
+    expect(hazard.test(code), `${hazard} would let two engines produce different bytes`).toBe(false);
+  }
+
+  /* And the residual risk stays NAMED in the module rather than quietly
+     dropped once the hazard list above passes: Math's transcendental functions
+     are implementation-defined, so the door-swing arcs and the rotated labels
+     are the two marks a second engine could in principle round differently. */
+  const header = exportPdfSource();
+  expect(header).toContain("WHAT IS AND IS NOT PROVEN ABOUT CROSS-ENGINE IDENTITY");
+  expect(header).toContain("implementation-defined");
+  expect(/\bMath\.(cos|sin|tan|acos|hypot)\(/.test(header)).toBe(true);
 });
 
 test("the per-sheet SVG download is still there", () => {

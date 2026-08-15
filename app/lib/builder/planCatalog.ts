@@ -94,6 +94,12 @@ export interface PlanTemplateEstimate {
   jurisdiction: "Alberta pilot";
   areaSqFt: number;
   footprintSqFt: number;
+  /** How much `footprintSqFt` — and, for a single-storey plan, `areaSqFt` with
+   *  it — over-reports, because overlapping volumes are summed rather than
+   *  unioned. 0 for the great majority of the library. Never silently
+   *  subtracted: the published number and its error are both shown, because a
+   *  number that quietly changed would be a different lie. */
+  footprintOverlapSqFt: number;
   low: number;
   mid: number;
   high: number;
@@ -2228,6 +2234,282 @@ export const PLAN_TEMPLATES: readonly PlanTemplate[] = [
   }),
 ] as const;
 
+/* ===========================================================================
+   THE ANTI-PADDING RULE, MADE MEASURABLE
+
+   The library's first design rule is "real designs, not permutations". Until
+   now that rule was enforced by an EXACT dimension-string comparison, which a
+   verifier broke in one line: it added a 56th plan that was an existing plan
+   with `widthFt` 14 -> 15 and everything else identical, and every gate stayed
+   green. An exact-duplicate check catches nothing anybody would actually ship.
+
+   WHAT THE MEASUREMENT ACTUALLY SHOWED. Geometric closeness alone CANNOT
+   separate padding from honest work in this library, and it is worth writing
+   down why rather than pretending otherwise. Scored as the largest single
+   normalised move between two massings, the nudged clone lands at 0.067 — and
+   these REAL, honestly-authored pairs land at or below it:
+
+       0.056  open-farmhouse-study ~ smalhus-infill   (same 16x32 two-storey box)
+       0.083  postcard-a-frame     ~ lakeview-a-frame (USDA 6003 vs USDA 5964)
+       0.086  meadow-one           ~ kompakt-passiv   (672 vs 676 sq ft)
+
+   Any distance threshold that rejects the clone rejects two federal plan sets
+   and a licensed adaptation with it. So distance is NOT the rule.
+
+   THE RULE THAT DOES SEPARATE THEM. Those honest neighbours are close in size
+   and different in kind: different elevations, different programmes, different
+   materials, different roofs. The clone is a copy — nudging one dimension
+   changes NONE of that. So the property is conditional:
+
+       Two plans may be geometrically near-identical ONLY IF they differ on at
+       least one STRUCTURAL axis — elevation composition, programme, material,
+       or roof form. Prose deliberately does not count: a padder can rewrite a
+       summary in a minute, and cannot give a nudged copy a real elevation
+       without designing one.
+
+   CALIBRATION, FROM THE REAL LIBRARY. Across all 55 plans exactly ONE pair
+   differs on no structural axis at all — `meadow-one ~ solstice-cottage`, two
+   one-bedroom SIP gables — and they sit 0.25 apart (24 ft wide against 18 ft:
+   672 sq ft against 468). That 0.25 is the honest floor, so the nudge
+   threshold is set at 0.20, leaving 25% headroom above the real library and
+   roughly 3x margin over the clone. tests/plan-catalog.spec.ts pins BOTH ends
+   — the clone must be caught, that pair must stay acquitted — so the number
+   cannot be quietly retuned until it stops meaning anything.
+
+   STATED LIMIT: this compares plans with the same VOLUME COUNT. Padding by
+   bolting an extra shed onto a copy is a different shape and is not caught
+   here; the exact-signature and elevation-variety guards in the spec are what
+   stand in front of that, and it is named as an open edge rather than implied
+   to be covered.
+   ======================================================================== */
+
+/** The largest single normalised design move below which two same-shaped plans
+ *  are treated as the same building. Calibrated against the real library — see
+ *  the block above; the spec pins both the clone it must catch and the honest
+ *  pair it must not. */
+export const PLAN_NUDGE_DISTANCE = 0.2;
+
+/** Axes a dimension nudge cannot fake. Prose is excluded on purpose. */
+export type PlanStructuralAxis = "elevation" | "programme" | "material" | "roof";
+
+export interface PlanPairVerdict {
+  a: string;
+  b: string;
+  /** largest single normalised move between the two massings; 1 means "not
+   *  comparable" (different volume counts) */
+  massingDistance: number;
+  structuralAxes: PlanStructuralAxis[];
+  /** near-identical massing AND nothing structural to tell them apart */
+  padding: boolean;
+}
+
+const relativeGap = (a: number, b: number): number => {
+  const scale = Math.max(Math.abs(a), Math.abs(b));
+  return scale < 1e-9 ? 0 : Math.abs(a - b) / scale;
+};
+
+/** Every massing decision in one volume, each normalised to 0..1 so a 1 ft
+ *  change on a 14 ft wall and a 1 ft change on a 40 ft wall are not treated as
+ *  the same size of design move. */
+function volumeMoves(a: Volume, b: Volume, scaleFt: number): number[] {
+  const sameRoof = a.roof.form === b.roof.form;
+  return [
+    relativeGap(a.widthFt, b.widthFt),
+    relativeGap(a.depthFt, b.depthFt),
+    Math.abs(a.x - b.x) / scaleFt,
+    Math.abs(a.z - b.z) / scaleFt,
+    Math.abs(a.rotationDeg - b.rotationDeg) / 180,
+    a.storeys === b.storeys ? 0 : 1,
+    relativeGap(a.wallHeightFt, b.wallHeightFt),
+    sameRoof ? 0 : 1,
+    sameRoof ? relativeGap(a.roof.pitchDeg, b.roof.pitchDeg) : 1,
+  ];
+}
+
+const spanFt = (plan: PlanTemplate): number =>
+  Math.max(1, ...plan.spec.volumes.map((v) => Math.max(v.widthFt, v.depthFt)));
+
+function permutations<T>(items: T[]): T[][] {
+  if (items.length <= 1) return [items];
+  return items.flatMap((item, index) =>
+    permutations([...items.slice(0, index), ...items.slice(index + 1)]).map((rest) => [item, ...rest]),
+  );
+}
+
+/**
+ * How far apart two plans are as BUILDINGS: the largest single normalised move
+ * needed to turn one massing into the other, under the volume pairing most
+ * favourable to the claim that they are the same design. Returns 1 when the
+ * plans do not have the same number of volumes.
+ *
+ * Taking the LARGEST move rather than the sum is deliberate. A plan earns its
+ * place by making at least one real design decision differently; ten rounding
+ * differences do not add up to one.
+ */
+export function planMassingDistance(a: PlanTemplate, b: PlanTemplate): number {
+  const left = a.spec.volumes;
+  const right = b.spec.volumes;
+  if (left.length !== right.length || left.length === 0) return 1;
+  const scaleFt = Math.max(spanFt(a), spanFt(b));
+  /* Volume ORDER is an authoring accident, so the pairing must not decide the
+     verdict. Up to four volumes every pairing is tried and the most similar
+     one wins (the reading hardest on the library); beyond that the count of
+     permutations stops being cheap and a stable canonical sort is used. */
+  const orders =
+    right.length <= 4
+      ? permutations([...right])
+      : [[...right].sort((p, q) => q.widthFt * q.depthFt - p.widthFt * p.depthFt)];
+  const ordered =
+    right.length <= 4
+      ? left
+      : [...left].sort((p, q) => q.widthFt * q.depthFt - p.widthFt * p.depthFt);
+
+  let best = Infinity;
+  for (const order of orders) {
+    let worst = 0;
+    for (let i = 0; i < order.length; i++) {
+      for (const move of volumeMoves(ordered[i], order[i], scaleFt)) worst = Math.max(worst, move);
+    }
+    best = Math.min(best, worst);
+  }
+  return Math.min(1, best);
+}
+
+/** Which walls carry which kinds of opening — the shape of the elevation, not
+ *  its dimensions. A width nudge slides a default opening along its wall and
+ *  changes nothing here, which is exactly the point: a plan that wants to be
+ *  counted as a different design has to be drawn as one. */
+const elevationComposition = (plan: PlanTemplate): string =>
+  plan.spec.volumes
+    .map((v) =>
+      v.openings
+        .map((o) => `${o.wall}:${o.kind}`)
+        .sort()
+        .join(","),
+    )
+    .sort()
+    .join(" || ");
+
+const roofForms = (plan: PlanTemplate): string =>
+  plan.spec.volumes
+    .map((v) => v.roof.form)
+    .sort()
+    .join(",");
+
+/* `sleeping` IS PROSE, AND IT IS A KNOWN WEAKNESS IN THIS SIGNATURE.
+   A fresh-context verifier defeated the padding gate with one character: a
+   byte-copy of an existing plan, width nudged by a foot, and a single "s"
+   appended to this sentence ("occasional guest" -> "occasional guests"). The
+   clone was acquitted on the `programme` axis.
+
+   Removing it was tried and REVERTED, because it is also doing real work.
+   Dropping `sleeping` immediately collided `postcard-a-frame` (576 sq ft,
+   USDA 6003, 1966) with `lakeview-a-frame` (528 sq ft, USDA 5964, 1963) —
+   two adaptations of two DIFFERENT federal drawings whose genuine difference
+   is that one has a loft. That difference is architectural; it simply happens
+   to be recorded in prose. A gate that rejects two honest public-domain
+   adaptations to catch a hypothetical padder is the worse trade, and this
+   node's own contract said so: pin the weaker property rather than fail
+   honest work.
+
+   So the weaker property is pinned, and the hole is named here rather than
+   left for someone to rediscover. The real fix is structured sleeping data —
+   a loft is a fact about a building and deserves a field, not a sentence. */
+const programme = (plan: PlanTemplate): string =>
+  `${plan.bedrooms}/${plan.bathrooms}/${plan.sleeping}/${plan.storeys}`;
+
+/** The axes on which two plans are genuinely different buildings. */
+export function planStructuralAxes(a: PlanTemplate, b: PlanTemplate): PlanStructuralAxis[] {
+  const axes: PlanStructuralAxis[] = [];
+  if (elevationComposition(a) !== elevationComposition(b)) axes.push("elevation");
+  if (programme(a) !== programme(b)) axes.push("programme");
+  if (a.spec.material !== b.spec.material) axes.push("material");
+  if (roofForms(a) !== roofForms(b)) axes.push("roof");
+  return axes;
+}
+
+/**
+ * Every pair that is one plan wearing another plan's dimensions. Empty is the
+ * healthy answer; anything in it names both ids, how close they are and the
+ * fact that nothing structural separates them.
+ */
+export function paddedPlanPairs(
+  plans: readonly PlanTemplate[] = PLAN_TEMPLATES,
+): PlanPairVerdict[] {
+  const verdicts: PlanPairVerdict[] = [];
+  for (let i = 0; i < plans.length; i++) {
+    for (let j = i + 1; j < plans.length; j++) {
+      const massingDistance = planMassingDistance(plans[i], plans[j]);
+      if (massingDistance >= PLAN_NUDGE_DISTANCE) continue;
+      const structuralAxes = planStructuralAxes(plans[i], plans[j]);
+      if (structuralAxes.length > 0) continue;
+      verdicts.push({
+        a: plans[i].id,
+        b: plans[j].id,
+        massingDistance,
+        structuralAxes,
+        padding: true,
+      });
+    }
+  }
+  return verdicts;
+}
+
+/* ===========================================================================
+   THE OVER-REPORT, SAID OUT LOUD
+
+   `groundFootprintSqFt` SUMS volume footprints instead of unioning them —
+   deliberately, and spec.ts says so. lib/builder/geometry.ts has computed the
+   consequence all along as `SiteSummary.overlapAreaSqFt`, documented in its own
+   words as "how much groundFootprintSqFt over-reports", and nothing outside the
+   3D readout ever read it. Three catalogue plans overlap in plan: lakeside-l by
+   28 sq ft, wilson-court by 42, gårdstun-court by 12 + 12. Their published
+   areas — and the cost ranges priced off those areas — are that much too big,
+   in front of somebody making a budget decision.
+
+   These are not redrawn. The overlap is a real, deliberate feature of an L-plan
+   whose wings meet at a hinge, and quietly shrinking three plans would hide the
+   general problem rather than fix it. It is REPORTED instead, on the estimate
+   the catalogue card shows, with the number in it.
+
+   WHY THIS IS COMPUTED HERE INSTEAD OF CALLED FROM geometry.ts: geometry.ts
+   imports `three`, and this module is pulled into the plan-catalogue client
+   bundle. The clip below is exact only for quarter-turn rotations, which is all
+   the library uses. Both facts are ASSERTED in tests/plan-catalog.spec.ts —
+   every plan's number is cross-checked against summarizeHome's, and every
+   rotation is checked to be a quarter turn — so this cannot drift away from the
+   authority, and the day a plan is drawn at 30 degrees the pin goes red instead
+   of the number quietly going wrong.
+   ======================================================================== */
+
+interface PlanRect {
+  x0: number;
+  x1: number;
+  z0: number;
+  z1: number;
+}
+
+function planRect(v: Volume): PlanRect {
+  const quarterTurned = Math.abs(Math.round(v.rotationDeg / 90)) % 2 === 1;
+  const width = quarterTurned ? v.depthFt : v.widthFt;
+  const depth = quarterTurned ? v.widthFt : v.depthFt;
+  return { x0: v.x - width / 2, x1: v.x + width / 2, z0: v.z - depth / 2, z1: v.z + depth / 2 };
+}
+
+/** How much this plan's published footprint over-reports the ground it covers. */
+export function planFootprintOverlapSqFt(plan: PlanTemplate): number {
+  const rects = plan.spec.volumes.map(planRect);
+  let total = 0;
+  for (let i = 0; i < rects.length; i++) {
+    for (let j = i + 1; j < rects.length; j++) {
+      const x = Math.min(rects[i].x1, rects[j].x1) - Math.max(rects[i].x0, rects[j].x0);
+      const z = Math.min(rects[i].z1, rects[j].z1) - Math.max(rects[i].z0, rects[j].z0);
+      if (x > 0 && z > 0) total += x * z;
+    }
+  }
+  return total;
+}
+
 function findTemplate(id: string): PlanTemplate {
   const plan = PLAN_TEMPLATES.find((candidate) => candidate.id === id);
   if (!plan) throw new Error(`Unknown Aura plan template: ${id}`);
@@ -2306,11 +2588,14 @@ export function estimatePlanTemplate(id: string): PlanTemplateEstimate {
     storeys: plan.storeys,
   });
 
+  const overlap = planFootprintOverlapSqFt(plan);
+
   return {
     currency: "CAD",
     jurisdiction: "Alberta pilot",
     areaSqFt: area,
     footprintSqFt: footprint,
+    footprintOverlapSqFt: overlap,
     low: bom.cad_low,
     mid: bom.cad_mid,
     high: bom.cad_high,
@@ -2319,6 +2604,13 @@ export function estimatePlanTemplate(id: string): PlanTemplateEstimate {
     assumptions: [
       "Aura’s Alberta pilot material, installed shell and appropriately scaled off-grid systems ranges.",
       "Concept geometry only; multi-volume shells use an equivalent-footprint perimeter for this first comparison.",
+      /* The over-report is stated where the money is, not buried in a 3D
+         readout nobody opens before comparing plans. */
+      ...(overlap > 0.01
+        ? [
+            `This plan's volumes overlap by ${Math.round(overlap)} sq ft where they meet, and Aura sums volume footprints rather than unioning them — so the ${Math.round(footprint)} sq ft footprint above, and the range priced from it, are ${Math.round(overlap)} sq ft too big. The ground actually covered is about ${Math.round(footprint - overlap)} sq ft.`,
+          ]
+        : []),
       "Excludes land, permits, professional design, unknown site work, taxes, financing and contingency.",
       "Replace this planning range with current supplier and contractor quotes before making a purchase decision.",
     ],

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import WalletProvider from "@/components/chain/WalletProvider";
 import XLayerProofLab from "./XLayerProofLab";
 
 /* The lab is deliberately unlisted: reachable from /how-crypto-works, the
@@ -12,6 +13,15 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
+/* BN01: the wallet boundary is mounted HERE rather than inside
+   XLayerProofLab, because the lab calls useAccount/useConnect/useChainId in
+   its own body — a component cannot provide the context its own hooks read.
+   Wrapping at the page keeps XLayerProofLab.tsx untouched, which matters:
+   tests/release-truth.spec.ts:44 reads that file by path. */
 export default function XLayerProofPage() {
-  return <XLayerProofLab />;
+  return (
+    <WalletProvider>
+      <XLayerProofLab />
+    </WalletProvider>
+  );
 }

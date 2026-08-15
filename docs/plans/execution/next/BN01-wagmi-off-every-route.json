@@ -1,0 +1,47 @@
+{
+  "node": "BN01",
+  "graphVersion": "1.2",
+  "job": "Stop shipping ~77 KB of wallet code to someone who only wants to design a house.",
+  "origin": "External architectural review, 2026-08-14, verified by measurement against the 9644f10 export before being accepted. This is the question node PB03 was written to answer — 'wagmi/viem only chain surfaces' — and PB03 installed the bundle analyzer without ever running it, so the question stayed open and a reviewer found it first.",
+  "context": [
+    "MEASURED, NOT ASSUMED. Against app/out for commit 9644f10:",
+    "· The two shared first-load chunks (88.2 kB total) contain NO wagmi, NO viem, NO three, NO maplibre. That part of the isolation is already correct and must stay correct.",
+    "· Chunk 2951 (122 KB) carries `wagmi@2.19.5` react bindings plus viem internals — BaseError, encodeFunctionData, parseAbi, WalletClient — and is referenced ONLY by /labs/xlayer-proof. Correctly confined. Do not disturb it.",
+    "· Chunks 3706 (40 KB) and 6845 (37 KB) are referenced by EVERY route: landing, /build, /budget, /land, /projects, /homes, /escrow. 3706 contains the real `@wagmi/core` package (its error class and `@wagmi/core@${version}` string); 6845 contains wagmi's storage layer (`key: \"wagmi\"`, serialize/deserialize/storage). These are not incidental string matches — that was checked, and the first pass at this deliberately discarded weaker evidence (`abi` matches 'capabilities', `196` matches any number) before trusting the wagmi tokens.",
+    "ROOT CAUSE, one file: app/app/providers.tsx:12 mounts <WagmiProvider config={wagmiConfig}> at the ROOT, wrapping every page in the application. wagmiConfig comes from app/lib/wagmi.ts, which does `import { injected } from \"@wagmi/core\"` and `createConfig, http` from wagmi. Because the provider is in the root tree, @wagmi/core and its storage are in every route's graph.",
+    "WHO ACTUALLY NEEDS IT: the wagmi hooks are used in exactly three components — app/app/labs/xlayer-proof/XLayerProofLab.tsx, components/operator/OperatorRegistryApp.tsx, components/concierge/ConciergeApp.tsx — plus lib/hooks.ts (useReadContract/useReadContracts). Nothing on the landing page, the builder, the budget or the land tool touches a wallet.",
+    "THE TRAP: lib/contracts.ts exports CHAIN_ID and it is load-bearing — pinned by tests/xlayer-lifecycle.spec.ts:30-31 and tests/release-truth.spec.ts:47-50. Do not rename or move those exports. This node moves WHERE THE PROVIDER MOUNTS, not what the chain constants are."
+  ],
+  "writeSet": [
+    "app/app/providers.tsx",
+    "app/app/labs/xlayer-proof/page.tsx (or the lab's own layout/wrapper)",
+    "app/components/operator/OperatorRegistryApp.tsx",
+    "app/components/concierge/ConciergeApp.tsx",
+    "app/tests/bundle-isolation.spec.ts (new)"
+  ],
+  "doNotTouch": [
+    "app/lib/contracts.ts and app/lib/chains.ts — CHAIN_ID and the address exports are pinned by two specs. Read them; do not move them.",
+    "app/lib/wagmi.ts — the config itself is fine. The defect is where it is mounted, not what it contains. If you conclude otherwise, report rather than reaching.",
+    "README.md, docs/SUBMISSION.md, app/package.json, app/playwright.ui.config.ts, app/tests/gate-coverage.spec.ts — orchestrator-owned."
+  ],
+  "rejectionGates": [
+    "THE WALLET SURFACES MUST STILL WORK. /labs/xlayer-proof, the operator registry and the concierge all use wagmi hooks and all must keep working — a hook outside its provider throws at runtime, not at build time, so tsc will NOT catch a mistake here. Exercise each surface and say how you exercised it.",
+    "PROVE THE WIN BY MEASUREMENT, NOT BY REASONING. The claim is that 3706 and 6845 leave the non-chain routes. You cannot run `npm run build` (orchestrator-only, rule 3), so you cannot measure this yourself — WRITE THE SPEC THAT MEASURES IT and hand the build to the orchestrator. The spec should read the built route HTML in app/out and assert that no non-chain route references a chunk containing the `@wagmi/core` marker. That spec is the deliverable even more than the refactor is.",
+    "THE SPEC MUST BE ABLE TO FAIL. It currently WOULD fail on the shipped code — that is its baseline. Confirm it goes red against the existing app/out before the refactor, and state that plainly. A bundle assertion written after the fix, never seen red, proves nothing.",
+    "88.2 kB SHARED FIRST-LOAD MUST NOT GROW. It is the PB01 anchor and it is currently clean of all four heavy dependencies.",
+    "NO NEW DEPENDENCY. This is a mounting change."
+  ],
+  "instructions": [
+    "1. Read providers.tsx, lib/wagmi.ts, lib/hooks.ts and the three consuming components before writing anything.",
+    "2. Move the WagmiProvider out of the root tree so it wraps only the surfaces that use wallet hooks. A route-group layout, a per-page wrapper, or a lazily-imported client boundary are all defensible — pick one, and write down why in the code.",
+    "3. Keep QueryClientProvider and AuraProjectProvider at the root if they are needed there; check rather than assume. AuraProjectProvider is the local-first project context and almost certainly IS root-level.",
+    "4. tests/bundle-isolation.spec.ts: read app/out route HTML, resolve the chunk references, and assert the `@wagmi/core` marker is absent from every non-chain route's graph and PRESENT on the chain routes (so the assertion cannot pass by the code simply disappearing). Skip cleanly with a stated reason if app/out is absent, rather than passing vacuously.",
+    "5. Report the exact chunk names you expect to move, so the orchestrator can verify the before/after against perf/PB01-baseline-2026-08-14.json."
+  ],
+  "verify": {
+    "commands": ["npx tsc --noEmit", "npm test"],
+    "note": "the orchestrator runs GH_PAGES=1 npm run build, then the new spec against the real app/out, then test:ui"
+  },
+  "sideEffect": "local",
+  "status": "ready"
+}

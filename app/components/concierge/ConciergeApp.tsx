@@ -40,6 +40,7 @@ import {
   describeTransactionFailure,
 } from "@/lib/payments/xLayerLifecycle";
 import LiveEscrowCard from "@/components/chain/LiveEscrowCard";
+import WalletProvider from "@/components/chain/WalletProvider";
 import { Counter, GrowBar, Reveal, Stagger, StaggerItem } from "@/components/Reveal";
 
 /* Counter restarts its rAF whenever `format` changes identity, and this tree
@@ -73,7 +74,25 @@ const WALKTHROUGH_TXREF = "walkthrough — no on-chain transaction";
 
 // ---------------------------------------------------------------- component
 
+/* BN01 — the wallet boundary. wagmi no longer wraps the whole application
+   from app/app/providers.tsx, so this surface mounts its own. The hooks MUST
+   sit in a child component: a component cannot read a context it renders
+   itself, and that mistake throws at runtime, not at build time.
+
+   Note for whoever routes this next: no page renders ConciergeApp today —
+   app/app/concierge/page.tsx redirects to /dashboard — so this component is
+   currently in no route's bundle. It is wrapped anyway, so that the day it is
+   mounted it works instead of throwing "useConfig must be used within
+   WagmiProvider" on first paint. */
 export default function ConciergeApp() {
+  return (
+    <WalletProvider>
+      <ConciergeConsole />
+    </WalletProvider>
+  );
+}
+
+function ConciergeConsole() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 

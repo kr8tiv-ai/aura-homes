@@ -1,0 +1,49 @@
+{
+  "node": "MARGIN01",
+  "graphVersion": "1.2",
+  "job": "Make the strongest fact this project owns visible: the same home, line by line, owner-orchestrated against builder-delivered — and what the difference actually costs you.",
+  "priority": "Highest of the open set. A judge gives this sixty seconds, and this is the only thing on the site that lands in ten.",
+  "origin": "Founder direction, 2026-08-14: prioritise the most dramatic and useful change. Proposed by an external review as a GSAP/Lenis scroll piece; the visualisation is adopted, the two new animation dependencies are not — see rejectionGates.",
+  "context": [
+    "THE NUMBERS ARE ALREADY ANCHORED AND ALREADY PROVEN. data/alberta/cost-model.json holds `totalsExLand` — $199,100 / $301,280 / $443,900 LOW/MID/HIGH for the 800 sqft off-grid SIP reference build — and `agent/ npm run demo` reconciles them to the dollar as a release gate. Do not recompute them, do not round them, do not retype them. Read them.",
+    "THE COMPARISON IS ALSO ALREADY SOURCED, at cost-model.json:27: `builderComparison: { low: 450000, high: 650000, basis: \"Same home builder-delivered ex-land at $250-450/sqft hard + 25-40% soft; owner-builder saves 30-40% ($150-250K) for 12-24 months of labour\" }`. Use that object. The basis string is not decoration — it is what makes the comparison sayable.",
+    "THE BRAND GUIDE HAS ALREADY RULED ON THE WORDING, twice. BRAND-VOICE-GUIDE.md:250 bans 'Up to 40% coordination margins' as unsourced and prescribes the defensible sentence: 'a conventional builder delivers this reference home at $450-650K'. It is a RANGE, not '$450,000+'. Match that.",
+    "THE HONEST VERSION IS THE BETTER ONE. The saving is 30-40% IN EXCHANGE FOR 12-24 MONTHS OF THE OWNER'S LABOUR. A margin story that shows the money and hides the labour is the exact hype this brand exists to refuse — and it is also less persuasive, because everyone reading knows the money came from somewhere. The trade IS the story.",
+    "WHAT EXISTS TO BUILD ON: lib/builder/projectBudget.ts (createProjectBudget, with confidence, gaps and a cap comparison), the /budget route and its .budget-* CSS system, the LiveReadout strip in the builder, and a motion system with named 150-250ms tokens plus a damped house curve. components/design/ecoSpec.ts has the money formatters.",
+    "SCROLL CHOREOGRAPHY ALREADY EXISTS in the story scene and is pinned by the landing specs — read how it is done there before inventing a second mechanism."
+  ],
+  "writeSet": [
+    "app/components/budget/MarginStack.tsx (new)",
+    "app/app/budget/page.tsx",
+    "app/app/globals.css (new .margin-* selectors only)",
+    "app/tests/margin-stack.spec.ts (new)"
+  ],
+  "doNotTouch": [
+    "data/alberta/cost-model.json — this node READS the anchor. Changing it breaks the money gate.",
+    "app/lib/builder/projectBudget.ts — if you need a number it does not expose, report that rather than adding a second calculation. A parallel cost path is the divergence class that has bitten this repo three times.",
+    "app/components/builder/BuilderApp.tsx — VW03 owns it this wave.",
+    "README.md, docs/SUBMISSION.md, app/package.json, app/playwright.ui.config.ts, app/tests/gate-coverage.spec.ts — orchestrator-owned."
+  ],
+  "rejectionGates": [
+    "NO NEW ANIMATION DEPENDENCY. The review that proposed this asked for GSAP and Lenis in the same breath as asking to strip 77 KB of wallet code off every route — those two asks contradict each other and the byte-stripping one wins. `motion` is already here, the motion tokens are already here, and prefers-reduced-motion is already honoured at the token level. Use them. If you genuinely cannot express the piece without a library, STOP and report rather than installing one.",
+    "EVERY FIGURE TRACES TO cost-model.json. Not one hardcoded dollar amount in the component. Assert it: the spec should read the JSON and assert the rendered figures match, so a drifted number goes red rather than shipping a confident wrong total on the page people make money decisions from.",
+    "THE LABOUR COST IS NOT OPTIONAL AND MUST BE VISIBLE IN THE SAME VIEW AS THE SAVING — not in a footnote, not behind a disclosure, not further down. 12-24 months of the owner's labour, stated plainly, at the moment the saving is shown. Assert its presence in the spec. A future 'tightening' that drops it must fail the build.",
+    "THE COMPARISON IS A RANGE WITH A BASIS. $450,000-$650,000, with the basis sentence reachable. Never '$450,000+', never a single number, never an unsourced percentage.",
+    "IT IS AN ESTIMATE AND SAYS SO. The standing label rule: `estimate, not a quote` travels with the noun. This is the surface where that matters most.",
+    "prefers-reduced-motion must reach the same information. Someone who cannot take the animation still gets the whole comparison — assert the content is present with motion reduced.",
+    "CLS <= 0.08 is a pinned gate. Reserve space; do not animate layout."
+  ],
+  "instructions": [
+    "1. Read cost-model.json's totalsExLand and builderComparison, projectBudget.ts, and the /budget page, before designing anything.",
+    "2. Build the margin stack: the line items that make up the owner-orchestrated total, accumulating against the builder-delivered range, so the delta assembles itself out of real lines rather than being asserted. The reference build is 800 sqft off-grid SIP — say which build it is, because a comparison of unlike things is worthless.",
+    "3. Motion serves comprehension, not spectacle. Each line should be readable as it lands. If the animation makes the numbers harder to read, it is wrong — and static must be a first-class rendering, not a degraded one.",
+    "4. Say what the owner actually does for the money: the 12-24 months, the coordination, the fact that this platform is an orchestrator and never the general contractor.",
+    "5. Spec: figures match the JSON; the labour trade is present; the comparison renders as a range with its basis; the estimate label is present; reduced motion still delivers the full content; no hardcoded dollar amounts in the component source."
+  ],
+  "verify": {
+    "commands": ["npx tsc --noEmit", "npm test", "cd ../agent && npm run demo"],
+    "note": "the money anchor is the hard gate — the demo must still reconcile to the dollar"
+  },
+  "sideEffect": "local",
+  "status": "ready"
+}

@@ -399,10 +399,28 @@ test("the tool row is a sibling of a canvas that is still hidden by CSS, never u
   const source = read("components/builder/BuilderApp.tsx");
 
   expect(source.match(/<Viewport\b/g) ?? []).toHaveLength(1);
-  const shell = '<div className={mode === "3d" ? "block" : "hidden"}>';
-  expect(source).toContain(shell);
-  const afterShell = source.slice(source.indexOf(shell), source.indexOf(shell) + 200);
-  expect(afterShell).toContain("<Viewport");
+
+  /* THIS USED TO PIN THE EXACT SOURCE LINE — `<div className={mode === "3d" ?
+     "block" : "hidden"}>` — and VW03 renamed `mode` to `viewMode` in the same
+     wave, which broke the test while the invariant it names was untouched.
+     A test that fails on a rename is testing the spelling, not the property.
+
+     The property is: the canvas is HIDDEN BY CSS and never conditionally
+     mounted, because houseRef — the group the .glb and .obj exporters are
+     handed — only exists while the canvas does. So assert that, and assert it
+     name-agnostically: the wrapper immediately around <Viewport> swaps two
+     class names, and <Viewport> is not behind a `?` or a `&&`, which are the
+     two ways React actually unmounts a child. */
+  const at = source.indexOf("<Viewport");
+  const wrapper = source.slice(Math.max(0, at - 260), at);
+
+  expect(wrapper, "the canvas wrapper no longer toggles visibility by class").toMatch(
+    /className=\{[^}]*\?\s*"block"\s*:\s*"hidden"\s*\}/,
+  );
+  expect(
+    /\?\s*<Viewport|&&\s*<Viewport/.test(source),
+    "<Viewport> is behind a conditional mount — unmounting it destroys houseRef and every model export with it",
+  ).toBe(false);
 
   // The tools reach the viewport, and they reach it derived.
   expect(source).toContain("tools={viewportTools}");

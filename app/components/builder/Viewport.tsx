@@ -32,6 +32,26 @@
       bill for nothing. `<Refresh>` invalidates whenever React re-renders the
       scene, and drei's OrbitControls invalidates while you drag.
 
+      VW03 — WHAT THE PHONE GETS, DECIDED RATHER THAN INHERITED. The three
+      options on the table were a still image, a poster frame you tap to
+      start, and a live canvas that does not animate. It is the third, and the
+      reason is rule 2 above rather than anything about phones: this canvas is
+      the EXPORT ROOT. Swapping it for an <img> below some width means the
+      .glb and .obj writers have no group to serialise and the project library
+      has no scene to thumbnail, on exactly the device most likely to be the
+      only one somebody owns. So it stays live, and the cost that would have
+      justified removing it — a WebGL context redrawing sixty times a second in
+      a pocket — is the cost `frameloop="demand"` was already not paying:
+      `BuilderSceneQuality.frameloop` in `lib/three/sceneQuality.ts` is typed
+      to the literal `"demand"`, so no capability tier can turn this into an
+      animation loop.
+
+      That was TRUE and UNASSERTED, which is the same as unowned. It is now
+      measured from the outside in `tests/builder-mobile.spec.ts`: the spec
+      counts real WebGL draw calls at 390x844, proves the counter moves when
+      the model is orbited, and then proves it does not move at all while the
+      page sits idle.
+
    FINISHES ARE OPTIONAL AND ADDITIVE (added when the surface picker landed).
    The `SURFACES` table below is still the whole look of this file when no
    `surfaces` prop is passed — the default look, the night glass glow, the

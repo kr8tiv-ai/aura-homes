@@ -62,6 +62,23 @@ const slug = (s: string): string =>
     .replace(/^-+|-+$/g, "")
     .slice(0, 48) || "home";
 
+/* WHICH SHEET THE SET OPENS ON.
+
+   A0 is a COVER — a project data block, a sheet index and a key plan. It is
+   the right first PAGE of a printed set and the wrong first SCREEN: nobody
+   opens a drawing set to read its own table of contents. A3 FLOOR PLAN is the
+   most dimensioned sheet in the set (`lib/builder/drawings/sheets.ts` puts
+   runs on every wall, inside and out, plus the CLEAR dimensions), and it is
+   the sheet somebody standing on a site is asking for.
+
+   ONE DEFAULT, NOT A MOBILE ONE. This is the same component in guided and in
+   Pro, so the sheet that arrives is the same sheet in both. A phone-only
+   opening index would be a second behaviour to keep in step with this one.
+
+   Falls back to the first sheet rather than throwing: `drawingSet` is total and
+   is allowed to return a set this component has never seen. */
+const OPENING_SHEET = "A3";
+
 export default function DrawingSheets({
   set,
   name,
@@ -85,7 +102,10 @@ export default function DrawingSheets({
    */
   designHash?: string | null;
 }) {
-  const [current, setCurrent] = useState(0);
+  const [current, setCurrent] = useState(() => {
+    const at = set.sheets.findIndex((s) => s.number === OPENING_SHEET);
+    return at >= 0 ? at : 0;
+  });
   const [pdf, setPdf] = useState<PdfState>({ kind: "idle" });
   const sheet = set.sheets[current] ?? set.sheets[0];
   if (!sheet) return null;
