@@ -47,6 +47,17 @@
    slab, stove legs, sofa arms, panel door lip, PV module — are CONSTANTS, and
    only the named dimensions move.
 
+   WHERE THAT IS ENFORCED. Two rules in tests/furniture-fixtures.spec.ts do
+   most of it by derivation, and they were measured over the wrong population:
+   they cover 267 of the 449 part-axes this file holds constant, and the
+   thresholds cannot be widened to cover the rest without raising false alarms
+   on parts that are supposed to move. So each "... is CONSTANT" comment below
+   ALSO has a per-axis entry in that spec's `CONSTANT_PART_AXES`, and the spec
+   reads this file as text to check that none of them is a comment on its own.
+   If you write a new one, declare it there; if you delete one, delete the
+   entry. A sentence in here that nothing reads is how the AWG's spout came to
+   be unguarded for a whole wave.
+
    DETERMINISM. No `Math.random`, no `Date.now`, no network. Ids are supplied
    or derived by counting; the same set always produces the same geometry and
    the same schedule.
@@ -3168,7 +3179,13 @@ const awg: FixtureKind = {
     const h = num(d, "heightFt", 3.0);
     return [
       part("case", "cabinet", box(w, h, dp, 0, h / 2, 0)),
-      // Louvre and spout are CONSTANT.
+      // Louvre and spout are CONSTANT — with one correction to that sentence,
+      // which was looser than the code beneath it. The spout is constant on
+      // all three axes. The louvre is the case's grille: its height and depth
+      // hold, and its WIDTH is w - 0.3 and always has been. Both readings are
+      // declared per axis in tests/furniture-fixtures.spec.ts and checked
+      // there against every dimension; this comment on its own measures
+      // nothing, which is how the spout stayed unguarded.
       part("louvre", "steel", box(w - 0.3, 0.55, 0.05, 0, h * 0.72, dp / 2 + 0.03)),
       part("spout", "steel", box(0.35, 0.12, 0.25, 0, h * 0.3, dp / 2 + 0.12)),
     ];

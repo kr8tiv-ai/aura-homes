@@ -85,6 +85,25 @@
    built-in. That is a structural argument, not a measurement, and it stops
    where this file stops: `viem`'s keccak is taken on the same terms.
 
+   WHAT THE COMPLETENESS GATE CHECKS, AND THE ONE THING IT STILL CANNOT SEE.
+   `tests/export-pdf.spec.ts` used to compare each mark on its first point and
+   its bounding box only, which a path whose VERTICES ARE PERMUTED satisfies
+   exactly — same points, same extent, same start, a bowtie on paper. That was
+   demonstrated by injecting the permutation into `emitPath` below and watching
+   all seventeen tests pass. The comparison now walks the sheet's own ordered
+   vertices against the page's operands index by index, checks the geometry
+   operator sequence so an `m` where an `l` belongs is caught as the broken
+   outline it is, checks the point count, and derives the expected paint
+   operator from the sheet's own <style> block rather than from `PENS` here.
+   Circles and arcs are the two marks whose control points the sheet does not
+   state, so they are held to direction and closure instead: a circle must walk
+   one way around its stated centre and close after 360°, and an arc's control
+   polygon must turn the way its own sweep flag says. The gap that remains,
+   stated rather than implied: swapping the two control points INSIDE one cubic
+   of an arc leaves the turn direction and both endpoints intact, and closing it
+   would mean re-implementing `arcToBeziers` inside the gate, which would grade
+   this file against a copy of itself.
+
    THE RESIDUAL RISK, NAMED RATHER THAN IMPLIED. `arcToBeziers` and
    `parseTransform` call Math.cos/sin/tan/acos/hypot, and ECMA-262 leaves the
    precision of those implementation-defined. Two engines may differ in the

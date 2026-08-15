@@ -48,12 +48,15 @@ import { defaultSpec } from "@/lib/builder/spec";
         are all computed from `extents` and never from the mesh;
      3. MORPH, NOT SCALE — resizing changes named dimensions and rebuilds; the
         detail sections do not move. It is the rule the whole file is built on.
-        Three tests carry it, and only the last two carry any weight: a named
-        table of details that must hold still, a whole-object check that can
-        only see an EXACTLY uniform scale, and — the real gate — a per-part
-        rule that no material thickness moves with any dimension, on any kind,
-        under any option. See the block above that pair for what the first two
-        cannot see and why;
+        Four tests carry it, and the first two carry the least: a named table
+        of details that must hold still, and a whole-object check that can only
+        see an EXACTLY uniform scale. Then a per-part rule that no material
+        thickness moves with any dimension, on any kind, under any option — and
+        finally, because that rule was measured over the parts that CHANGE and
+        turns out to see only 267 of the 449 parts this catalogue actually
+        holds constant, a declaration table that pins the rest of the claims
+        the source makes about itself. See the two blocks above those pairs for
+        what each cannot see and why;
      4. no clearance figure is dressed up as more authoritative than it is.
 
    Every predicate below is also run against a deliberately broken fixture in
@@ -597,7 +600,23 @@ const AXIS_NAME = ["width", "height", "depth"] as const;
  *  fixture's height, and the smallest that changes at all is the thermostat's
  *  screen at 0.25 ft — which is 0.71 of the thermostat. Nothing in the
  *  catalogue is inside BOTH bounds and changes. The vanity's countertop slab,
- *  the case this gate exists for, is 0.12 ft and 0.0375 of the vanity. */
+ *  the case this gate exists for, is 0.12 ft and 0.0375 of the vanity.
+ *
+ *  THAT PARAGRAPH IS TRUE AND IT IS NOT THE ANALYSIS. Kept because it is the
+ *  false-alarm half and it is real: no honest changer is inside both bounds,
+ *  so the gate is quiet where it should be. But it measured the parts that
+ *  CHANGE, which is the population the classifier must EXCLUDE, and from that
+ *  it read a "margin" — and a margin over the excluded population says
+ *  nothing about how much of the catalogue the gate can actually see. The
+ *  missing half, the parts that are CONSTANT, is measured in `the thickness
+ *  classifier is measured over the population it governs` further down: these
+ *  bounds cover 267 of the 449 part-axes the catalogue holds constant, and a
+ *  wider pair (0.6000 ft, 0.7143 of extent) would reach 390 with no false
+ *  alarm on today's catalogue. Both numbers below are nevertheless LEFT
+ *  EXACTLY AS THEY WERE, because that wider fraction bound is the thermostat
+ *  screen's fraction rather than anything about material thickness — see the
+ *  block by that test for the argument — and the uncovered part of the rule
+ *  is pinned by declaration instead. */
 const THICKNESS_MAX_FT = 0.4;
 const THICKNESS_MAX_FRACTION_OF_EXTENT = 0.15;
 
@@ -1161,4 +1180,586 @@ test("the morph rule refuses the breach a uniform-scale check cannot see", () =>
   };
   expect(ungovernedAxisProblems(slabTracksHeight, {})).toEqual([]);
   expect(thicknessProblems(slabTracksHeight, {}).join("\n")).toContain('part "counter"');
+});
+
+/* -------------------------------------------------------------------------
+   THE POPULATION THE RULE ACTUALLY GOVERNS.
+
+   The threshold pair above (0.4 ft, 0.15 of the extent) was justified by
+   measuring honest parts that CHANGE and showing each one clears the bound.
+   That is the wrong population. A threshold that no honest CHANGER falls
+   below only proves the gate raises no false alarm; it says nothing about how
+   much of the catalogue the gate can see. The parts the rule exists to
+   protect are the ones that are CONSTANT, and until now not one of them had
+   been counted.
+
+   `surveyPartAxes` counts them. Every (kind, part, axis) in the catalogue is
+   swept across every dimension under every option combination and recorded as
+   CONSTANT or CHANGING, together with whether the thickness classifier can see
+   it and whether rule A can. `the thickness classifier is measured over the
+   population it governs` below reports the result and pins it. The measured
+   numbers, at the time of writing:
+
+     · 759 distinct (kind, part, axis); 449 of them constant everywhere.
+     · The thickness classifier sees 267 of those 449 — 59.5%. It does not see
+       the other 182.
+     · 163 of those 182 are also invisible to rule A — the fixture's own stated
+       extent moves on that axis, so a part that started tracking it would be
+       perfectly legal. Those 163 are unguarded by anything. The AWG's spout is
+       two of them.
+
+   AND THE HONEST ANSWER ON SEPARATION IS NOT THE TIDY ONE. The first draft of
+   this block said the bounds could not be widened, reasoning that the nearest
+   honest changer — the refrigerator's freezer handle at 0.1557 of its extent —
+   sits only 3.8% above the 0.15 fraction bound. That reasoning is wrong, and
+   it was caught by mutating the bound and watching the thickness gate stay
+   green rather than by re-reading it. The classifier is a CONJUNCTION, and the
+   handle is 0.872 ft, so it is excluded by the SIZE bound; the fraction bound
+   was never the binding constraint on it.
+
+   Searched properly (`widestFalseAlarmFreeBound`), the widest bounds that
+   admit no honest changer at all are 0.6000 ft and 0.7143 of extent, and they
+   reach 390 of the 449 — including the spout. So the bounds CAN be widened,
+   and the spout could have been brought inside them.
+
+   THEY ARE STILL NOT WIDENED, and the reason is a judgement worth writing
+   down rather than a measurement. That 0.7143 is not a fact about material
+   thickness; it is the thermostat screen's fraction of the thermostat — the
+   largest number that does not break on today's catalogue, drawn exactly
+   through a data point with zero margin, and it would have the gate calling a
+   part that is seven tenths of its own fixture a "thickness". Fitting a
+   threshold to the negative examples is not measuring one, and the first kind
+   somebody adds with a small part that honestly changes at a middling
+   fraction turns it red on correct code. Both numbers below therefore stay
+   exactly where they are, the measured alternative is recorded so a later
+   node can take the other view with the data in front of it, and the gap is
+   closed instead by pinning a WEAKER property that is exactly true:
+
+     A build that says in its own source that a part is CONSTANT must name
+     that part in `CONSTANT_PART_AXES`, and every axis it names must actually
+     hold still across every dimension and every option.
+
+   That is weaker than a derived rule in one specific way, and it is worth
+   being blunt about it: an author who deliberately changes a build AND its
+   entry in the same edit passes. It pins against accident and drift, not
+   against intent. What it does buy is that the twenty-one "X is CONSTANT"
+   comments in fixtures.ts stop being prose nobody measures — which is exactly
+   the class of defect this wave exists to remove — and the source-coupling
+   test below makes a twenty-second such comment fail until it is declared.
+   ------------------------------------------------------------------------- */
+
+type AxisLabel = (typeof AXIS_NAME)[number];
+
+const AXIS_INDEX: Readonly<Record<AxisLabel, 0 | 1 | 2>> = { width: 0, height: 1, depth: 2 };
+
+interface PartAxis {
+  kind: FixtureKindId;
+  part: string;
+  axis: 0 | 1 | 2;
+  /** the part's own size on this axis at the fixture's default dimensions */
+  sizeAtDefault: number;
+  /** that size over the fixture's stated extent on the same axis */
+  fractionOfExtent: number;
+  /** did it hold still under every dimension of every option combination? */
+  constant: boolean;
+  /** does the thickness classifier admit it — i.e. can rule B see it move? */
+  thicknessGoverned: boolean;
+  /** the fixture's stated extent moves on this axis, so rule A would allow
+   *  this part to start moving with it */
+  ruleABlind: boolean;
+}
+
+/** Every (kind, part, axis) in the catalogue, classified. Collapsed across
+ *  option combinations: constancy and thickness-governance are ANDed (a part
+ *  is only counted as held or as seen if it is held or seen everywhere), and
+ *  rule-A blindness is ORed (one blind spot is a blind spot). */
+function surveyPartAxes(): PartAxis[] {
+  const acc: Record<string, PartAxis> = {};
+  for (const kind of kinds) {
+    for (const opts of optionCombos(kind)) {
+      for (const dim of kind.dimensions) {
+        const { base, others } = morphSamples(kind, dim, opts);
+        for (const pid of Object.keys(base.sizes)) {
+          for (let i = 0; i < 3; i++) {
+            const at = base.sizes[pid][i];
+            let moved = false;
+            for (const s of others) {
+              const got = s.sizes[pid]?.[i];
+              if (got !== undefined && Math.abs(got - at) > MORPH_EPS) {
+                moved = true;
+                break;
+              }
+            }
+            const extentMoves = others.some((s) => Math.abs(s.ext[i] - base.ext[i]) > MORPH_EPS);
+            const governed = at <= THICKNESS_MAX_FT && at <= THICKNESS_MAX_FRACTION_OF_EXTENT * base.ext[i];
+            const key = `${kind.id}|${pid}|${i}`;
+            const prev = acc[key];
+            if (!prev) {
+              acc[key] = {
+                kind: kind.id,
+                part: pid,
+                axis: i as 0 | 1 | 2,
+                sizeAtDefault: at,
+                fractionOfExtent: base.ext[i] > 0 ? at / base.ext[i] : Infinity,
+                constant: !moved,
+                thicknessGoverned: governed,
+                ruleABlind: !moved && extentMoves,
+              };
+            } else {
+              prev.constant = prev.constant && !moved;
+              prev.thicknessGoverned = prev.thicknessGoverned && governed;
+              prev.ruleABlind = prev.ruleABlind || (!moved && extentMoves);
+            }
+          }
+        }
+      }
+    }
+  }
+  return Object.keys(acc).map((k) => acc[k]);
+}
+
+/** The widest conjunction bound pair — {size <= maxFt AND fraction < maxFraction}
+ *  — that admits NO part-axis which legitimately changes, and how many of the
+ *  constant part-axes it reaches.
+ *
+ *  Searched rather than reasoned about, because reasoning about it is what
+ *  produced the wrong answer: the fraction bound looks like the binding
+ *  constraint and it is not, since the SIZE bound is what excludes the
+ *  refrigerator's freezer handle. For each candidate size bound the largest
+ *  admissible fraction is the smallest fraction among changers that the size
+ *  bound lets through, so one pass over the sorted sizes finds the optimum. */
+function widestFalseAlarmFreeBound(
+  constants: PartAxis[],
+  changers: PartAxis[],
+): { maxFt: number; maxFraction: number; covers: number } {
+  let best = { maxFt: 0, maxFraction: 0, covers: -1 };
+  const candidates = constants.map((c) => c.sizeAtDefault).sort((a, b) => a - b);
+  for (const maxFt of candidates) {
+    let maxFraction = Infinity;
+    for (const c of changers) if (c.sizeAtDefault <= maxFt) maxFraction = Math.min(maxFraction, c.fractionOfExtent);
+    let covers = 0;
+    for (const c of constants) if (c.sizeAtDefault <= maxFt && c.fractionOfExtent < maxFraction) covers++;
+    if (covers > best.covers) best = { maxFt, maxFraction, covers };
+  }
+  return best;
+}
+
+/** The catalogue's own constancy claims, made machine-readable.
+ *
+ *  One entry per "... is CONSTANT" comment in `lib/builder/fixtures.ts`, with
+ *  the axes stated PER AXIS, because several of those comments are looser than
+ *  the code beneath them and the loose reading is not the one worth pinning.
+ *  The AWG's is the clearest example: "Louvre and spout are CONSTANT", but the
+ *  louvre is the case's grille and its WIDTH follows the case — only its
+ *  height and depth hold. Measured, then written down. */
+const CONSTANT_PART_AXES: ReadonlyArray<{
+  kind: FixtureKindId;
+  part: RegExp;
+  axes: ReadonlyArray<AxisLabel>;
+  why: string;
+}> = [
+  { kind: "wood-stove", part: /^leg-[a-d]$/, axes: ["width", "height", "depth"], why: "a taller firebox does not get taller legs" },
+  { kind: "wood-stove", part: /^top$/, axes: ["height"], why: "the top plate is a plate; it spans the firebox but keeps its section" },
+  { kind: "hot-tub", part: /^rim$/, axes: ["height"], why: "a wider tub gets a wider tub, not a chunkier rim" },
+  { kind: "cistern", part: /^hatch$/, axes: ["width", "height", "depth"], why: "a bigger tank does not get a bigger lid" },
+  { kind: "cistern", part: /^outlet$/, axes: ["width", "height", "depth"], why: "the outlet is a fitting, sized by the pipe" },
+  { kind: "battery-bank", part: /^door$/, axes: ["depth"], why: "the door lip is folded steel, not a ratio" },
+  { kind: "battery-bank", part: /^status$/, axes: ["width", "height", "depth"], why: "a taller cabinet, not a bigger photograph of a cabinet" },
+  { kind: "kitchen-island", part: /^counter$/, axes: ["height"], why: "uniform scaling is what gives a 12-foot island a 3-inch slab" },
+  { kind: "bed", part: /^headboard$/, axes: ["depth"], why: "the headboard is a board" },
+  { kind: "bed", part: /^mattress$/, axes: ["height"], why: "a king mattress is not a thicker mattress" },
+  { kind: "sofa", part: /^arm-[lr]$/, axes: ["width", "height"], why: "a longer sofa is a longer sofa, not a bigger one" },
+  { kind: "sofa", part: /^seat$/, axes: ["height"], why: "seat thickness is a cushion" },
+  { kind: "sofa", part: /^plinth$/, axes: ["height"], why: "the seat sits at a fixed height off the floor" },
+  { kind: "dining-table", part: /^top$/, axes: ["height"], why: "a longer table is a longer table, not a chunkier one" },
+  { kind: "dining-table", part: /^apron$/, axes: ["height"], why: "the apron is a rail section" },
+  { kind: "dining-table", part: /^leg-[ew][ns]$/, axes: ["width", "depth"], why: "the leg section" },
+  { kind: "bunk", part: /^post-[ew][ns]$/, axes: ["width", "depth"], why: "raising the top bunk lifts it; it does not fatten the frame" },
+  { kind: "bunk", part: /^(lower|upper)-deck$/, axes: ["height"], why: "the deck is a board" },
+  { kind: "bunk", part: /^(lower|upper)-mattress$/, axes: ["height"], why: "the mattress" },
+  { kind: "bunk", part: /^rail$/, axes: ["height", "depth"], why: "the guard rail's section" },
+  { kind: "wardrobe", part: /^door-[lr]$/, axes: ["depth"], why: "a wider wardrobe gets wider doors, not thicker ones" },
+  { kind: "wardrobe", part: /^plinth$/, axes: ["height"], why: "the plinth" },
+  { kind: "wardrobe", part: /^handle-[lr]$/, axes: ["width", "height", "depth"], why: "a handle is a handle" },
+  { kind: "shelving", part: /^shelf[0-9]+$/, axes: ["height"], why: "the count moves, the board section does not" },
+  { kind: "drying-rack", part: /^bar[0-9]+$/, axes: ["height", "depth"], why: "more bars is more bars, at the same dowel section" },
+  { kind: "refrigerator", part: /^plinth$/, axes: ["height"], why: "a taller fridge is a taller fridge" },
+  { kind: "refrigerator", part: /^door-(freezer|fridge)$/, axes: ["depth"], why: "door thickness" },
+  { kind: "refrigerator", part: /^handle-(freezer|fridge)$/, axes: ["width", "depth"], why: "the handle's section — its LENGTH tracks the door it is on, which is why height is not claimed here" },
+  { kind: "range", part: /^top$/, axes: ["height"], why: "the cooktop slab" },
+  { kind: "range", part: /^(burner-[ew][ns]|plate-[ew])$/, axes: ["width", "height", "depth"], why: "a burner is a burner on any range" },
+  { kind: "range", part: /^door$/, axes: ["depth"], why: "the oven door's thickness" },
+  { kind: "counter-run", part: /^splash$/, axes: ["height", "depth"], why: "a 16-foot run gets a longer splash, not a deeper one" },
+  { kind: "counter-run", part: /^basin$/, axes: ["width", "height"], why: "a 16-foot run gets a longer counter, not a bigger sink" },
+  { kind: "counter-run", part: /^tap$/, axes: ["width", "height", "depth"], why: "the tap" },
+  { kind: "vanity", part: /^counter$/, axes: ["height"], why: "a six-foot vanity is a longer cabinet with the same slab — THE counterexample this file was built around" },
+  { kind: "vanity", part: /^basin$/, axes: ["width", "height"], why: "with the same basin in it" },
+  { kind: "vanity", part: /^tap$/, axes: ["width", "height", "depth"], why: "the tap" },
+  { kind: "shower", part: /^tray$/, axes: ["height"], why: "the tray" },
+  { kind: "shower", part: /^glass-front$/, axes: ["depth"], why: "the glass thickness" },
+  { kind: "shower", part: /^glass-side$/, axes: ["width"], why: "the glass thickness, on the other panel's normal" },
+  { kind: "shower", part: /^head$/, axes: ["width", "height", "depth"], why: "a shower head is a shower head" },
+  { kind: "bath", part: /^foot-[ew][ns]$/, axes: ["width", "height", "depth"], why: "a longer bath is a longer bath" },
+  { kind: "bath", part: /^rim$/, axes: ["height"], why: "the rim section" },
+  {
+    kind: "awg",
+    part: /^spout$/,
+    axes: ["width", "height", "depth"],
+    why:
+      "THE BREACH THIS ENTRY EXISTS FOR. The source says 'Louvre and spout are CONSTANT' and nothing measured it: the spout is 0.35 ft wide on a 2 ft unit, which is 0.175 of the extent and therefore ABOVE the thickness classifier's 0.15 bound, and it grows on the axis widthFt already governs, so rule A is blind too. It was unguarded by every rule in this file",
+  },
+  {
+    kind: "awg",
+    part: /^louvre$/,
+    axes: ["height", "depth"],
+    why:
+      "the same comment covers the louvre, but the louvre is the case's grille and its WIDTH is w - 0.3 — it follows the case by construction. Height and depth are the constants; the comment was looser than the code",
+  },
+  { kind: "electrical-panel", part: /^door$/, axes: ["depth"], why: "a piece of folded steel, not a ratio" },
+  { kind: "coat-rail", part: /^board$/, axes: ["depth"], why: "the backboard's thickness" },
+  { kind: "coat-rail", part: /^shelf$/, axes: ["height"], why: "the shelf board" },
+  { kind: "coat-rail", part: /^hook[0-9]+$/, axes: ["width", "height"], why: "more hooks is more hooks, at the same section" },
+];
+
+/** Every declared constancy, checked. Returns one problem per (part, axis)
+ *  that moved, naming the dimension and both numbers. */
+function declaredConstantProblems(kind: FixtureKind, opts: Opts): string[] {
+  const out: string[] = [];
+  const entries = CONSTANT_PART_AXES.filter((e) => e.kind === kind.id);
+  if (entries.length === 0) return out;
+  const built = Object.keys(partSizes(kind, defaultDims(kind), opts));
+  for (const entry of entries) {
+    const matched = built.filter((pid) => entry.part.test(pid));
+    if (matched.length === 0) {
+      out.push(
+        `${kind.id} ${JSON.stringify(opts)}: declares ${entry.part} CONSTANT and builds no part of that name — the declaration has been orphaned, most likely by a rename, and is now guarding nothing.`,
+      );
+      continue;
+    }
+    for (const dim of kind.dimensions) {
+      const { base, others } = morphSamples(kind, dim, opts);
+      for (const pid of matched) {
+        const b = base.sizes[pid];
+        if (!b) continue;
+        for (const axis of entry.axes) {
+          const i = AXIS_INDEX[axis];
+          for (const s of others) {
+            const got = s.sizes[pid]?.[i];
+            if (got === undefined || Math.abs(got - b[i]) <= MORPH_EPS) continue;
+            out.push(
+              `${kind.id} ${JSON.stringify(opts)}: part "${pid}" is DECLARED constant on ${axis} — ${entry.why} — and it is ${b[i].toFixed(4)} ft at the default and ${got.toFixed(4)} ft at ${dim.key} = ${s.value.toFixed(3)}.`,
+            );
+            break;
+          }
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/** How many (part instance, axis) pairs a kind's declarations actually reach.
+ *  Used to prove the gate above is not passing on an empty set. */
+function declaredConstantChecks(kind: FixtureKind, opts: Opts): number {
+  const built = Object.keys(partSizes(kind, defaultDims(kind), opts));
+  let n = 0;
+  for (const entry of CONSTANT_PART_AXES) {
+    if (entry.kind !== kind.id) continue;
+    n += built.filter((pid) => entry.part.test(pid)).length * entry.axes.length;
+  }
+  return n;
+}
+
+test("the thickness classifier is measured over the population it governs", () => {
+  /* The analysis this replaces measured honest parts that CHANGE. That is the
+     population the classifier must EXCLUDE, not the one it must cover, and
+     measuring it can only ever show the gate is quiet — never that it is
+     watching anything. This measures the constant part-axes, which is what the
+     rule is for, and reports the separation rather than assuming one. */
+  const survey = surveyPartAxes();
+  const constants = survey.filter((s) => s.constant);
+  const changers = survey.filter((s) => !s.constant);
+
+  expect(survey.length, "the sweep found almost nothing — it is not reaching the catalogue").toBeGreaterThan(700);
+  expect(constants.length).toBeGreaterThan(400);
+  expect(changers.length).toBeGreaterThan(200);
+
+  // 1. HOW MUCH OF THE RIGHT POPULATION THE RULE SEES. Measured at 267 of 449
+  //    when this was written. Pinned as a band: if it collapses the classifier
+  //    has stopped recognising slabs, and if it jumps somebody has widened the
+  //    bounds and needs to re-run the overlap check below before believing it.
+  const seen = constants.filter((s) => s.thicknessGoverned).length;
+  const share = seen / constants.length;
+  expect(
+    share,
+    `the thickness classifier now sees ${seen} of ${constants.length} constant part-axes (${(100 * share).toFixed(1)}%). It was 267 of 449 (59.5%).`,
+  ).toBeGreaterThan(0.5);
+  expect(share).toBeLessThan(0.7);
+
+  // 2. WHAT IS LEFT UNGUARDED. A constant the thickness rule cannot see, on an
+  //    axis whose extent moves — so rule A would allow it to start moving too.
+  const unguarded = constants.filter((s) => !s.thicknessGoverned && s.ruleABlind);
+  expect(
+    unguarded.length,
+    "no constant part-axis is outside both rules — if this is really zero the two rules have become complete and this whole block can go",
+  ).toBeGreaterThan(100);
+
+  // 3. NO FALSE ALARMS AT THE CURRENT BOUNDS. This is the half the original
+  //    analysis did measure, re-stated over the collapsed survey: nothing that
+  //    legitimately changes is inside both bounds.
+  const falseAlarms = changers.filter(
+    (s) => s.sizeAtDefault <= THICKNESS_MAX_FT && s.fractionOfExtent <= THICKNESS_MAX_FRACTION_OF_EXTENT,
+  );
+  expect(
+    falseAlarms.map((s) => `${s.kind}|${s.part}|${AXIS_NAME[s.axis]}`),
+    "these part-axes legitimately change AND read as material thickness — the gate is now accusing honest code",
+  ).toEqual([]);
+
+  // 4. HOW FAR THE BOUNDS COULD BE WIDENED, MEASURED RATHER THAN ASSUMED.
+  const best = widestFalseAlarmFreeBound(constants, changers);
+  expect(
+    best.covers,
+    `the widest false-alarm-free bounds are ${best.maxFt.toFixed(4)} ft and ${best.maxFraction.toFixed(4)} of extent, reaching ${best.covers} of ${constants.length} constants; it was 390 of 449 at 0.6000 ft / 0.7143`,
+  ).toBeGreaterThan(seen);
+  expect(best.covers).toBeGreaterThanOrEqual(370);
+  expect(
+    best.covers,
+    "even the widest bounds that raise no false alarm still miss part of the constant population — if they ever reach all of it, thresholds have become sufficient and the declaration table below is redundant",
+  ).toBeLessThan(constants.length);
+
+  /* ...and WHY it is not widened. The optimum's fraction bound is not a fact
+     about material thickness; it is the fraction of one honest changer, the
+     thermostat's screen, which is the largest number that does not break on
+     today's catalogue. A bound at 0.71 calls a part that is seven tenths of
+     its own fixture a "thickness", which is not what the word means, and it
+     has zero margin by construction: it is drawn exactly through a data
+     point. Fitting a threshold to the negative examples is not measuring one,
+     so the bounds below stay where they are. */
+  expect(
+    changers.some((s) => s.fractionOfExtent === best.maxFraction),
+    "the widest feasible fraction bound should be pinned exactly to some honest changer — if it is not, the search is not returning a maximal bound",
+  ).toBe(true);
+  expect(best.maxFraction, "a bound this high is no longer a material-thickness test").toBeGreaterThan(0.5);
+
+  /* The endpoints the block comment above quotes, pinned so the comment cannot
+     go stale. If a new kind moves one of these, this line is the notice that
+     the separation analysis has to be run again rather than inherited. */
+  const minConstantSize = Math.min(...constants.map((s) => s.sizeAtDefault));
+  const maxConstantSize = Math.max(...constants.map((s) => s.sizeAtDefault));
+  const minChangerSize = Math.min(...changers.map((s) => s.sizeAtDefault));
+  const maxConstantFraction = Math.max(...constants.map((s) => s.fractionOfExtent));
+  const minChangerFraction = Math.min(...changers.map((s) => s.fractionOfExtent));
+  expect(minConstantSize, "the smallest constant part-axis in the catalogue").toBeCloseTo(0.02, 4);
+  expect(maxConstantSize, "the largest constant part-axis in the catalogue").toBeCloseTo(5.6496, 3);
+  expect(minChangerSize, "the smallest part-axis that legitimately changes").toBeCloseTo(0.25, 4);
+  expect(maxConstantFraction, "the largest constant as a fraction of its own fixture").toBeCloseTo(1.1538, 3);
+  expect(minChangerFraction, "the refrigerator's freezer handle").toBeCloseTo(0.1557, 3);
+  // A constant runs to 5.65 ft and 1.15 of its extent while a changer starts
+  // at 0.25 ft and 0.1557 — the populations overlap on both axes, which is why
+  // no bound reaches all of the first without touching the second.
+  expect(maxConstantSize).toBeGreaterThan(minChangerSize);
+  expect(maxConstantFraction).toBeGreaterThan(minChangerFraction);
+
+  // 5. WHERE THE SPOUT SITS. Outside the bounds as they stand — which is the
+  //    breach — and inside the widest feasible ones, which is the measured
+  //    reason the gap is a CHOICE about the bound rather than an impossibility.
+  const spout = survey.filter((s) => s.kind === "awg" && s.part === "spout" && s.axis === 0);
+  expect(spout, "the AWG's spout is not being surveyed").toHaveLength(1);
+  expect(spout[0].constant).toBe(true);
+  expect(spout[0].thicknessGoverned).toBe(false);
+  expect(spout[0].ruleABlind).toBe(true);
+  expect(spout[0].sizeAtDefault, "the spout is 0.35 ft wide").toBeCloseTo(0.35, 4);
+  expect(spout[0].fractionOfExtent, "which is 0.175 of a 2 ft unit").toBeCloseTo(0.175, 4);
+  expect(
+    spout[0].fractionOfExtent,
+    `the spout is ${spout[0].fractionOfExtent.toFixed(4)} of the AWG unit against a bound of ${THICKNESS_MAX_FRACTION_OF_EXTENT} — that is the whole reason the thickness rule cannot see it`,
+  ).toBeGreaterThan(THICKNESS_MAX_FRACTION_OF_EXTENT);
+  expect(
+    spout[0].sizeAtDefault <= best.maxFt && spout[0].fractionOfExtent < best.maxFraction,
+    "the spout is not reachable even by the widest feasible bounds — that would make the threshold story stronger than it is, and this line exists so the claim above is checked rather than believed",
+  ).toBe(true);
+});
+
+test("every part axis the catalogue declares CONSTANT holds still", () => {
+  /* The weaker property, pinned. Not derived from geometry — derived from what
+     the builds say about themselves — and true of every dimension of every
+     option combination of every kind that makes the claim. */
+  const problems: string[] = [];
+  for (const kind of kinds) for (const opts of optionCombos(kind)) problems.push(...declaredConstantProblems(kind, opts));
+  expect(problems, problems.join("\n")).toEqual([]);
+
+  // Not an empty set: count the (part instance, axis) pairs actually reached.
+  let checks = 0;
+  for (const kind of kinds) for (const opts of optionCombos(kind)) checks += declaredConstantChecks(kind, opts);
+  expect(
+    checks,
+    `the declarations reach only ${checks} part-axes. It was 238 when they were written — if it has collapsed, a rename has orphaned entries and the assertion above is passing on nothing.`,
+  ).toBeGreaterThanOrEqual(225);
+
+  // And they reach part of what nothing else could see: of the constant
+  // part-axes outside both existing rules, this many are now declared.
+  const survey = surveyPartAxes();
+  const unguarded = survey.filter((s) => s.constant && !s.thicknessGoverned && s.ruleABlind);
+  const declared = unguarded.filter((s) =>
+    CONSTANT_PART_AXES.some((e) => e.kind === s.kind && e.part.test(s.part) && e.axes.indexOf(AXIS_NAME[s.axis]) >= 0),
+  );
+  expect(
+    declared.length,
+    `${declared.length} of ${unguarded.length} previously unguarded constant part-axes are now declared; it was 47 of 163. The rest are in kinds whose source makes no constancy claim, and this node does not invent claims on their behalf.`,
+  ).toBeGreaterThanOrEqual(40);
+});
+
+/** Which kinds' source blocks claim, in a comment, that something is CONSTANT.
+ *  A kind's block runs from its own top-level `id:` line to the next kind's,
+ *  and the last one stops at `endMarker`. Case-sensitive and word-bounded on
+ *  purpose: `CONSTANTS` in the file header is not a claim about a part, and
+ *  neither is the dining chair's lower-case "held constant", which is prose
+ *  about a NUMBER. */
+function kindsClaimingConstant(source: string, ids: readonly string[], endMarker: string): string[] {
+  const endAt = source.indexOf(endMarker);
+  const end = endAt >= 0 ? endAt : source.length;
+  const starts = ids
+    .map((id) => ({ id, at: source.indexOf(`\n  id: "${id}",`) }))
+    .filter((s) => s.at >= 0)
+    .sort((a, b) => a.at - b.at);
+  const out: string[] = [];
+  for (let i = 0; i < starts.length; i++) {
+    const stop = i + 1 < starts.length ? starts[i + 1].at : end;
+    if (/\bCONSTANT\b/.test(source.slice(starts[i].at, stop))) out.push(starts[i].id);
+  }
+  return out;
+}
+
+test("the parse that reads those claims out of the source can tell them apart", () => {
+  /* The negative control for the test below, run against a SYNTHETIC file
+     rather than against the real one. An earlier draft asserted "the parse
+     must not report `thermostat`", which is true today and is a fact about
+     the catalogue, not about the parse — the day somebody legitimately writes
+     a constancy comment on the thermostat, that assertion fails and says
+     nothing useful about whether the parse works. This says what it means. */
+  const fake = [
+    "const alpha: FixtureKind = {",
+    '  id: "alpha",',
+    "  build: () => [",
+    "    // The lip is CONSTANT.",
+    "    part('lip'),",
+    "  ],",
+    "};",
+    "const beta: FixtureKind = {",
+    '  id: "beta",',
+    "  build: () => [part('body')],",
+    "};",
+    "const gamma: FixtureKind = {",
+    '  id: "gamma",',
+    "  // the seat sits at a height held constant, which is prose about a number",
+    "  build: () => [part('seat')],",
+    "};",
+    "export const FIXTURE_CATALOG = {",
+    "  // CONSTANT down here belongs to nobody",
+    "};",
+    "",
+  ].join("\n");
+  expect(kindsClaimingConstant(`\n${fake}`, ["alpha", "beta", "gamma"], "export const FIXTURE_CATALOG")).toEqual(["alpha"]);
+  // A kind the source does not mention is simply absent, not a crash.
+  expect(kindsClaimingConstant(`\n${fake}`, ["delta"], "export const FIXTURE_CATALOG")).toEqual([]);
+});
+
+test("a build that says a part is CONSTANT has to say it somewhere a test reads", () => {
+  /* The coupling that stops this decaying back into prose. `fixtures.ts` is
+     read as TEXT — importing it would tell us about values, and the thing
+     being guarded here is a COMMENT. Every kind whose source claims something
+     is CONSTANT must appear in the declaration table; a twenty-second such
+     comment fails this until somebody writes down what it means. */
+  const source = readFileSync(path.join(__dirname, "..", "lib", "builder", "fixtures.ts"), "utf8");
+  const catalogAt = source.indexOf("export const FIXTURE_CATALOG");
+  expect(catalogAt, "fixtures.ts no longer looks like the file this parse was written against").toBeGreaterThan(0);
+  for (const id of KIND_IDS)
+    expect(source.indexOf(`\n  id: "${id}",`), `${id} has no top-level id line — the block parse would silently skip it`).toBeGreaterThan(0);
+
+  const claims = kindsClaimingConstant(source, KIND_IDS, "export const FIXTURE_CATALOG");
+
+  /* Sanity on the live file: the parse finds the claims that are there, and
+     does not report the whole catalogue, which is what a broken slice would
+     do. Which specific kinds are silent is a fact about the catalogue and is
+     deliberately NOT asserted here — the test above owns that question. */
+  expect(claims).toContain("awg");
+  expect(claims).toContain("vanity");
+  expect(claims).toContain("wood-stove");
+  expect(claims.length, `${claims.length} kinds claim a constant part; it was 21 of ${KIND_IDS.length}`).toBeGreaterThanOrEqual(21);
+  expect(claims.length, "every kind is reporting a claim — the block slice has collapsed").toBeLessThan(KIND_IDS.length);
+
+  const declaredKinds = unique(CONSTANT_PART_AXES.map((e) => e.kind as string));
+  const undeclared = claims.filter((id) => declaredKinds.indexOf(id) < 0);
+  expect(
+    undeclared,
+    `these builds say in their own source that a part is CONSTANT and no test reads that claim: ${undeclared.join(", ")}. Add an entry to CONSTANT_PART_AXES naming the part and the axes, or take the comment out.`,
+  ).toEqual([]);
+
+  // ...and no entry invents a claim the source does not make.
+  const unsourced = declaredKinds.filter((id) => claims.indexOf(id) < 0);
+  expect(unsourced, `these kinds are declared constant here and say nothing of the kind in fixtures.ts: ${unsourced.join(", ")}`).toEqual([]);
+});
+
+test("the declaration refuses the AWG spout breach that both threshold rules miss", () => {
+  /* THE counterexample this node was given, kept in the suite beside the
+     vanity's.
+
+     The vanity's slab is caught because it is thin enough to read as material
+     thickness AND it grows on an axis its dimension does not move. The AWG's
+     spout is neither. It is 0.35 ft on a 2 ft unit — 0.175 of the extent,
+     above the 0.15 bound — and it would grow with widthFt, which moves the
+     unit's stated width, so rule A is entitled to allow it. It sits under the
+     source's own "Louvre and spout are CONSTANT", the identical authorial
+     pattern to the vanity's, and it was invisible.
+
+     This is what "make a big one look right" does to a spout. */
+  const proportionalSpout: FixtureKind = {
+    ...FIXTURE_CATALOG.awg,
+    build: (d, o, ctx) =>
+      FIXTURE_CATALOG.awg.build(d, o, ctx).map((p) => {
+        if (p.id !== "spout") return p;
+        const w = d.widthFt ?? 2.0;
+        return { ...p, geometry: p.geometry.clone().scale(w / 2.0, 1, 1) };
+      }),
+  };
+
+  // Every rule that existed before this node: silent. All three of them.
+  expect(scalesUniformly(proportionalSpout, "widthFt"), "the whole-object check should not see this").toBe(false);
+  expect(thicknessProblems(proportionalSpout, {}), "the thickness rule should not see this — the spout is too big to read as a thickness").toEqual([]);
+  expect(ungovernedAxisProblems(proportionalSpout, {}), "rule A should not see this — widthFt does move the unit's stated width").toEqual([]);
+
+  // The declaration: refuses it, names the part, the axis and both numbers.
+  const said = declaredConstantProblems(proportionalSpout, {}).join("\n");
+  expect(said).toContain('part "spout"');
+  expect(said).toContain("DECLARED constant on width");
+  expect(said).toContain("0.3500 ft at the default");
+
+  // The real AWG unit is clean under all four, so this is refusing the defect
+  // rather than refusing AWG units.
+  expect(declaredConstantProblems(FIXTURE_CATALOG.awg, {})).toEqual([]);
+  expect(thicknessProblems(FIXTURE_CATALOG.awg, {})).toEqual([]);
+  expect(ungovernedAxisProblems(FIXTURE_CATALOG.awg, {})).toEqual([]);
+
+  /* And the same shape on the louvre, whose width is NOT declared because the
+     source's comment overstated it. A louvre that started tracking the unit's
+     DEPTH — an axis the comment does cover — is refused; its width is left
+     alone, because w - 0.3 is what the build has always drawn. */
+  const deeperLouvre: FixtureKind = {
+    ...FIXTURE_CATALOG.awg,
+    build: (d, o, ctx) =>
+      FIXTURE_CATALOG.awg.build(d, o, ctx).map((p) => {
+        if (p.id !== "louvre") return p;
+        const dp = d.depthFt ?? 1.2;
+        return { ...p, geometry: p.geometry.clone().scale(1, 1, dp / 1.2) };
+      }),
+  };
+  expect(declaredConstantProblems(deeperLouvre, {}).join("\n")).toContain('part "louvre"');
+  expect(declaredConstantProblems(deeperLouvre, {}).join("\n")).toContain("DECLARED constant on depth");
+
+  // A rename orphans a declaration, and that is reported rather than passed.
+  const renamed: FixtureKind = {
+    ...FIXTURE_CATALOG.awg,
+    build: (d, o, ctx) => FIXTURE_CATALOG.awg.build(d, o, ctx).map((p) => (p.id === "spout" ? { ...p, id: "nozzle" } : p)),
+  };
+  expect(declaredConstantProblems(renamed, {}).join("\n")).toContain("orphaned");
 });

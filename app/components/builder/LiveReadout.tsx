@@ -30,9 +30,17 @@
    one from a plausible number would be the most convincing wrong answer the
    tool could give; the footnote says the check is absent instead.
 
-   MOTION. Only colour and border transitions, at the 150 ms `--motion-echo`
-   Tailwind `transition-colors` already emits. Numbers that count up while you
-   drag a slider are a toy; these change the instant the document does. */
+   MOTION. Only colour and border transitions, on `--motion-echo` — the token,
+   through `.builder-figure__value` and `.builder-readout__state` rather than a
+   utility that happens to emit the same 150 ms. Numbers that count up while
+   you drag a slider are a toy; these change the instant the document does.
+
+   TYPE (ED01). This strip and the model read-out below it now share one type
+   ladder — `.builder-figure__*` in globals.css. The strip already had the
+   right INSTINCT (a separate mono line naming the function that owns each
+   verdict); what it did not have was a figure. Three cost bands and three
+   findings were all set at 14–16px, so the panel's numbers were the same
+   weight as the footnotes explaining them. */
 
 import { useMemo } from "react";
 import { useAuraProject } from "@/components/project/ProjectContext";
@@ -63,37 +71,34 @@ const BANDS = [
   { key: "high", label: "Risk envelope" },
 ] as const;
 
+/** One finding, on the read-out ladder the model panel below also uses:
+ *  figure, what it measures, the sentence, the helper that owns it. */
 function Check({
   name,
   verdict,
+  qualifier,
   detail,
   source,
   alert,
 }: {
   name: string;
   verdict: string;
+  /** the limit a verdict is measured against — subordinate to the figure but
+   *  beside it, the same treatment the model read-out gives its ceiling */
+  qualifier?: string;
   detail: string;
   source: string;
   alert?: boolean;
 }) {
   return (
-    <div
-      className={`rounded-md border px-4 py-3 transition-colors ${
-        alert ? "border-aura-violet" : "aura-hairline"
-      }`}
-    >
-      <p className="aura-label">{name}</p>
-      <p
-        className={`mt-1.5 text-sm tabular-nums transition-colors ${
-          alert ? "text-aura-violet" : "text-aura-text"
-        }`}
-      >
-        {verdict}
+    <div className="builder-figure" data-alert={alert ? "true" : undefined}>
+      <p className="builder-figure__label">{name}</p>
+      <p className="builder-figure__value">
+        <span>{verdict}</span>
+        {qualifier ? <span className="builder-figure__qualifier">{qualifier}</span> : null}
       </p>
-      <p className="mt-1 text-xs leading-snug text-aura-text/55">{detail}</p>
-      <p className="mt-1 font-mono text-[0.6rem] uppercase tracking-label text-aura-text/40">
-        {source}
-      </p>
+      <p className="builder-figure__note">{detail}</p>
+      <p className="builder-figure__source">{source}</p>
     </div>
   );
 }
@@ -152,20 +157,17 @@ export default function LiveReadout({
 
   return (
     <section
-      className="rounded-xl border aura-hairline p-5"
+      className="builder-readout"
       aria-label="Live cost and constraint read-out"
       data-readiness={readiness?.state ?? "unpriced"}
       data-readiness-gaps={readiness?.gaps.length ?? 0}
     >
-      <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <p className="aura-label text-aura-emerald">Live read-out</p>
+      <div className="builder-readout__head">
+        <p className="builder-readout__title">Live read-out</p>
         {readiness ? (
           <span
-            className={`rounded-full border px-2.5 py-1 font-mono text-[0.6rem] uppercase tracking-label transition-colors ${
-              readiness.state === "review-ready"
-                ? "border-aura-emerald text-aura-emerald"
-                : "border-aura-violet text-aura-violet"
-            }`}
+            className="builder-readout__state"
+            data-alert={readiness.state === "review-ready" ? undefined : "true"}
           >
             {readiness.state === "review-ready" ? "Ready for professional review" : "Design intent"}
           </span>
@@ -173,38 +175,42 @@ export default function LiveReadout({
       </div>
 
       {priced.ok ? (
-        <>
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div>
+          <div className="builder-figures" data-columns="3-early">
             {BANDS.map((band) => (
-              <div key={band.key} className="rounded-md border aura-hairline px-4 py-3">
-                <p className="aura-label">{band.label}</p>
-                <p className="mt-1.5 text-base tabular-nums text-aura-text transition-colors">
-                  {cad(priced.budget.total[band.key])}
+              <div key={band.key} className="builder-figure">
+                <p className="builder-figure__label">{band.label}</p>
+                <p className="builder-figure__value">
+                  <span>{cad(priced.budget.total[band.key])}</span>
                 </p>
-                <p className="mt-1 text-xs leading-snug text-aura-text/55">
+                <p className="builder-figure__note">
                   Includes the {priced.budget.scenario.contingencyPct}% contingency
                 </p>
               </div>
             ))}
           </div>
-          <p className="mt-3 font-mono text-[0.6rem] uppercase tracking-label text-aura-text/40">
+          {/* The basis for all three bands, so it carries the block rule and
+              sits under the row — without it, a source line at the foot of a
+              three-column grid reads as the source of the LEFT column only. */}
+          <p className="builder-figure__source builder-readout__block">
             createProjectBudget · {Math.round(priced.budget.areaSqFt)} sq ft ·{" "}
             {municipality || region} · confidence {priced.budget.confidence.label}
           </p>
-        </>
+        </div>
       ) : (
-        <p className="mt-4 rounded-md border border-aura-violet px-4 py-3 text-xs leading-relaxed text-aura-text/75">
+        <p className="builder-readout__refusal">
           This design cannot be priced as it stands: {priced.problem}
         </p>
       )}
 
       {/* Stacked, not three across. This strip renders inside the builder's
-          controls column, which is `minmax(22rem, …)` wide — and Tailwind's
-          `sm:` tracks the viewport, not the column, so a three-across grid
-          would be at its narrowest exactly where these sentences are longest.
-          The money bands above stay in a row because they are three short
-          numbers; these are three findings. */}
-      <div className="mt-5 grid gap-3">
+          controls column, which is `minmax(22rem, …)` wide — and a `sm:`
+          breakpoint tracks the viewport, not the column, so a multi-column
+          grid would be at its narrowest exactly where these sentences are
+          longest. The money bands above stay in a row because they are three
+          short numbers; these are three findings. `data-columns="1"` is what
+          holds that decision in the stylesheet. */}
+      <div className="builder-figures" data-columns="1">
         <Check
           name="Buildable envelope"
           verdict={
@@ -253,7 +259,8 @@ export default function LiveReadout({
         />
         <Check
           name="Glazing"
-          verdict={glazingRatio === null ? "Not modelled" : `${pct(glazingRatio)} of ${pct(FDWR_MAX)}`}
+          verdict={glazingRatio === null ? "Not modelled" : pct(glazingRatio)}
+          qualifier={glazingRatio === null ? undefined : `of ${pct(FDWR_MAX)}`}
           detail={
             glazingRatio === null
               ? "This project uses planar graph geometry; the ratio is not run against the recovery spec."
@@ -265,9 +272,9 @@ export default function LiveReadout({
       </div>
 
       {readiness ? (
-        <div className="mt-5 border-t aura-hairline pt-4">
+        <div className="builder-readout__block">
           {readiness.gaps.length === 0 ? (
-            <p className="max-w-3xl text-xs leading-relaxed text-aura-text/65">
+            <p className="builder-readout__foot">
               Every input this study needs is present: the land, the fit, the cost scenario and the
               project location. That is what ready for professional review means here — a designer,
               an engineer and the trades have something complete to price and check. It is not an
@@ -275,15 +282,14 @@ export default function LiveReadout({
             </p>
           ) : (
             <>
-              <p className="aura-label text-aura-violet">
+              <p className="builder-figure__label" data-alert="true">
                 {readiness.gaps.length} thing{readiness.gaps.length === 1 ? "" : "s"} still missing
                 before a professional can review this
               </p>
-              <ul className="mt-3 space-y-2">
+              <ul className="grid gap-3">
                 {readiness.gaps.map((gap) => (
-                  <li key={gap.id} className="text-sm leading-relaxed text-aura-text/80">
-                    <span>{gap.need}</span>{" "}
-                    <span className="text-aura-text/50">— {gap.where}</span>
+                  <li key={gap.id} className="builder-readout__gap">
+                    <span>{gap.need}</span> <span>— {gap.where}</span>
                   </li>
                 ))}
               </ul>
@@ -292,7 +298,7 @@ export default function LiveReadout({
         </div>
       ) : null}
 
-      <p className="mt-4 border-t aura-hairline pt-4 max-w-3xl text-xs leading-relaxed text-aura-text/55">
+      <p className="builder-readout__foot builder-readout__block">
         A planning range, not a quote, and a modelled check, not a permit decision. Every figure
         above recomputes from the design on screen. One check people expect is deliberately absent:
         Aura does not model a municipal minimum dwelling size, because it does not know your

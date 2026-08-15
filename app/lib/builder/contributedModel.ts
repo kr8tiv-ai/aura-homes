@@ -83,6 +83,36 @@
    fixed field list, so a top-level field a contributor added was DROPPED, in
    silence, and the round-trip assertion could not see it because both
    directions went through the same fixed list. It neither worked nor said so.
+
+   ---------------------------------------------------------------------------
+   THE SHAPE IS A TREE, AND EVERY ANSWER IS COMPUTED FROM IT (MK03).
+
+   MK02 left the contract as nine independent key lists and nine hand-written
+   calls that walked them. That was complete when it was written and complete
+   when it was read, and nothing anywhere held it to being complete: a tenth
+   nested record could be added to the contract, and the only thing standing
+   between it and an unwalked shape was somebody remembering. Worse, the
+   round-trip gate's `lost`/`survived` computation ran against the TOP-LEVEL key
+   list alone, so nested losslessness rested entirely on a `toEqual` over two
+   fixtures — which fires only when the fixture happens to carry the field, and
+   when it does fire reports an unlabelled object diff rather than the path that
+   vanished.
+
+   CONTRIBUTED_MODEL_SHAPE below is the one description of the accepted nested
+   structure. Three functions read it and nothing else:
+
+     collectUnknownKeyProblems  — refuse every key the contract does not name,
+                                  at any depth, naming the PATH and the record
+                                  whose key list is being quoted.
+     contributedKeyPaths        — every accepted path a given record CARRIES.
+     contributedContractKeyPaths— every accepted path the contract DECLARES.
+
+   The last two are what let a round-trip gate say "envelope.volumes[0].roof
+   .facing was dropped" instead of printing two objects side by side, and what
+   let a fixture be held to exercising the whole contract rather than the part
+   somebody happened to type. Wiring a new shape into the tree is what makes it
+   checked; tests/contributed-model.spec.ts asserts every exported key list is
+   reachable from the tree, so an unwired one goes red rather than unnoticed.
    ============================================================================= */
 
 import type { ClimateZone, EcoMaterial } from "@/lib/designApi";
@@ -286,10 +316,220 @@ export const CONTRIBUTED_KEY_SETS_ARE_COMPLETE: [
   KeysMatch<PlanCostBasis, (typeof CONTRIBUTED_COST_BASIS_KEYS)[number]>,
 ] = [true, true, true, true, true, true, true, true, true];
 
+/* -------------------------------------------------------- the shape, as a tree
+
+   The nine key lists above say WHICH keys each record may carry. This says how
+   the records NEST, which is the half that was missing: without it, every
+   answer about the contract below the top level had to be hand-written at the
+   call site, and a hand-written walk is complete only until the next field.
+
+   `label` is not decoration. The old refusal for a key three levels down read
+   "… is not a field of aura.contributed-model/v1. This contract carries
+   exactly: form, pitchDeg, overhangFt, facing." — which names the path (good)
+   and then tells the contributor that the whole contract carries four keys,
+   which is false. The label says whose key list is being quoted. It opens a
+   sentence, so it is capitalised. */
+
+export interface ContributedShape {
+  /** how a refusal names this record: "A roof record carries exactly: …" */
+  readonly label: string;
+  readonly keys: readonly string[];
+  /** keys whose value is itself a checked record, or an array of them */
+  readonly children?: Readonly<Record<string, ContributedShapeChild>>;
+}
+
+export interface ContributedShapeChild {
+  readonly at: "record" | "array";
+  readonly shape: ContributedShape;
+}
+
+export const CONTRIBUTED_OPENING_SHAPE: ContributedShape = {
+  label: "An opening record",
+  keys: CONTRIBUTED_OPENING_KEYS,
+};
+
+export const CONTRIBUTED_ROOF_SHAPE: ContributedShape = {
+  label: "A roof record",
+  keys: CONTRIBUTED_ROOF_KEYS,
+};
+
+export const CONTRIBUTED_VOLUME_SHAPE: ContributedShape = {
+  label: "A volume record",
+  keys: CONTRIBUTED_VOLUME_KEYS,
+  children: {
+    roof: { at: "record", shape: CONTRIBUTED_ROOF_SHAPE },
+    openings: { at: "array", shape: CONTRIBUTED_OPENING_SHAPE },
+  },
+};
+
+export const CONTRIBUTED_DECK_SHAPE: ContributedShape = {
+  label: "A deck record",
+  keys: CONTRIBUTED_DECK_KEYS,
+};
+
+export const CONTRIBUTED_SITING_SHAPE: ContributedShape = {
+  label: "The siting record",
+  keys: CONTRIBUTED_SITING_KEYS,
+};
+
+export const CONTRIBUTED_ENVELOPE_SHAPE: ContributedShape = {
+  label: "The envelope record",
+  keys: CONTRIBUTED_ENVELOPE_KEYS,
+  children: {
+    volumes: { at: "array", shape: CONTRIBUTED_VOLUME_SHAPE },
+    /** `deck` is legitimately null; the walk simply does not descend into a
+     *  non-record, so an explicit null is neither refused nor walked. */
+    deck: { at: "record", shape: CONTRIBUTED_DECK_SHAPE },
+    siting: { at: "record", shape: CONTRIBUTED_SITING_SHAPE },
+  },
+};
+
+export const CONTRIBUTED_RIGHTS_SHAPE: ContributedShape = {
+  label: "The rights record",
+  keys: CONTRIBUTED_RIGHTS_KEYS,
+};
+
+export const CONTRIBUTED_COST_BASIS_SHAPE: ContributedShape = {
+  label: "A cost-basis record",
+  keys: CONTRIBUTED_COST_BASIS_KEYS,
+};
+
+export const CONTRIBUTED_MODEL_SHAPE: ContributedShape = {
+  label: "The model record",
+  keys: CONTRIBUTED_MODEL_KEYS,
+  children: {
+    rights: { at: "record", shape: CONTRIBUTED_RIGHTS_SHAPE },
+    envelope: { at: "record", shape: CONTRIBUTED_ENVELOPE_SHAPE },
+    costBasis: { at: "record", shape: CONTRIBUTED_COST_BASIS_SHAPE },
+  },
+};
+
 /* ----------------------------------------------------------------- checking */
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
+
+/** `a.b` at depth, and the bare key at the root, so a top-level refusal reads
+ *  `energyRating …` rather than `.energyRating …`. */
+const joinPath = (at: string, key: string): string => (at === "" ? key : `${at}.${key}`);
+
+/**
+ * Every key on this record, AT ANY DEPTH, that the contract does not name —
+ * each refused by its full PATH.
+ *
+ * WHY REFUSE RATHER THAN IGNORE. Three options exist for a field nobody asked
+ * for: carry it (this contract cannot — `contributedModelToPlanTemplate` emits
+ * exactly the PlanTemplate interface, and a catalog record with mystery keys is
+ * a catalog nobody can migrate), drop it, or refuse it. Dropping is the one
+ * that is silently wrong: the contributor's file still has the field, the
+ * catalog record does not, nothing anywhere says so, and the loss only ever
+ * surfaces as a bug report about missing data months later. Refusing costs the
+ * contributor one edit and tells them exactly which one.
+ *
+ * WHY THE PATH AND NOT THE KEY. A contributor told `colour is not a field` has
+ * to guess which of the roofs in a three-volume model they typed it on. The
+ * refusal reads `envelope.volumes[1].roof.colour`, which is a place they can
+ * open their editor to.
+ *
+ * REPLACES the two functions MK02 shipped — `unknownKeyProblems(record,
+ * allowed, at)` called from nine sites, and `unknownTopLevelKeyProblems`. Both
+ * behaviours are kept: the `at`-prefixed path, the quoted allowed list, the
+ * contract name and the "refused rather than dropped in silence" sentence. Two
+ * things changed on purpose. The quoted list is now introduced by the record it
+ * belongs to instead of by "This contract", which was false for every nested
+ * shape. And unknown keys are now reported as one depth-first block ahead of
+ * the type and range problems rather than interleaved with them — same set,
+ * different order.
+ */
+export function collectUnknownKeyProblems(
+  value: unknown,
+  shape: ContributedShape = CONTRIBUTED_MODEL_SHAPE,
+  at = "",
+): string[] {
+  if (!isObject(value)) return [];
+  const problems: string[] = [];
+  for (const key of Object.keys(value)) {
+    if (shape.keys.includes(key)) continue;
+    problems.push(
+      `${joinPath(at, key)} is not a field of ${CONTRIBUTED_MODEL_CONTRACT}. ${shape.label} carries exactly: ` +
+        `${shape.keys.join(", ")}. A field the contract does not name cannot be carried into the catalog, ` +
+        `so it is refused rather than dropped in silence.`,
+    );
+  }
+  for (const [key, child] of Object.entries(shape.children ?? {})) {
+    const held = value[key];
+    const path = joinPath(at, key);
+    if (child.at === "record") {
+      problems.push(...collectUnknownKeyProblems(held, child.shape, path));
+    } else if (Array.isArray(held)) {
+      held.forEach((entry, index) => {
+        problems.push(...collectUnknownKeyProblems(entry, child.shape, `${path}[${index}]`));
+      });
+    }
+  }
+  return problems;
+}
+
+/**
+ * Every accepted path this record actually CARRIES, depth first, arrays
+ * indexed — `envelope.volumes[0].roof.facing`, not `envelope`.
+ *
+ * This is the round-trip gate's eyes. Comparing the paths a record carries
+ * before and after conversion names what vanished; comparing the records
+ * themselves prints two objects and leaves the reader to find the difference,
+ * which is what the gate did before this and why it could only see the top
+ * level. Keys the contract does NOT name are deliberately absent: they are
+ * refused by `collectUnknownKeyProblems`, and a validated record has none.
+ */
+export function contributedKeyPaths(
+  value: unknown,
+  shape: ContributedShape = CONTRIBUTED_MODEL_SHAPE,
+  at = "",
+): string[] {
+  if (!isObject(value)) return [];
+  const paths: string[] = [];
+  for (const key of shape.keys) {
+    if (!(key in value)) continue;
+    const path = joinPath(at, key);
+    paths.push(path);
+    const child = shape.children?.[key];
+    if (!child) continue;
+    const held = value[key];
+    if (child.at === "record") {
+      paths.push(...contributedKeyPaths(held, child.shape, path));
+    } else if (Array.isArray(held)) {
+      held.forEach((entry, index) => {
+        paths.push(...contributedKeyPaths(entry, child.shape, `${path}[${index}]`));
+      });
+    }
+  }
+  return paths;
+}
+
+/**
+ * Every accepted path the contract DECLARES, with `[0]` standing for an array
+ * member — the yardstick a fixture is held against.
+ *
+ * A fixture that carries a subset of these is a fixture that stops exercising
+ * whatever it omits, and the round-trip assertion it feeds quietly stops
+ * covering that field. `roof.facing` was exactly that: accepted by the
+ * validator, absent from the fixture, and therefore outside the reach of every
+ * assertion in the spec that reads the fixture.
+ */
+export function contributedContractKeyPaths(
+  shape: ContributedShape = CONTRIBUTED_MODEL_SHAPE,
+  at = "",
+): string[] {
+  const paths: string[] = [];
+  for (const key of shape.keys) {
+    const path = joinPath(at, key);
+    paths.push(path);
+    const child = shape.children?.[key];
+    if (!child) continue;
+    paths.push(...contributedContractKeyPaths(child.shape, child.at === "array" ? `${path}[0]` : path));
+  }
+  return paths;
+}
 
 const filled = (value: unknown): value is string =>
   typeof value === "string" && value.trim().length > 0;
@@ -319,39 +559,6 @@ const PUBLIC_DOMAIN_BASIS = /17 USC 105|public domain|not in copyright/i;
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-/**
- * Every key on this record that the contract does not name, refused BY NAME.
- *
- * WHY REFUSE RATHER THAN IGNORE. Three options exist for a field nobody asked
- * for: carry it (this contract cannot — `contributedModelToPlanTemplate` emits
- * exactly the PlanTemplate interface, and a catalog record with mystery keys is
- * a catalog nobody can migrate), drop it, or refuse it. Dropping is the one
- * that is silently wrong: the contributor's file still has the field, the
- * catalog record does not, nothing anywhere says so, and the loss only ever
- * surfaces as a bug report about missing data months later. Refusing costs the
- * contributor one edit and tells them exactly which one.
- */
-function unknownKeyProblems(record: Record<string, unknown>, allowed: readonly string[], at: string): string[] {
-  const unknown = Object.keys(record).filter((key) => !allowed.includes(key));
-  return unknown.map(
-    (key) =>
-      `${at}.${key} is not a field of ${CONTRIBUTED_MODEL_CONTRACT}. This contract carries exactly: ` +
-      `${allowed.join(", ")}. A field it does not name cannot be carried into the catalog, so it is ` +
-      `refused rather than dropped in silence.`,
-  );
-}
-
-/** The same, for the record's own top level, where there is no path prefix. */
-function unknownTopLevelKeyProblems(record: Record<string, unknown>): string[] {
-  const unknown = Object.keys(record).filter((key) => !(CONTRIBUTED_MODEL_KEYS as readonly string[]).includes(key));
-  return unknown.map(
-    (key) =>
-      `${key} is not a field of ${CONTRIBUTED_MODEL_CONTRACT}. This contract carries exactly: ` +
-      `${CONTRIBUTED_MODEL_KEYS.join(", ")}. A field it does not name cannot be carried into the catalog, ` +
-      `so it is refused rather than dropped in silence.`,
-  );
-}
-
 function rightsProblems(value: unknown): string[] {
   if (!isObject(value)) return ["rights is missing — a model with no stated provenance cannot be accepted."];
   const problems: string[] = [];
@@ -376,8 +583,8 @@ function rightsProblems(value: unknown): string[] {
     problems.push("rights.kind must be \"licensed-adaptation\" or \"public-domain-adaptation\".");
   }
 
-  problems.push(...unknownKeyProblems(value, CONTRIBUTED_RIGHTS_KEYS, "rights"));
-
+  /* the unknown-key walk that used to sit here is now one recursive pass over
+     CONTRIBUTED_MODEL_SHAPE in collectContributedModelShapeProblems */
   if (!filled(value.name)) problems.push("rights.name does not say whose work this is.");
   if (!filled(value.url) || !/^https:\/\//.test(value.url as string))
     problems.push("rights.url must be an https:// link to the source that can be opened and checked.");
@@ -439,7 +646,6 @@ function openingProblems(volumeIndex: number, volume: Record<string, unknown>): 
       problems.push(`${where} is not a record.`);
       return;
     }
-    problems.push(...unknownKeyProblems(raw, CONTRIBUTED_OPENING_KEYS, where));
     if (!filled(raw.id)) problems.push(`${where}.id is missing.`);
     else if (seen.has(raw.id)) problems.push(`${where}.id "${raw.id}" is used twice in the same volume.`);
     else seen.add(raw.id);
@@ -473,7 +679,6 @@ function envelopeProblems(value: unknown): string[] {
   if (!isObject(value)) return ["envelope is missing — a model with no dimensions is not a model."];
   const problems: string[] = [];
 
-  problems.push(...unknownKeyProblems(value, CONTRIBUTED_ENVELOPE_KEYS, "envelope"));
   if (!MATERIALS.includes(value.material as EcoMaterial))
     problems.push(`envelope.material must be one of ${MATERIALS.join(", ")}.`);
   if (!CLIMATE_ZONES.includes(value.climateZone as ClimateZone))
@@ -483,7 +688,6 @@ function envelopeProblems(value: unknown): string[] {
   if (!isObject(siting)) {
     problems.push("envelope.siting is missing.");
   } else {
-    problems.push(...unknownKeyProblems(siting, CONTRIBUTED_SITING_KEYS, "envelope.siting"));
     if (!finite(siting.frontFacesDeg) || siting.frontFacesDeg < 0 || siting.frontFacesDeg > 360)
       problems.push("envelope.siting.frontFacesDeg must be a compass bearing between 0 and 360.");
     if (!SLOPES.includes(siting.slope as (typeof SLOPES)[number]))
@@ -495,7 +699,6 @@ function envelopeProblems(value: unknown): string[] {
     if (!isObject(deck)) {
       problems.push("envelope.deck must be a deck record or an explicit null.");
     } else {
-      problems.push(...unknownKeyProblems(deck, CONTRIBUTED_DECK_KEYS, "envelope.deck"));
       if (!WALLS.includes(deck.wall as (typeof WALLS)[number]))
         problems.push("envelope.deck.wall must be one of n, s, e, w.");
       if (!finite(deck.widthFt) || deck.widthFt <= 0)
@@ -519,7 +722,6 @@ function envelopeProblems(value: unknown): string[] {
       problems.push(`${at} is not a record.`);
       return;
     }
-    problems.push(...unknownKeyProblems(raw, CONTRIBUTED_VOLUME_KEYS, at));
     if (!filled(raw.id)) problems.push(`${at}.id is missing.`);
     else if (ids.has(raw.id)) problems.push(`${at}.id "${raw.id}" is used twice.`);
     else ids.add(raw.id);
@@ -536,7 +738,6 @@ function envelopeProblems(value: unknown): string[] {
     if (!isObject(roof)) {
       problems.push(`${at}.roof is missing.`);
     } else {
-      problems.push(...unknownKeyProblems(roof, CONTRIBUTED_ROOF_KEYS, `${at}.roof`));
       if (!ROOF_FORMS.includes(roof.form as RoofForm))
         problems.push(`${at}.roof.form must be one of ${ROOF_FORMS.join(", ")}.`);
       if (!finite(roof.pitchDeg) || roof.pitchDeg < 0 || roof.pitchDeg >= 90)
@@ -583,7 +784,12 @@ export function collectContributedModelShapeProblems(value: unknown): string[] {
   if (!isObject(value)) return ["A contributed model must be a JSON object."];
   const problems: string[] = [];
 
-  problems.push(...unknownTopLevelKeyProblems(value));
+  /* ONE recursive pass for every unknown key at every depth, ahead of the type
+     and range checks. It used to be nine hand-written calls interleaved with
+     them; the set of refusals is the same, the order is now depth-first, and
+     the coverage is now a property of CONTRIBUTED_MODEL_SHAPE rather than of
+     somebody having remembered all nine. */
+  problems.push(...collectUnknownKeyProblems(value));
   if (value.contract !== CONTRIBUTED_MODEL_CONTRACT)
     problems.push(`contract must be "${CONTRIBUTED_MODEL_CONTRACT}".`);
   if (!filled(value.id)) {
@@ -617,7 +823,6 @@ export function collectContributedModelShapeProblems(value: unknown): string[] {
     if (!isObject(basis)) {
       problems.push("costBasis, when present, must be a record.");
     } else {
-      problems.push(...unknownKeyProblems(basis, CONTRIBUTED_COST_BASIS_KEYS, "costBasis"));
       if (basis.status !== "modelled" && basis.status !== "proxy")
         problems.push("costBasis.status must be \"modelled\" or \"proxy\".");
       if (!filled(basis.label)) problems.push("costBasis.label is missing.");

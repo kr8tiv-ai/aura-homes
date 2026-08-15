@@ -1699,6 +1699,31 @@ main p {
   block-size: min(26rem, 48vh);
 }
 
+/* CHOOSING A HOME COMES FIRST, so on the plans step the picker leads and the
+   model follows it.
+
+   Shrinking the viewport was not enough: on a phone the stage stacks with the
+   model above the controls, so a person landing on /build met an empty
+   reference house and had to scroll past it to discover that fifty-five plans
+   exist. The founder hit this himself — "if they don't scroll down they don't
+   see the feature" — and a feature the owner cannot find is not shipped.
+
+   ORDER, NOT DOM ORDER, and that distinction is load-bearing. The 3D canvas is
+   the export root: moving it in the markup would give it a new parent, drop its
+   WebGL context and break every model export, which is why builder-viewer.spec
+   pins the canvas element's identity across steps and builder-viewer-tools.spec
+   pins that it is never conditionally mounted. `order` re-paints without
+   re-parenting, so both stay true.
+
+   It applies only while data-stage is "browse" — once there is a design worth
+   looking at, the model leads again, which is what every other step wants. */
+.builder-stage[data-stage="browse"] .builder-stage__controls {
+  order: 0;
+}
+.builder-stage[data-stage="browse"] .builder-stage__view {
+  order: 1;
+}
+
 /* ---- editable prebuilt plan library ------------------------------- */
 .plan-library {
   /* clip, NOT hidden: overflow-hidden makes this box the sticky containing
@@ -4197,6 +4222,251 @@ html.story-gated body { overflow: hidden; }
   line-height: 1.55;
   color: var(--st-faint);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ED01 — THE BUILDER READ-OUTS
+   components/builder/Readout.tsx  ·  components/builder/LiveReadout.tsx
+   ───────────────────────────────────────────────────────────────────────
+   Two panels in the same column answer the same question — what did I
+   just build, and what does it cost — and until now they answered it in
+   two different type systems. The live strip already separated the
+   FUNCTION THAT OWNS A NUMBER onto its own mono line; the model read-out
+   ran the identifier, an em dash and the explanation together in one
+   grey sentence. One of them was right, and this block makes it the
+   rule for both.
+
+   FOUR TIERS. The order is the entire design:
+
+     value    the figure. The largest type in its cell at every width the
+              product supports, display face, tabular so a column of
+              numbers aligns. It is what the panel exists for; before
+              this it was 14px — two pixels over its own footnote.
+     label    what the figure measures. Mono cap, one step under the
+              site's `.aura-label` CLASS (there is no --aura-label custom
+              property; the earlier comment named one that does not
+              exist), in DIM ink rather than emerald. Six
+              emerald labels in one grid is six marks, and a mark that
+              repeats stops being a mark; the accent is spent on the one
+              cell that is over a limit.
+     note     the sentence, in body face.
+     source   the helper that owns the number. Mono, smallest — and NOT
+              uppercased, because `totalFloorAreaSqFt` set in caps is an
+              unreadable word. It recedes by size and face, never by
+              fading toward the background: showing your working is
+              worth nothing if the working cannot be read. Every tier
+              here, including this one, is measured against 4.5:1.
+
+   The cells lost their boxes. Twenty-four border edges around six
+   numbers is decoration carrying no information — one hairline above
+   each cell groups them into a single instrument, which is what they
+   are. The idiom is `border-block-start`, already this file's, from
+   .guided-step.
+
+   Colour resolves through the ladder, and every GAP and PAD below is a
+   --space-* step (radii and type metrics are not spacing and are not
+   claimed). tests/builder-craft.spec.ts renders the real
+   components against this file and measures the tier order and the
+   contrast of all four tiers, in both themes, at 390, 768 and 1280 —
+   because a clamp resolving to its floor is exactly how a hierarchy
+   claim stays true on the desk and is false on every phone.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.builder-figures {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  /* row gap smaller than column gap: the hairline above each cell already
+     does the separating vertically, so the rows can sit close. */
+  gap: var(--space-4) var(--space-5);
+}
+/* 40rem / 64rem are Tailwind's own sm and lg, and the counts below are the
+   counts these three grids already had. NOT a tidier uniform rule: the live
+   strip's findings are deliberately one column at every width, because that
+   panel sits in a `minmax(22rem, …)` controls track while a `sm:` breakpoint
+   measures the VIEWPORT — so a two-across grid would be at its narrowest
+   exactly where those sentences are longest. That reasoning is written in
+   LiveReadout.tsx and is preserved here rather than flattened.
+     data-columns="1"        the findings — stacked, always
+     data-columns="3"        the model read-out — 1 / 2 / 3
+     data-columns="3-early"  the cost bands — three short numbers, 1 / 3   */
+@media (min-width: 40rem) {
+  .builder-figures[data-columns="3"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .builder-figures[data-columns="3-early"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (min-width: 64rem) {
+  .builder-figures[data-columns="3"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.builder-figure {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  min-inline-size: 0;
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid rgb(var(--tone-ink) / var(--hair-alpha));
+  transition-property: border-color;
+  transition-duration: var(--motion-echo);
+  transition-timing-function: var(--motion-ease);
+}
+/* The one accent in the grid, and it lands on the rule AND the figure
+   together so the cell reads as over its limit from either. */
+.builder-figure[data-alert="true"] {
+  border-block-start-color: var(--st-violet);
+}
+
+.builder-figure__label {
+  font-family: var(--st-mono-font);
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  line-height: 1.35;
+  text-transform: uppercase;
+  color: var(--st-ink-dim);
+}
+/* A label can carry the accent on its own, without a figure under it — the
+   "n things still missing" heading is a count, not a measurement. */
+.builder-figure__label[data-alert="true"] {
+  color: var(--st-violet);
+}
+
+.builder-figure__value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-family: var(--st-display-font);
+  /* The floor is the load-bearing number: at 390 the clamp resolves
+     THERE, so 1.3rem (20.8px) is what has to out-rank an 11.2px label
+     and a 12px note — not the 1.6rem ceiling a desk monitor sees. */
+  font-size: clamp(1.3rem, 1.05rem + 0.85vw, 1.6rem);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  color: var(--st-ink);
+  transition-property: color;
+  transition-duration: var(--motion-echo);
+  transition-timing-function: var(--motion-ease);
+}
+.builder-figure[data-alert="true"] .builder-figure__value {
+  color: var(--st-violet);
+}
+
+/* The comparator that travels with a figure — "of 22.0%", the ceiling the
+   ratio is measured against. Body face at note size: subordinate by tier,
+   still beside the number it qualifies rather than a scroll away. */
+.builder-figure__qualifier {
+  font-family: var(--st-body-font);
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  color: var(--st-ink-dim);
+}
+
+.builder-figure__note {
+  font-size: 0.75rem;
+  line-height: 1.55;
+  color: var(--st-ink-dim);
+  text-wrap: pretty;
+}
+
+.builder-figure__source {
+  /* One more step of air than the tiers above it, so the provenance line
+     separates from the sentence it belongs to.
+
+     This comment used to claim "the note and the source are the two closest in
+     size, so the gap is what tells them apart". That was FALSE, and nothing
+     measured it: browser-measured, note and source differ by 1.12px, while
+     label and source differ by 0.32px and qualifier and note are IDENTICAL.
+     Two pairs are closer than the pair it named. A size comparison written in
+     a comment is worth nothing — the same defect class as the panel next door
+     claiming a hierarchy that inverted on every phone. The spacing decision
+     stands on its own; the false justification is gone. */
+  margin-block-start: var(--space-1);
+  font-family: var(--st-mono-font);
+  font-size: 0.68rem;
+  line-height: 1.45;
+  color: var(--st-ink-dim);
+}
+
+/* ---- the live strip's own chrome ------------------------------------ */
+.builder-readout {
+  display: grid;
+  gap: var(--space-5);
+  padding: var(--space-5);
+  border: 1px solid rgb(var(--tone-ink) / var(--hair-alpha));
+  border-radius: 0.75rem;
+}
+.builder-readout__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.builder-readout__title {
+  font-family: var(--st-mono-font);
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--st-emerald-deep);
+}
+.builder-readout__state {
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: var(--space-1) var(--space-3);
+  font-family: var(--st-mono-font);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--st-emerald-deep);
+  transition-property: color;
+  transition-duration: var(--motion-echo);
+  transition-timing-function: var(--motion-ease);
+}
+.builder-readout__state[data-alert="true"] {
+  color: var(--st-violet);
+}
+/* A block the panel cannot price or cannot vouch for. Same violet, same
+   reason as the figure alert — one "read this" ink in the whole editor. */
+.builder-readout__refusal {
+  display: grid;
+  gap: var(--space-3);
+  max-inline-size: 52rem;
+  border-inline-start: 2px solid var(--st-violet);
+  padding-inline-start: var(--space-4);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: var(--st-ink-dim);
+}
+.builder-readout__refusal .builder-figure__label {
+  color: var(--st-violet);
+}
+.builder-readout__block {
+  display: grid;
+  gap: var(--space-3);
+  padding-block-start: var(--space-4);
+  border-block-start: 1px solid rgb(var(--tone-ink) / var(--hair-soft-alpha));
+}
+.builder-readout__gap {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--st-ink);
+}
+/* the WHERE, not the WHAT: the address recedes, the missing thing does not */
+.builder-readout__gap span + span {
+  color: var(--st-ink-dim);
+}
+.builder-readout__foot {
+  max-inline-size: 46rem;
+  font-size: 0.75rem;
+  line-height: 1.65;
+  color: var(--st-ink-dim);
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
    THE ZONING LOOKUP  ·  .zoning-*  (components/land/ZoningLookup.tsx)
    ───────────────────────────────────────────────────────────────────────

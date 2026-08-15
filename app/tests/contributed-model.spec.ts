@@ -20,6 +20,19 @@
       accepted-key lists rather than off a hand-written fixture, so a key the
       validator accepts and the converter does not know fails by name.
 
+      MK03 CLOSED THE SAME HOLE ONE LEVEL DOWN. What MK02 shipped ran against
+      CONTRIBUTED_MODEL_KEYS — the TOP-LEVEL list. `envelope` surviving as a key
+      says nothing about `envelope.volumes[0].roof.facing` surviving as a field,
+      so nested losslessness rested on a `toEqual` between two fixtures, which
+      can only see a field the fixture carries. The roof record carried none:
+      CONTRIBUTED_ROOF_KEYS was the one declared key list no assertion in this
+      file read. Measured, not inferred — rebuilding each roof from form,
+      pitchDeg and overhangFt, throwing `facing` away, left all 30 tests green.
+      The survival check is now computed per PATH from the contract's own shape
+      tree, the fixture is held to carrying every path the contract declares,
+      and unknown keys are refused at every declared record with the whole path
+      named.
+
    5. THE CATALOGUE GATE, PRE-ENFORCED. A contribution that validates here and
       then fails tests/plan-catalog.spec.ts is a promise broken after somebody
       did the work. An 80%-glazed contribution used to validate clean and would
@@ -55,18 +68,24 @@ import {
   CONTRIBUTED_OPENING_KEYS,
   CONTRIBUTED_RIGHTS_ARE_PLAN_SOURCE,
   CONTRIBUTED_RIGHTS_KEYS,
+  CONTRIBUTED_MODEL_SHAPE,
+  CONTRIBUTED_ROOF_KEYS,
   CONTRIBUTED_SITING_KEYS,
   CONTRIBUTED_VOLUME_KEYS,
   collectCatalogueAdmissionProblems,
   collectContributedModelProblems,
   collectContributedModelShapeProblems,
+  collectUnknownKeyProblems,
+  contributedContractKeyPaths,
   contributedFloorAreaSqFt,
+  contributedKeyPaths,
   contributedModelToPlanTemplate,
   planTemplateToContributedModel,
   provenanceNotice,
   validateContributedModel,
   type ContributedModel,
   type ContributedRights,
+  type ContributedShape,
 } from "@/lib/builder/contributedModel";
 import { PLAN_TEMPLATES, type PlanTemplate } from "@/lib/builder/planCatalog";
 import { validateBuilderDocument } from "@/lib/builder/document";
@@ -342,9 +361,82 @@ test("a contributed model becomes a PlanTemplate and comes back identical", () =
    accepts that the converter does not know fails by name.
    ------------------------------------------------------------------------ */
 
-/** The fixture with every optional field present, so it exercises the whole
- *  accepted key set rather than the subset somebody happened to type. */
-const fullyExercisedModel = (): ContributedModel => fixtureModel({ costBasis: PROXY_COST_BASIS });
+/**
+ * The fixture with every optional field present, so it exercises the whole
+ * accepted key set rather than the subset somebody happened to type.
+ *
+ * MK03 ADDED `roof.facing`, AND THAT WAS THE HOLE. `facing` is optional on
+ * Roof, the base fixture's gable carries none, and CONTRIBUTED_ROOF_KEYS was
+ * the one declared key list no assertion in this file ever read — the
+ * completeness test below checked the model, rights, envelope, costBasis,
+ * siting, deck, volume and opening key sets and skipped the roof. A key the
+ * fixture does not carry is a key the round-trip `toEqual` cannot compare, so
+ * the whole roof record sat outside every losslessness claim this spec made.
+ *
+ * `shed` is the honest carrier: spec.ts documents `facing` as the direction a
+ * shed or saltbox slope faces, so putting it on a gable would be exercising the
+ * key with meaningless data. Roof form enters neither modelledWallAreaSqFt nor
+ * glazedAreaSqFt, so the 80%/13% glazing figures pinned elsewhere in this file
+ * are untouched — those read fixtureModel(), not this.
+ */
+const fullyExercisedModel = (): ContributedModel =>
+  fixtureModel({
+    costBasis: PROXY_COST_BASIS,
+    envelope: {
+      ...fixtureModel().envelope,
+      volumes: [mainVolume({ roof: { form: "shed", pitchDeg: 20, overhangFt: 1.5, facing: "s" } })],
+    },
+  });
+
+/**
+ * Every RECORD the contract's shape tree declares, as a path plus the shape
+ * that governs it — WALKED from CONTRIBUTED_MODEL_SHAPE rather than listed.
+ *
+ * A list here would have exactly the failure mode MK03 exists to close: it
+ * would be right when it was typed and silently short one entry the day the
+ * contract grew a shape. Walking means a shape wired into the tree is covered
+ * without anybody adding a line, and a shape NOT wired into the tree is absent
+ * from the reachability assertion that reads this.
+ */
+function declaredRecordShapes(
+  shape: ContributedShape = CONTRIBUTED_MODEL_SHAPE,
+  at = "",
+): Array<{ path: string; shape: ContributedShape }> {
+  const found: Array<{ path: string; shape: ContributedShape }> = [{ path: at, shape }];
+  for (const [key, child] of Object.entries(shape.children ?? {})) {
+    const path = at === "" ? key : `${at}.${key}`;
+    found.push(...declaredRecordShapes(child.shape, child.at === "array" ? `${path}[0]` : path));
+  }
+  return found;
+}
+
+/**
+ * A fresh, fully detached fixture that can be mutated in place.
+ *
+ * FOUND BY THE INJECTION GATE BELOW, NOT BY READING. `fixtureModel()` spreads
+ * `rights: LICENSED_RIGHTS` and takes `costBasis: PROXY_COST_BASIS` — both
+ * MODULE-LEVEL CONSTANTS, handed out by reference. Writing a key into
+ * `fixtureModel().rights` therefore writes it into every fixture every later
+ * test in this file builds, and the failure surfaces somewhere else entirely.
+ * Anything that mutates a fixture rather than overriding it must start here.
+ */
+const detachedFixture = (): Record<string, unknown> =>
+  JSON.parse(JSON.stringify(fullyExercisedModel())) as Record<string, unknown>;
+
+/** Walk `envelope.volumes[0].roof` on a real record and hand back the object it
+ *  names, so a test can inject at a path the contract declares rather than at
+ *  a place somebody hand-typed. */
+function reachPath(root: Record<string, unknown>, path: string): Record<string, unknown> {
+  if (path === "") return root;
+  let node: unknown = root;
+  for (const segment of path.split(".")) {
+    const parsed = /^([A-Za-z]+)(?:\[(\d+)\])?$/.exec(segment);
+    if (!parsed) throw new Error(`reachPath cannot parse "${segment}" of "${path}"`);
+    node = (node as Record<string, unknown>)[parsed[1]];
+    if (parsed[2] !== undefined) node = (node as unknown[])[Number(parsed[2])];
+  }
+  return node as Record<string, unknown>;
+}
 
 test("the fixture exercises every key the contract accepts, at every level", () => {
   /* Without this, adding a key to the contract and forgetting to add it to the
@@ -357,12 +449,53 @@ test("the fixture exercises every key the contract accepts, at every level", () 
   expect(Object.keys(model.costBasis!).sort()).toEqual([...CONTRIBUTED_COST_BASIS_KEYS].sort());
   expect(Object.keys(model.envelope.siting).sort()).toEqual([...CONTRIBUTED_SITING_KEYS].sort());
   expect(Object.keys(model.envelope.deck!).sort()).toEqual([...CONTRIBUTED_DECK_KEYS].sort());
-  /* `facing` is genuinely optional on Roof and the fixture's gable has none,
-     so volumes are compared as a subset in that one direction only. */
   const volume = model.envelope.volumes[0];
   expect(Object.keys(volume).sort()).toEqual([...CONTRIBUTED_VOLUME_KEYS].sort());
   expect(Object.keys(volume.openings[0]).sort()).toEqual([...CONTRIBUTED_OPENING_KEYS].sort());
+  /* RENEGOTIATED IN PLACE (MK03). This line used to read: "`facing` is
+     genuinely optional on Roof and the fixture's gable has none, so volumes are
+     compared as a subset in that one direction only" — and no roof assertion
+     followed it. The premise was true and the conclusion was the defect: the
+     roof key set was the one of the nine that nothing here read, so a dropped
+     `roof.facing` was invisible to this whole file. Measured, before the fix:
+     making planTemplateToContributedModel rebuild each roof from form/pitchDeg/
+     overhangFt only — throwing `facing` away — left all 30 tests in this file
+     green. The fixture now carries it, so the exemption is gone rather than
+     narrowed. */
+  expect(Object.keys(volume.roof).sort()).toEqual([...CONTRIBUTED_ROOF_KEYS].sort());
   expect(CONTRIBUTED_KEY_SETS_ARE_COMPLETE.every((proof) => proof === true)).toBe(true);
+
+  /* AND THE SAME QUESTION ASKED OF THE CONTRACT RATHER THAN OF THIS LIST.
+     The eight assertions above are hand-written, which is how the roof came to
+     be missed: they cover the shapes somebody thought of. This one is computed
+     from CONTRIBUTED_MODEL_SHAPE, so a record shape added to the contract is
+     demanded of the fixture without anybody adding a line here. */
+  const declared = contributedContractKeyPaths();
+  const carried = contributedKeyPaths(model);
+  expect(
+    declared.filter((path) => !carried.includes(path)),
+    "the contract declares these paths and the fixture does not carry them — every assertion in this " +
+      "file that reads the fixture has silently stopped covering them",
+  ).toEqual([]);
+
+  /* not a vacuous yardstick: it reaches four levels down, into the record that
+     was outside it until MK03, and it indexes arrays rather than stopping at
+     them */
+  expect(declared).toContain("envelope.volumes[0].roof.facing");
+  expect(declared).toContain("envelope.volumes[0].openings[0].sillFt");
+  expect(declared.length).toBe(
+    [
+      CONTRIBUTED_MODEL_KEYS,
+      CONTRIBUTED_RIGHTS_KEYS,
+      CONTRIBUTED_ENVELOPE_KEYS,
+      CONTRIBUTED_VOLUME_KEYS,
+      CONTRIBUTED_ROOF_KEYS,
+      CONTRIBUTED_OPENING_KEYS,
+      CONTRIBUTED_DECK_KEYS,
+      CONTRIBUTED_SITING_KEYS,
+      CONTRIBUTED_COST_BASIS_KEYS,
+    ].reduce((sum, keys) => sum + keys.length, 0),
+  );
 });
 
 test("every key the contract accepts survives the round trip — a field the converter does not know fails here", () => {
@@ -388,6 +521,47 @@ test("every key the contract accepts survives the round trip — a field the con
       "contributedModelToPlanTemplate — a contributor's field would vanish in silence",
   ).toEqual([]);
   expect(survived.sort()).toEqual([...CONTRIBUTED_MODEL_KEYS].sort());
+
+  /* ------------------------------------------------------------------------
+     MK03: THE SAME QUESTION, AT EVERY DEPTH.
+
+     The four lines above are the whole of what MK02 shipped, and they run
+     against CONTRIBUTED_MODEL_KEYS — the TOP-LEVEL list. `envelope` surviving
+     as a key says nothing about `envelope.volumes[0].roof.facing` surviving as
+     a field. Nested losslessness rested entirely on the `toEqual` below, which
+     has two problems: it can only see a field the FIXTURE carries (the roof
+     record carried none until this wave), and when it does fire it prints two
+     objects side by side rather than naming what went missing. Measured, on the
+     shipped fixture and a converter rebuilt to drop `facing`:
+
+       Error: expect(received).toEqual(expected) // deep equality
+       - Expected  - 1
+       + Received  + 0
+                 "roof": Object {
+       -           "facing": "s",
+                   "form": "gable",
+
+     A reader has to diff that by eye to learn the word "facing". These two
+     assertions answer in paths. */
+  const before = contributedKeyPaths(model);
+  const after = contributedKeyPaths(back.model);
+  expect(
+    before.filter((path) => !after.includes(path)),
+    "these PATHS went in and did not come out — contributedModelToPlanTemplate or " +
+      "planTemplateToContributedModel rebuilds a nested record from a fixed field list that no longer " +
+      "matches the contract, and a contributor's field would vanish in silence",
+  ).toEqual([]);
+  expect(
+    after.filter((path) => !before.includes(path)),
+    "the round trip INVENTED these paths — a field nobody submitted is as wrong as a field that vanished",
+  ).toEqual([]);
+
+  /* non-vacuous: the comparison really does reach the record that used to sit
+     outside it, and really does index into arrays */
+  expect(before).toContain("envelope.volumes[0].roof.facing");
+  expect(before).toContain("envelope.volumes[0].openings[2].sillFt");
+  expect(before.length).toBeGreaterThan(CONTRIBUTED_MODEL_KEYS.length);
+
   expect(back.model).toEqual(model);
 });
 
@@ -468,11 +642,92 @@ test("a field the contract does not name is refused by name, not dropped", () =>
       fixtureModel({ costBasis: { ...PROXY_COST_BASIS, currency: "CAD" } as never }),
     ],
   ];
+  /* STRENGTHENED (MK03): this loop used to slice the last segment off `path`
+     and assert only that the KEY appeared somewhere in the joined refusals. A
+     contributor told `colour is not a field` about a three-volume model has to
+     guess which roof they typed it on, and the assertion would have passed just
+     the same if the path prefix had been dropped or had been wrong. The whole
+     path is asserted now, and the refusal must OPEN with it rather than merely
+     contain it, so `roof.colour` cannot satisfy a claim about
+     `envelope.volumes[0].roof.colour`. */
   for (const [path, model] of nested) {
-    const key = path.slice(path.lastIndexOf(".") + 1);
-    const joined = collectContributedModelProblems(model).join(" | ");
-    expect(joined, `${path} must be refused by name`).toContain(key);
+    const problems = collectContributedModelProblems(model);
+    const named = problems.filter((problem) => problem.startsWith(`${path} is not a field`));
+    expect(named.length, `${path} must be refused by its whole path, exactly once`).toBe(1);
   }
+});
+
+test("an unknown key is refused at EVERY record the contract declares, named by its whole path", () => {
+  /* THE GATE THE HAND-WIRING NEVER HAD.
+
+     MK02's unknown-key refusals were nine separate calls, one per record shape.
+     Nine was the right number when it was written, and nothing anywhere held it
+     to being the right number: a tenth nested record could join the contract
+     and the only thing between it and an unwalked shape was somebody
+     remembering. This walks the contract's own shape tree and smuggles a key
+     into every record it finds, so an unwired shape fails here by path rather
+     than by being noticed in review. */
+  const records = declaredRecordShapes();
+
+  /* Every exported key list is reachable from the tree. An orphan list — one
+     the contract declares and the walk never reaches — is exactly the tenth
+     shape nobody wired up, and it fails here rather than in a contributor's
+     pull request. CONTRIBUTED_KEY_SETS_ARE_COMPLETE already ties each list to
+     its interface at compile time, so this closes the chain:
+     interface -> key list -> shape tree -> walked. */
+  expect(
+    records.map((record) => record.shape.keys.join(",")).sort(),
+    "a key list the contract exports is not reachable from CONTRIBUTED_MODEL_SHAPE — nothing walks it, " +
+      "so an unknown key inside that record is dropped rather than refused",
+  ).toEqual(
+    [
+      CONTRIBUTED_MODEL_KEYS,
+      CONTRIBUTED_RIGHTS_KEYS,
+      CONTRIBUTED_ENVELOPE_KEYS,
+      CONTRIBUTED_VOLUME_KEYS,
+      CONTRIBUTED_ROOF_KEYS,
+      CONTRIBUTED_OPENING_KEYS,
+      CONTRIBUTED_DECK_KEYS,
+      CONTRIBUTED_SITING_KEYS,
+      CONTRIBUTED_COST_BASIS_KEYS,
+    ]
+      .map((keys) => keys.join(","))
+      .sort(),
+  );
+  /* the walk reaches four levels, not just the two the eye checks */
+  expect(records.map((record) => record.path)).toContain("envelope.volumes[0].openings[0]");
+  expect(records.map((record) => record.path)).toContain("envelope.volumes[0].roof");
+
+  for (const { path, shape } of records) {
+    const model = detachedFixture();
+    reachPath(model, path).smuggled = "a field nobody asked for";
+    const fullPath = path === "" ? "smuggled" : `${path}.smuggled`;
+
+    const problems = collectContributedModelProblems(model);
+    const named = problems.filter((problem) => problem.startsWith(`${fullPath} is not a field`));
+    expect(named.length, `a key smuggled into ${path || "the model record"} must be refused by its whole path`).toBe(1);
+
+    /* and the refusal must quote the key list of the record it is talking
+       about. The old message read "This contract carries exactly: form,
+       pitchDeg, overhangFt, facing" for a roof — naming the path correctly and
+       then telling the contributor something false about the contract. */
+    expect(named[0]).toContain(shape.label);
+    expect(named[0]).toContain(shape.keys.join(", "));
+    expect(named[0]).toContain(CONTRIBUTED_MODEL_CONTRACT);
+    expect(named[0]).toContain("refused rather than dropped in silence");
+
+    /* the record without the smuggled key is accepted, so each refusal is about
+       the stray key rather than about the injection site */
+    expect(collectContributedModelProblems(fullyExercisedModel())).toEqual([]);
+  }
+
+  /* the walker is the one the validator uses, and it agrees with itself */
+  const deep = detachedFixture();
+  reachPath(deep, "envelope.volumes[0].openings[1]").glazingCoating = "low-e";
+  expect(collectUnknownKeyProblems(deep).map((problem) => problem.split(" ")[0])).toEqual([
+    "envelope.volumes[0].openings[1].glazingCoating",
+  ]);
+  expect(collectContributedModelProblems(deep)).toEqual(collectUnknownKeyProblems(deep));
 });
 
 test("the round trip survives JSON, which is the only form a contribution ever arrives in", () => {
