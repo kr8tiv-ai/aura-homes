@@ -49,6 +49,9 @@
   "evidence": {
     "shippedAt": "2026-08-15",
     "commit": "a6acb8f",
-    "openFinding": "Vertex grips and applyGraphVertexEdit shipped; extrude-wall and room-assign mutators were not added because they are not honest compositions of existing primitives."
+    "openFinding": "Vertex grips and applyGraphVertexEdit shipped first. Extrude-wall (6cb3c2d) and room-rename (this commit) later added as dedicated GraphMutation writers rather than compositions of splitWallAt + moveGraphVertex, because those compositions shear neighbours or cannot name a derived face.",
+    "extrudeAt": "6cb3c2d",
+    "roomRenameAt": "f8a159f",
+    "remaining": "Openings are still placed through addGraphOpening / applyOpeningEdit, not a second graph-canvas writer. That is already gated elsewhere."
   }
 }

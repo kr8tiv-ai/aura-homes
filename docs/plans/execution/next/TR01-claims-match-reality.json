@@ -34,9 +34,9 @@
     "note": "partially satisfied already by gate-coverage.spec.ts; this node closes the status half"
   },
   "sideEffect": "local",
-  "status": "partial",
+  "status": "verified",
   "evidence": {
-    "closedSoFar": "Spec-count drift (instances 2 and 3) is closed by tests/gate-coverage.spec.ts, which counts declarations from the runners' own lists and asserts README.md and docs/SUBMISSION.md state those integers. The counter itself was wrong twice before it was right — first counting seven RegExp.prototype.test() calls as declarations, then counting its own matcher — and both were caught by pinning it against numbers observed from the runners rather than trusting the regex.",
-    "stillOpen": "Instance 1's class: deployment and token status as prose, in any document, unguarded. That is the remaining work above."
+    "closedSoFar": "Spec-count drift (instances 2 and 3) is closed by tests/gate-coverage.spec.ts. Instance 1 (DEPLOYMENTS.md denying a live token) is closed by release-truth.spec.ts: denial detector, requiredTokenReceipt, mainnet section vs token module, document sweep, and venue/explorer address pins. All of those ran green on f8a159f (636/636).",
+    "stillOpen": "None of the original four instances. Audit #10 is a separate fresh-context node."
   }
 }

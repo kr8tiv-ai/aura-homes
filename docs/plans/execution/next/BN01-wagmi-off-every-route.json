@@ -43,5 +43,13 @@
     "note": "the orchestrator runs GH_PAGES=1 npm run build, then the new spec against the real app/out, then test:ui"
   },
   "sideEffect": "local",
-  "status": "ready"
+  "status": "verified-with-open-finding",
+  "evidence": {
+    "freshContextAt": "2026-08-15",
+    "tree": "f8a159f",
+    "unit": "636/636 including bundle-isolation.spec.ts against a GH_PAGES=1 export",
+    "firstLoadShared": "88.3 kB (PB01 was 88.2 kB; 0.1 kB is Next rounding, not a new wallet chunk)",
+    "wagmi": "providers.tsx no longer mounts WagmiProvider; WalletProvider wraps the three chain surfaces; non-chain routes do not download @wagmi/core; chain routes still do",
+    "openFinding": "Manifest stayed status ready after the code shipped. This close is from the existing spec against a rebuilt app/out, not a new refactor."
+  }
 }
