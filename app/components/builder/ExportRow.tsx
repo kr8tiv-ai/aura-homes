@@ -411,9 +411,9 @@ export default function ExportRow({
       <div className="space-y-6">
         {graphMode ? (
           <p className="rounded-md border aura-hairline px-4 py-3 text-xs leading-relaxed text-aura-text/70">
-            This project uses planar graph geometry. DXF and IFC are drawn from the same graph
-            model as the eight-sheet set — slabs, walls and openings on screen, not the frozen
-            recovery HomeSpec. ifcJSON still waits; Aura will not invent a second IFC shape for it.
+            This project uses planar graph geometry. DXF, IFC and ifcJSON are written from the
+            graph storeys&rsquo; bounding boxes — the same hosts fixtures snap to — not from the
+            frozen recovery HomeSpec.
           </p>
         ) : null}
         {/* ================================================== the handoff */}
@@ -471,7 +471,7 @@ export default function ExportRow({
               opens="Any JSON reader — a browser, jq, Python, a spreadsheet import — and buildingSMART's json2ifc.py, which converts it to a real .ifc. NOT Revit, ArchiCAD, Vectorworks, Tekla, Solibri or Navisworks: none of them reads it."
               body="IFC4 as JSON. Every wall with its real material layer thickness and R-value, every window and door as an opening cut into a named wall, slabs, spaces, storeys and the site, plus the eco spec as property sets. A CANDIDATE encoding rather than a published standard — which is why it is on this side of the panel and not the other. The panel below writes the same file, checks it round-trips, and offers the linked-data bundle."
               action={
-                <Button onClick={() => void ifcJson()} disabled={busy !== null || graphMode}>
+                <Button onClick={() => void ifcJson()} disabled={busy !== null}>
                   {busy === "ifcjson" ? "Writing…" : "Download .ifcjson"}
                 </Button>
               }

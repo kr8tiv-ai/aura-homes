@@ -45,7 +45,7 @@ test("planar conversion drives the visible plan, 3D model and honest exports", a
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "Download .dxf" })).toBeEnabled();
   await expect(page.getByRole("button", { name: "Download .ifc", exact: true })).toBeEnabled();
-  await expect(page.getByRole("button", { name: "Download .ifcjson" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Download .ifcjson" })).toBeEnabled();
   await expect(page.getByRole("button", { name: "Download .aura.json" })).toBeEnabled();
 });
 

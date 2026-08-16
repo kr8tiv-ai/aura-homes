@@ -212,9 +212,10 @@ import {
 } from "./exportSpec";
 import {
   exportSourceLimitation,
-  resolveLegacyGeometryExportSource,
+  resolveBuilderExportSource,
   type BuilderExportSource,
 } from "./exportSource";
+import { fixtureSpecFromGraph } from "./fixturesGraph";
 import { modelledGlazingRatio, modelledWallAreaSqFt } from "./toPlan";
 import {
   COMFORT_DISCLAIMER,
@@ -225,6 +226,7 @@ import {
   TARGET_PROVENANCE,
   VAPOUR_UNIT_NOTE,
   comfortReport,
+  comfortReportForDocument,
   type ComfortReport,
 } from "./comfort";
 import {
@@ -2063,19 +2065,34 @@ function build(
   return ctx;
 }
 
+function semanticSpec(source: BuilderExportSource) {
+  const resolved = resolveBuilderExportSource(source);
+  const graph =
+    resolved.document.geometry.kind === "building-graph"
+      ? resolved.document.geometry.graph
+      : null;
+  return {
+    resolved,
+    spec: graph ? fixtureSpecFromGraph(graph, resolved.spec) : resolved.spec,
+    graph,
+  };
+}
+
 function buildFromSource(
   source: BuilderExportSource,
   opts: SemanticExportOptions = {},
 ): Ctx {
-  const resolved = resolveLegacyGeometryExportSource(source);
+  const { resolved, spec, graph } = semanticSpec(source);
   return build(
-    resolved.spec,
+    spec,
     {
       ...opts,
       comfort:
-        opts.comfort === undefined
-          ? comfortReport(resolved.spec, resolved.document.comfort)
-          : opts.comfort,
+        opts.comfort !== undefined
+          ? opts.comfort
+          : graph
+            ? comfortReportForDocument(resolved.document)
+            : comfortReport(resolved.spec, resolved.document.comfort),
     },
     {
       documentVersion: resolved.document.version,
@@ -2155,7 +2172,7 @@ export function exportIfcJson(
   source: BuilderExportSource,
   opts: SemanticExportOptions = {},
 ): ExportArtifact {
-  const { spec } = resolveLegacyGeometryExportSource(source);
+  const { spec } = semanticSpec(source);
   const doc = specToIfcJson(source, opts);
   return artifact(
     ifcJsonToText(doc),
@@ -2172,7 +2189,7 @@ export function exportSemanticJsonLd(
   source: BuilderExportSource,
   opts: SemanticExportOptions = {},
 ): ExportArtifact {
-  const { spec } = resolveLegacyGeometryExportSource(source);
+  const { spec } = semanticSpec(source);
   const bundle = specToSemanticBundle(source, opts);
   return artifact(
     semanticBundleToText(bundle),
@@ -2810,7 +2827,7 @@ export function roundTripReport(
   source: BuilderExportSource,
   opts: SemanticExportOptions = {},
 ): RoundTripReport {
-  const { spec } = resolveLegacyGeometryExportSource(source);
+  const { spec } = semanticSpec(source);
   const bundle = specToSemanticBundle(source, opts);
   const ifcText = ifcJsonToText(bundle.ifcJSON);
   const bundleText = semanticBundleToText(bundle);

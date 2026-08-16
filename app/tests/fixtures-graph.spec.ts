@@ -2,6 +2,7 @@ import { expect, test } from "playwright/test";
 
 import { convertBuilderDocumentToGraph, defaultBuilderDocument } from "@/lib/builder/document";
 import { addFixture, floorRegions, resolveFixtures } from "@/lib/builder/fixtures";
+import { specToIfcJson } from "@/lib/builder/exportSemantic";
 import { fixtureSpecForDocument } from "@/lib/builder/fixturesGraph";
 
 function graphDocument() {
@@ -42,6 +43,16 @@ test("a floor fixture can be added to a graph storey and resolve against that ho
   const resolved = resolveFixtures(spec, added.set);
   expect(resolved.items).toHaveLength(1);
   expect(resolved.issues.filter((issue) => issue.severity === "blocked")).toEqual([]);
+});
+
+test("ifcJSON on a graph document emits the storey hosts, not the recovery volumes", () => {
+  const document = graphDocument();
+  const doc = specToIfcJson(document);
+  expect(doc.type).toBe("ifcJSON");
+  expect(doc.data.length).toBeGreaterThan(0);
+  const names = JSON.stringify(doc.data);
+  expect(names).toContain("storey-1");
+  expect(names).toContain("bounding boxes");
 });
 
 test("a spec-backed document still uses its own volumes as fixture hosts", () => {
