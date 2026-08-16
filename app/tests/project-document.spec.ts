@@ -273,6 +273,7 @@ test("a selected budget scenario survives canonical project reload", () => {
     delivery: "full-service" as const,
     shippingDistanceKm: 425,
     contingencyPct: 20,
+    salesTaxPct: 5,
   };
   const saved = persistScenario(project, scenario, new Date("2026-08-12T14:00:00.000Z"));
   const reloaded = validateAuraProject(JSON.parse(canonicalAuraProjectJson(saved)));

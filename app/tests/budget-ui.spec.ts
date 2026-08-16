@@ -22,9 +22,13 @@ test("the budget follows the active project and changes real system lines", asyn
   await expect(table.getByText("Municipal utility connections", { exact: true })).toBeVisible();
   await expect(table.getByText(/Solar array/)).toHaveCount(0);
   await expect(page.getByText("Saved to this project", { exact: true })).toBeVisible();
+  await page.getByLabel("Project tax allowance percentage").fill("5");
+  await expect(page.getByText("User-stated planning allowance — not tax advice", { exact: true })).toBeVisible();
+  await expect(page.getByText("Saved to this project", { exact: true })).toBeVisible();
 
   await page.reload();
   await expect(page.getByLabel("Utility strategy")).toHaveValue("serviced");
+  await expect(page.getByLabel("Project tax allowance percentage")).toHaveValue("5");
   await expect(table.getByText("Municipal utility connections", { exact: true })).toBeVisible();
 
   await page.getByLabel("Vendor or contractor").fill("Prairie Shell Co.");
@@ -54,22 +58,22 @@ test("the budget follows the active project and changes real system lines", asyn
     };
   });
   expect(savedQuote).toMatchObject({
-    scenario: expect.objectContaining({ utilities: "serviced" }),
+    scenario: expect.objectContaining({ utilities: "serviced", salesTaxPct: 5 }),
     quote: {
       version: 2,
       budgetHash: expect.stringMatching(/^0x[a-f0-9]{64}$/),
       budgetBasis: {
         region: "Alberta",
         municipality: "Foothills County",
-        scenario: expect.objectContaining({ utilities: "serviced" }),
+        scenario: expect.objectContaining({ utilities: "serviced", salesTaxPct: 5 }),
         budgetCapCad: 500000,
       },
     },
   });
 
-  await page.getByLabel("Utility strategy").selectOption("off-grid");
+  await page.getByLabel("Project tax allowance percentage").fill("6");
   await expect(page.getByText("Planning basis changed after quote", { exact: true })).toBeVisible();
-  await expect(page.getByText("The utility strategy changed.", { exact: true })).toBeVisible();
+  await expect(page.getByText("The project tax allowance changed.", { exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByRole("heading", { name: "Prairie Shell Co." })).toBeVisible();
 });

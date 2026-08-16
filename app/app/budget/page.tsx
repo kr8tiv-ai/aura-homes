@@ -146,9 +146,27 @@ export default function BudgetPage() {
           <div key={key} className={key === "mid" ? "is-mid" : ""}>
             <span>{key === "low" ? "Lean path" : key === "mid" ? "Working midpoint" : "Risk envelope"}</span>
             <strong>{cad(budget.total[key])}</strong>
-            <small>including {scenario.contingencyPct}% contingency</small>
+            <small>including {scenario.contingencyPct}% contingency · {budget.scenario.salesTaxPct > 0 ? `${budget.scenario.salesTaxPct}% user-stated tax allowance` : "tax excluded"}</small>
           </div>
         ))}
+      </section>
+
+      <section className="budget-ledger aura-panel" aria-label="Budget rollup">
+        <div>
+          <p className="aura-label">Working midpoint rollup</p>
+          <dl>
+            <div><dt>Subtotal</dt><dd>{cad(budget.subtotal.mid)}</dd></div>
+            <div><dt>Contingency</dt><dd>{cad(budget.contingency.mid)}</dd></div>
+            <div><dt>Project tax allowance</dt><dd>{cad(budget.tax.mid)}</dd></div>
+            <div><dt>Total</dt><dd>{cad(budget.total.mid)}</dd></div>
+          </dl>
+        </div>
+        <div>
+          <p className="aura-label">Tax basis</p>
+          <p>{budget.scenario.salesTaxPct > 0
+            ? `${budget.scenario.salesTaxPct}% user-stated planning allowance applied to subtotal plus contingency. Not tax advice.`
+            : "0% planning assumption — project sales taxes are excluded."}</p>
+        </div>
       </section>
 
       <section className="budget-workbench">
@@ -210,6 +228,18 @@ export default function BudgetPage() {
                 <input aria-label="Contingency percentage" type="range" min="5" max="35" step="1" value={scenario.contingencyPct} onChange={(event) => select("contingencyPct", Number(event.target.value))} />
                 <output>{scenario.contingencyPct}%</output>
               </div>
+            </label>
+            <label>Project tax allowance
+              <input
+                aria-label="Project tax allowance percentage"
+                type="number"
+                min="0"
+                max="25"
+                step="0.25"
+                value={budget.scenario.salesTaxPct}
+                onChange={(event) => select("salesTaxPct", Number(event.target.value))}
+              />
+              <small>{budget.scenario.salesTaxPct > 0 ? "User-stated planning allowance — not tax advice" : "0% — project sales taxes excluded"}</small>
             </label>
           </div>
           {saveProblem ? <p className="quote-problem" role="alert">{saveProblem}</p> : null}

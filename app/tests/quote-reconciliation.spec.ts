@@ -83,9 +83,13 @@ test("version two quotes bind both hashes and explain changed planning inputs", 
     },
   };
   expect(validateProjectQuote(latest).ok).toBe(true);
+  const invalidTax = structuredClone(latest);
+  invalidTax.budgetBasis.scenario.salesTaxPct = Number.POSITIVE_INFINITY;
+  expect(validateProjectQuote(invalidTax).ok).toBe(false);
+  const changedScenario = { ...defaultProjectBudgetScenario(), utilities: "off-grid" as const, finish: "elevated" as const, delivery: "full-service" as const, contingencyPct: 20, salesTaxPct: 5 };
   const changedBudget = createProjectBudget({
     document: defaultBuilderDocument(),
-    scenario: { ...defaultProjectBudgetScenario(), utilities: "off-grid", finish: "elevated", delivery: "full-service", contingencyPct: 20 },
+    scenario: changedScenario,
     region: "British Columbia",
     municipality: "Nelson",
     budgetCapCad: 600_000,
@@ -93,7 +97,7 @@ test("version two quotes bind both hashes and explain changed planning inputs", 
   const result = reconcileProjectQuote(changedBudget, latest as never, "2026-08-12T00:00:00.000Z");
   expect((result as unknown as { basisState: string }).basisState).toBe("changed");
   expect((result as unknown as { basisChanges: Array<{ field: string }> }).basisChanges.map((change) => change.field)).toEqual(expect.arrayContaining([
-    "utilities", "finish", "delivery", "contingency", "region", "municipality", "budget-cap",
+    "utilities", "finish", "delivery", "contingency", "tax", "region", "municipality", "budget-cap",
   ]));
 });
 

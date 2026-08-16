@@ -32,6 +32,8 @@ test("a project budget is bound to the exact durable design", () => {
   expect(budget.lines.length).toBeGreaterThanOrEqual(12);
   expect(budget.subtotal.low).toBeLessThan(budget.subtotal.mid);
   expect(budget.subtotal.mid).toBeLessThan(budget.subtotal.high);
+  expect((budget as unknown as { tax: { low: number; mid: number; high: number } }).tax).toEqual({ low: 0, mid: 0, high: 0 });
+  expect((budget.scenario as unknown as { salesTaxPct: number }).salesTaxPct).toBe(0);
   expect(budget.total.low).toBeLessThan(budget.total.mid);
   expect(budget.total.mid).toBeLessThan(budget.total.high);
   expect(budget.cap?.capCad).toBe(500_000);
@@ -70,9 +72,26 @@ test("the canonical budget hash changes with the complete planning basis", () =>
   const first = createProjectBudget({ document, scenario: scenario(), region: "Alberta", municipality: "Foothills County", budgetCapCad: 500_000 });
   const repeated = createProjectBudget({ document, scenario: scenario(), region: "Alberta", municipality: "Foothills County", budgetCapCad: 500_000 });
   const changed = createProjectBudget({ document, scenario: scenario({ shippingDistanceKm: 425 }), region: "Alberta", municipality: "Foothills County", budgetCapCad: 500_000 });
+  const taxScenario = { ...scenario(), salesTaxPct: 5 };
+  const taxed = createProjectBudget({ document, scenario: taxScenario, region: "Alberta", municipality: "Foothills County", budgetCapCad: 500_000 });
+  const legacyTaxScenario = scenario();
+  delete (legacyTaxScenario as Partial<ProjectBudgetScenario>).salesTaxPct;
+  const restoredLegacyTax = createProjectBudget({ document, scenario: legacyTaxScenario, region: "Alberta", municipality: "Foothills County", budgetCapCad: 500_000 });
+  const boundedTax = createProjectBudget({ document, scenario: { ...scenario(), salesTaxPct: 99 }, region: "Alberta", municipality: "Foothills County", budgetCapCad: 500_000 });
+  const invalidTax = createProjectBudget({ document, scenario: { ...scenario(), salesTaxPct: Number.NaN }, region: "Alberta", municipality: "Foothills County", budgetCapCad: 500_000 });
   const hash = (value: ProjectBudget) => (value as unknown as { budgetHash: string }).budgetHash;
   expect(hash(first)).toBe(hash(repeated));
   expect(hash(changed)).not.toBe(hash(first));
+  expect(hash(taxed)).not.toBe(hash(first));
+  expect(hash(restoredLegacyTax)).toBe(hash(first));
+  expect(restoredLegacyTax.scenario.salesTaxPct).toBe(0);
+  expect(boundedTax.scenario.salesTaxPct).toBe(25);
+  expect(invalidTax.scenario.salesTaxPct).toBe(0);
+  const tax = (taxed as unknown as { tax: { low: number; mid: number; high: number } }).tax;
+  expect(tax.mid).toBe(Math.round(((taxed.subtotal.mid + taxed.contingency.mid) * 0.05) / 50) * 50);
+  expect(taxed.total.mid).toBe(taxed.subtotal.mid + taxed.contingency.mid + tax.mid);
+  expect(taxed.assumptions.join(" ")).toMatch(/5% user-stated tax allowance|not tax advice/i);
+  expect(taxed.exclusions.join(" ")).toMatch(/property taxes/i);
 });
 
 test("a proxy plan basis remains visible and bound into design and budget hashes", () => {

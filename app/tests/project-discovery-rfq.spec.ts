@@ -90,6 +90,7 @@ test("an RFQ uses the project's persisted current budget scenario", () => {
     delivery: "full-service" as const,
     shippingDistanceKm: 680,
     contingencyPct: 24,
+    salesTaxPct: 5,
   };
   const source = createAuraProject({
     id: "project-rfq-persisted",
@@ -138,7 +139,7 @@ test("RFQ basis diagnostics identify the planning inputs changed after preparati
   const rfq = createProjectRfq({ id: "rfq-basis", project: value, budget: original, scope: "whole-home", contractorId: null, responseDueISO: null, createdAtISO: now.toISOString() });
   const current = createProjectBudget({
     document,
-    scenario: { ...defaultProjectBudgetScenario(), site: "sloped", shippingDistanceKm: 425 },
+    scenario: { ...defaultProjectBudgetScenario(), site: "sloped", shippingDistanceKm: 425, salesTaxPct: 5 },
     region: "British Columbia",
     municipality: "Nelson",
     budgetCapCad: 600_000,
@@ -150,7 +151,7 @@ test("RFQ basis diagnostics identify the planning inputs changed after preparati
   const result = diagnose(rfq, current);
   expect(result.state).toBe("changed");
   expect(result.changes.map((change) => change.field)).toEqual(expect.arrayContaining([
-    "site", "shipping", "region", "municipality", "budget-cap",
+    "site", "shipping", "tax", "region", "municipality", "budget-cap",
   ]));
 });
 
@@ -181,4 +182,7 @@ test("RFQs cannot silently use a different design or unknown scope", () => {
   const budget = createProjectBudget({ document, scenario: defaultProjectBudgetScenario(), region: "Alberta", municipality: "", budgetCapCad: null });
   expect(() => createProjectRfq({ id: "rfq-bad", project: project(), budget: { ...budget, designHash: `0x${"0".repeat(64)}` }, scope: "whole-home", contractorId: null, responseDueISO: null, createdAtISO: now.toISOString() })).toThrow(/design/i);
   expect(validateProjectRfq({ format: "aura-project-rfq", version: 1, scope: "invented" }).ok).toBe(false);
+  const invalidTax = createProjectRfq({ id: "rfq-invalid-tax", project: project(), budget, scope: "whole-home", contractorId: null, responseDueISO: null, createdAtISO: now.toISOString() });
+  invalidTax.budgetBasis.scenario.salesTaxPct = 26;
+  expect(validateProjectRfq(invalidTax).ok).toBe(false);
 });

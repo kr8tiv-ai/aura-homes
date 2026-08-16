@@ -536,6 +536,9 @@ function validateBudgetScenario(value: unknown): value is ProjectBudgetScenario 
     && ["owner-builder", "hybrid", "full-service"].includes(String(value.delivery))
     && typeof value.shippingDistanceKm === "number" && Number.isFinite(value.shippingDistanceKm) && value.shippingDistanceKm >= 0
     && typeof value.contingencyPct === "number" && Number.isFinite(value.contingencyPct) && value.contingencyPct >= 0
+    /* Absent on scenarios saved before BQ03. Zero is the only legacy default;
+       Aura never infers a tax rate from the project location. */
+    && (value.salesTaxPct === undefined || (typeof value.salesTaxPct === "number" && Number.isFinite(value.salesTaxPct) && value.salesTaxPct >= 0 && value.salesTaxPct <= 25))
     /* Absent on scenarios saved before Aug 14, 2026 — createProjectBudget
        defaults it to included (the recommended state), never a silent descope. */
     && (value.awgIncluded === undefined || typeof value.awgIncluded === "boolean");

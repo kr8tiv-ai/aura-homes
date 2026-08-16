@@ -26,6 +26,10 @@ export interface ProjectBudgetScenario {
   delivery: DeliveryMode;
   shippingDistanceKm: number;
   contingencyPct: number;
+  /** User-stated project sales-tax planning allowance. Zero means excluded.
+   * Aura does not infer a jurisdictional rate or taxable base. Scenarios
+   * saved before this field existed read as zero. */
+  salesTaxPct: number;
   /** AWG is recommended on every Aura home, not mandatory (founder decision
    * 2026-08-14). Defaults true; scenarios saved before the field existed
    * read as true. Descoping recomputes the bands from the remaining lines. */
@@ -68,6 +72,7 @@ export interface ProjectBudget {
   lines: ProjectBudgetLine[];
   subtotal: BudgetRange;
   contingency: BudgetRange;
+  tax: BudgetRange;
   total: BudgetRange;
   confidence: {
     score: number;
@@ -102,6 +107,7 @@ export type ProjectBudgetBasisChangeField =
   | "delivery"
   | "shipping"
   | "contingency"
+  | "tax"
   | "awg"
   | "region"
   | "municipality"
@@ -188,6 +194,7 @@ export function defaultProjectBudgetScenario(): ProjectBudgetScenario {
     delivery: "hybrid",
     shippingDistanceKm: 0,
     contingencyPct: 12,
+    salesTaxPct: 0,
     awgIncluded: true,
   };
 }
@@ -247,6 +254,7 @@ export function diagnoseProjectBudgetBasis(
   if (reference.scenario.delivery !== current.scenario.delivery) add("delivery", "The delivery method changed.");
   if (reference.scenario.shippingDistanceKm !== current.scenario.shippingDistanceKm) add("shipping", "The shipping distance changed.");
   if (reference.scenario.contingencyPct !== current.scenario.contingencyPct) add("contingency", "The contingency changed.");
+  if ((reference.scenario.salesTaxPct ?? 0) !== current.scenario.salesTaxPct) add("tax", "The project tax allowance changed.");
   if ((reference.scenario.awgIncluded !== false) !== (current.scenario.awgIncluded !== false)) add("awg", "The AWG water module was descoped or restored.");
   if (reference.region !== current.region) add("region", "The pricing region changed.");
   if (reference.municipality !== current.municipality) add("municipality", "The municipality changed.");
@@ -377,6 +385,9 @@ export function createProjectBudget(input: ProjectBudgetInput): ProjectBudget {
     delivery: rawScenario.delivery,
     shippingDistanceKm: boundedNumber(rawScenario.shippingDistanceKm, 0, 0, 20_000),
     contingencyPct: boundedNumber(rawScenario.contingencyPct, 12, 5, 35),
+    /* Missing means explicitly excluded, preserving legacy scenario meaning.
+       This is a user-entered planning allowance, never a statutory rate. */
+    salesTaxPct: boundedNumber(rawScenario.salesTaxPct, 0, 0, 25),
     /* Scenarios persisted before the field existed read as included — the
        recommended default, never a silent descope. */
     awgIncluded: rawScenario.awgIncluded !== false,
@@ -461,10 +472,20 @@ export function createProjectBudget(input: ProjectBudgetInput): ProjectBudget {
     subtotal.mid * scenario.contingencyPct / 100,
     subtotal.high * scenario.contingencyPct / 100,
   );
-  const total = range(
+  const taxBase = range(
     subtotal.low + contingency.low,
     subtotal.mid + contingency.mid,
     subtotal.high + contingency.high,
+  );
+  const tax = range(
+    taxBase.low * scenario.salesTaxPct / 100,
+    taxBase.mid * scenario.salesTaxPct / 100,
+    taxBase.high * scenario.salesTaxPct / 100,
+  );
+  const total = range(
+    taxBase.low + tax.low,
+    taxBase.mid + tax.mid,
+    taxBase.high + tax.high,
   );
 
   const gaps: string[] = [];
@@ -527,6 +548,7 @@ export function createProjectBudget(input: ProjectBudgetInput): ProjectBudget {
     lines,
     subtotal,
     contingency,
+    tax,
     total,
     confidence: { score: confidenceScore, label: confidenceLabel, reasons },
     gaps,
@@ -534,13 +556,18 @@ export function createProjectBudget(input: ProjectBudgetInput): ProjectBudget {
       `The range is tied to design ${hashBuilderDocument(document).slice(0, 10)} and ${Math.round(measures.areaSqFt).toLocaleString("en-CA")} sq ft of modelled floor area.`,
       `${input.region.trim() || "Alberta"} is the pricing region; supplier and trade quotes supersede these allowances.`,
       `${scenario.finish.replace("-", " ")} finish, ${scenario.delivery.replace("-", " ")} delivery and ${scenario.contingencyPct}% contingency are selected.`,
+      ...(scenario.salesTaxPct > 0
+        ? [`A ${scenario.salesTaxPct}% user-stated tax allowance is applied to subtotal plus contingency. It is not tax advice; confirm the taxable base, rebates, exemptions, registration and input-credit treatment with a qualified accountant or the relevant tax authority.`]
+        : ["Project sales taxes are excluded under the 0% planning assumption."]),
       ...(designCostBasis
         ? [`${document.planOrigin?.templateTitle ?? "The selected plan"} uses the ${designCostBasis.label}: ${designCostBasis.note}`]
         : []),
     ],
     exclusions: [
       "Land purchase price, financing costs and property taxes are excluded.",
-      "GST, municipal levies and utility-provider fees are excluded unless a line says otherwise.",
+      ...(scenario.salesTaxPct > 0
+        ? ["Municipal levies and utility-provider fees are excluded unless a line says otherwise; the user-stated tax allowance does not determine their treatment."]
+        : ["GST and other project sales taxes, municipal levies and utility-provider fees are excluded unless a line says otherwise."]),
       "No structural, energy, permit or contractor quote is implied by this planning range.",
     ],
     cap,

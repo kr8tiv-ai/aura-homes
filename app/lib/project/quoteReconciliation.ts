@@ -235,5 +235,6 @@ function validScenario(value: unknown): value is ProjectBudgetScenario {
     && ["essential", "standard", "elevated"].includes(String(value.finish))
     && ["owner-builder", "hybrid", "full-service"].includes(String(value.delivery))
     && typeof value.shippingDistanceKm === "number" && Number.isFinite(value.shippingDistanceKm) && value.shippingDistanceKm >= 0
-    && typeof value.contingencyPct === "number" && Number.isFinite(value.contingencyPct) && value.contingencyPct >= 0;
+    && typeof value.contingencyPct === "number" && Number.isFinite(value.contingencyPct) && value.contingencyPct >= 0
+    && (value.salesTaxPct === undefined || (typeof value.salesTaxPct === "number" && Number.isFinite(value.salesTaxPct) && value.salesTaxPct >= 0 && value.salesTaxPct <= 25));
 }
