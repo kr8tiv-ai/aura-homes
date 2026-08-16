@@ -1,0 +1,121 @@
+{
+  "node": "Q05A",
+  "graphVersion": "1.1",
+  "job": "Make imported quote evidence fail closed against its stored bytes and bind a current quote response to the exact prepared RFQ when one was used, while preserving legacy and explicitly unlinked quotes.",
+  "inputs": [
+    {
+      "type": "ApprovedGraph",
+      "version": "1.1",
+      "source": "docs/plans/2026-08-13-aura-full-system-graph.md",
+      "objectives": ["Q05", "Q06"]
+    },
+    {
+      "type": "ApprovalRecord",
+      "version": "1.1",
+      "source": "docs/plans/approvals/2026-08-13-aura-full-system-graph-v1.1.md"
+    },
+    {
+      "type": "VerifiedRfqFoundation",
+      "source": "docs/plans/execution/next/Q04A-rfq-artifact-package.json",
+      "implementationCommit": "4131a5214049549a03255b650efc8a3cc30fb28f"
+    }
+  ],
+  "outputs": [
+    {
+      "type": "ProjectQuoteV3",
+      "acceptance": "A new quote preserves the version-two budget basis and carries either both rfqId/rfqHash or two explicit nulls. Version-one and version-two records remain readable and visibly legacy-unbound."
+    },
+    {
+      "type": "VerifiedQuoteEvidence",
+      "acceptance": "Quote validation decodes the stored original, checks media type, exact byte size and SHA-256 against the bytes, and refuses any mismatch."
+    },
+    {
+      "type": "RfqQuoteReconciliation",
+      "acceptance": "Reconciliation reports matched, not-linked, missing, changed or legacy-unbound RFQ state without hiding line mappings, allowances, omissions or budget drift."
+    },
+    {
+      "type": "HumanQuoteCapture",
+      "acceptance": "The local quote form lets the user select a prepared RFQ or explicitly keep the quote unlinked; no file is parsed into commercial claims and nothing is sent."
+    }
+  ],
+  "dependsOn": [
+    {
+      "node": "G00",
+      "status": "verified",
+      "evidence": "Graph v1.1 approval commit 7d6028667b2ae061df9504eb3a52df091f138207"
+    },
+    {
+      "node": "Q04A",
+      "status": "implementation-verified",
+      "evidence": "Exact implementation commit 4131a5214049549a03255b650efc8a3cc30fb28f passed focused, browser, type and 607-test gates."
+    },
+    {
+      "node": "Q05",
+      "status": "partial-foundation",
+      "evidence": "Current quote records already retain line mapping, allowances, omissions and one original evidence record, but do not recompute evidence integrity or link the response to an RFQ."
+    },
+    {
+      "node": "Q06",
+      "status": "verified-foundation",
+      "evidence": "Current quote reconciliation already explains design and complete budget-basis drift."
+    }
+  ],
+  "rejectionGates": [
+    "Reject if any landing-scene, Three.js, animation, model, meadow, tree, sky, mountain, shader, camera, lighting, builder geometry, plan catalog, GLB or generated-plan asset changes.",
+    "Reject if a quote can store only one of rfqId/rfqHash, or if a linked quote can display as matched when its RFQ is absent or its canonical hash differs.",
+    "Reject if evidence validation checks only checksum syntax; the decoded original bytes, byte count, media type and SHA-256 must agree.",
+    "Reject if old version-one or version-two quotes are overwritten, silently upgraded or discarded.",
+    "Reject if an unlinked quote is presented as an RFQ response or if missing evidence is presented as verified evidence.",
+    "Reject if file content is interpreted into prices, terms or scope automatically; line mapping remains a human action.",
+    "Reject if any quote is sent, uploaded, accepted or used for payment, or if any external provider, legal, deployment, HOMES or infrastructure gate is crossed."
+  ],
+  "work": {
+    "owner": "root orchestrator",
+    "writeSet": [
+      "docs/plans/execution/next/Q05A-quote-evidence-rfq-link.json",
+      "app/lib/project/quoteReconciliation.ts",
+      "app/components/project/QuoteWorkbench.tsx",
+      "app/tests/quote-reconciliation.spec.ts",
+      "app/tests/budget-ui.spec.ts",
+      "app/tests/marketplace-ui.spec.ts"
+    ],
+    "doNotTouch": [
+      "app/components/story/**",
+      "app/lib/three/**",
+      "app/public/models/**",
+      "app/public/textures/meadow*",
+      "app/workers/meadow.worker.ts",
+      "app/lib/builder/planCatalog.ts",
+      "app/lib/builder/planCatalog.glass.ts",
+      "app/tests/plan-catalog-glass.spec.ts",
+      "app/lib/builder/spec.ts",
+      "app/lib/builder/graphGeometry.ts",
+      "app/lib/builder/drawings.ts",
+      "app/lib/builder/exportPdf.ts",
+      "contracts/**",
+      "docs/plans/2026-08-14-aura-full-system-graph-v1.2.md"
+    ]
+  },
+  "verify": {
+    "freshContextVerifier": "A verifier that did not implement Q05A must inspect the final stable snapshot when delegation is authorized.",
+    "commands": [
+      "cd app && npx playwright test tests/quote-reconciliation.spec.ts --workers=1",
+      "cd app && npx playwright test tests/budget-ui.spec.ts tests/marketplace-ui.spec.ts --config=playwright.ui.config.ts --workers=1",
+      "cd app && npx tsc --noEmit --incremental false",
+      "cd app && npm test -- --workers=1"
+    ],
+    "anchors": [
+      "One changed byte, byte count, media type or checksum makes original quote evidence invalid.",
+      "A current linked quote records the exact RFQ id and canonical hash and reconciles as matched only against that record.",
+      "Changed and missing RFQ records remain visible; explicit null linkage remains not-linked; v1/v2 remain legacy-unbound.",
+      "Line mappings, allowances, omissions, design drift and budget drift retain their existing behavior.",
+      "No changed path is under the frozen 3D, animation, model, meadow, worker, drawing-engine or builder-geometry sets."
+    ]
+  },
+  "repair": {
+    "limit": 1,
+    "scope": "Only Q05A quote versioning, evidence integrity, RFQ-link reconciliation, local capture UI or focused tests may be repaired. A second failure returns the node to blocked."
+  },
+  "sideEffect": "local",
+  "status": "manifest-defined"
+}
