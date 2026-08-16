@@ -135,8 +135,25 @@ test("project land and contractor choices become a hash-bound RFQ", async ({ pag
   await page.getByRole("button", { name: "Prepare RFQ package" }).click();
   await expect(page.locator(".rfq-card").getByText("Shell + envelope", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Download JSON package" })).toBeVisible();
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Build complete package" }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/\.aura-rfq-package\.json$/);
+  const path = await download.path();
+  expect(path).not.toBeNull();
+  const downloaded = JSON.parse(await (await import("node:fs/promises")).readFile(path!, "utf8"));
+  expect(downloaded.format).toBe("aura-project-rfq-package");
+  expect(downloaded.artifacts.map((artifact: { id: string }) => artifact.id)).toEqual([
+    "rfq-json",
+    "quantities-json",
+    "drawing-pdf",
+  ]);
+  const pdf = downloaded.artifacts.find((artifact: { id: string }) => artifact.id === "drawing-pdf");
+  expect(Buffer.from(pdf.content, "base64").subarray(0, 5).toString("ascii")).toBe("%PDF-");
+  await expect(page.getByText("Complete package verified locally")).toBeVisible();
   await page.reload();
   await expect(page.getByRole("button", { name: "Download JSON package" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Build complete package" })).toBeVisible();
 });
 
 test("the buy catalog renders the honest card hierarchy with no ranking and no routing detail", async ({ page }) => {

@@ -29,6 +29,8 @@ export default function RfqWorkbench() {
   const [responseDue, setResponseDue] = useState("");
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [packageBusy, setPackageBusy] = useState<string | null>(null);
+  const [packageNotices, setPackageNotices] = useState<Record<string, string>>({});
   const records = useMemo(() => project ? projectDiscoveryRecords<ContractorProfile>(project, "contractors") : [], [project]);
   const contractorById = new Map(records.map((record) => [record.subjectId, record.data]));
   const shortlist = (project?.discovery.contractors.shortlist ?? []).map((id) => contractorById.get(id)).filter((item): item is ContractorProfile => !!item);
@@ -58,6 +60,25 @@ export default function RfqWorkbench() {
     setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 
+  async function downloadCompletePackage(rfq: ProjectRfq) {
+    if (!project || !budget) { setProblem("Open the RFQ from its project before building the complete package."); return; }
+    if (rfq.version !== 2) { setProblem("Prepare a current RFQ before building the complete package."); return; }
+    setPackageBusy(rfq.id); setProblem(null);
+    try {
+      const { buildProjectRfqPackage, validateProjectRfqPackage } = await import("@/lib/project/rfqPackage");
+      const built = await buildProjectRfqPackage({ project, budget, rfq });
+      const verified = await validateProjectRfqPackage(built.package);
+      if (!verified.ok) throw new Error(verified.problem);
+      const { downloadArtifact } = await import("@/lib/builder/exportSpec");
+      if (!downloadArtifact(built.artifact)) throw new Error("This browser could not start the local download.");
+      setPackageNotices((current) => ({ ...current, [rfq.id]: "Complete package verified locally — 3 checksummed artifacts; nothing was sent." }));
+    } catch (error) {
+      setProblem(error instanceof Error ? error.message : String(error));
+    } finally {
+      setPackageBusy(null);
+    }
+  }
+
   return (
     <section className="rfq-workbench">
       <div className="budget-lines-head"><div><p className="aura-label">Comparable procurement</p><h2>One scope. Same questions.</h2></div><p className="quote-workbench-intro">Send every bidder the same design hash, line-item basis, assumptions, exclusions and response template.</p></div>
@@ -79,7 +100,13 @@ export default function RfqWorkbench() {
               <h3>{rfq.contractorId ? contractorById.get(rfq.contractorId)?.displayName ?? "Assigned contractor" : "Open package"}</h3>
               <p>{rfq.designSummary.floorAreaSqFt.toLocaleString("en-CA")} sq ft · {rfq.budgetLines.length} modelled scope{rfq.budgetLines.length === 1 ? "" : "s"} · {rfq.designHash.slice(0, 12)}…</p>
               <ul>{rfq.requestedInclusions.map((item) => <li key={item}>{item}</li>)}</ul>
-              <div className="rfq-card-actions"><button type="button" onClick={() => download(rfq)}>Download JSON package</button><span>{rfq.canonicalHash.slice(0, 15)}…</span></div>
+              <div className="rfq-card-actions">
+                <button type="button" onClick={() => download(rfq)}>Download JSON package</button>
+                <button type="button" disabled={packageBusy === rfq.id || rfq.version !== 2} onClick={() => void downloadCompletePackage(rfq)}>{packageBusy === rfq.id ? "Building complete package…" : "Build complete package"}</button>
+                <span>{rfq.canonicalHash.slice(0, 15)}…</span>
+              </div>
+              <p className="rfq-package-note">Complete package: exact RFQ and quantities plus an embedded vector drawing PDF, generated locally only when you press the button.</p>
+              {packageNotices[rfq.id] ? <p role="status" className="rfq-package-note">{packageNotices[rfq.id]}</p> : null}
             </article>
           ))}
         </div>

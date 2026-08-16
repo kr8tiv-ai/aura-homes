@@ -9,6 +9,7 @@ import {
   upsertProjectDiscoveryRecord,
 } from "@/lib/project/discoveryRecord";
 import { createProjectRfq, validateProjectRfq, type ProjectRfq } from "@/lib/project/rfq";
+import { buildProjectRfqPackage, validateProjectRfqPackage } from "@/lib/project/rfqPackage";
 import * as projectRfq from "@/lib/project/rfq";
 import type { ContractorProfile } from "@/lib/marketplace/discovery";
 
@@ -49,7 +50,7 @@ test("discovery records preserve provenance and project shortlists are determini
   expect(projectJourney(twice).steps.find((step) => step.id === "team")?.complete).toBe(false);
 });
 
-test("an RFQ binds scope, design, budget and shortlisted discovery subjects", () => {
+test("an RFQ binds scope, design, budget and shortlisted discovery subjects", async () => {
   let value = project();
   value = setProjectShortlist(value, "land", "parcel-17", true, now);
   value = setProjectShortlist(value, "contractors", contractor.id, true, now);
@@ -79,6 +80,48 @@ test("an RFQ binds scope, design, budget and shortlisted discovery subjects", ()
   expect(rfq.responseTemplate.join(" ")).toMatch(/price|schedule|exclusions/i);
   expect(rfq.canonicalHash).toMatch(/^0x[a-f0-9]{64}$/);
   expect(validateProjectRfq(rfq).ok).toBe(true);
+
+  const built = await buildProjectRfqPackage({ project: value, budget, rfq });
+  expect(built.package.format).toBe("aura-project-rfq-package");
+  expect(built.package.version).toBe(1);
+  expect(built.package.packageHash).toMatch(/^0x[a-f0-9]{64}$/);
+  expect(built.package.artifacts.map((artifact) => artifact.id)).toEqual([
+    "rfq-json",
+    "quantities-json",
+    "drawing-pdf",
+  ]);
+  const drawing = built.package.artifacts.find((artifact) => artifact.id === "drawing-pdf");
+  expect(drawing?.encoding).toBe("base64");
+  expect(atob(drawing?.content ?? "").startsWith("%PDF-")).toBe(true);
+  expect(built.package.manifest).toEqual(built.package.artifacts.map(({ content: _content, ...entry }) => entry));
+  expect((await validateProjectRfqPackage(built.package)).ok).toBe(true);
+
+  const changed = structuredClone(built.package);
+  changed.artifacts[0].content = `${changed.artifacts[0].content} `;
+  const changedResult = await validateProjectRfqPackage(changed);
+  expect(changedResult.ok).toBe(false);
+  if (!changedResult.ok) expect(changedResult.problem).toMatch(/sha-256|byte length/i);
+
+  const changedManifest = structuredClone(built.package);
+  changedManifest.manifest[0].sha256 = "0".repeat(64);
+  const changedManifestResult = await validateProjectRfqPackage(changedManifest);
+  expect(changedManifestResult.ok).toBe(false);
+  if (!changedManifestResult.ok) expect(changedManifestResult.problem).toMatch(/manifest/i);
+
+  const changedPackageHash = structuredClone(built.package);
+  changedPackageHash.packageHash = `0x${"0".repeat(64)}`;
+  const changedPackageHashResult = await validateProjectRfqPackage(changedPackageHash);
+  expect(changedPackageHashResult.ok).toBe(false);
+  if (!changedPackageHashResult.ok) expect(changedPackageHashResult.problem).toMatch(/package hash/i);
+
+  const staleBudget = { ...budget, budgetHash: `0x${"0".repeat(64)}` as `0x${string}` };
+  await expect(buildProjectRfqPackage({ project: value, budget: staleBudget, rfq })).rejects.toThrow(/budget hash/i);
+
+  const future = structuredClone(built.package) as unknown as Record<string, unknown>;
+  future.version = 2;
+  const futureResult = await validateProjectRfqPackage(future);
+  expect(futureResult.ok).toBe(false);
+  if (!futureResult.ok) expect(futureResult.problem).toMatch(/newer version/i);
 });
 
 test("an RFQ uses the project's persisted current budget scenario", () => {
