@@ -19,12 +19,13 @@ import { FDWR_MAX } from "@/lib/design/materials";
 import { formatFeetInches } from "@/lib/units";
 
 test("the plan library is substantial, deterministic and contains licensed open work", () => {
-  // Raised from 25 when the thirty-plan Nordic glass set landed (PL01), and
-  // from 55 to 72 when PL03's seventeen landed. The bound is a floor, not the
-  // count — the count lives in the array. A floor left behind the library
-  // stops discriminating, which is why it moves with each wave rather than
-  // being treated as permanent.
-  expect(PLAN_TEMPLATES.length).toBeGreaterThanOrEqual(72);
+  // Raised from 25 when the thirty-plan Nordic glass set landed (PL01), from
+  // 55 to 72 when PL03's seventeen landed, and from 72 to 87 when PL04's
+  // fifteen glass plans mounted. The bound is a floor, not the count — the
+  // count lives in the array. A floor left behind the library stops
+  // discriminating, which is why it moves with each wave rather than being
+  // treated as permanent.
+  expect(PLAN_TEMPLATES.length).toBeGreaterThanOrEqual(87);
   expect(new Set(PLAN_TEMPLATES.map((plan) => plan.id)).size).toBe(PLAN_TEMPLATES.length);
   expect(PLAN_TEMPLATES.filter((plan) => plan.source.kind === "aura-authored").length).toBeGreaterThanOrEqual(61);
   expect(PLAN_TEMPLATES.filter((plan) => plan.source.kind === "licensed-adaptation").length).toBeGreaterThanOrEqual(3);
