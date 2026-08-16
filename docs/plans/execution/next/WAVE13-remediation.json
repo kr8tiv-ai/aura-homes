@@ -36,11 +36,10 @@
     "note": "Every one of these was re-run and written down rather than derived. The counter's own comment says why: a number nobody checked against the thing it counts is how the README got its numbers wrong in the first place."
   },
 
-  "stillOpen": [
-    "OPEN01: `grabPx={5}` is stale (live `OPENING_GRAB_PX` is 12, a 24 px ring). The remaining hole is that the gate measures the ring's box, not that a pointer on the ring edge actually hits.",
-    "PL02 (open since wave 8): `programme()` includes `plan.sleeping`, free prose, so one appended character acquits a padded clone. The real fix is structured sleeping data — a loft is a fact about a building and deserves a field, not a sentence. Reverting it collides two honest USDA adaptations; the reason is commented at the code."
-  ],
+  "stillOpen": [],
   "closedThisLoop": [
-    "AI01 quiet-state demo path: the empty sidebar now names the highest-ratio catalog plan that actually produces a glazing card (`copilotQuietDemo` over `PLAN_TEMPLATES`). The default document is still uncarded. PLAN-LIBRARY-SOURCES §11.1 already carries the 87-plan snapshot banner."
+    "AI01 quiet-state demo path: the empty sidebar now names the highest-ratio catalog plan that actually produces a glazing card (`copilotQuietDemo` over `PLAN_TEMPLATES`). The default document is still uncarded. PLAN-LIBRARY-SOURCES §11.1 already carries the 87-plan snapshot banner.",
+    "OPEN01 pointer reachability: a real `elementFromPoint` probe now hits the slide ring at centre and at the edge, and misses past the radius. The box-size gate stays; this is the leftover it did not prove.",
+    "PL02 sleeping facts: `programme()` no longer concatenates the sleeping sentence. It uses loft / loft role / enclosure / studio / cabins / alcoves / suite derived from that sentence, so appending an 's' cannot acquit a clone, and ridge/postcard, postcard/lakeview, and libertiny/bunkhouse still separate."
   ]
 }
