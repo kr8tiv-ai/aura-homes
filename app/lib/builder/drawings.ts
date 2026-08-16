@@ -54,9 +54,15 @@
    this repo's own port of its Python design service.
    =========================================================================== */
 
+import type { BuildingGraph } from "@/lib/builder/buildingGraph";
 import type { HomeSpec } from "@/lib/builder/spec";
-import { resolveLegacyGeometryExportSource, type BuilderExportSource } from "./exportSource";
+import {
+  resolveBuilderExportSource,
+  resolveLegacyGeometryExportSource,
+  type BuilderExportSource,
+} from "./exportSource";
 
+import { buildHomeModelFromGraph } from "./drawings/graphModel";
 import { buildHomeModel, type HomeModel } from "./drawings/model";
 import {
   buildSheets,
@@ -115,9 +121,32 @@ export type {
  * Total: it never throws for a bad spec. A model with no volumes returns eight
  * sheets that say so.
  */
+function graphFromSource(source: BuilderExportSource): BuildingGraph | null {
+  if (
+    source &&
+    typeof source === "object" &&
+    "geometry" in source &&
+    source.geometry &&
+    typeof source.geometry === "object" &&
+    "kind" in source.geometry &&
+    source.geometry.kind === "building-graph" &&
+    "graph" in source.geometry
+  ) {
+    return source.geometry.graph;
+  }
+  return null;
+}
+
 export function drawingSet(input: DrawingSourceInput): DrawingSetResult {
   if ("document" in input) {
     const { document, ...facts } = input;
+    const graph = graphFromSource(document);
+    if (graph) {
+      /* EX03: draw the graph. Do not substitute the frozen recovery spec. */
+      const { spec } = resolveBuilderExportSource(document);
+      const model = buildHomeModelFromGraph(graph, spec);
+      return buildSheets({ ...facts, spec }, model);
+    }
     const { spec } = resolveLegacyGeometryExportSource(document);
     const model = buildHomeModel(spec);
     return buildSheets({ ...facts, spec }, model);

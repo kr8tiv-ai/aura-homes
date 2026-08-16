@@ -567,8 +567,10 @@ function reducer(state: EditorState, action: Action): EditorState {
    showing a stale sheet as though it were current. */
 interface Drawn {
   document: BuilderDocument;
-  /** the plan engine's sheet, plus the account of what the translation cost */
-  handoff: PlanHandoff;
+  /** the plan engine's sheet, plus the account of what the translation cost.
+   *  Null when the set was drawn from a planar graph — the engine solves a
+   *  rectangle from HomeSpec, which is the frozen recovery copy. */
+  handoff: PlanHandoff | null;
   /** the eight-sheet set drawn from the model itself */
   set: DrawingSetResult;
   /** the issue date stamped into every title block */
@@ -1187,16 +1189,24 @@ export default function BuilderApp() {
   /* ---- the drawing */
   const stale = drawn !== null && drawn.document !== state.doc;
   const generate = useCallback(() => {
-    if (state.doc.geometry.kind === "building-graph") return;
-    const handoff = planFromSpec(spec);
+    const dateISO = new Date().toISOString().slice(0, 10);
+    const siteParcel = state.doc.site?.parcel ?? null;
+    const parcel = siteParcel
+      ? {
+          lotWidthFt: siteParcel.lotWidthFt,
+          lotDepthFt: siteParcel.lotDepthFt,
+          frontSetbackFt: siteParcel.frontSetbackFt,
+          sideSetbackFt: siteParcel.sideSetbackFt,
+          rearSetbackFt: siteParcel.rearSetbackFt,
+        }
+      : null;
 
-    /* The plan engine's solved rooms are handed STRAIGHT to the drawing set,
-       so sheet A3 carries the same room program the floor plan below it does.
-       Two drawings of one house that disagree about the rooms would be worse
-       than one drawing; `DrawingRooms` is structurally typed for exactly this
-       handoff, and the plan engine's frame (feet, origin top-left, +y down) is
-       already the frame the sheet wants. */
-    const plan = handoff.response?.plan ?? null;
+    const graph = state.doc.geometry.kind === "building-graph";
+    /* The plan engine solves a rectangle from HomeSpec. After conversion that
+       spec is a frozen recovery copy, so it is not asked. Rooms stay null and
+       the eight sheets consume the graph. */
+    const handoff = graph ? null : planFromSpec(spec);
+    const plan = handoff?.response?.plan ?? null;
     const rooms: DrawingRooms | null = plan
       ? {
           envelopeWidthFt: plan.width,
@@ -1204,19 +1214,6 @@ export default function BuilderApp() {
           rooms: plan.rooms.map((r) => ({ name: r.name, x: r.x, y: r.y, w: r.w, h: r.h })),
         }
       : null;
-
-    /* THE ONE CLOCK READ IN THE BUILDER, and it is not geometry: it is the
-       issue date in a title block, which is a fact about when a drawing was
-       produced. The drawing module refuses to read a clock itself precisely so
-       that this is a parameter — hand it the same date and the same spec and
-       the SVG is byte-identical. */
-    const dateISO = new Date().toISOString().slice(0, 10);
-
-    /* B-P1: the A1 SITE PLAN sheet has always known how to draw a parcel and
-       has always been handed nothing, so it printed its honest blank. The
-       Site step's answers reach it here — and only when they are real, so
-       an absent site still gets the blank rather than an invented lot. */
-    const siteParcel = state.doc.site?.parcel ?? null;
 
     setDrawn({
       document: state.doc,
@@ -1226,15 +1223,7 @@ export default function BuilderApp() {
         dateISO,
         projectName: spec.name,
         rooms,
-        parcel: siteParcel
-          ? {
-              lotWidthFt: siteParcel.lotWidthFt,
-              lotDepthFt: siteParcel.lotDepthFt,
-              frontSetbackFt: siteParcel.frontSetbackFt,
-              sideSetbackFt: siteParcel.sideSetbackFt,
-              rearSetbackFt: siteParcel.rearSetbackFt,
-            }
-          : null,
+        parcel,
       }),
       dateISO,
     });
@@ -1303,8 +1292,7 @@ export default function BuilderApp() {
        me see the plan". The set is generated on arrival when there is none —
        once, and never again on its own, because a REDRAW is a judgement about
        a model that has since moved and the pane already offers that as a
-       press. `generate` is a no-op in graph mode, where the sheets honestly
-       cannot be drawn at all. */
+       press. In graph mode the sheets now consume the graph itself. */
     if (drawn === null) generate();
   }, [drawn, generate]);
 
@@ -2171,17 +2159,6 @@ export default function BuilderApp() {
               <Button onClick={leavePlanRoute}>Back to {activeGuidedStep.label}</Button>
             </div>
           ) : null}
-          {graphMode ? (
-            <GraphPending
-              feature="Professional drawings"
-              /* Gate 3 of the VW03 contract: the block stays, and it names what
-                 the person can do instead of leaving them at a dead end. Both
-                 sentences are things this build actually offers — the
-                 conversion is an ordinary undoable edit (see the Shape pane's
-                 own copy), and `.aura.json` carries the graph itself. */
-              instead="Undo returns through the conversion to the recovery HomeSpec, and the eight-sheet set draws from that. To keep the graph and still hand somebody a file today, the Export workspace writes .aura.json, which carries the exact planar geometry."
-            />
-          ) : (
           <>
           <section className="rounded-xl border border-aura-emerald p-6">
             <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -2193,13 +2170,9 @@ export default function BuilderApp() {
               ) : null}
             </div>
             <p className="mt-3 max-w-3xl text-sm leading-relaxed text-aura-text/75">
-              The same object you have been dragging goes two ways at once. To the deterministic plan
-              engine — the one the design page uses — which solves a room program and returns a
-              dimensioned sheet at 1/4&quot; = 1&apos;-0&quot;, with every cost of that translation
-              itemised, because it solves ONE rectangle and you may well have built something else. And
-              to the drawing engine, which draws your model directly: site, foundation, roof plan, all
-              four elevations, a building section and the schedules. Both run in this browser — no
-              server, no key, no wait.
+              {graphMode
+                ? "These eight sheets are drawn from the planar graph on screen — slabs, walls and openings — not from the frozen recovery HomeSpec. The plan engine is not asked to invent a rectangle. Elevations still silhouette each storey as its bounding box; that limit is named on the cover."
+                : "The same object you have been dragging goes two ways at once. To the deterministic plan engine — the one the design page uses — which solves a room program and returns a dimensioned sheet at 1/4\" = 1'-0\", with every cost of that translation itemised, because it solves ONE rectangle and you may well have built something else. And to the drawing engine, which draws your model directly: site, foundation, roof plan, all four elevations, a building section and the schedules. Both run in this browser — no server, no key, no wait."}
             </p>
             <div className="mt-5 flex flex-wrap items-center gap-3">
               <button
@@ -2236,9 +2209,19 @@ export default function BuilderApp() {
 
           {drawn ? (
             <>
-              {/* The account of the translation leads, then the plan engine's own
-                  sheet, then the eight sheets drawn from the model itself. */}
-              <PlanSheet handoff={drawn.handoff} />
+              {drawn.handoff ? (
+                <PlanSheet handoff={drawn.handoff} />
+              ) : (
+                <section className="aura-panel mt-8 p-6">
+                  <p className="aura-label">Drawn from the planar graph</p>
+                  <p className="mt-3 max-w-3xl text-sm leading-relaxed text-aura-text/70">
+                    The plan engine solves one rectangle from a HomeSpec. After conversion that
+                    spec is a frozen recovery copy, so it was not asked. The eight sheets below
+                    are inked from the graph&rsquo;s own slabs and walls. Elevations still
+                    silhouette each storey as its bounding box; that limit is named on the cover.
+                  </p>
+                </section>
+              )}
               {/* The hash is taken over the document the SET was generated
                   from — `drawn.document`, not the live one — so a PDF saved
                   after a later edit still identifies the design it actually
@@ -2281,7 +2264,6 @@ export default function BuilderApp() {
             </div>
           ) : null}
           </>
-          )}
           </Pane>
 
           {/* ============================================================= EXPORT */}
