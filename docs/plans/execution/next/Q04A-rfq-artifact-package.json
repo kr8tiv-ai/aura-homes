@@ -1,0 +1,121 @@
+{
+  "node": "Q04A",
+  "graphVersion": "1.1",
+  "job": "Turn each prepared version-two RFQ into one locally generated, verifiable JSON artifact package containing the exact RFQ, a standalone quantity schedule, and a real vector drawing-set PDF, all bound by a manifest and checksums.",
+  "inputs": [
+    {
+      "type": "ApprovedGraph",
+      "version": "1.1",
+      "source": "docs/plans/2026-08-13-aura-full-system-graph.md",
+      "objectives": ["Q03", "Q04", "Q06"]
+    },
+    {
+      "type": "ApprovalRecord",
+      "version": "1.1",
+      "source": "docs/plans/approvals/2026-08-13-aura-full-system-graph-v1.1.md"
+    },
+    {
+      "type": "VerifiedFoundations",
+      "sources": [
+        "app/lib/project/rfq.ts",
+        "app/lib/builder/drawings.ts",
+        "app/lib/builder/exportPdf.ts",
+        "docs/plans/execution/next/EX04-pdf-drawing-set.json",
+        "docs/plans/execution/next/BQ03-tax-basis.json"
+      ]
+    }
+  ],
+  "outputs": [
+    {
+      "type": "ProjectRfqArtifactPackageV1",
+      "acceptance": "The package carries the validated version-two RFQ, its schedule, assumptions, exclusions, response template, design/budget/RFQ hashes, quantity schedule, drawing PDF and an exact artifact manifest."
+    },
+    {
+      "type": "IndependentPackageReader",
+      "acceptance": "The reader rejects future versions, stale project/budget inputs, malformed PDF bytes, changed artifact content, incorrect byte counts or SHA-256 values, manifest drift and package-hash mismatch."
+    },
+    {
+      "type": "HumanTriggeredLocalDownload",
+      "acceptance": "A prepared RFQ exposes a clearly labelled complete-package download. Nothing is generated before the press and nothing is sent or uploaded."
+    }
+  ],
+  "dependsOn": [
+    {
+      "node": "G00",
+      "status": "verified",
+      "evidence": "Graph v1.1 approval commit 7d6028667b2ae061df9504eb3a52df091f138207"
+    },
+    {
+      "node": "Q03",
+      "status": "implemented-foundation",
+      "evidence": "Version-two hash-bound comparable RFQs are implemented and served."
+    },
+    {
+      "node": "Q04",
+      "status": "partial-foundation",
+      "evidence": "The project already has deterministic SVG drawings, a vector PDF writer and professional handoff contracts; the RFQ surface does not yet assemble them."
+    },
+    {
+      "node": "Q06",
+      "status": "verified-foundation",
+      "evidence": "BQ03 completed design/site/utility/region/delivery/finish/shipping/tax/contingency invalidation."
+    }
+  ],
+  "rejectionGates": [
+    "Reject if any landing-scene, Three.js, animation, model, meadow, tree, sky, mountain, shader, camera, lighting, builder geometry, plan catalog, GLB or generated-plan asset changes.",
+    "Reject if package generation reads a clock, randomness or live project state not already bound by the RFQ; the RFQ createdAtISO is the reproducible issue time.",
+    "Reject if a version-one RFQ, mismatched project id/design hash, or changed budget hash can produce a current package.",
+    "Reject if the PDF is a placeholder, raster screenshot or unverified filename; it must come from the existing vector drawing-set writer and carry the RFQ design hash.",
+    "Reject if any artifact content, byte length or SHA-256 can change without package verification failing, or if the manifest can disagree with the artifacts.",
+    "Reject if a package is generated automatically, sent, uploaded, emailed or used to contact a provider without the user's explicit download press.",
+    "Reject if any external provider, payment, legal, HOMES, deployment, outreach or infrastructure gate is crossed."
+  ],
+  "work": {
+    "owner": "root orchestrator",
+    "writeSet": [
+      "docs/plans/execution/next/Q04A-rfq-artifact-package.json",
+      "app/lib/project/rfqPackage.ts",
+      "app/components/contractors/RfqWorkbench.tsx",
+      "app/tests/project-discovery-rfq.spec.ts",
+      "app/tests/marketplace-ui.spec.ts"
+    ],
+    "doNotTouch": [
+      "app/components/story/**",
+      "app/lib/three/**",
+      "app/public/models/**",
+      "app/public/textures/meadow*",
+      "app/workers/meadow.worker.ts",
+      "app/lib/builder/planCatalog.ts",
+      "app/lib/builder/planCatalog.glass.ts",
+      "app/tests/plan-catalog-glass.spec.ts",
+      "app/lib/builder/spec.ts",
+      "app/lib/builder/graphGeometry.ts",
+      "app/lib/builder/drawings.ts",
+      "app/lib/builder/exportPdf.ts",
+      "contracts/**",
+      "docs/plans/2026-08-14-aura-full-system-graph-v1.2.md"
+    ]
+  },
+  "verify": {
+    "freshContextVerifier": "A verifier that did not implement Q04A must inspect the final stable snapshot when delegation is authorized.",
+    "commands": [
+      "cd app && npx playwright test tests/project-discovery-rfq.spec.ts --workers=1",
+      "cd app && npx playwright test tests/marketplace-ui.spec.ts --config=playwright.ui.config.ts --workers=1",
+      "cd app && npx tsc --noEmit --incremental false",
+      "cd app && npm test -- --workers=1"
+    ],
+    "anchors": [
+      "The package contains exactly one validated RFQ JSON artifact, one quantity JSON artifact and one real PDF artifact beginning with %PDF-.",
+      "Every manifest SHA-256 and byte length is recomputed from its artifact content by the reader.",
+      "Changing one byte, one manifest entry, the RFQ, or the package hash is refused by name.",
+      "The browser download is absent until an RFQ exists and happens only after the user presses the complete-package control.",
+      "No changed path is under the frozen 3D, animation, model, meadow, worker, drawing-engine or plan-geometry sets."
+    ]
+  },
+  "repair": {
+    "limit": 1,
+    "scope": "Only Q04A package assembly, integrity verification, download UX or focused tests may be repaired. A second failure returns the node to blocked without touching frozen visual or geometry paths."
+  },
+  "sideEffect": "local",
+  "status": "manifest-defined"
+}
