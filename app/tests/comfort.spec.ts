@@ -3,11 +3,17 @@ import { expect, test } from "playwright/test";
 import {
   NEUTRAL_BAND,
   comfortReport,
+  comfortReportForDocument,
+  comfortRoomsFromGraph,
   comfortSentence,
   sensationWord,
 } from "@/lib/builder/comfort";
 import { defaultSpec } from "@/lib/builder/spec";
-import { defaultBuilderDocument, hashBuilderDocument } from "@/lib/builder/document";
+import {
+  convertBuilderDocumentToGraph,
+  defaultBuilderDocument,
+  hashBuilderDocument,
+} from "@/lib/builder/document";
 import { homeToIfc } from "@/lib/builder/exportPro";
 import { specToIfcJson } from "@/lib/builder/exportSemantic";
 
@@ -35,6 +41,27 @@ test("sleeping rooms are reported as unmodelled rather than meeting or missing",
   expect(sentence).toContain(`${modelled.length} modelled rooms`);
   expect(sentence).toContain(`${sleeping.length} sleeping room`);
   expect(sentence).toContain("unmodelled");
+});
+
+test("a graph document gets comfort from named graph rooms, not the frozen spec", () => {
+  const converted = convertBuilderDocumentToGraph(defaultBuilderDocument(), 0.5);
+  expect(converted.ok).toBe(true);
+  if (!converted.ok) return;
+  const set = comfortRoomsFromGraph(converted.document.geometry.kind === "building-graph"
+    ? converted.document.geometry.graph
+    : (() => {
+        throw new Error("conversion did not produce a graph");
+      })());
+  expect(set.rooms.length).toBeGreaterThan(0);
+  expect(set.blockedReason).toBeNull();
+
+  const report = comfortReportForDocument(converted.document);
+  expect(report.available).toBe(true);
+  expect(report.rooms.length).toBe(set.rooms.length);
+  const graphRooms = converted.document.geometry.kind === "building-graph"
+    ? converted.document.geometry.graph.storeys.reduce((n, storey) => n + storey.rooms.length, 0)
+    : 0;
+  expect(report.rooms.length).toBe(graphRooms);
 });
 
 test("the sensation wording includes both edges of the neutral band", () => {

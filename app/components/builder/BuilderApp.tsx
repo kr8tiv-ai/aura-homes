@@ -157,7 +157,7 @@ import type * as THREE from "three";
 import {
   SEASON_LABEL,
   comfortPlates,
-  comfortReport,
+  comfortReportForDocument,
   fmt0,
   fmt1,
   type Season,
@@ -1047,10 +1047,10 @@ export default function BuilderApp() {
          `null` here is not "no comfort in the export": `exportPro` and
          `exportSemantic` derive the defaults when the option is OMITTED, so
          the export row hands them `undefined` rather than this null. */
-  const comfortWanted = !graphMode && (heatmap || workspace === "comfort" || workspace === "export");
+  const comfortWanted = heatmap || workspace === "comfort" || workspace === "export";
   const comfort = useMemo(
-    () => (comfortWanted ? comfortReport(spec, comfortSettings) : null),
-    [comfortWanted, spec, comfortSettings],
+    () => (comfortWanted ? comfortReportForDocument(state.doc, comfortSettings) : null),
+    [comfortWanted, comfortSettings, state.doc],
   );
 
   /* The overlay the viewport draws, built here so the frame change and the
@@ -2112,9 +2112,7 @@ export default function BuilderApp() {
               season and the heatmap all live in `BuilderApp`, so leaving and
               coming back finds everything exactly as it was. */}
           <Pane on={workspace === "comfort"}>
-            {graphMode ? (
-              <GraphPending feature="Comfort spaces" />
-            ) : workspace === "comfort" && comfort ? (
+            {workspace === "comfort" && comfort ? (
               <ComfortPanel
                 report={comfort}
                 settings={comfortSettings}
