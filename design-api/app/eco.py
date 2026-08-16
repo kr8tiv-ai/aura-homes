@@ -9,10 +9,12 @@ docs/research/FOUNDATIONS-NO-CONCRETE.md, not invented here:
     standard. Grouted pile variants are excluded because they reintroduce
     cementitious material into the ground. Hempcrete is NON-STRUCTURAL infill
     only — it is never a foundation and never a structural wall.
-  · AWG on every home, honestly labelled. Condenser cutoff is ~15 degC /
-    30% RH, so outdoor winter output in zone 7A/7B/8 is ZERO litres. A cistern
-    or well carries winter, always. The module ships anyway as the summer
-    producer (10-20 L/day, June-September).
+  · AWG recommended on every home, honestly labelled — recommended rather
+    than mandatory since 2026-08-14; the Aura reference configuration keeps
+    it, so no number here moves. Condenser cutoff is ~15 degC / 30% RH, so
+    outdoor winter output in zone 7A/7B/8 is ZERO litres. A cistern or well
+    carries winter, always. The module is carried as the summer producer
+    (10-20 L/day, June-September).
   · Glass-forward, but code-legal. FDWR <= 22% on the NBC 9.36 prescriptive
     path, oriented for winter solar gain.
   · Solar + LiFePO4 + an auto-start generator that is NOT optional in an

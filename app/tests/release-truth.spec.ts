@@ -79,6 +79,27 @@ test("X Layer copy names the valueless test token and the currently empty public
   }
 });
 
+test("AWG is recommended, never a present-tense mandate on every home", () => {
+  /* Audit #10 finding 5, fourth consecutive AWG-wording audit. Ban the
+     retired mandate in the files that discuss AWG as doctrine. Do not ban
+     "every home" globally — the hot-tub lifestyle line is a different claim. */
+  const files = [
+    "app/lib/design/materials.ts",
+    "design-api/app/eco.py",
+    "docs/FEASIBILITY.md",
+    "docs/VISION.md",
+  ];
+  for (const path of files) {
+    const text = readRepo(path);
+    expect(text, path).not.toMatch(/AWG on every home/i);
+    expect(text, path).not.toMatch(/AWG (?:module|unit) is standard on every home/i);
+    expect(text, path).not.toMatch(/the AWG module is standard on every home/i);
+    expect(text, path).not.toMatch(/AWG unit \*\*standard on every/i);
+  }
+  expect(readRepo("app/lib/design/materials.ts")).toMatch(/AWG RECOMMENDED/i);
+  expect(readRepo("design-api/app/eco.py")).toMatch(/AWG recommended/i);
+});
+
 test("roadmap and submission use the canonical explorer and experimental-testnet wording", () => {
   const roadmap = readRepo("app/app/roadmap/page.tsx");
   const submission = readRepo("docs/SUBMISSION.md");
