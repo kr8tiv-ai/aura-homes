@@ -9,6 +9,7 @@ import { checkOpening } from "@/components/builder/openingEdit";
 import {
   COPILOT_ENGINE,
   applyPreparedAction,
+  copilotQuietDemo,
   defaultCoPilotBasis,
   previewPreparedAction,
   readCoPilot,
@@ -16,7 +17,9 @@ import {
   type CoPilotReport,
   type CoPilotSuggestion,
 } from "@/lib/builder/copilot";
+import { PLAN_TEMPLATES } from "@/lib/builder/planCatalog";
 import {
+  builderDocumentFromLegacySpec,
   convertBuilderDocumentToGraph,
   defaultBuilderDocument,
   validateBuilderDocument,
@@ -801,4 +804,31 @@ test("a design with nothing wrong gets no cards and says what it looked at", () 
   expect(markup).toContain('data-copilot-open="0"');
   expect(markup).toContain("Nothing this build can check has anything to say");
   expect(markup).toContain("Looked at, and not offered");
+});
+
+test("the quiet sidebar names a catalog plan that actually produces a glazing card", () => {
+  /* WAVE13 leftover: an empty first impression is correct for the default
+     home and also unconvincing. The sentence must name a live catalog plan
+     that this advisor would actually card — derived from PLAN_TEMPLATES and
+     readCoPilot, never a hand-typed id that can go stale. */
+  const demo = copilotQuietDemo(PLAN_TEMPLATES);
+  expect(demo, "the library has no plan this advisor would card").not.toBeNull();
+  if (!demo) return;
+
+  const plan = PLAN_TEMPLATES.find((entry) => entry.id === demo.planId);
+  expect(plan, `quiet demo ${demo.planId} is not in PLAN_TEMPLATES`).toBeDefined();
+  expect(demo.ratio).toBeGreaterThan(FDWR_MAX);
+  expect(demo.sentence).toContain(demo.planId);
+  expect(demo.sentence).toContain("plan library");
+
+  const report = readCoPilot({
+    document: builderDocumentFromLegacySpec(plan!.spec),
+    parcelCheck: null,
+  });
+  expect(report.suggestions.some((card) => card.kind === "glazing-over-prescriptive")).toBe(true);
+
+  const { markup } = markupFor(DOC, null, null);
+  expect(markup).toContain(`data-copilot-quiet-demo="${demo.planId}"`);
+  expect(markup).toContain(demo.planId);
+  expect(markup).toContain(demo.title);
 });

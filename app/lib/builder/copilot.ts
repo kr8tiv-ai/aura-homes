@@ -88,7 +88,7 @@ import {
 } from "@/components/builder/openingEdit";
 import { applyPhrase } from "@/components/builder/phrases";
 
-import type { BuilderDocument } from "./document";
+import { builderDocumentFromLegacySpec, type BuilderDocument } from "./document";
 import {
   NOT_MODELLED,
   applyScenarioMove,
@@ -1185,4 +1185,61 @@ function openings(
         "time so the sidebar stays readable; apply these and the next ones appear.",
     });
   }
+}
+
+/* ===========================================================================
+   THE QUIET-STATE DEMO PATH
+
+   The default design breaches nothing this advisor measures, which is correct
+   and also the least convincing first impression: an empty sidebar that looks
+   like a feature that is not working. WAVE13 named this leftover. The sentence
+   below does not invent a finding on the default home — it names a catalog
+   plan that already produces a real glazing card, so a person can see the
+   panel do its job without this module rewriting anybody's document.
+   =========================================================================== */
+
+export interface CoPilotQuietDemo {
+  planId: string;
+  title: string;
+  ratio: number;
+  /** The empty-sidebar sentence. JSX prints this; it does not author it. */
+  sentence: string;
+}
+
+/**
+ * The catalog plan that most clearly shows this advisor working: the highest
+ * modelled glazing ratio that actually produces a `glazing-over-prescriptive`
+ * card. Returns null only if the library has no such plan.
+ */
+export function copilotQuietDemo(
+  plans: readonly { id: string; title: string; spec: HomeSpec }[],
+): CoPilotQuietDemo | null {
+  let best: { id: string; title: string; ratio: number } | null = null;
+
+  for (const plan of plans) {
+    const ratio = modelledGlazingRatio(plan.spec);
+    if (ratio <= FDWR_MAX + RATIO_EPS) continue;
+    const report = readCoPilot({
+      document: builderDocumentFromLegacySpec(plan.spec),
+      parcelCheck: null,
+    });
+    if (!report.suggestions.some((card) => card.kind === "glazing-over-prescriptive")) {
+      continue;
+    }
+    if (!best || ratio > best.ratio) best = { id: plan.id, title: plan.title, ratio };
+  }
+
+  if (!best) return null;
+
+  return {
+    planId: best.id,
+    title: best.title,
+    ratio: best.ratio,
+    sentence:
+      `Nothing this build can check has anything to say about this design right now. That is a ` +
+      `statement about what Aura measures, not a verdict on the home: the list underneath says ` +
+      `what was looked at and what could not be. To see this advisor work, open the plan library ` +
+      `and pick ${best.id} (${best.title}) — it is modelled at ${scenarioPct(best.ratio)}, over ` +
+      `the ${scenarioPct(FDWR_MAX)} NBC 9.36 prescriptive ceiling this panel can name.`,
+  };
 }
