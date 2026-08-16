@@ -299,7 +299,7 @@ test("a resealed package that lies about its geometry mode is refused", async ()
   expect(built.package.geometryMode).toBe("building-graph");
 
   /* A graph project dressed as a legacy-volume one: the recipient would go
-     looking for a drawing set and a DXF that this design cannot produce. */
+     looking for a spec-derived DXF this design cannot produce. */
   const forged = JSON.parse(built.json) as HandoffPackage;
   forged.geometryMode = "legacy-volumes";
   const read = readHandoffPackage(resealed(forged));
@@ -449,7 +449,7 @@ test("a matching cost snapshot is carried and hash-bound; a mismatched one is na
 
 /* ============================================ 6. no unearned fidelity */
 
-test("planar-graph geometry omits the writers that cannot represent it, in their own words", async () => {
+test("planar-graph geometry ships the graph-backed writers and names the ones that still cannot", async () => {
   const converted = convertBuilderDocumentToGraph(defaultBuilderDocument(), 0.5);
   expect(converted.ok).toBe(true);
   if (!converted.ok) return;
@@ -458,15 +458,18 @@ test("planar-graph geometry omits the writers that cannot represent it, in their
   const kinds = built.package.files.map((f) => f.kind);
 
   expect(built.package.geometryMode).toBe("building-graph");
-  expect(kinds).not.toContain("dxf");
-  expect(kinds).not.toContain("ifc");
-  expect(kinds).not.toContain("ifcjson");
-  expect(kinds).not.toContain("drawing");
+  expect(kinds.filter((kind) => kind === "drawing")).toHaveLength(8);
+  expect(kinds).toContain("ifc");
+  expect(kinds).toContain("ifcjson");
   expect(kinds).toContain("project");
+  /* DXF still reads back against a spec-shaped source model, so a graph
+     package that included one would be the one place that rule stopped
+     holding. Named, not substituted. */
+  expect(kinds).not.toContain("dxf");
 
-  const why = built.package.omissions.map((o) => o.why).join(" ");
-  expect(why).toContain("planar BuildingGraph geometry");
-  expect(why).not.toContain("recovery HomeSpec was substituted");
+  const named = built.package.omissions.map((o) => `${o.what} ${o.why}`).join(" ");
+  expect(named).toMatch(/dxf|DXF|AutoCAD/i);
+  expect(named).not.toContain("recovery HomeSpec was substituted");
 
   // Still a complete, verifiable package, and still a true round trip.
   const read = readHandoffPackage(built.json);

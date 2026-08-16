@@ -20,7 +20,7 @@
    So every sentence below is assembled from arithmetic that already exists,
    and `readCoPilot` cannot say anything the engines cannot back:
 
-     · `modelledGlazingRatio`   — lib/builder/toPlan.ts
+     · `modelledGlazingRatio` / `modelledGraphGlazingRatio`
      · `FDWR_MAX`               — lib/design/materials.ts
      · `checkSpecAgainstParcel` — lib/builder/toPlan.ts, over `analyseParcel`
      · `createProjectBudget`    — lib/builder/projectBudget.ts
@@ -64,11 +64,14 @@
 
    NOTHING IS APPLIED. `readCoPilot` returns no `HomeSpec` anywhere in its
    result, and neither does `previewPreparedAction`. The ONLY function in this
-   module that can turn a suggestion into a spec is `applyPreparedAction`, and
-   it refuses any `Confirmation` that does not name the exact suggestion and
-   quote the exact words that were on the control. `tests/copilot.spec.ts`
-   pins both halves: that no other export leaks a spec, and that the refusal
-   fires.
+   module that can turn a suggestion into a spec or a graph is
+   `applyPreparedAction`, and it refuses any `Confirmation` that does not name
+   the exact suggestion and quote the exact words that were on the control.
+   `tests/copilot.spec.ts` pins both halves: that no other export leaks a spec,
+   and that the refusal fires. On a planar-graph project the glazing card
+   writes the graph through `applyScenarioMove`; phrase resize and opening
+   refit still refuse, because those writers only touch the frozen recovery
+   spec.
 
    PURE AND TOTAL. No React, no DOM, no storage, no network, no clock, no
    randomness, no locale-dependent formatting. The same inputs always produce
@@ -88,7 +91,13 @@ import {
 } from "@/components/builder/openingEdit";
 import { applyPhrase } from "@/components/builder/phrases";
 
+import type { BuildingGraph } from "./buildingGraph";
 import { builderDocumentFromLegacySpec, type BuilderDocument } from "./document";
+import {
+  modelledGraphGlazingRatio,
+  modelledGraphWallAreaSqFt,
+  summarizeBuildingGraph,
+} from "./graphGeometry";
 import {
   NOT_MODELLED,
   applyScenarioMove,
@@ -103,7 +112,6 @@ import {
   type ProjectBudget,
   type ProjectBudgetScenario,
 } from "./projectBudget";
-import { parcelCheckApplies } from "./readiness";
 import { glazedAreaSqFt, totalFloorAreaSqFt, type HomeSpec, type Volume } from "./spec";
 import {
   checkSpecAgainstParcel,
@@ -133,6 +141,9 @@ export const COPILOT_ENGINE = "deterministic-advisor" as const;
 export type CoPilotSource =
   | "modelledGlazingRatio · lib/builder/toPlan.ts"
   | "modelledWallAreaSqFt · lib/builder/toPlan.ts"
+  | "modelledGraphGlazingRatio · lib/builder/graphGeometry.ts"
+  | "modelledGraphWallAreaSqFt · lib/builder/graphGeometry.ts"
+  | "summarizeBuildingGraph · lib/builder/graphGeometry.ts"
   | "glazedAreaSqFt · lib/builder/spec.ts"
   | "FDWR_MAX · lib/design/materials.ts"
   | "checkSpecAgainstParcel · lib/builder/toPlan.ts"
@@ -212,6 +223,9 @@ export type ApplyResult =
        *  path already reconciles partitions, finishes, fixtures and comfort
        *  targets inside one commit. Same convention as `VariationStrip`. */
       spec: HomeSpec;
+      /** Present when the write is planar graph geometry. The recovery spec
+       *  is left unchanged; the editor must take this through `editGraph`. */
+      graph?: BuildingGraph;
       label: string;
       /** What actually happened, clamps included, in sentences. */
       announcement: string;
@@ -327,13 +341,22 @@ function notModelled(...ids: readonly NotModelledId[]): NotModelledEntry[] {
    =========================================================================== */
 
 interface Candidate {
-  /** null when the payload produced no change, or could not be applied */
+  /** null when the payload produced no spec change, or could not be applied */
   spec: HomeSpec | null;
+  /** set when the write is planar graph geometry rather than the recovery spec */
+  graph: BuildingGraph | null;
   /** what actually happened, clamps and refusals included */
   say: string[];
   /** why nothing came back, when nothing did */
   problem: string | null;
 }
+
+const emptyCandidate = (problem: string, say: string[] = []): Candidate => ({
+  spec: null,
+  graph: null,
+  say,
+  problem,
+});
 
 /**
  * Run a prepared action's payload through the edit function that owns it.
@@ -344,10 +367,21 @@ interface Candidate {
  * has already checked a confirmation. Exporting it would put a second door
  * beside the confirmed one.
  */
+function sameGraph(a: BuildingGraph, b: BuildingGraph): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
 function candidateFor(document: BuilderDocument, action: PreparedAction): Candidate {
   const payload = action.payload;
+  const graphMode = document.geometry.kind === "building-graph";
 
   if (payload.via === "phrases") {
+    if (graphMode) {
+      return emptyCandidate(
+        "Phrases write the frozen recovery spec. This project is planar graph geometry, so a " +
+          "resize through `applyPhrase` would change a home that is no longer on screen.",
+      );
+    }
     let spec = document.spec;
     const say: string[] = [];
     for (const phrase of payload.phrases) {
@@ -362,25 +396,36 @@ function candidateFor(document: BuilderDocument, action: PreparedAction): Candid
       say.push(edit.say);
     }
     if (spec === document.spec) {
-      return {
-        spec: null,
+      return emptyCandidate(
+        `None of these phrases changes this home: ${payload.phrases.join(" · ")}.`,
         say,
-        problem: `None of these phrases changes this home: ${payload.phrases.join(" · ")}.`,
-      };
+      );
     }
-    return { spec, say, problem: null };
+    return { spec, graph: null, say, problem: null };
   }
 
   if (payload.via === "scenario-move") {
     const moved = applyScenarioMove(document, payload.move);
-    if (moved.spec === document.spec) {
-      return {
-        spec: null,
-        say: [],
-        problem: `The ${payload.move} move leaves this home exactly as it is.`,
-      };
+    if (graphMode) {
+      if (moved.geometry.kind !== "building-graph") {
+        return emptyCandidate(`The ${payload.move} move did not return planar graph geometry.`);
+      }
+      if (sameGraph(moved.geometry.graph, document.geometry.graph)) {
+        return emptyCandidate(`The ${payload.move} move leaves this home exactly as it is.`);
+      }
+      return { spec: null, graph: moved.geometry.graph, say: [], problem: null };
     }
-    return { spec: moved.spec, say: [], problem: null };
+    if (moved.spec === document.spec) {
+      return emptyCandidate(`The ${payload.move} move leaves this home exactly as it is.`);
+    }
+    return { spec: moved.spec, graph: null, say: [], problem: null };
+  }
+
+  if (graphMode) {
+    return emptyCandidate(
+      "`applyOpeningEdit` writes the frozen recovery spec. There is no graph opening-refit " +
+        "writer in this build — move the opening on the plan, or delete it.",
+    );
   }
 
   const refit = applyOpeningEdit(
@@ -394,13 +439,12 @@ function candidateFor(document: BuilderDocument, action: PreparedAction): Candid
     boxOf(document.spec, payload.volumeId, payload.openingId),
   );
   if (!refit.changed) {
-    return {
-      spec: null,
-      say: refit.refusals,
-      problem: `Re-asking for this opening's own box moves nothing, so there is nothing to apply.`,
-    };
+    return emptyCandidate(
+      `Re-asking for this opening's own box moves nothing, so there is nothing to apply.`,
+      refit.refusals,
+    );
   }
-  return { spec: refit.spec, say: refit.refusals, problem: null };
+  return { spec: refit.spec, graph: null, say: refit.refusals, problem: null };
 }
 
 /** The opening's own box, or a zero box when it has gone. `applyOpeningEdit`
@@ -440,7 +484,7 @@ export function previewPreparedAction(
 ): PreparedActionPreview {
   const candidate = candidateFor(document, action);
   return {
-    changes: candidate.spec !== null,
+    changes: candidate.spec !== null || candidate.graph !== null,
     say: candidate.say,
     problem: candidate.problem,
   };
@@ -494,7 +538,7 @@ export function applyPreparedAction(
   }
 
   const candidate = candidateFor(document, action);
-  if (candidate.spec === null) {
+  if (candidate.graph === null && candidate.spec === null) {
     return {
       ok: false,
       problem: candidate.problem ?? "This suggestion no longer changes the design on screen.",
@@ -503,7 +547,8 @@ export function applyPreparedAction(
 
   return {
     ok: true,
-    spec: candidate.spec,
+    spec: candidate.spec ?? document.spec,
+    ...(candidate.graph ? { graph: candidate.graph } : {}),
     label: action.label,
     announcement:
       candidate.say.length > 0
@@ -541,12 +586,6 @@ export interface CoPilotInput {
   basis?: CoPilotBasis;
 }
 
-const GRAPH_REFUSAL =
-  "This project uses planar graph geometry. Every reading the co-pilot has is derived from " +
-  "`document.spec`, which became a frozen recovery copy at conversion — so advice built from it " +
-  "would be about a home that is no longer on screen. Undo returns through the conversion, where " +
-  "these readings run again.";
-
 /** Deterministic change detector over two specs. Not a canonical hash: both
  *  sides are built by spreading the same shapes, so key order is stable, and
  *  `hashBuilderDocument` would need a whole valid document to answer a
@@ -583,16 +622,6 @@ export function readCoPilot(input: CoPilotInput): CoPilotReport {
   const basis = input.basis ?? defaultCoPilotBasis();
   const suggestions: CoPilotSuggestion[] = [];
   const refusals: CoPilotRefusal[] = [];
-
-  if (!parcelCheckApplies(document)) {
-    return {
-      engine: COPILOT_ENGINE,
-      suggestions: [],
-      refusals: [],
-      unavailable: GRAPH_REFUSAL,
-      disclaimer: COPILOT_DISCLAIMER,
-    };
-  }
 
   const spec = document.spec;
 
@@ -639,16 +668,53 @@ export function readCoPilot(input: CoPilotInput): CoPilotReport {
 
 /* ---------------------------------------------------------------- glazing */
 
+function glazingFacts(document: BuilderDocument): {
+  wallSqFt: number;
+  ratio: number;
+  glassSqFt: number;
+  wallSource: CoPilotSource;
+  ratioSource: CoPilotSource;
+  glassSource: CoPilotSource;
+} | null {
+  if (document.geometry.kind === "building-graph") {
+    const graph = document.geometry.graph;
+    const wallSqFt = modelledGraphWallAreaSqFt(graph);
+    if (wallSqFt <= 0) return null;
+    return {
+      wallSqFt,
+      ratio: modelledGraphGlazingRatio(graph),
+      glassSqFt: summarizeBuildingGraph(graph).glazedAreaSqFt,
+      wallSource: "modelledGraphWallAreaSqFt · lib/builder/graphGeometry.ts",
+      ratioSource: "modelledGraphGlazingRatio · lib/builder/graphGeometry.ts",
+      glassSource: "summarizeBuildingGraph · lib/builder/graphGeometry.ts",
+    };
+  }
+  const wallSqFt = modelledWallAreaSqFt(document.spec);
+  if (wallSqFt <= 0) return null;
+  return {
+    wallSqFt,
+    ratio: modelledGlazingRatio(document.spec),
+    glassSqFt: glazedAreaSqFt(document.spec),
+    wallSource: "modelledWallAreaSqFt · lib/builder/toPlan.ts",
+    ratioSource: "modelledGlazingRatio · lib/builder/toPlan.ts",
+    glassSource: "glazedAreaSqFt · lib/builder/spec.ts",
+  };
+}
+
+function glazingAfter(document: BuilderDocument, candidate: Candidate): number | null {
+  if (candidate.graph) return modelledGraphGlazingRatio(candidate.graph);
+  if (candidate.spec) return modelledGlazingRatio(candidate.spec);
+  return null;
+}
+
 function glazing(
   document: BuilderDocument,
   suggestions: CoPilotSuggestion[],
   refusals: CoPilotRefusal[],
 ): void {
-  const spec = document.spec;
-  const wallSqFt = modelledWallAreaSqFt(spec);
-  if (wallSqFt <= 0) return;
-
-  const ratio = modelledGlazingRatio(spec);
+  const facts = glazingFacts(document);
+  if (!facts) return;
+  const { wallSqFt, ratio, glassSqFt } = facts;
   if (ratio <= FDWR_MAX + RATIO_EPS) return;
 
   const action: PreparedAction = {
@@ -660,7 +726,8 @@ function glazing(
   };
 
   const candidate = candidateFor(document, action);
-  if (candidate.spec === null) {
+  const after = glazingAfter(document, candidate);
+  if (after === null) {
     refusals.push({
       id: "glazing-over-prescriptive",
       topic: "Glazing over the prescriptive reference",
@@ -673,7 +740,6 @@ function glazing(
     return;
   }
 
-  const after = modelledGlazingRatio(candidate.spec);
   const lands = after <= FDWR_MAX + RATIO_EPS;
 
   suggestions.push({
@@ -693,7 +759,7 @@ function glazing(
         label: "Glazing ratio now",
         value: ratio,
         formatted: scenarioPct(ratio),
-        source: "modelledGlazingRatio · lib/builder/toPlan.ts",
+        source: facts.ratioSource,
       },
       {
         label: "NBC 9.36 prescriptive reference",
@@ -703,15 +769,15 @@ function glazing(
       },
       {
         label: "Glazed area",
-        value: glazedAreaSqFt(spec),
-        formatted: sqFt(glazedAreaSqFt(spec)),
-        source: "glazedAreaSqFt · lib/builder/spec.ts",
+        value: glassSqFt,
+        formatted: sqFt(glassSqFt),
+        source: facts.glassSource,
       },
       {
         label: "Modelled wall area",
         value: wallSqFt,
         formatted: sqFt(wallSqFt),
-        source: "modelledWallAreaSqFt · lib/builder/toPlan.ts",
+        source: facts.wallSource,
       },
     ],
     tradeOffs: [
@@ -742,6 +808,18 @@ function footprint(
   suggestions: CoPilotSuggestion[],
   refusals: CoPilotRefusal[],
 ): void {
+  if (document.geometry.kind === "building-graph") {
+    refusals.push({
+      id: "footprint-over-buildable-envelope",
+      topic: "Fitting the land",
+      reason:
+        "This project is planar graph geometry. Fitting the land through `applyPhrase` would " +
+        "resize the frozen recovery spec, not the walls on screen. Move a vertex on the plan, " +
+        "or use the Impact panel's footprint move — that one writes the graph.",
+    });
+    return;
+  }
+
   if (parcelCheck === null) {
     refusals.push({
       id: "footprint-over-buildable-envelope",
@@ -927,6 +1005,20 @@ function budget(
   suggestions: CoPilotSuggestion[],
   refusals: CoPilotRefusal[],
 ): void {
+  if (document.geometry.kind === "building-graph") {
+    if (basis.budgetCapCad === null) return;
+    refusals.push({
+      id: "budget-over-stated-cap",
+      topic: "Your stated budget cap",
+      reason:
+        "This project is planar graph geometry. A budget resize through `applyPhrase` would " +
+        "change the frozen recovery spec, not the walls on screen. There is no graph phrase " +
+        "writer in this build — shrink the plan by moving vertices, and the live read-out " +
+        "will follow.",
+    });
+    return;
+  }
+
   if (basis.budgetCapCad === null) return;
 
   const spec = document.spec;
@@ -1063,6 +1155,18 @@ function openings(
   suggestions: CoPilotSuggestion[],
   refusals: CoPilotRefusal[],
 ): void {
+  if (document.geometry.kind === "building-graph") {
+    refusals.push({
+      id: "opening-off-its-wall",
+      topic: "An opening off its wall",
+      reason:
+        "`applyOpeningEdit` writes the frozen recovery spec. There is no graph opening-refit " +
+        "writer in this build, so an opening that sits badly on a graph wall has to be moved " +
+        "on the plan by hand.",
+    });
+    return;
+  }
+
   const spec = document.spec;
   const illegal: Array<{ volume: Volume; openingId: string }> = [];
 

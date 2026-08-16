@@ -1912,15 +1912,15 @@ export default function BuilderApp() {
           {/* AI01 — the co-pilot, beside the read-out that raised most of what
               it talks about. Off in the plan route for the same reason the undo
               bar and the surface picker are: that screen is read-only, and a
-              panel offering to change the design on it would not be. It is NOT
-              gated on graph mode — `readCoPilot` refuses a planar-graph project
-              in its own words, and a panel that explains why it is silent is
-              worth more than one that vanishes. */}
+              panel offering to change the design on it would not be. Graph
+              glazing writes through `editGraph`; phrase resize and opening
+              refit still refuse in the module's own words. */}
           {planRoute ? null : (
             <CoPilot
               document={state.doc}
               parcelCheck={siteCheck}
               onApply={edit}
+              onApplyGraph={editGraph}
               region={auraProject?.requirements.location.region ?? "Alberta"}
               municipality={auraProject?.requirements.location.municipality ?? ""}
               scenario={auraProject?.budgetBasis?.scenario}

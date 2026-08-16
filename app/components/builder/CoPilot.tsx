@@ -59,6 +59,7 @@ import {
   type CoPilotSuggestion,
   type CoPilotSuggestionKind,
 } from "@/lib/builder/copilot";
+import type { BuildingGraph } from "@/lib/builder/buildingGraph";
 import type { BuilderDocument } from "@/lib/builder/document";
 import { PLAN_TEMPLATES } from "@/lib/builder/planCatalog";
 import type { ProjectBudgetScenario } from "@/lib/builder/projectBudget";
@@ -82,6 +83,7 @@ export default function CoPilot({
   document,
   parcelCheck,
   onApply,
+  onApplyGraph,
   region = "Alberta",
   municipality = "",
   scenario,
@@ -100,6 +102,10 @@ export default function CoPilot({
    * confirming a suggestion one undo step. Same contract as `VariationStrip`.
    */
   onApply: (spec: HomeSpec, label: string) => void;
+  /** The editor's graph-edit path. A graph write must not go through `onApply`
+   *  — that would leave the live geometry untouched and rewrite the frozen
+   *  recovery spec. */
+  onApplyGraph?: (graph: BuildingGraph, label: string) => void;
   /** The same four values the live read-out prices with. */
   region?: string;
   municipality?: string;
@@ -149,11 +155,22 @@ export default function CoPilot({
         setArmedId(null);
         return;
       }
-      onApply(result.spec, result.label);
+      if (result.graph) {
+        if (!onApplyGraph) {
+          setNotice(
+            "This suggestion writes planar graph geometry and this screen has no graph editor path.",
+          );
+          setArmedId(null);
+          return;
+        }
+        onApplyGraph(result.graph, result.label);
+      } else {
+        onApply(result.spec, result.label);
+      }
       setNotice(result.announcement);
       setArmedId(null);
     },
-    [armedId, document, onApply],
+    [armedId, document, onApply, onApplyGraph],
   );
   /* == CO-PILOT APPLY PATH · END == */
 

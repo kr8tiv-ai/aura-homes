@@ -26,8 +26,8 @@
    ---------------------
    Every number here comes from a function that already owns it:
 
-     · `comfortReport`          — lib/builder/comfort.ts
-     · `modelledGlazingRatio`   — lib/builder/toPlan.ts
+     · `comfortReport` / `comfortReportForDocument` — lib/builder/comfort.ts
+     · `modelledGlazingRatio` / `modelledGraphGlazingRatio` — toPlan / graphGeometry
      · `createProjectBudget`    — lib/builder/projectBudget.ts
 
    Nothing in this file recomputes any of those quantities, and `figure.source`
@@ -56,7 +56,12 @@
 
 import { FDWR_MAX } from "@/lib/design/materials";
 import {
-  comfortReport,
+  scaleGraphOpenings,
+  scaleGraphPlan,
+  type BuildingGraph,
+} from "./buildingGraph";
+import {
+  comfortReportForDocument,
   type ComfortKpi,
   type ComfortReport,
   type DesignConditions,
@@ -67,13 +72,13 @@ import {
   validateBuilderDocument,
   type BuilderDocument,
 } from "./document";
+import { modelledGraphGlazingRatio } from "./graphGeometry";
 import {
   createProjectBudget,
   defaultProjectBudgetScenario,
   type ProjectBudget,
   type ProjectBudgetScenario,
 } from "./projectBudget";
-import { parcelCheckApplies } from "./readiness";
 import type { HomeSpec, Opening, Volume } from "./spec";
 import { modelledGlazingRatio } from "./toPlan";
 
@@ -299,6 +304,27 @@ const withSpec = (document: BuilderDocument, spec: HomeSpec): BuilderDocument =>
   spec,
 });
 
+const withGraph = (document: BuilderDocument, graph: BuildingGraph): BuilderDocument => {
+  if (document.geometry.kind !== "building-graph") return document;
+  return { ...document, geometry: { ...document.geometry, graph } };
+};
+
+const applyGlassMove = (document: BuilderDocument, factor: number): BuilderDocument => {
+  if (document.geometry.kind === "building-graph") {
+    const next = scaleGraphOpenings(document.geometry.graph, factor);
+    return next.ok ? withGraph(document, next.graph) : document;
+  }
+  return withSpec(document, scaleGlass(document.spec, factor));
+};
+
+const applyFootprintMove = (document: BuilderDocument, factor: number): BuilderDocument => {
+  if (document.geometry.kind === "building-graph") {
+    const next = scaleGraphPlan(document.geometry.graph, factor);
+    return next.ok ? withGraph(document, next.graph) : document;
+  }
+  return withSpec(document, scaleFootprint(document.spec, factor));
+};
+
 /* Annotated rather than inferred: the annotation is what gives every `apply`
    its parameter type, and without it each arrow would take an implicit `any`
    under `strict` and every move would silently stop being type-checked. */
@@ -320,7 +346,7 @@ const MOVES: ScenarioMove[] = [
       "In a zone 7A winter glass is the weakest part of the envelope, so this is the cheapest-to-heat " +
       "version of the same house and the darkest.",
     moves: ["glazing", "cost"],
-    apply: (document) => withSpec(document, scaleGlass(document.spec, LESS_GLASS_FACTOR)),
+    apply: (document) => applyGlassMove(document, LESS_GLASS_FACTOR),
   },
   {
     id: "more-glass",
@@ -331,7 +357,7 @@ const MOVES: ScenarioMove[] = [
       "usually less than half again, which is why the ratio below is measured from the result rather than " +
       "predicted from the factor.",
     moves: ["glazing", "cost"],
-    apply: (document) => withSpec(document, scaleGlass(document.spec, MORE_GLASS_FACTOR)),
+    apply: (document) => applyGlassMove(document, MORE_GLASS_FACTOR),
   },
   {
     id: "bigger-footprint",
@@ -343,8 +369,7 @@ const MOVES: ScenarioMove[] = [
       "same windows now sit in more wall: this is the move that shows what floor area costs and what it does to " +
       "the glazing ratio's denominator.",
     moves: ["glazing", "comfort", "cost"],
-    apply: (document) =>
-      withSpec(document, scaleFootprint(document.spec, BIGGER_FOOTPRINT_FACTOR)),
+    apply: (document) => applyFootprintMove(document, BIGGER_FOOTPRINT_FACTOR),
   },
   {
     id: "ask-warmer",
@@ -416,6 +441,7 @@ export const defaultScenarioCostBasis = (): ScenarioCostBasis => ({
 export type ScenarioFigureSource =
   | "comfortReport"
   | "modelledGlazingRatio"
+  | "modelledGraphGlazingRatio"
   | "createProjectBudget";
 
 export type ScenarioFigureId =
@@ -502,12 +528,6 @@ export interface ScenarioReading {
   costProblem: string | null;
 }
 
-const GRAPH_REASON =
-  "This project uses planar graph geometry. The comfort and glazing readings are " +
-  "derived from the legacy spec, which became a frozen recovery copy at conversion — " +
-  "so a scenario comparison built from it would describe a home that is no longer on " +
-  "screen. Undo returns through the conversion, where these readings run again.";
-
 const kpiFor = (report: ComfortReport, season: Season): ComfortKpi =>
   season === "winter" ? report.winter : report.summer;
 
@@ -556,16 +576,6 @@ export function readScenario(
     };
   }
 
-  if (!parcelCheckApplies(document)) {
-    return {
-      ...shell,
-      available: false,
-      unavailableReason: GRAPH_REASON,
-      figures: [],
-      costProblem: null,
-    };
-  }
-
   const figures: ScenarioFigure[] = [];
 
   /* ---- the budget, first, because floor area is read off it ------------- */
@@ -596,13 +606,14 @@ export function readScenario(
   }
 
   /* ---- glazing ---------------------------------------------------------- */
-  const ratio = modelledGlazingRatio(document.spec);
+  const graph = document.geometry.kind === "building-graph" ? document.geometry.graph : null;
+  const ratio = graph ? modelledGraphGlazingRatio(graph) : modelledGlazingRatio(document.spec);
   figures.push({
     id: "glazing-ratio",
     label: "Glazing",
     value: ratio,
     formatted: scenarioPct(ratio),
-    source: "modelledGlazingRatio",
+    source: graph ? "modelledGraphGlazingRatio" : "modelledGlazingRatio",
     note:
       "Your glass over modelled wall area, compared with the NBC 9.36 prescriptive ceiling. " +
       "A comparison, not a code check.",
@@ -615,7 +626,7 @@ export function readScenario(
   });
 
   /* ---- comfort ---------------------------------------------------------- */
-  const report = comfortReport(document.spec, document.comfort);
+  const report = comfortReportForDocument(document, document.comfort);
   const kpi = kpiFor(report, options.season);
   const stated = conditionsFor(conditions, options.season);
   const basis =

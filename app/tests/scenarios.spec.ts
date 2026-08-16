@@ -27,6 +27,7 @@ import {
   type ScenarioMoveId,
 } from "@/lib/builder/scenarios";
 import type { Volume } from "@/lib/builder/spec";
+import { modelledGraphGlazingRatio } from "@/lib/builder/graphGeometry";
 import { modelledGlazingRatio } from "@/lib/builder/toPlan";
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -768,10 +769,12 @@ test("the stated lux target changes nothing the comfort engine returns", () => {
 
 /* ══════════════════════════════════ 8. graph projects are refused, not faked */
 
-test("a planar-graph project is refused rather than compared from a frozen spec", () => {
+test("a planar-graph project is compared from the graph, not from a frozen spec", () => {
   const converted = convertBuilderDocumentToGraph(DOCUMENT, 0.5);
   expect(converted.ok, "the conversion fixture itself failed").toBe(true);
   if (!converted.ok) return;
+  expect(converted.document.geometry.kind).toBe("building-graph");
+  if (converted.document.geometry.kind !== "building-graph") return;
 
   const comparison = compareScenarios(converted.document, {
     a: "as-designed",
@@ -779,11 +782,21 @@ test("a planar-graph project is refused rather than compared from a frozen spec"
     season: SEASON,
     costBasis: BASIS,
   });
-  expect(comparison.available).toBe(false);
-  expect(comparison.rows).toEqual([]);
-  expect(comparison.reason).toContain("frozen recovery copy");
-  /* The not-modelled block still shows: what this build cannot answer does
-     not depend on which geometry the project happens to use. */
+  expect(comparison.available).toBe(true);
+  expect(comparison.reason).toBeNull();
+  expect(comparison.a.document.geometry.kind).toBe("building-graph");
+  expect(comparison.b.document.geometry.kind).toBe("building-graph");
+  const glazing = comparison.rows.find((row) => row.id === "glazing-ratio");
+  expect(glazing, "the graph comparison dropped the glazing row").toBeDefined();
+  expect(glazing?.source).toBe("modelledGraphGlazingRatio");
+  expect(glazing?.changed, "more-glass left graph glazing unmoved").toBe(true);
+  if (comparison.b.document.geometry.kind === "building-graph") {
+    expect(modelledGraphGlazingRatio(comparison.b.document.geometry.graph)).toBe(
+      glazing?.b.value,
+    );
+  }
+  /* The recovery spec is still the conversion snapshot — the move wrote the graph. */
+  expect(comparison.b.document.spec).toEqual(converted.document.spec);
   expect(comparison.notModelled.length).toBe(4);
 });
 

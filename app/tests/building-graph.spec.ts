@@ -6,6 +6,8 @@ import {
   deriveRoofZone,
   legacySpecToBuildingGraph,
   moveGraphVertex,
+  scaleGraphOpenings,
+  scaleGraphPlan,
   singleStoreyGraphFromPolygon,
   splitWallAt,
   validateBuildingGraph,
@@ -150,6 +152,80 @@ test("an opening crossing a proposed split is quarantined by refusal, not cut", 
   const split = splitWallAt(opened.graph, "storey-1", "wall-1", 10, "vertex-mid");
   expect(split.ok).toBe(false);
   if (!split.ok) expect(split.problem).toContain("opening-wide");
+});
+
+test("scaleGraphOpenings shrinks glazed openings and leaves doors alone", () => {
+  const made = singleStoreyGraphFromPolygon([
+    [0, 0],
+    [20, 0],
+    [20, 10],
+    [0, 10],
+  ]);
+  expect(made.ok).toBe(true);
+  if (!made.ok) return;
+  const windowed = addGraphOpening(made.graph, "storey-1", "wall-1", {
+    id: "window-1",
+    kind: "window",
+    offsetFt: 4,
+    widthFt: 5,
+    heightFt: 4,
+    sillFt: 3,
+  });
+  expect(windowed.ok).toBe(true);
+  if (!windowed.ok) return;
+  const withDoor = addGraphOpening(windowed.graph, "storey-1", "wall-1", {
+    id: "door-1",
+    kind: "door",
+    offsetFt: 12,
+    widthFt: 3,
+    heightFt: 7,
+    sillFt: 0,
+  });
+  expect(withDoor.ok).toBe(true);
+  if (!withDoor.ok) return;
+
+  const shrunk = scaleGraphOpenings(withDoor.graph, 0.6);
+  expect(shrunk.ok).toBe(true);
+  if (!shrunk.ok) return;
+  const wall = shrunk.graph.storeys[0].walls.find((item) => item.id === "wall-1");
+  const window = wall?.openings.find((opening) => opening.id === "window-1");
+  const door = wall?.openings.find((opening) => opening.id === "door-1");
+  expect(window).toMatchObject({ widthFt: 3, heightFt: 2.25, offsetFt: 4, sillFt: 3 });
+  expect(door).toMatchObject({ widthFt: 3, heightFt: 7, offsetFt: 12 });
+  expect(validateBuildingGraph(shrunk.graph).ok).toBe(true);
+});
+
+test("scaleGraphPlan grows the walls and leaves opening sizes put", () => {
+  const made = singleStoreyGraphFromPolygon([
+    [0, 0],
+    [20, 0],
+    [20, 10],
+    [0, 10],
+  ]);
+  expect(made.ok).toBe(true);
+  if (!made.ok) return;
+  const opened = addGraphOpening(made.graph, "storey-1", "wall-1", {
+    id: "window-1",
+    kind: "window",
+    offsetFt: 4,
+    widthFt: 5,
+    heightFt: 4,
+    sillFt: 3,
+  });
+  expect(opened.ok).toBe(true);
+  if (!opened.ok) return;
+
+  const grown = scaleGraphPlan(opened.graph, 1.2);
+  expect(grown.ok).toBe(true);
+  if (!grown.ok) return;
+  const storey = grown.graph.storeys[0];
+  const xs = storey.vertices.map((vertex) => vertex.xFt);
+  const zs = storey.vertices.map((vertex) => vertex.zFt);
+  expect(Math.max(...xs)).toBeCloseTo(24, 9);
+  expect(Math.max(...zs)).toBeCloseTo(12, 9);
+  expect(storey.walls[0].openings[0]).toMatchObject({ widthFt: 5, heightFt: 4, offsetFt: 4 });
+  expect(storey.rooms[0].areaSqft).toBeCloseTo(288, 6);
+  expect(validateBuildingGraph(grown.graph).ok).toBe(true);
 });
 
 test("gable, hipped, shed and flat roof intent derive deterministically from one polygon", () => {

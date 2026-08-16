@@ -1142,6 +1142,153 @@ export function addGraphOpening(
   return checked.ok ? { ok: true, graph: candidate } : fail(graph, checked.problem);
 }
 
+/** Same buildable step `scenarios.ts` uses so a graph move and a spec move
+ *  cannot disagree about what "60% of this opening" lands on. */
+const GRAPH_STEP_FT = 0.25;
+const stepGraphDown = (value: number): number => Math.floor(value / GRAPH_STEP_FT) * GRAPH_STEP_FT;
+const spansOverlap = (a0: number, a1: number, b0: number, b1: number): boolean =>
+  Math.min(a1, b1) - Math.max(a0, b0) > 1e-9;
+const isGlazedOpening = (opening: GraphOpening): boolean => opening.kind !== "door";
+
+/**
+ * Every glazed opening scaled on its host wall. Doors stay put — they still
+ * act as obstacles — matching `scaleGlass` in scenarios.ts so the Impact
+ * panel and the co-pilot write the same house they already write for a spec.
+ *
+ * Height first, then width, each clamped to the storey head / wall run and
+ * to the first neighbour in that direction. A failed validation returns the
+ * input graph unchanged.
+ */
+export function scaleGraphOpenings(graph: BuildingGraph, factor: number): GraphMutation {
+  if (!finite(factor) || factor <= 0) return fail(graph, "Opening scale factor must be positive.");
+  const grow = factor > 1;
+  const storeys = graph.storeys.map((storey) => {
+    const head = storey.heightFt;
+    return {
+      ...storey,
+      walls: storey.walls.map((wall) => {
+        const run = wallLength(storey, wall);
+        if (!finite(run)) return wall;
+
+        const heights = wall.openings.map((opening) => {
+          if (!isGlazedOpening(opening)) return opening.heightFt;
+          if (!grow) {
+            return Math.min(
+              opening.heightFt,
+              Math.max(GRAPH_STEP_FT, stepGraphDown(opening.heightFt * factor)),
+            );
+          }
+          let ceiling = head;
+          for (const other of wall.openings) {
+            if (other === opening) continue;
+            const above = other.sillFt >= opening.sillFt + opening.heightFt - 1e-9;
+            if (!above) continue;
+            if (
+              spansOverlap(
+                opening.offsetFt,
+                opening.offsetFt + opening.widthFt,
+                other.offsetFt,
+                other.offsetFt + other.widthFt,
+              )
+            ) {
+              ceiling = Math.min(ceiling, other.sillFt);
+            }
+          }
+          const room = ceiling - opening.sillFt;
+          return Math.max(opening.heightFt, Math.min(stepGraphDown(opening.heightFt * factor), room));
+        });
+
+        const widths = wall.openings.map((opening, index) => {
+          if (!isGlazedOpening(opening)) return opening.widthFt;
+          if (!grow) {
+            return Math.min(
+              opening.widthFt,
+              Math.max(GRAPH_STEP_FT, stepGraphDown(opening.widthFt * factor)),
+            );
+          }
+          const y0 = opening.sillFt;
+          const y1 = opening.sillFt + heights[index];
+          let edge = run;
+          wall.openings.forEach((other, otherIndex) => {
+            if (otherIndex === index) return;
+            const right = other.offsetFt >= opening.offsetFt + opening.widthFt - 1e-9;
+            if (!right) return;
+            const oy0 = other.sillFt;
+            const oy1 = other.sillFt + heights[otherIndex];
+            if (spansOverlap(y0, y1, oy0, oy1)) edge = Math.min(edge, other.offsetFt);
+          });
+          const room = edge - opening.offsetFt;
+          return Math.max(opening.widthFt, Math.min(stepGraphDown(opening.widthFt * factor), room));
+        });
+
+        return {
+          ...wall,
+          openings: wall.openings.map((opening, index) => ({
+            ...opening,
+            widthFt: widths[index],
+            heightFt: heights[index],
+          })),
+        };
+      }),
+    };
+  });
+  const candidate: BuildingGraph = { ...graph, storeys };
+  const checked = validateBuildingGraph(candidate);
+  return checked.ok ? { ok: true, graph: candidate } : fail(graph, checked.problem);
+}
+
+const scalePoint = (point: GraphPoint, factor: number): GraphPoint => [
+  point[0] * factor,
+  point[1] * factor,
+];
+
+/**
+ * Similarity about the site origin. Vertices, stairs, shafts and roof
+ * guides scale; openings keep their modelled sizes so the glass stays the
+ * glass that was drawn while the wall denominator grows — the same
+ * contract `scaleFootprint` keeps for a rectangular spec.
+ */
+export function scaleGraphPlan(graph: BuildingGraph, factor: number): GraphMutation {
+  if (!finite(factor) || factor <= 0) return fail(graph, "Plan scale factor must be positive.");
+  if (factor === 1) return { ok: true, graph };
+  const storeys = graph.storeys.map((storey) => {
+    const vertices = storey.vertices.map((vertex) => ({
+      ...vertex,
+      xFt: vertex.xFt * factor,
+      zFt: vertex.zFt * factor,
+    }));
+    const roofZones = storey.roofZones.map((zone) => ({
+      ...zone,
+      fallVector: zone.fallVector ? scalePoint(zone.fallVector, factor) : zone.fallVector,
+      ridge: zone.ridge
+        ? { start: scalePoint(zone.ridge.start, factor), end: scalePoint(zone.ridge.end, factor) }
+        : zone.ridge,
+    }));
+    const next: GraphStorey = { ...storey, vertices, roofZones };
+    return { ...next, rooms: deriveRoomFaces(next, storey.rooms) };
+  });
+  const stairs = graph.stairs?.map((stair) => ({
+    ...stair,
+    start: scalePoint(stair.start, factor),
+    end: scalePoint(stair.end, factor),
+    widthFt: Math.max(stair.widthFt, stepGraphDown(stair.widthFt * factor)),
+  }));
+  const shafts = graph.shafts?.map((shaft) => ({
+    ...shaft,
+    centre: scalePoint(shaft.centre, factor),
+    widthFt: Math.max(shaft.widthFt, stepGraphDown(shaft.widthFt * factor)),
+    depthFt: Math.max(shaft.depthFt, stepGraphDown(shaft.depthFt * factor)),
+  }));
+  const candidate: BuildingGraph = {
+    ...graph,
+    storeys,
+    ...(stairs ? { stairs } : {}),
+    ...(shafts ? { shafts } : {}),
+  };
+  const checked = validateBuildingGraph(candidate);
+  return checked.ok ? { ok: true, graph: candidate } : fail(graph, checked.problem);
+}
+
 /** Duplicate one complete planar level, aligned in the shared site frame. */
 export function duplicateGraphStorey(
   graph: BuildingGraph,

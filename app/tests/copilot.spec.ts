@@ -30,6 +30,7 @@ import {
   defaultProjectBudgetScenario,
 } from "@/lib/builder/projectBudget";
 import { NOT_MODELLED } from "@/lib/builder/scenarios";
+import { modelledGraphGlazingRatio } from "@/lib/builder/graphGeometry";
 import { glazedAreaSqFt, totalFloorAreaSqFt, type HomeSpec } from "@/lib/builder/spec";
 import {
   checkSpecAgainstParcel,
@@ -772,11 +773,54 @@ test("an opening off its wall gets a refit, and the refit is verified by checkOp
    7. THE REFUSALS — what was looked at and not offered
    ═══════════════════════════════════════════════════════════════════════ */
 
-test("a planar-graph project gets a refusal, not advice about a frozen copy", () => {
+test("a planar-graph project is read from the graph, not refused as a frozen copy", () => {
   const report = readCoPilot({ document: graphFixture(), parcelCheck: null });
-  expect(report.suggestions).toEqual([]);
-  expect(report.unavailable).not.toBeNull();
-  expect(report.unavailable).toContain("frozen recovery copy");
+  expect(report.unavailable).toBeNull();
+  expect(report.suggestions.some((card) => card.kind === "footprint-over-buildable-envelope")).toBe(
+    false,
+  );
+  expect(report.suggestions.some((card) => card.kind === "opening-off-its-wall")).toBe(false);
+  expect(report.refusals.some((entry) => entry.id === "footprint-over-buildable-envelope")).toBe(
+    true,
+  );
+  expect(report.refusals.find((entry) => entry.id === "footprint-over-buildable-envelope")?.reason)
+    .toContain("applyPhrase");
+  expect(report.refusals.find((entry) => entry.id === "opening-off-its-wall")?.reason).toContain(
+    "applyOpeningEdit",
+  );
+});
+
+test("a glassy graph project gets a less-glass card that writes the graph", () => {
+  const converted = convertBuilderDocumentToGraph(GLASSY, 0.5);
+  expect(converted.ok, "the glassy fixture itself failed to convert").toBe(true);
+  if (!converted.ok) return;
+  const document = converted.document;
+  expect(document.geometry.kind).toBe("building-graph");
+  if (document.geometry.kind !== "building-graph") return;
+
+  const beforeRatio = modelledGraphGlazingRatio(document.geometry.graph);
+  expect(beforeRatio).toBeGreaterThan(FDWR_MAX);
+
+  const report = readCoPilot({ document, parcelCheck: null });
+  expect(report.unavailable).toBeNull();
+  const card = report.suggestions.find((entry) => entry.kind === "glazing-over-prescriptive");
+  expect(card, "the graph advisor did not offer less glass").toBeDefined();
+  if (!card) return;
+  expect(card.action.payload).toEqual({ via: "scenario-move", move: "less-glass" });
+  expect(card.evidence.some((item) => item.source.includes("modelledGraphGlazingRatio"))).toBe(
+    true,
+  );
+
+  const applied = applyPreparedAction(document, card.action, {
+    confirmedId: card.id,
+    confirmedText: card.action.confirmText,
+  });
+  expect(applied.ok, applied.ok ? "" : applied.problem).toBe(true);
+  if (!applied.ok) return;
+  expect(applied.graph, "the apply path wrote the recovery spec instead of the graph").toBeDefined();
+  if (!applied.graph) return;
+  expect(modelledGraphGlazingRatio(applied.graph)).toBeLessThan(beforeRatio);
+  expect(glazedAreaSqFt(applied.spec)).toBe(glazedAreaSqFt(document.spec));
 });
 
 test("a clearance clash is named as something not offered, never as a card", () => {
