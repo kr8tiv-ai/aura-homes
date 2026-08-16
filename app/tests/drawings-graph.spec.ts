@@ -1,7 +1,7 @@
 import { expect, test } from "playwright/test";
 
 import { convertBuilderDocumentToGraph, defaultBuilderDocument } from "@/lib/builder/document";
-import { drawingSet } from "@/lib/builder/drawings";
+import { drawingModel, drawingSet } from "@/lib/builder/drawings";
 import { homeToDxf, homeToIfc } from "@/lib/builder/exportPro";
 import { buildHomeModelFromGraph, nearestCompassWall, outwardNormal } from "@/lib/builder/drawings/graphModel";
 import { resolveLegacyGeometryExportSource } from "@/lib/builder/exportSource";
@@ -49,6 +49,19 @@ test("the same graph and the same date produce byte-identical sheets", () => {
   const a = drawingSet({ document, dateISO: "2026-08-16", projectName: "Same" });
   const b = drawingSet({ document, dateISO: "2026-08-16", projectName: "Same" });
   expect(a.sheets.map((sheet) => sheet.svg)).toEqual(b.sheets.map((sheet) => sheet.svg));
+});
+
+test("drawingModel for a graph document is the graph model, not the recovery rectangle", () => {
+  const document = graphDocument();
+  expect(document.geometry.kind).toBe("building-graph");
+  if (document.geometry.kind !== "building-graph") return;
+  const fromHelper = drawingModel(document);
+  const fromGraph = buildHomeModelFromGraph(document.geometry.graph, document.spec);
+  expect(fromHelper.volumes.map((volume) => volume.id)).toEqual(
+    fromGraph.volumes.map((volume) => volume.id),
+  );
+  expect(fromHelper.totalFloorAreaSqFt).toBe(fromGraph.totalFloorAreaSqFt);
+  expect(fromHelper.outer).toEqual(fromGraph.outer);
 });
 
 test("DXF and IFC consume the graph model instead of refusing it", () => {

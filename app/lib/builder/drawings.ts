@@ -177,6 +177,14 @@ export const drawingSetForDocument = (
 ): DrawingSetResult => drawingSet({ document, dateISO });
 
 /** The drawing model on its own, for a caller that wants the numbers without
- *  the ink — the ridge heights, the pile grid, the opening schedule. */
-export const drawingModel = (source: BuilderExportSource): HomeModel =>
-  buildHomeModel(resolveLegacyGeometryExportSource(source).spec);
+ *  the ink — the ridge heights, the pile grid, the opening schedule. Same
+ *  source the sheets and the DXF/IFC writers use: the graph when that is
+ *  what is on screen, never the frozen recovery rectangle. */
+export const drawingModel = (source: BuilderExportSource): HomeModel => {
+  const graph = graphFromSource(source);
+  if (graph) {
+    const { spec } = resolveBuilderExportSource(source);
+    return buildHomeModelFromGraph(graph, spec);
+  }
+  return buildHomeModel(resolveLegacyGeometryExportSource(source).spec);
+};
