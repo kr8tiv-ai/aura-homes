@@ -175,7 +175,7 @@ import {
 import type { BuildingGraph } from "@/lib/builder/buildingGraph";
 import { drawingSet, type DrawingRooms, type DrawingSetResult } from "@/lib/builder/drawings";
 import { buildHome, disposeHome, type HomeGeometry } from "@/lib/builder/geometry";
-import { buildGraphHome } from "@/lib/builder/graphGeometry";
+import { buildGraphHome, summarizeBuildingGraph } from "@/lib/builder/graphGeometry";
 import type { HomeSpec } from "@/lib/builder/spec";
 import { documentFromLocation } from "@/lib/builder/share";
 import type { BuilderSite } from "@/lib/builder/site";
@@ -215,7 +215,12 @@ import {
   type WallPlacement,
 } from "@/lib/builder/fixtures";
 import { documentSignature, readAutosave, writeAutosave } from "@/lib/builder/store";
-import { checkSpecAgainstParcel, planFromSpec, type PlanHandoff } from "@/lib/builder/toPlan";
+import {
+  checkMeasuredFootprintAgainstParcel,
+  checkSpecAgainstParcel,
+  planFromSpec,
+  type PlanHandoff,
+} from "@/lib/builder/toPlan";
 import AxonSheet from "./AxonSheet";
 import BuilderOrderHandoff from "./BuilderOrderHandoff";
 import CoPilot from "./CoPilot";
@@ -828,14 +833,30 @@ export default function BuilderApp() {
   const siteCheck = useMemo(() => {
     const parcel = state.doc.site?.parcel;
     if (!parcel) return null;
-    return checkSpecAgainstParcel(spec, {
+    const lot = {
       lotWidthFt: parcel.lotWidthFt,
       lotDepthFt: parcel.lotDepthFt,
       frontSetbackFt: parcel.frontSetbackFt,
       sideSetbackFt: parcel.sideSetbackFt,
       rearSetbackFt: parcel.rearSetbackFt,
-    });
-  }, [spec, state.doc.site]);
+    };
+    if (state.doc.geometry.kind === "building-graph") {
+      const summary = summarizeBuildingGraph(state.doc.geometry.graph);
+      const storeys = state.doc.geometry.graph.storeys.length > 1 ? 2 : 1;
+      return checkMeasuredFootprintAgainstParcel(
+        spec,
+        lot,
+        {
+          widthFt: summary.bounds.widthFt,
+          depthFt: summary.bounds.depthFt,
+          floorAreaSqFt: summary.totalFloorAreaSqFt,
+          storeys,
+        },
+        "building-graph",
+      );
+    }
+    return checkSpecAgainstParcel(spec, lot);
+  }, [spec, state.doc.geometry, state.doc.site]);
 
   const convertToPlanarGraph = useCallback(() => {
     const converted = convertBuilderDocumentToGraph(state.doc, 0.5);
