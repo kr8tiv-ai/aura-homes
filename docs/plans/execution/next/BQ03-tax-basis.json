@@ -116,5 +116,25 @@
     "scope": "Only BQ03 tax-basis normalization, calculation, persistence, invalidation, UI disclosure or focused test integration may be repaired. A second failure returns the node to blocked without touching any frozen visual path."
   },
   "sideEffect": "local",
-  "status": "manifest-defined"
+  "status": "implementation-verified-awaiting-fresh-context-review",
+  "history": {
+    "red": "The focused 31-test gate produced six expected failures: the budget had no tax range or normalized tax field, a tax-only change left the hash unchanged, the custom value was dropped on project/RFQ reload, and RFQ/quote diagnostics had no named tax change.",
+    "implementedAt": "2026-08-15",
+    "implementationCommit": "17306ec0793514088ab766c66868989034ce21e9",
+    "isolatedVerification": {
+      "worktree": "C:/Users/lucid/Desktop/Kin/aura-bq03-verify-17306ec",
+      "results": [
+        "The focused budget, project-document, RFQ and quote suite passed 31 of 31 on the exact implementation commit.",
+        "TypeScript no-emit validation passed on the exact implementation commit.",
+        "The GH_PAGES production export completed and emitted 23 HTML documents.",
+        "The complete served-export UI gate passed 132 of 132, including the new tax input/persistence/invalidation flow, 390 px budget composition, and the pre-existing visual, motion, model, builder and walkthrough regressions.",
+        "The post-export deterministic gate passed 607 of 607; its four bundle-isolation checks ran against the fresh export rather than skipping.",
+        "The implementation commit is authored and committed only by Matt-Aurora-Ventures <lucidbloks@gmail.com> and contains zero frozen story, Three.js, animation, model, meadow, worker or plan-geometry paths."
+      ],
+      "environmentNote": "The first pre-export full-suite attempt stopped before assertions because the detached worktree lacked the already-installed agent-level MCP dependency. Linking the verifier to the primary checkout's installed agent/node_modules resolved only the test environment; no source changed. Its 603 pass plus four expected build-only skips was superseded by the clean post-export 607-of-607 run."
+    },
+    "knownOpenFindings": [
+      "Fresh-context review remains pending because this run has no authority to create another agent."
+    ]
+  }
 }
