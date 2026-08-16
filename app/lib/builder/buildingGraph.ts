@@ -1403,6 +1403,64 @@ export function rotateGraphPlan(graph: BuildingGraph, deg: number): GraphMutatio
   return checked.ok ? { ok: true, graph: candidate } : fail(graph, checked.problem);
 }
 
+/**
+ * Stretch about the plan centroid: X × kx and Z × kz. Area is preserved when
+ * kx × kz = 1. Openings stay wall-relative; a wall that becomes shorter than
+ * its glass is refused by validation rather than silently trimmed.
+ */
+export function stretchGraphPlan(graph: BuildingGraph, kx: number, kz: number): GraphMutation {
+  if (!finite(kx) || !finite(kz) || kx <= 0 || kz <= 0) {
+    return fail(graph, "Plan stretch factors must be positive.");
+  }
+  if (kx === 1 && kz === 1) return { ok: true, graph };
+  const vertices = graph.storeys.flatMap((storey) => storey.vertices);
+  if (vertices.length === 0) return fail(graph, "There is no plan to stretch.");
+  const minX = Math.min(...vertices.map((vertex) => vertex.xFt));
+  const maxX = Math.max(...vertices.map((vertex) => vertex.xFt));
+  const minZ = Math.min(...vertices.map((vertex) => vertex.zFt));
+  const maxZ = Math.max(...vertices.map((vertex) => vertex.zFt));
+  const cx = (minX + maxX) / 2;
+  const cz = (minZ + maxZ) / 2;
+  const stretchPoint = (point: GraphPoint): GraphPoint => [
+    cx + (point[0] - cx) * kx,
+    cz + (point[1] - cz) * kz,
+  ];
+  const storeys = graph.storeys.map((storey) => {
+    const nextVertices = storey.vertices.map((vertex) => {
+      const [xFt, zFt] = stretchPoint([vertex.xFt, vertex.zFt]);
+      return { ...vertex, xFt, zFt };
+    });
+    const roofZones = storey.roofZones.map((zone) => ({
+      ...zone,
+      fallVector: zone.fallVector ? [zone.fallVector[0] * kx, zone.fallVector[1] * kz] : zone.fallVector,
+      ridge: zone.ridge
+        ? { start: stretchPoint(zone.ridge.start), end: stretchPoint(zone.ridge.end) }
+        : zone.ridge,
+    }));
+    const next: GraphStorey = { ...storey, vertices: nextVertices, roofZones };
+    return { ...next, rooms: deriveRoomFaces(next, storey.rooms) };
+  });
+  const stairs = graph.stairs?.map((stair) => ({
+    ...stair,
+    start: stretchPoint(stair.start),
+    end: stretchPoint(stair.end),
+  }));
+  const shafts = graph.shafts?.map((shaft) => ({
+    ...shaft,
+    centre: stretchPoint(shaft.centre),
+    widthFt: shaft.widthFt * kx,
+    depthFt: shaft.depthFt * kz,
+  }));
+  const candidate: BuildingGraph = {
+    ...graph,
+    storeys,
+    ...(stairs ? { stairs } : {}),
+    ...(shafts ? { shafts } : {}),
+  };
+  const checked = validateBuildingGraph(candidate);
+  return checked.ok ? { ok: true, graph: candidate } : fail(graph, checked.problem);
+}
+
 /** Duplicate one complete planar level, aligned in the shared site frame. */
 export function duplicateGraphStorey(
   graph: BuildingGraph,

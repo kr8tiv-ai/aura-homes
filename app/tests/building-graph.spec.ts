@@ -9,6 +9,7 @@ import {
   moveGraphVertex,
   rotateGraphPlan,
   setGraphRoofForm,
+  stretchGraphPlan,
   scaleGraphOpenings,
   scaleGraphPlan,
   singleStoreyGraphFromPolygon,
@@ -337,6 +338,23 @@ test("setGraphRoofForm replaces the storey roof with a derived zone", () => {
   expect(flat.ok).toBe(true);
   if (!flat.ok) return;
   expect(flat.graph.storeys[0].roofZones[0]).toMatchObject({ form: "flat", pitchDeg: 0 });
+});
+
+test("stretchGraphPlan keeps floor area and refuses a hang-off", () => {
+  const made = singleStoreyGraphFromPolygon([
+    [0, 0],
+    [20, 0],
+    [20, 10],
+    [0, 10],
+  ]);
+  expect(made.ok).toBe(true);
+  if (!made.ok) return;
+  const stretched = stretchGraphPlan(made.graph, 1.25, 0.8);
+  expect(stretched.ok).toBe(true);
+  if (!stretched.ok) return;
+  expect(stretched.graph.storeys[0].rooms[0].areaSqft).toBeCloseTo(200, 5);
+  const xs = stretched.graph.storeys[0].vertices.map((vertex) => vertex.xFt);
+  expect(Math.max(...xs) - Math.min(...xs)).toBeCloseTo(25, 6);
 });
 
 test("gable, hipped, shed and flat roof intent derive deterministically from one polygon", () => {

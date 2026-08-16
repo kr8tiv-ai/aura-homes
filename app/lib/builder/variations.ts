@@ -55,6 +55,7 @@ import {
   rotateGraphPlan,
   scaleGraphOpenings,
   setGraphRoofForm,
+  stretchGraphPlan,
   type BuildingGraph,
   type GraphRoofForm,
 } from "./buildingGraph";
@@ -710,15 +711,6 @@ const graphWindowCount = (graph: BuildingGraph): number =>
     0,
   );
 
-const GRAPH_AXIS_REFUSALS: readonly VariationRefusal[] = [
-  {
-    axis: "proportion",
-    reason:
-      "Proportion resizes a rectangular volume at constant area. A graph footprint is a polygon — " +
-      "stretching it through that rule would invent a rectangle the walls do not have.",
-  },
-];
-
 const GRAPH_ROOF_ORDER: readonly GraphRoofForm[] = ["gable", "shed", "hipped", "flat"];
 const GRAPH_ROOF_NOTES: Readonly<Record<GraphRoofForm, string>> = {
   gable: "two slopes off a central ridge — the default small-home roof",
@@ -771,7 +763,7 @@ function variationSetFromGraph(
   };
 
   const variations: DesignVariation[] = [];
-  const refusals: VariationRefusal[] = [...GRAPH_AXIS_REFUSALS];
+  const refusals: VariationRefusal[] = [];
 
   const glassSteps: Array<{ id: string; title: string; factor: number; note: string }> = [
     {
@@ -1148,6 +1140,93 @@ function variationSetFromGraph(
         midDeltaCad: budget.total.mid - basisBudget.total.mid,
         budgetHash: budget.budgetHash,
         blindSpots: notes,
+      },
+    });
+  }
+
+  const stretches: Array<{ id: string; title: string; kx: number; kz: number; sentence: string }> = [
+    {
+      id: "proportion-long",
+      title: "Longer, shallower",
+      kx: 1.25,
+      kz: 0.8,
+      sentence:
+        "The plan was stretched 25% east-west and shortened 20% north-south about its own centre, so the floor area stays put. More perimeter, more envelope.",
+    },
+    {
+      id: "proportion-compact",
+      title: "Squarer, deeper",
+      kx: 0.8,
+      kz: 1.25,
+      sentence:
+        "The plan was shortened 20% east-west and stretched 25% north-south about its own centre, so the floor area stays put. Less perimeter — the cheapest shape to heat in zone 7A.",
+    },
+  ];
+
+  for (const step of stretches) {
+    const stretched = stretchGraphPlan(graph, step.kx, step.kz);
+    if (!stretched.ok) {
+      refusals.push({ axis: "proportion", reason: `${step.title} was not offered — ${stretched.problem}` });
+      continue;
+    }
+    const candidate = validateBuilderDocument(withGraph(document, stretched.graph));
+    if (!candidate.ok) {
+      refusals.push({
+        axis: "proportion",
+        reason: `${step.title} was not offered — it does not validate as a builder document: ${candidate.problem}`,
+      });
+      continue;
+    }
+    const variantHash = hashBuilderDocument(candidate.document);
+    if (variantHash === basis.designHash) {
+      refusals.push({
+        axis: "proportion",
+        reason: `${step.title} was not offered — it produced the design you already have.`,
+      });
+      continue;
+    }
+    let budget;
+    try {
+      budget = price(candidate.document);
+    } catch (error) {
+      refusals.push({
+        axis: "proportion",
+        reason: `${step.title} was not offered — it could not be costed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      });
+      continue;
+    }
+    const nextGraph =
+      candidate.document.geometry.kind === "building-graph" ? candidate.document.geometry.graph : null;
+    if (!nextGraph) {
+      refusals.push({
+        axis: "proportion",
+        reason: `${step.title} was not offered — the candidate left planar graph geometry.`,
+      });
+      continue;
+    }
+    const nextSummary = summarizeBuildingGraph(nextGraph);
+    const ratio = modelledGraphGlazingRatio(nextGraph);
+    const glazing = glazingDisclosure(ratio);
+    variations.push({
+      id: step.id,
+      title: step.title,
+      axis: "proportion",
+      document: candidate.document,
+      designHash: variantHash,
+      areaSqFt: nextSummary.totalFloorAreaSqFt,
+      glazedAreaSqFt: nextSummary.glazedAreaSqFt,
+      glazingRatio: ratio,
+      overCeiling: glazing.over,
+      glazingSentence: glazing.sentence,
+      deltas: [{ sentence: step.sentence }],
+      cost: {
+        currency: "CAD",
+        total: budget.total,
+        midDeltaCad: budget.total.mid - basisBudget.total.mid,
+        budgetHash: budget.budgetHash,
+        blindSpots: budget.total.mid === basisBudget.total.mid ? [COST_MODEL_UNMOVED] : [],
       },
     });
   }
