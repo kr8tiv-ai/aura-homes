@@ -8,6 +8,7 @@ import {
   legacySpecToBuildingGraph,
   moveGraphVertex,
   rotateGraphPlan,
+  setGraphRoofForm,
   scaleGraphOpenings,
   scaleGraphPlan,
   singleStoreyGraphFromPolygon,
@@ -315,6 +316,27 @@ test("rotateGraphPlan turns the footprint about the origin and keeps opening siz
   });
   expect(turned.graph.storeys[0].rooms[0].areaSqft).toBeCloseTo(200, 6);
   expect(validateBuildingGraph(turned.graph).ok).toBe(true);
+});
+
+test("setGraphRoofForm replaces the storey roof with a derived zone", () => {
+  const made = singleStoreyGraphFromPolygon([
+    [0, 0],
+    [20, 0],
+    [20, 10],
+    [0, 10],
+  ]);
+  expect(made.ok).toBe(true);
+  if (!made.ok) return;
+  const shed = setGraphRoofForm(made.graph, "storey-1", "shed", 12);
+  expect(shed.ok).toBe(true);
+  if (!shed.ok) return;
+  expect(shed.graph.storeys[0].roofZones).toHaveLength(1);
+  expect(shed.graph.storeys[0].roofZones[0].form).toBe("shed");
+  expect(shed.graph.storeys[0].roofZones[0].fallVector).toBeDefined();
+  const flat = setGraphRoofForm(shed.graph, "storey-1", "flat");
+  expect(flat.ok).toBe(true);
+  if (!flat.ok) return;
+  expect(flat.graph.storeys[0].roofZones[0]).toMatchObject({ form: "flat", pitchDeg: 0 });
 });
 
 test("gable, hipped, shed and flat roof intent derive deterministically from one polygon", () => {

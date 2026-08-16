@@ -54,7 +54,9 @@ import {
   duplicateGraphStorey,
   rotateGraphPlan,
   scaleGraphOpenings,
+  setGraphRoofForm,
   type BuildingGraph,
+  type GraphRoofForm,
 } from "./buildingGraph";
 import {
   hashBuilderDocument,
@@ -710,18 +712,20 @@ const graphWindowCount = (graph: BuildingGraph): number =>
 
 const GRAPH_AXIS_REFUSALS: readonly VariationRefusal[] = [
   {
-    axis: "roof",
-    reason:
-      "Roof form writes spec.volumes[].roof. Graph roofs are explicit roof zones, and this strip " +
-      "does not yet swap those.",
-  },
-  {
     axis: "proportion",
     reason:
       "Proportion resizes a rectangular volume at constant area. A graph footprint is a polygon — " +
       "stretching it through that rule would invent a rectangle the walls do not have.",
   },
 ];
+
+const GRAPH_ROOF_ORDER: readonly GraphRoofForm[] = ["gable", "shed", "hipped", "flat"];
+const GRAPH_ROOF_NOTES: Readonly<Record<GraphRoofForm, string>> = {
+  gable: "two slopes off a central ridge — the default small-home roof",
+  shed: "one plane, one direction: cheapest to frame and the best solar deck",
+  hipped: "slopes on every side, meeting toward the centre",
+  flat: "near-flat with a drainage fall and a parapet detail",
+};
 
 function variationSetFromGraph(
   document: BuilderDocument,
@@ -1059,6 +1063,92 @@ function variationSetFromGraph(
       reason:
         "This graph already has more than one storey. Removing one would need a storey-delete " +
         "mutator this strip does not call yet.",
+    });
+  }
+
+  const currentRoof = graph.storeys[0]?.roofZones[0]?.form ?? "gable";
+  const otherRoofs = GRAPH_ROOF_ORDER.filter((form) => form !== currentRoof).slice(0, 2);
+  for (const form of otherRoofs) {
+    const source = graph.storeys[0];
+    if (!source) break;
+    const roofed = setGraphRoofForm(graph, source.id, form);
+    if (!roofed.ok) {
+      refusals.push({
+        axis: "roof",
+        reason: `${form} roof was not offered — ${roofed.problem}`,
+      });
+      continue;
+    }
+    const candidate = validateBuilderDocument(withGraph(document, roofed.graph));
+    if (!candidate.ok) {
+      refusals.push({
+        axis: "roof",
+        reason: `${form} roof was not offered — it does not validate as a builder document: ${candidate.problem}`,
+      });
+      continue;
+    }
+    const variantHash = hashBuilderDocument(candidate.document);
+    if (variantHash === basis.designHash) {
+      refusals.push({
+        axis: "roof",
+        reason: `${form} roof was not offered — it produced the design you already have.`,
+      });
+      continue;
+    }
+    let budget;
+    try {
+      budget = price(candidate.document);
+    } catch (error) {
+      refusals.push({
+        axis: "roof",
+        reason: `${form} roof was not offered — it could not be costed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      });
+      continue;
+    }
+    const nextGraph =
+      candidate.document.geometry.kind === "building-graph" ? candidate.document.geometry.graph : null;
+    if (!nextGraph) {
+      refusals.push({
+        axis: "roof",
+        reason: `${form} roof was not offered — the candidate left planar graph geometry.`,
+      });
+      continue;
+    }
+    const nextSummary = summarizeBuildingGraph(nextGraph);
+    const ratio = modelledGraphGlazingRatio(nextGraph);
+    const glazing = glazingDisclosure(ratio);
+    const notes: string[] = [ROOF_FORM_UNPRICED];
+    const unmoved =
+      budget.total.low === basisBudget.total.low &&
+      budget.total.mid === basisBudget.total.mid &&
+      budget.total.high === basisBudget.total.high;
+    if (unmoved) notes.push(COST_MODEL_UNMOVED);
+    const title = `${form.charAt(0).toUpperCase()}${form.slice(1)} roof`;
+    variations.push({
+      id: `roof-${form}`,
+      title,
+      axis: "roof",
+      document: candidate.document,
+      designHash: variantHash,
+      areaSqFt: nextSummary.totalFloorAreaSqFt,
+      glazedAreaSqFt: nextSummary.glazedAreaSqFt,
+      glazingRatio: ratio,
+      overCeiling: glazing.over,
+      glazingSentence: glazing.sentence,
+      deltas: [
+        {
+          sentence: `${source.name}: ${currentRoof} → ${form} — ${GRAPH_ROOF_NOTES[form]}.`,
+        },
+      ],
+      cost: {
+        currency: "CAD",
+        total: budget.total,
+        midDeltaCad: budget.total.mid - basisBudget.total.mid,
+        budgetHash: budget.budgetHash,
+        blindSpots: notes,
+      },
     });
   }
 

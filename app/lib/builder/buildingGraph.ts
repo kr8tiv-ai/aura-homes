@@ -1845,6 +1845,39 @@ export function deriveRoofZone(
   };
 }
 
+/**
+ * Replace one storey's authored roof zones with a single derived zone.
+ * Saltbox and a-frame stay spec-only — they are not GraphRoofForm values.
+ */
+export function setGraphRoofForm(
+  graph: BuildingGraph,
+  storeyId: string,
+  form: GraphRoofForm,
+  pitchDeg?: number,
+): GraphMutation {
+  const storey = graph.storeys.find((item) => item.id === storeyId);
+  if (!storey) return fail(graph, `Storey ${storeyId} does not exist.`);
+  const current = storey.roofZones[0];
+  const pitch =
+    pitchDeg ??
+    (form === "flat" ? 0 : current && current.form !== "flat" && current.pitchDeg > 0 ? current.pitchDeg : 30);
+  const derived = deriveRoofZone(storey, form, pitch);
+  if (!derived.ok) return fail(graph, derived.problem);
+  if (
+    storey.roofZones.length === 1 &&
+    current &&
+    current.form === derived.zone.form &&
+    current.pitchDeg === derived.zone.pitchDeg &&
+    JSON.stringify(current.ridge) === JSON.stringify(derived.zone.ridge) &&
+    JSON.stringify(current.fallVector) === JSON.stringify(derived.zone.fallVector)
+  ) {
+    return { ok: true, graph };
+  }
+  const candidate = graphWithStorey(graph, { ...storey, roofZones: [derived.zone] });
+  const checked = validateBuildingGraph(candidate);
+  return checked.ok ? { ok: true, graph: candidate } : fail(graph, checked.problem);
+}
+
 const LEGACY_WALL_ORDER: readonly Wall[] = ["n", "e", "s", "w"];
 
 function legacyVolumeCorners(volume: Volume): GraphPoint[] {

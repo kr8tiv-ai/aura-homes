@@ -712,8 +712,9 @@ test("a planar-graph project offers graph glazing and names the axes that still 
   expect(set.variations.some((variation) => variation.axis === "glazing")).toBe(true);
   expect(set.variations.some((variation) => variation.axis === "orientation")).toBe(true);
   expect(set.variations.some((variation) => variation.id === "storeys-two")).toBe(true);
-  expect(set.variations.length).toBeGreaterThan(3);
-  expect(set.refusals.map((entry) => entry.axis).sort()).toEqual(["proportion", "roof"]);
+  expect(set.variations.some((variation) => variation.axis === "roof")).toBe(true);
+  expect(set.variations.length).toBeGreaterThan(4);
+  expect(set.refusals.map((entry) => entry.axis)).toEqual(["proportion"]);
   expect(set.refusals.every((entry) => entry.reason.toLowerCase().includes("graph"))).toBe(true);
 
   const less = set.variations.find((variation) => variation.id === "glazing-less");
