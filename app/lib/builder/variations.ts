@@ -51,11 +51,16 @@
 
 import { FDWR_MAX } from "../design/materials";
 import {
+  scaleGraphOpenings,
+  type BuildingGraph,
+} from "./buildingGraph";
+import {
   hashBuilderDocument,
   validateBuilderDocument,
   type BuilderDocument,
 } from "./document";
 import { wallRunFt, wallThicknessFt } from "./geometry";
+import { modelledGraphGlazingRatio, summarizeBuildingGraph } from "./graphGeometry";
 import {
   createProjectBudget,
   defaultProjectBudgetScenario,
@@ -684,6 +689,210 @@ function candidatesFor(spec: HomeSpec): Candidate[] {
   return list;
 }
 
+const withGraph = (document: BuilderDocument, graph: BuildingGraph): BuilderDocument => {
+  if (document.geometry.kind !== "building-graph") return document;
+  return { ...document, geometry: { ...document.geometry, graph } };
+};
+
+const graphWindowCount = (graph: BuildingGraph): number =>
+  graph.storeys.reduce(
+    (sum, storey) =>
+      sum +
+      storey.walls.reduce(
+        (wallSum, wall) =>
+          wallSum + wall.openings.filter((opening) => opening.kind !== "door").length,
+        0,
+      ),
+    0,
+  );
+
+const GRAPH_AXIS_REFUSALS: readonly VariationRefusal[] = [
+  {
+    axis: "orientation",
+    reason:
+      "Orientation rotates volume.rotationDeg on the legacy spec. This project is planar graph " +
+      "geometry — turn the house by moving vertices on the plan.",
+  },
+  {
+    axis: "roof",
+    reason:
+      "Roof form writes spec.volumes[].roof. Graph roofs are explicit roof zones, and this strip " +
+      "does not yet swap those.",
+  },
+  {
+    axis: "proportion",
+    reason:
+      "Proportion resizes a rectangular volume at constant area. A graph footprint is a polygon — " +
+      "stretching it through that rule would invent a rectangle the walls do not have.",
+  },
+  {
+    axis: "storeys",
+    reason:
+      "Storeys flip spec.volumes[].storeys. Adding a graph storey is duplicateGraphStorey, which " +
+      "this strip does not call yet.",
+  },
+];
+
+function variationSetFromGraph(
+  document: BuilderDocument,
+  price: (candidate: BuilderDocument) => ReturnType<typeof createProjectBudget>,
+): VariationSet {
+  if (document.geometry.kind !== "building-graph") {
+    return {
+      engine: VARIATION_ENGINE,
+      basis: null,
+      variations: [],
+      refusals: [],
+      unavailable: "variationSetFromGraph was asked to read a document that is not planar graph geometry.",
+    };
+  }
+
+  let basisBudget;
+  try {
+    basisBudget = price(document);
+  } catch (error) {
+    return {
+      engine: VARIATION_ENGINE,
+      basis: null,
+      variations: [],
+      refusals: [],
+      unavailable: `This design cannot be priced, so no variant can carry a cost: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    };
+  }
+
+  const graph = document.geometry.graph;
+  const summary = summarizeBuildingGraph(graph);
+  const basisRatio = modelledGraphGlazingRatio(graph);
+  const basisGlazing = glazingDisclosure(basisRatio);
+  const basis: VariationBasis = {
+    designHash: hashBuilderDocument(document),
+    areaSqFt: summary.totalFloorAreaSqFt,
+    glazedAreaSqFt: summary.glazedAreaSqFt,
+    glazingRatio: basisRatio,
+    overCeiling: basisGlazing.over,
+    glazingSentence: basisGlazing.sentence,
+    total: basisBudget.total,
+  };
+
+  const variations: DesignVariation[] = [];
+  const refusals: VariationRefusal[] = [...GRAPH_AXIS_REFUSALS];
+
+  const glassSteps: Array<{ id: string; title: string; factor: number; note: string }> = [
+    {
+      id: "glazing-more",
+      title: "More glass",
+      factor: 1.35,
+      note: "Every glazed opening grows on its host wall, stopping at its neighbours and at the storey head. Doors stay put.",
+    },
+    {
+      id: "glazing-less",
+      title: "Less glass",
+      factor: 0.7,
+      note: "Smaller openings cost less to buy and lose less heat in January; they also collect less of the sun that pays for them.",
+    },
+  ];
+
+  for (const step of glassSteps) {
+    const scaled = scaleGraphOpenings(graph, step.factor);
+    if (!scaled.ok) {
+      refusals.push({
+        axis: "glazing",
+        reason: `${step.title} was not offered — ${scaled.problem}`,
+      });
+      continue;
+    }
+    const candidate = validateBuilderDocument(withGraph(document, scaled.graph));
+    if (!candidate.ok) {
+      refusals.push({
+        axis: "glazing",
+        reason: `${step.title} was not offered — it does not validate as a builder document: ${candidate.problem}`,
+      });
+      continue;
+    }
+    const variantHash = hashBuilderDocument(candidate.document);
+    if (variantHash === basis.designHash) {
+      refusals.push({
+        axis: "glazing",
+        reason: `${step.title} was not offered — it produced the design you already have.`,
+      });
+      continue;
+    }
+    let budget;
+    try {
+      budget = price(candidate.document);
+    } catch (error) {
+      refusals.push({
+        axis: "glazing",
+        reason: `${step.title} was not offered — it could not be costed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      });
+      continue;
+    }
+    const nextGraph =
+      candidate.document.geometry.kind === "building-graph"
+        ? candidate.document.geometry.graph
+        : null;
+    if (!nextGraph) {
+      refusals.push({
+        axis: "glazing",
+        reason: `${step.title} was not offered — the candidate left planar graph geometry.`,
+      });
+      continue;
+    }
+    const nextSummary = summarizeBuildingGraph(nextGraph);
+    const ratio = modelledGraphGlazingRatio(nextGraph);
+    const glazing = glazingDisclosure(ratio);
+    const notes: string[] = [];
+    const unmoved =
+      budget.total.low === basisBudget.total.low &&
+      budget.total.mid === basisBudget.total.mid &&
+      budget.total.high === basisBudget.total.high;
+    if (unmoved) notes.push(COST_MODEL_UNMOVED);
+    if (
+      Math.abs(nextSummary.glazedAreaSqFt - summary.glazedAreaSqFt) > 1e-6 &&
+      graphWindowCount(nextGraph) === graphWindowCount(graph)
+    ) {
+      notes.push(WINDOW_UNIT_PRICING);
+    }
+    variations.push({
+      id: step.id,
+      title: step.title,
+      axis: "glazing",
+      document: candidate.document,
+      designHash: variantHash,
+      areaSqFt: nextSummary.totalFloorAreaSqFt,
+      glazedAreaSqFt: nextSummary.glazedAreaSqFt,
+      glazingRatio: ratio,
+      overCeiling: glazing.over,
+      glazingSentence: glazing.sentence,
+      deltas: [
+        {
+          sentence: `Glazed area ${
+            nextSummary.glazedAreaSqFt > summary.glazedAreaSqFt
+              ? "up"
+              : nextSummary.glazedAreaSqFt < summary.glazedAreaSqFt
+                ? "down"
+                : "unchanged at"
+          } ${areaText(summary.glazedAreaSqFt)} → ${areaText(nextSummary.glazedAreaSqFt)}.`,
+        },
+        { sentence: step.note },
+      ],
+      cost: {
+        currency: "CAD",
+        total: budget.total,
+        midDeltaCad: budget.total.mid - basisBudget.total.mid,
+        budgetHash: budget.budgetHash,
+        blindSpots: notes,
+      },
+    });
+  }
+
+  return { engine: VARIATION_ENGINE, basis, variations, refusals, unavailable: null };
+}
+
 /**
  * The variation set for a document. Pure, deterministic, and complete: every
  * axis that produced nothing is in `refusals` with its reason.
@@ -706,24 +915,12 @@ export function variationSet(input: VariationInput): VariationSet {
   }
   const document = checked.document;
 
-  /* Planar-graph documents carry a FROZEN recovery spec — `document.ts`
-     refuses to reconcile it and the read-out refuses to run the glazing ratio
-     on it. Varying it would produce numbers about a home that is no longer on
-     screen, which is exactly the class of confident wrong answer this product
-     exists not to give. */
-  if (document.geometry.kind === "building-graph") {
-    return {
-      engine: VARIATION_ENGINE,
-      basis: null,
-      variations: [],
-      refusals: [],
-      unavailable:
-        "This project uses planar graph geometry. Variations move volume dimensions, roof form and openings on the legacy spec, which a graph document keeps only as a frozen recovery copy — varying it would describe a home that is no longer on screen.",
-    };
-  }
-
   const price = (candidate: BuilderDocument) =>
     createProjectBudget({ document: candidate, scenario, region, municipality, budgetCapCad });
+
+  if (document.geometry.kind === "building-graph") {
+    return variationSetFromGraph(document, price);
+  }
 
   let basisBudget;
   try {
@@ -852,7 +1049,15 @@ export function variationAnnouncement(variation: DesignVariation): string {
 }
 
 export type ApplyVariationResult =
-  | { ok: true; spec: HomeSpec; label: string; announcement: string }
+  | {
+      ok: true;
+      spec: HomeSpec;
+      /** Present when the variant is planar graph geometry. The recovery spec
+       *  is left unchanged; the editor must take this through `editGraph`. */
+      graph?: BuildingGraph;
+      label: string;
+      announcement: string;
+    }
   | { ok: false; problem: string };
 
 /**
@@ -870,9 +1075,14 @@ export function applyVariation(
 ): ApplyVariationResult {
   const variation = set.variations.find((candidate) => candidate.id === id);
   if (!variation) return { ok: false, problem: `No variation ${JSON.stringify(id)} is on offer.` };
+  const graph =
+    variation.document.geometry.kind === "building-graph"
+      ? variation.document.geometry.graph
+      : undefined;
   return {
     ok: true,
     spec: variation.document.spec,
+    ...(graph ? { graph } : {}),
     label: variationApplyLabel(variation.id, sequence),
     announcement: variationAnnouncement(variation),
   };

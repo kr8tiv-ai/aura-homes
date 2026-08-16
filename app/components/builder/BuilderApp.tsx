@@ -1841,6 +1841,7 @@ export default function BuilderApp() {
               <VariationStrip
                 document={state.doc}
                 onApply={edit}
+                onApplyGraph={editGraph}
                 region={auraProject?.requirements.location.region ?? "Alberta"}
                 municipality={auraProject?.requirements.location.municipality ?? ""}
                 scenario={auraProject?.budgetBasis?.scenario}
