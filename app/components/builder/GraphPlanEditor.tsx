@@ -15,6 +15,7 @@ import {
   addPartitionEdge,
   extrudeGraphWall,
   renameGraphRoom,
+  setGraphWallThickness,
   deriveStackedRoomRelationships,
   duplicateGraphStorey,
   moveGraphVertex,
@@ -570,6 +571,16 @@ export default function GraphPlanEditor({
     onEdit(extruded.graph, `graph:extrude:${selectedWall.id}`);
   };
 
+  const commitWallThickness = (wall: GraphWallEdge, thicknessFt: number) => {
+    const changed = setGraphWallThickness(graph, storey.id, wall.id, thicknessFt);
+    if (!changed.ok) {
+      refuse(changed.problem);
+      return;
+    }
+    report(`Wall ${wall.id} is ${feet(thicknessFt)} feet thick.`);
+    onEdit(changed.graph, `graph:thickness:${wall.id}`);
+  };
+
   const commitRoomName = (name: string) => {
     if (!selectedRoom) return;
     setFieldRevision((revision) => revision + 1);
@@ -1113,7 +1124,8 @@ export default function GraphPlanEditor({
                 value={selectedWall.thicknessFt}
                 revision={fieldRevision}
                 step={0.05}
-                note="Read-only: buildingGraph.ts sets a thickness when a wall is created and validates it, but exposes no mutator that changes one afterwards."
+                onCommit={fieldCommit((value) => commitWallThickness(selectedWall, value))}
+                note="Thickness is a property of this wall only. Neighbouring walls keep the thickness they already have."
               />
             </div>
           ) : (

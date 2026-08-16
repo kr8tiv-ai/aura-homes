@@ -2,6 +2,8 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
+**Status 2026-08-15:** Tasks 1–10 and the PR01 leftovers (vertex, extrude, room name) are on `origin/main` `5b27bf0`. Product HTML on aurahomes.fun is `f8a159f` (gh-pages `118842e`). Unit gate **636/636**. Money anchor still `$199,100 / $301,280 / $443,900`. 3D freeze held. Still not this loop: PB04 / PF01 / NW01 / FD1 (3D), X12–X15 (founder), Audit #10 (needs a context that did not implement the tree).
+
 **Goal:** Publish the already-verified land/budget/RFQ tree, then finish the remaining non-3D graph nodes through the Aug 21 hackathon window.
 
 **Architecture:** One checkout (`C:\Users\lucid\Desktop\aura-homes`) is the working tree. Claude graph v1.2 sequences work; ChatGPT graph v1.1 still owns streams v1.2 did not amend. Orchestrator owns git, gate lists, and deploy. Agents get disjoint write-sets and never touch `app/components/story/**`, meadow, GLBs, or shaders.

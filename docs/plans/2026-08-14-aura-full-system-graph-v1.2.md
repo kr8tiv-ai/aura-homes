@@ -34,9 +34,9 @@ through the node tables, because a status column that lives beside a job
 description gets edited when the job is edited and quietly stops being true.
 
 **Shipped since the August 15 snapshot:** LC01 (owner-stated lot), BQ02/BQ03,
-Q04A/Q05A, PR01 vertex grips, PR02 live wall lengths + refusals, PR03 Pro split
-view, PL04 fifteen-plan glass set (library 72 → 87). Landing-scene 3D remains
-frozen.
+Q04A/Q05A, PR01 vertex grips + exterior-wall extrude + room names, PR02 live
+wall lengths + refusals, PR03 Pro split view, PL04 fifteen-plan glass set
+(library 72 → 87). Landing-scene 3D remains frozen. Live HTML at `f8a159f`.
 
 **Shipped and live at aurahomes.fun** — 37 of 39 named product nodes (PB04 and
 PF01 remain):

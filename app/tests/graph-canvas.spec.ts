@@ -18,6 +18,7 @@ import {
   applyGraphVertexEdit,
   applyGraphWallExtrude,
   applyGraphRoomRename,
+  applyGraphWallThickness,
 } from "@/lib/builder/graphEdit";
 
 /* PR01 — a drag and the equivalent typed edit must share one writer.
@@ -278,6 +279,36 @@ test("a room rename without a building graph is refused in a sentence, not by th
   expect(hashBuilderDocument(refused.document)).toBe(hashBuilderDocument(legacy));
 });
 
+test("setting a wall thickness twice hashes the same and a zero thickness is refused", () => {
+  const start = documentFromSquare();
+  const before = hashBuilderDocument(start);
+  const typed = applyGraphWallThickness(start, {
+    storeyId: "storey-1",
+    wallId: "wall-1",
+    thicknessFt: 0.75,
+  });
+  expect(typed.ok).toBe(true);
+  if (!typed.ok) return;
+  expect(graphOf(typed.document).storeys[0].walls[0].thicknessFt).toBe(0.75);
+
+  const again = applyGraphWallThickness(start, {
+    storeyId: "storey-1",
+    wallId: "wall-1",
+    thicknessFt: 0.75,
+  });
+  expect(again.ok).toBe(true);
+  if (!again.ok) return;
+  expect(hashBuilderDocument(typed.document)).toBe(hashBuilderDocument(again.document));
+
+  const zero = applyGraphWallThickness(start, {
+    storeyId: "storey-1",
+    wallId: "wall-1",
+    thicknessFt: 0,
+  });
+  expect(zero.ok).toBe(false);
+  expect(hashBuilderDocument(zero.document)).toBe(before);
+});
+
 test("the 3D handles drag through the same mutator and snap as the typed path", () => {
   const appRoot = path.resolve(__dirname, "..");
   const editor = readFileSync(path.join(appRoot, "components", "builder", "GraphCanvasEditor.tsx"), "utf8");
@@ -289,6 +320,7 @@ test("the 3D handles drag through the same mutator and snap as the typed path", 
   expect(plan).toContain("extrudeGraphWall");
   expect(plan).toContain("Extrude selected wall 2 ft");
   expect(plan).toContain("renameGraphRoom");
+  expect(plan).toContain("setGraphWallThickness");
   expect(app).toContain("GraphCanvasEditor");
   expect(app).toContain("houseChildren");
 });

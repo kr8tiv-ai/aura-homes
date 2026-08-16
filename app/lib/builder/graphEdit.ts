@@ -10,6 +10,7 @@ import {
   extrudeGraphWall,
   moveGraphVertex,
   renameGraphRoom,
+  setGraphWallThickness,
   type BuildingGraph,
   type GraphPoint,
 } from "./buildingGraph";
@@ -161,6 +162,56 @@ export function applyGraphRoomRename(
     geometry: {
       ...current.geometry,
       graph: renamed.graph,
+    },
+  };
+  const valid = validateBuilderDocument(next);
+  if (!valid.ok) {
+    return { ok: false, problem: valid.problem, document: current };
+  }
+  if (valid.document.geometry.kind !== "building-graph") {
+    return {
+      ok: false,
+      problem: "The edited document is no longer a building graph.",
+      document: current,
+    };
+  }
+  return { ok: true, document: valid.document, graph: valid.document.geometry.graph };
+}
+
+export function applyGraphWallThickness(
+  document: BuilderDocument,
+  ask: {
+    storeyId: string;
+    wallId: string;
+    thicknessFt: number;
+  },
+): GraphDocumentEdit {
+  const checked = validateBuilderDocument(document);
+  if (!checked.ok) {
+    return { ok: false, problem: checked.problem, document };
+  }
+  const current = checked.document;
+  if (current.geometry.kind !== "building-graph") {
+    return {
+      ok: false,
+      problem: "This design is not a building graph.",
+      document: current,
+    };
+  }
+  const changed = setGraphWallThickness(
+    current.geometry.graph,
+    ask.storeyId,
+    ask.wallId,
+    ask.thicknessFt,
+  );
+  if (!changed.ok) {
+    return { ok: false, problem: changed.problem, document: current };
+  }
+  const next: BuilderDocument = {
+    ...current,
+    geometry: {
+      ...current.geometry,
+      graph: changed.graph,
     },
   };
   const valid = validateBuilderDocument(next);

@@ -283,14 +283,13 @@ test("the keyboard surface is a named object list, not dozens of unnamed SVG sto
 });
 
 test("the read-only dimensions say why they are read-only", () => {
-  /* HONESTY. buildingGraph.ts has no mutator that edits an existing opening or
-     changes a wall's thickness after it is built, and this node may not add
-     one. The fields still show the numbers — read-only, with the reason on
-     screen — rather than pretending the values are not there or, worse,
-     writing the graph past its own validation. */
-  expect(editorCode).toContain(
+  /* HONESTY. Openings on an existing wall still have no mutator here — those
+     edits go through applyOpeningEdit. Thickness now does, so the field is
+     writable and the old read-only sentence must be gone. */
+  expect(editorCode).not.toContain(
     "Read-only: buildingGraph.ts sets a thickness when a wall is created and validates it, but exposes no mutator that changes one afterwards.",
   );
+  expect(editorCode).toContain("setGraphWallThickness");
   expect(editorCode).toContain(
     "Read-only: buildingGraph.ts can add an opening and split a wall around one, but exposes no mutator that edits an existing opening.",
   );
@@ -299,11 +298,10 @@ test("the read-only dimensions say why they are read-only", () => {
   const exported = (graphModule.match(/^export function (\w+)/gm) ?? []).map((line) =>
     line.replace("export function ", ""),
   );
-  /* The claim above is checked against the module, so the note becomes a lie
-     the moment PR01 lands the mutator — and this test says so. */
   expect(exported).toContain("moveGraphVertex");
   expect(exported).toContain("addGraphOpening");
-  expect(exported.filter((name) => /Thickness|Opening.*(Move|Set|Update)|setGraphOpening/.test(name))).toEqual([]);
+  expect(exported).toContain("setGraphWallThickness");
+  expect(exported.filter((name) => /Opening.*(Move|Set|Update)|setGraphOpening/.test(name))).toEqual([]);
 });
 
 test("the new controls carry the one focus ring the tokens describe", async ({ page }) => {

@@ -919,6 +919,33 @@ export function extrudeGraphWall(
 }
 
 /**
+ * Change a wall's thickness. Topology and openings stay put. Zero or
+ * non-finite thickness is refused — the same rule validateBuildingGraph uses.
+ */
+export function setGraphWallThickness(
+  graph: BuildingGraph,
+  storeyId: string,
+  wallId: string,
+  thicknessFt: number,
+): GraphMutation {
+  const storey = graph.storeys.find((item) => item.id === storeyId);
+  if (!storey) return fail(graph, `Storey ${storeyId} does not exist.`);
+  const wall = storey.walls.find((item) => item.id === wallId);
+  if (!wall) return fail(graph, `Wall ${wallId} does not exist.`);
+  if (!finite(thicknessFt) || thicknessFt <= EPS) {
+    return fail(graph, `Wall ${wallId} thickness must be greater than zero.`);
+  }
+  const snapped = Math.round(thicknessFt * 100) / 100;
+  if (snapped === wall.thicknessFt) return { ok: true, graph };
+  const candidate = graphWithStorey(graph, {
+    ...storey,
+    walls: storey.walls.map((item) => (item.id === wallId ? { ...item, thicknessFt: snapped } : item)),
+  });
+  const checked = validateBuildingGraph(candidate);
+  return checked.ok ? { ok: true, graph: candidate } : fail(graph, checked.problem);
+}
+
+/**
  * Name a derived room face. Faces themselves are computed; this is the only
  * field a person authors. An empty name is refused. Topology is untouched.
  */
