@@ -1,0 +1,12 @@
+{
+  "node": "PR02-PR03",
+  "graphVersion": "1.2",
+  "job": "Live wall lengths in graph mode, visible 3D-drag refusals, and Pro simultaneous plan + massing + NOT_MODELLED panel.",
+  "status": "verified",
+  "sideEffect": "local",
+  "evidence": {
+    "commit": "944d290",
+    "unit": "616/616 at that commit; subsequent PL04 raises the suite",
+    "threeDFreeze": "houseChildren only; Viewport.tsx and story/** untouched"
+  }
+}

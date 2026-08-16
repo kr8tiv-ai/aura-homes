@@ -45,5 +45,10 @@
     "note": "the orchestrator runs test:ui and the meadow proof (rule 3)"
   },
   "sideEffect": "local",
-  "status": "ready"
+  "status": "verified-with-open-finding",
+  "evidence": {
+    "shippedAt": "2026-08-15",
+    "commit": "a6acb8f",
+    "openFinding": "Vertex grips and applyGraphVertexEdit shipped; extrude-wall and room-assign mutators were not added because they are not honest compositions of existing primitives."
+  }
 }

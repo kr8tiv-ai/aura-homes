@@ -36,7 +36,7 @@ print a number it cannot prove.
 |---|---|---|
 | Web app, public and hosted | **Live** | [aurahomes.fun](https://aurahomes.fun) — 21 public routes returned 200 in [Audit #8](AUDIT-LOG.md) |
 | Local-first project workspace: intake, library, autosave, archive, export | **Live** | [/start](https://aurahomes.fun/start) → [/projects](https://aurahomes.fun/projects) — no account, IndexedDB only |
-| Guided and Pro editors over one `BuilderDocument`, 72-plan library | **Live** | [/build](https://aurahomes.fun/build) — every plan names its source and licence |
+| Guided and Pro editors over one `BuilderDocument`, 87-plan library | **Live** | [/build](https://aurahomes.fun/build) — every plan names its source and licence |
 | Land-fit engine | **Pilot** | [/land](https://aurahomes.fun/land) — sourced example and user-supplied records; not a listing feed or a permit decision |
 | Alberta budget, reconciled to the dollar | **Pilot** | [/budget](https://aurahomes.fun/budget) — ex-land $199,100 / $301,280 / $443,900 from `data/alberta/cost-model.json`, re-derived by `agent/ npm run demo` |
 | Contractor and manufacturer evidence workbenches | **Pilot** | [/contractors](https://aurahomes.fun/contractors), [/buy](https://aurahomes.fun/buy) — demonstration and user-supplied records, dated, with gaps shown. Aura does not label a provider vetted |
@@ -199,7 +199,7 @@ simulated settlement on camera, and no zero read as anything but a zero.
 |---|---|---|
 | 0–8s | Enter | The gate film → Enter (eco journey). The hero carries the one-liner: "Design your eco home. Find land that fits. Plan every step to build it." |
 | 8–18s | The world | Scroll beats 01–03 of the 3D story; one day/night flip. |
-| 18–36s | Design | `/build?mode=guided` — the 72-plan library, pick the Fjell Cube, the camera reframes, one Ctrl-K phrase edit ("wider by 4") lands as one undo step. |
+| 18–36s | Design | `/build?mode=guided` — the 87-plan library, pick the Fjell Cube, the camera reframes, one Ctrl-K phrase edit ("wider by 4") lands as one undo step. |
 | 36–50s | Land fit | `/land`: run the demonstration check and show the rejection with its cited example rule. "A first screen, not a permit decision." |
 | 50–62s | Cost | `/budget`: show the scenario range, its assumptions, and the DIY-or-hire choices. Say the anchor out loud: the ex-land totals reconcile to the published cost model to the dollar. |
 | 62–72s | Project | `/dashboard`: the saved design, blockers, budget basis, quote state, and recommended next action in one project. |
@@ -260,7 +260,7 @@ At the August 14, 2026 checkpoint:
 | Gate | Result |
 |---|---|
 | `npx tsc --noEmit` (app) | Passes |
-| `npm test` (app) — deterministic app + contract-truth specs | 616 passed |
+| `npm test` (app) — deterministic app + contract-truth specs | 630 passed |
 | `npm run test:ui` (app) — Playwright against a fresh static export | 132 passed |
 | `node scripts/meadow-proof.mjs` — hardware scene proof, real GPU | Passed at `3e00c66` on desktop and mobile tiers; needs a quiet machine and a real GPU, so it is dated rather than re-run per commit |
 | `npm run demo` (agent) — the money anchor | Reconciles to the dollar: ex-land $199,100 / $301,280 / $443,900 |

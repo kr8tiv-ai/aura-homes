@@ -35,5 +35,8 @@
   ],
   "verify": { "commands": ["npx tsc --noEmit", "npm test"], "note": "orchestrator runs test:ui and gates the spec" },
   "sideEffect": "local",
-  "status": "ready"
+  "status": "verified",
+  "evidence": {
+    "note": "Edmonton zoning lookup shipped with LAND01/LC01. Demonstration parcels default off."
+  }
 }

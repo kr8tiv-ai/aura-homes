@@ -45,5 +45,8 @@
     "note": "the money anchor is the hard gate — the demo must still reconcile to the dollar"
   },
   "sideEffect": "local",
-  "status": "ready"
+  "status": "verified",
+  "evidence": {
+    "note": "The /budget cost-margin story shipped in 4e72f72; money anchor still $199,100 / $301,280 / $443,900."
+  }
 }

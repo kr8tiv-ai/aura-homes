@@ -45,5 +45,9 @@
     "note": "the orchestrator runs test:ui (rule 3)"
   },
   "sideEffect": "local",
-  "status": "ready"
+  "status": "verified",
+  "evidence": {
+    "shipped": "d0fc2f6",
+    "note": "Co-pilot never applies without confirmation; copilot.spec.ts remains in the unit gate."
+  }
 }

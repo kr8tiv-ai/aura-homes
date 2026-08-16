@@ -10,6 +10,7 @@
  */
 
 import { builderDocumentFromLegacySpec, type BuilderDocument } from "./document";
+import { GLASS_PLAN_TEMPLATES } from "./planCatalog.glass";
 import {
   glazedAreaSqFt,
   groundFootprintSqFt,
@@ -3159,6 +3160,7 @@ export const PLAN_TEMPLATES: readonly PlanTemplate[] = [
     notes:
       "Aura-authored mass-timber concept, modelled at 19% glazing. The discipline IS the design: every opening in this plan begins and ends on a two-foot line, and a test asserts it, because the moment one window slides six inches off the grid it crosses a panel joint and the saving that made CLT worth choosing goes straight into a header. What that discipline does not do is make the building cheap on its own — CLT is bought by the cubic metre, needs a crane and a prepared site, needs its exposure period and moisture managed during erection, and needs an acoustic and fire strategy from a supplier who has done it before. This shell draws a single-storey box; the panel layout, the connections and the roof diaphragm are the supplier's engineering, not this drawing's.",
   }),
+  ...GLASS_PLAN_TEMPLATES,
 ] as const;
 
 /* ===========================================================================

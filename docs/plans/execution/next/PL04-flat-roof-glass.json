@@ -1,0 +1,14 @@
+{
+  "node": "PL04",
+  "graphVersion": "1.2",
+  "job": "Mount the flat-roof glass-led plan set after the honesty suite holds: compass disclosure, seated-head clearance, glass-share lift, no padding clones.",
+  "status": "verified",
+  "sideEffect": "local",
+  "evidence": {
+    "mountedAt": "2026-08-16",
+    "tree": "pending-commit",
+    "library": "PLAN_TEMPLATES.length is 87 after concatenating GLASS_PLAN_TEMPLATES",
+    "honesty": "tests/plan-catalog-glass.spec.ts 14/14 plus tests/plan-catalog.spec.ts library-wide pins",
+    "threeDFreeze": "no story, three, models, meadow, or worker paths"
+  }
+}

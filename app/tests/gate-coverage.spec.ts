@@ -44,8 +44,6 @@ const specFiles = readdirSync(path.join(appRoot, "tests"))
 const DELIBERATELY_UNGATED: Readonly<Record<string, string>> = {
   "landing-vitals.spec.ts":
     "A measurement, not a pass/fail gate. It reads AURA_TEST_BASE_URL to point at an arbitrary deployed target, runs five cold contexts, and writes vitals artifacts. Run it on purpose against a real deployment; running it inside test:ui would measure the local export server and report that number as if it described production.",
-  "plan-catalog-glass.spec.ts":
-    "PL04 in-flight authorship, not a shippable gate. The first fifteen-plan pass already failed the honesty verifier (north-facing glass unnamed in notes). Wiring it into `test` before that review is green would count a rejected draft as coverage. Re-gate it when the compass-disclosure rule and the combined-library glass-share lift both hold.",
 };
 
 const inUnitGate = (file: string) => packageJson.includes(`tests/${file}`);
@@ -200,8 +198,8 @@ test("the counter agrees with what the runners actually declare", () => {
   /* The counter is a regex over source, which is an approximation of what the
      runner does — and the first version of it was wrong by seven. So it is
      pinned against numbers OBSERVED from the runners themselves:
-       npm test        -> 616 declared, after PR02 wall-length measures and
-                          the PR03 simultaneous-view source pins joined the gate
+       npm test        -> 630 declared, after the PL04 glass-set honesty suite
+                          joined the unit gate
        npm run test:ui -> 132 declared and passed, on a full 13.3-minute run
                           against a fresh static export, after the stated-lot
                           journey and explicit City-register surface joined
@@ -210,7 +208,7 @@ test("the counter agrees with what the runners actually declare", () => {
      re-running both suites and writing down what they said — which is the
      point. A counter nobody ever checked against the thing it counts is how
      the README got its numbers wrong in the first place. */
-  expect(UNIT_TESTS).toBe(616);
+  expect(UNIT_TESTS).toBe(630);
   expect(UI_TESTS).toBe(132);
 
   const readme = read(repoRoot, "README.md");

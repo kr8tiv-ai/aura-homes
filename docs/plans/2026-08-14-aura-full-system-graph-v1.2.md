@@ -27,6 +27,53 @@ streams the earlier plan lacked entirely.
 
 ---
 
+## 0. Where the graph stands — August 16, 2026
+
+Five days to the August 21 deadline. Status is recorded here rather than scattered
+through the node tables, because a status column that lives beside a job
+description gets edited when the job is edited and quietly stops being true.
+
+**Shipped since the August 15 snapshot:** LC01 (owner-stated lot), BQ02/BQ03,
+Q04A/Q05A, PR01 vertex grips, PR02 live wall lengths + refusals, PR03 Pro split
+view, PL04 fifteen-plan glass set (library 72 → 87). Landing-scene 3D remains
+frozen.
+
+**Shipped and live at aurahomes.fun** — 37 of 39 named product nodes (PB04 and
+PF01 remain):
+
+| Stream | Nodes | What landed |
+|---|---|---|
+| Token truth | VT01 · VT02 · VT03 · VT04 | `/homes` live with receipts, the buy-and-bridge guide, the on-chain mint verified, the fee-claim wallet published before any fee is recognized |
+| Performance | PB01 · PB02 · PB03 | Day-1 baseline artifact, GLB optimization pass, font and bundle audit |
+| Housekeeping | XH01 · DB01 · TR01 | Handle sweep, scheduled data-bake, the release-truth gate that compares published claims against executable reality |
+| Editing | AX01 · EX04 · MK01 · PL01 | Keyboard operability and exact numeric entry, the multi-page vector PDF drawing set, the contributor model module, thirty Nordic plans |
+| Spine | SP01 · SP02 · SP03 · SP04 | The persistent spine, `/projects` as a real dashboard, storage truth said plainly, first-run clarity |
+| Viewer | VW01 · VW02 · VW03 | Live preview beside every step, section cuts and floor isolation, the mobile read-only viewer |
+| Guided | GQ01 · GQ02 · GQ03 | Intake-driven defaults, inline "why", apply-through-the-same-APIs after confirmation |
+| Feedback | LF01 · LF02 | Live cost bands, setbacks and FDWR; one readiness reading separating design intent from professional review |
+| Export | EX01 · EX02 · EX03 | Previews before download, the one-click handoff package, the graph-geometry adapter gaps |
+| Co-pilot | AI01 | The bounded advisor — deterministic, no model call, confirm-before-apply proven in four layers |
+| Polish | MI01 | One motion system, three durations, one curve, reduced-motion at the token layer |
+
+**Open — two nodes (plus founder-only X12–X15):**
+
+| ID | Job | Why it is still open |
+|---|---|---|
+| **PB04** | Re-measure against the PB01 baseline | Needs a quiet machine and the meadow proof. Out of this loop by the 3D freeze. |
+| **PF01** | Lazy-load the heavy 3D and map bundles | Touches three/r3f load paths. Deferred past the freeze unless first-load regresses. |
+
+**Added since v1.2 was written**, from founder asks rather than from the plan:
+OPEN01 (openings editable three ways), VAR01 (design variations), WALK01 (the
+derived walkthrough), SCEN01 (impact comparison), MARGIN01 (the cost-margin
+story), LAND01 (the baked Edmonton zoning register), ED01/NAV01 (findable
+features), and PL04 (the flat-roof glass set, in build). All shipped except
+PL04. The lesson worth keeping: **eight of the last ten things built came from
+the founder using the product, not from this document.** The graph is good at
+sequencing and terrible at noticing what is missing when you actually try to use
+the thing.
+
+---
+
 ## 1. Corrections (verified defects in v1.1)
 
 ### 1.1 The calendar exists: OKX BuildX AI Season closes August 21, 2026
@@ -425,7 +472,74 @@ v1.1 §19 stands, plus these minimum anchors:
 | **TR01** | A release gate comparing published claims against executable reality. Born because it was **cited before it existed**: the `DEPLOYMENTS.md` correction closed with "is now tracked as node TR01" in the present tense, for a node nobody had written — the audited drift class reproduced inside the fix for the audited drift. | Reproduce each historical defect and watch the gate go red. Every expected value derives from code, never from a second hand-typed constant. | **Partial.** Spec-count drift closed by `gate-coverage.spec.ts`; deployment/token *status* prose still unguarded. |
 | **EX04** | Download the drawing set as one multi-page vector PDF. The sheets are already ANSI B in **points** (`kit.ts:37-41`), which is PDF's own unit, so the coordinates map 1:1. | Two generations byte-identical — PDF writers stamp `/CreationDate` and a random `/ID` by default, and this product's stated rule is that the same design produces byte-identical files. Vector, not raster. | Ready. |
 | **MK01** | A module where people *and agents* author models — plans and furniture — for the marketplace, over the existing rights model (`planCatalog` already records source, licence, attribution and modification per record). | Every contributed record carries provenance or is refused. No claim of settlement that settlement does not do. | Scoping. |
-| **PL01** | Thirty modern Nordic plans, glass-forward. | Each record declares its glazing ratio and, where it exceeds the NBC 9.36 **prescriptive** ceiling of 22%, names the performance path rather than quietly failing its own check. Aura-authored originals under MIT, so no third-party redistribution question arises. | Ready. |
+| **PL01** | Thirty modern Nordic plans, glass-forward. | Each record declares its glazing ratio and, where it exceeds the NBC 9.36 **prescriptive** ceiling of 22%, names the performance path rather than quietly failing its own check. Aura-authored originals under MIT, so no third-party redistribution question arises. | **Shipped.** |
+| **PL04** | The flat-roof, glass-led set. PL01 delivered thirty Nordic plans and the library reached 72, but measured afterwards the shape of the collection had barely moved: roof forms run **gable 39, shed 36, flat 21, a-frame 8, saltbox 3**, and only **nine** of 72 read as glass-led. The founder's ask — "more and better cooler models, more flat roof pure glass" — is about the *distribution*, not the count. | Every plan in the set is flat- or shed-roofed or says why it earns an exception; the set demonstrably raises the library's glass share, computed from both modules rather than hardcoded; no two are structural near-duplicates under the padding gate; and every plan exceeding the 0.22 prescriptive reference discloses the real number in its own notes. | In build. |
+
+**Why PL04 is authorship, not engineering.** The `RoofForm` union already carries
+`"flat"`, and `"glazing-wall"` is already an opening kind used 98 times across the
+library. Nothing was blocking a glass-led set except that nobody wrote one. That
+is worth recording, because the instinct on receiving "can we get cooler models"
+is to reach for a generator, and the honest answer here was to reach for a
+designer.
+
+**The trap PL04 must not fall into.** A wall of glass on the north face of an
+Edmonton home is a heat-loss disaster, and twelve beautiful glass boxes that
+would be miserable to live in would be a worse outcome than the library staying
+gable-heavy. At 53.5° N in climate zone 7A the defensible moves are: glass facing
+south and into sheltered courts, deep overhangs sized for summer shading, and
+clerestory or monitor light from above rather than unlimited side glazing. A plan
+whose beauty is bought with a heating bill its own notes do not admit fails this
+node even if it passes every automated gate.
+
+**PL04 fell into it on the first pass, and that is the entry worth keeping.**
+The design panel produced fifteen plans that passed every geometric gate — 172
+openings with zero overlap, the real engine returning zero warnings where the
+existing 72 return forty, every disclosed ratio matching the geometry to the
+rounded point. The honesty verifier then returned NOT-SOUND on eleven counts,
+and three of them were precisely this trap: a plan with 41% of its glass on
+north walls including a 118.5 sq ft full-height glazing wall, whose record never
+contains the word *north*; a plan with two 45 sq ft glazing walls on east and
+west bedroom faces whose only daylight sentence describes the clerestories; and a
+plan justifying 28% glazing on clerestory gain when 63% of that high band faces
+north and takes no direct beam between the equinoxes. **The automated gates
+cannot see any of this**, because each plan discloses its ratio correctly and the
+ratio is orientation-blind. What caught it was an agent reading every sentence
+against the geometry it describes. That is now a gate — a compass-disclosure rule
+requiring any plan with a material share of its glass off-south to name the
+direction in its own prose.
+
+---
+
+### BQ02 — glazing is priced by the unit, and a glass wall is one unit (found Aug 15)
+
+Surfaced by the PL04 build while it was doing something else, which is how the
+expensive ones usually arrive.
+
+| ID | Job | Gate |
+|---|---|---|
+| **BQ02** | `materials.ts:681-694` prices glazing as `window_count × $900/1,350/1,800`, and both `projectBudget.ts:307` and `planCatalog.ts:3566` count **every non-door opening as one unit**. A 34 ft × 9 ft glazing wall — 306 sq ft — is therefore priced identically to a 4 ft × 4 ft casement at 16 sq ft. Roughly a nineteen-fold understatement on that line. | Glazing is priced by area against the same sourced band, restated per square foot from a stated reference window size, so it is a units correction rather than a new price claim. A gate fails if glazing is ever priced per unit again. |
+
+**Why this matters more than its size suggests.** The whole argument of this
+product is that a beautiful drawing carries real numbers. The existing library
+contains **98 glazing-wall openings**, and PL04 exists specifically to add more,
+so the wave meant to showcase glass is the wave that makes the error worse. The
+direction is also the harmful one: it **understates** cost to somebody planning a
+build.
+
+**What is NOT affected, verified before dispatch.** `data/alberta/cost-model.json`
+is a flat 13-line reference budget in which glazing is bundled into a single
+`Metal roof, triple-pane windows, doors, siding` lump at $32,000 mid, and its
+`totalsRule` computes the totals from those lines. `agent/ npm run demo`
+reconciles to `totalsExLand` = 199,100 / 301,280 / 443,900 down that path, which
+never calls `buildBillOfMaterials`. **The money anchor does not move**, and the
+node's contract says that if a builder finds otherwise it must stop and report
+rather than adjust the figures — those three numbers are the project's oldest
+invariant and reconciling to them is Audit #6's to-the-dollar result.
+
+**The rule this suggests, worth stating generally:** a price expressed *per unit*
+of a thing that varies in size by a factor of twenty is not a price, it is a
+placeholder. Anywhere the bill of materials counts openings, panels, piles or
+fixtures, ask whether the unit is the thing that actually scales the cost.
 
 **Why PL01 is buildable at all**, recorded because it looked blocked: the hard
 FDWR trim lives only in the Python `design-api` layout solver
@@ -640,6 +754,58 @@ hackathon-critical set can be lifted out untouched.
 | **PR02** | Measurement tools, live dimensions, collision/adjacency feedback, multi-storey graph visualisation, undo/redo already hash-snapshotted. | Spec: an invalid move is refused with a reason, never silently clamped. |
 | **PR03** | Side-by-side 2D plan + 3D massing + a plain performance panel (daylight, rough energy, cost-band sensitivity), each labelled for what it is and is not. | Every panel figure traces to its module; nothing modelled is presented as measured. |
 
+#### The U4 stream, made dispatchable (Aug 15)
+
+These three rows are the largest block of open work and they were written as
+aspirations. Waves 12 and 13 changed what they mean, so they are restated here
+as contracts a wave can actually be dispatched against.
+
+**What already landed that PR01 assumed it would have to build.** OPEN01 shipped
+`OpeningHandles.tsx` — real pointer-driven grips on the model, slide, both edges,
+sill and head, with the drag routed through `applyOpeningEdit` so a drag and a
+typed figure produce the same document and the same hash. That is PR01's
+determinism gate, already satisfied, for one class of object. `openingEdit.ts`
+carries the reusable half: `openingBoxFromEdgeDrag`, `snapOpeningDrag`,
+`wallFrameWorld`, `OPENING_HANDLE_STANDOFF_FT`. **PR01 is now "generalise this to
+vertices and walls", not "invent canvas interaction".** Anyone starting from
+scratch here is rebuilding a solved problem.
+
+**What PR03 already has.** `ScenarioCompare` renders two solved designs
+side-by-side with a shared `NOT_MODELLED` table, and its hardest rule is already
+enforced: a row headed *not modelled* may not contain result-shaped prose, proven
+by a gate that rejects `/\d+(\.\d+)?\s*(%|percent|kwh|sda|ase|ach\b)/` anywhere in
+that text. PR03's remaining half is **simultaneity** — plan and massing and
+panel visible at once rather than in tabs — which is a layout problem, not a
+modelling one. Its "nothing modelled is presented as measured" gate should reuse
+`scenarios.spec.ts`'s scanner rather than write a second one.
+
+**The bottleneck, restated.** All three need `app/components/builder/BuilderApp.tsx`,
+and §2b rule 1 forbids overlapping write-sets, so **one per wave**. Wave 12
+proved the escape hatch works for anything that rides inside the 3D scene:
+`houseChildren` carried `FixtureLayer`, `OpeningHandles` and
+`WalkthroughCameraRig` without any of them opening the file. PR01 enters the
+same way. PR02's measurement overlay is also scene-resident and can ride with it.
+**PR03 cannot** — it is HTML layout in the control column, so it owns the file
+in its own wave.
+
+**Sequencing, with the reason each edge exists:**
+
+| Wave | Node | Enters through | Why it cannot be earlier |
+|---|---|---|---|
+| 14 | PR01 | `houseChildren` | Nothing blocks it; it generalises `openingEdit.ts` |
+| 14 | PR02 measurement overlay | `houseChildren`, same wave, sibling write-set | A dimension is drawn in the scene; it does not need the control column |
+| 15 | PR02 refusal surface | `BuilderApp.tsx` | "An invalid move is refused with a reason, never silently clamped" needs somewhere to print the reason, and that is the control column |
+| 15 | PR03 | `BuilderApp.tsx`, same owner as PR02's surface | Same file, so same wave and same agent |
+
+**The gate that will be hardest, named now so nobody discovers it late.** PR01's
+contract says *a drag and an equivalent typed edit produce the same graph and the
+same hash*. Proving that requires a typed path that can express every drag, which
+the graph editor does not have today for vertices. Either build the typed path
+first and drive the drag through it — the way `OpeningHandles` drives everything
+through `applyOpeningEdit` — or the gate becomes unprovable and quietly weakens
+into "a drag produces some graph". The first option is more work and it is the
+only honest one.
+
 ### U5 — live feedback and honest readiness
 
 | ID | Job | Gate |
@@ -689,6 +855,68 @@ primitive. The mutation proof adds the exact bypass the contract forbids — a
 | **MI01** | One motion system: 150–250 ms damped transitions, soft focus states, restrained hover. Applied through tokens so "premium" is a setting, not a hundred hand-tuned durations. | Spec pins the token values and greps for out-of-band durations; reduced-motion still wins. |
 | **LC01** | `/land` and `/contractors` score against the CURRENT design's exact footprint and height, so a fit score is about *this* home. | The fit shown must change when the design changes — pinned. |
 | **PF01** | Aggressive lazy-loading of the heavy 3D and map bundles; IndexedDB quota edge cases handled where they occur. | Measured against `perf/PB01-baseline`; no LCP regression. |
+
+#### LC01 was diagnosed wrong, and the correction matters (Aug 15)
+
+The founder asked "why cant I pick land?" and the node above reads as if the
+answer were a scoring problem. It is not. A read-only trace, cited to file and
+line, found something better and worse than expected.
+
+**The pick pipeline is real and complete.** `/land`'s "Use this plot"
+(`page.tsx:412-428`) calls `withProjectSite` (`page.tsx:182`), which validates
+through `site.ts:49-98`, rehashes the document and reopens the design step;
+`BuilderApp.tsx:793` hydrates it and `:824` runs `checkSpecAgainstParcel`
+against it; `SitePanel.tsx:117-155` prints whether the home fits. A test proves
+the round trip and proves clearing it restores the original hash byte-for-byte.
+Nothing in that chain is a stub.
+
+**It has nothing real to run on.** The entire inventory is four fictional
+records in `agent/samples/parcels.sample.json`, with buildable envelopes
+hardcoded at `discovery.ts:332-337` — one of them `[null, null]` on purpose, to
+exercise the unknown-evidence refusal. Real records: zero.
+
+**And the real data cannot ever be picked, correctly.** The 156 baked Edmonton
+districts are RULES, not parcels: no address, no area, no dimensions, no
+coordinate. `landData.ts:215-216` therefore sets `buildableWidthFt` and
+`buildableDepthFt` to `unknownFact(...)`, and `plotSite.ts:42-43` refuses
+anything whose width or depth is unknown. Both are right. A zoning district
+genuinely does not know your lot. The defect is that **nothing bridges the gap**:
+`page.tsx:338` mounts `<ZoningLookup>` read-only, without `project`, without
+`update`, with no import of `withProjectSite` and no control that could attach
+anything. The one surface backed by real licensed authority data is the one
+surface with no action on it.
+
+**The honest path already exists and is buried.** A person can type their own
+lot — `SitePanel` → `editSite` → the reducer at `BuilderApp.tsx:493-511`, and
+`validateBuilderSite` already accepts `provenance: "manual"`. It is gated at
+`BuilderApp.tsx:1812` to guided mode, step 5 of 8, on `/build`. Somebody standing
+on the page called *find land for the home you designed* has no way to say
+"here is my land."
+
+**`/contractors` already solved this exact problem and is the template.**
+`ContractorDirectory.tsx:71` — `demoMode ? DEMO_CONTRACTORS : userProfiles`,
+defaulting to **false**. No free directory of vetted builders exists either, so
+the answer was: *the person brings the subject, the app supplies the rigour.*
+Fiction sits behind an explicit toggle and is barred from the shortlist.
+`/land` never got that treatment.
+
+So LC01 splits into three, and the scoring job it originally described is the
+smallest of them:
+
+| ID | Job | Gate |
+|---|---|---|
+| **LC01a** | A person states their own lot on `/land` — frontage, depth or area, setbacks, facing, slope — and it attaches as a real `BuilderSite`. Needs no new data and no licence. | The flow is reachable from `/land`, not only from guided step 5. A spec proves it, and proves it by the FLOW rather than by the pure function — the existing pick test passes today while the feature is unusable, and its own header admits it needs no browser. |
+| **LC01b** | Bake the Edmonton property register (`dkk9-cj3x`, same open terms, per-property zoning + `lot_size` + legal description + coordinate) so a real address resolves to a real zone code and a real lot area. Joins to the 156 districts on `baseCode`, 75 of 80 codes. | The 440,000-row scope decision is answered with byte counts, not adjectives. `lot_size` is an AREA — any depth derived from area over stated frontage says so ON SCREEN. `assertNoMarketVocabulary` runs over the NEW artifact, proven by injection. |
+| **LC01c** | Demonstration records move behind an explicit toggle, default off, per the `/contractors` pattern. The real surface comes first. | A visitor's first view of `/land` contains no fictional parcel. Pinned by document order, and both halves proven able to fail. |
+
+**The line that does not move:** free, legal, redistributable *listings* do not
+exist in Canada. Active MLS needs an eligible broker relationship and approved
+CREA DDF permissions; Alberta Site Selector grants no reusable feed rights;
+REALTOR.ca is off the table. `discovery.ts:87-98` already says this correctly. A
+property register says who owns what and **never** what is for sale — dressing
+one up as a listings feed is precisely the failure `assertNoMarketVocabulary`
+and `land-data.spec.ts:135` exist to prevent. No amount of engineering changes
+this, and the fix above needs none of it.
 
 ### What this stream must never do
 
