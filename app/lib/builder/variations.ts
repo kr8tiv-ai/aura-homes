@@ -51,6 +51,7 @@
 
 import { FDWR_MAX } from "../design/materials";
 import {
+  rotateGraphPlan,
   scaleGraphOpenings,
   type BuildingGraph,
 } from "./buildingGraph";
@@ -708,12 +709,6 @@ const graphWindowCount = (graph: BuildingGraph): number =>
 
 const GRAPH_AXIS_REFUSALS: readonly VariationRefusal[] = [
   {
-    axis: "orientation",
-    reason:
-      "Orientation rotates volume.rotationDeg on the legacy spec. This project is planar graph " +
-      "geometry — turn the house by moving vertices on the plan.",
-  },
-  {
     axis: "roof",
     reason:
       "Roof form writes spec.volumes[].roof. Graph roofs are explicit roof zones, and this strip " +
@@ -880,6 +875,99 @@ function variationSetFromGraph(
         },
         { sentence: step.note },
       ],
+      cost: {
+        currency: "CAD",
+        total: budget.total,
+        midDeltaCad: budget.total.mid - basisBudget.total.mid,
+        budgetHash: budget.budgetHash,
+        blindSpots: notes,
+      },
+    });
+  }
+
+  const turns: Array<{ id: string; title: string; deg: number; sentence: string }> = [
+    {
+      id: "orientation-quarter-turn",
+      title: "Quarter turn",
+      deg: 90,
+      sentence:
+        "The plan was turned 90° about the site origin. Openings stay on their walls. What that is worth in a zone 7A winter is not modelled here.",
+    },
+    {
+      id: "orientation-half-turn",
+      title: "Half turn",
+      deg: 180,
+      sentence:
+        "The plan was turned 180° about the site origin. Openings stay on their walls. What that is worth in a zone 7A winter is not modelled here.",
+    },
+  ];
+
+  for (const step of turns) {
+    const rotated = rotateGraphPlan(graph, step.deg);
+    if (!rotated.ok) {
+      refusals.push({ axis: "orientation", reason: `${step.title} was not offered — ${rotated.problem}` });
+      continue;
+    }
+    const candidate = validateBuilderDocument(withGraph(document, rotated.graph));
+    if (!candidate.ok) {
+      refusals.push({
+        axis: "orientation",
+        reason: `${step.title} was not offered — it does not validate as a builder document: ${candidate.problem}`,
+      });
+      continue;
+    }
+    const variantHash = hashBuilderDocument(candidate.document);
+    if (variantHash === basis.designHash) {
+      refusals.push({
+        axis: "orientation",
+        reason: `${step.title} was not offered — it produced the design you already have.`,
+      });
+      continue;
+    }
+    let budget;
+    try {
+      budget = price(candidate.document);
+    } catch (error) {
+      refusals.push({
+        axis: "orientation",
+        reason: `${step.title} was not offered — it could not be costed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      });
+      continue;
+    }
+    const nextGraph =
+      candidate.document.geometry.kind === "building-graph"
+        ? candidate.document.geometry.graph
+        : null;
+    if (!nextGraph) {
+      refusals.push({
+        axis: "orientation",
+        reason: `${step.title} was not offered — the candidate left planar graph geometry.`,
+      });
+      continue;
+    }
+    const nextSummary = summarizeBuildingGraph(nextGraph);
+    const ratio = modelledGraphGlazingRatio(nextGraph);
+    const glazing = glazingDisclosure(ratio);
+    const notes: string[] = [NOT_MODELLED_ENERGY];
+    const unmoved =
+      budget.total.low === basisBudget.total.low &&
+      budget.total.mid === basisBudget.total.mid &&
+      budget.total.high === basisBudget.total.high;
+    if (unmoved) notes.push(COST_MODEL_UNMOVED);
+    variations.push({
+      id: step.id,
+      title: step.title,
+      axis: "orientation",
+      document: candidate.document,
+      designHash: variantHash,
+      areaSqFt: nextSummary.totalFloorAreaSqFt,
+      glazedAreaSqFt: nextSummary.glazedAreaSqFt,
+      glazingRatio: ratio,
+      overCeiling: glazing.over,
+      glazingSentence: glazing.sentence,
+      deltas: [{ sentence: step.sentence }],
       cost: {
         currency: "CAD",
         total: budget.total,

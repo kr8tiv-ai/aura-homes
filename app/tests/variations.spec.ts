@@ -709,10 +709,11 @@ test("a planar-graph project offers graph glazing and names the axes that still 
   const set: VariationSet = variationSet({ document: converted.document });
   expect(set.unavailable).toBeNull();
   expect(set.basis).not.toBeNull();
-  expect(set.variations.every((variation) => variation.axis === "glazing")).toBe(true);
-  expect(set.variations.length).toBeGreaterThan(0);
+  expect(set.variations.some((variation) => variation.axis === "glazing")).toBe(true);
+  expect(set.variations.some((variation) => variation.axis === "orientation")).toBe(true);
+  expect(set.variations.length).toBeGreaterThan(2);
   expect(set.refusals.map((entry) => entry.axis).sort()).toEqual(
-    ["orientation", "proportion", "roof", "storeys"].sort(),
+    ["proportion", "roof", "storeys"].sort(),
   );
   expect(set.refusals.every((entry) => entry.reason.toLowerCase().includes("graph"))).toBe(true);
 

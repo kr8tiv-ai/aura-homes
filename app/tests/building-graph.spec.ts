@@ -7,6 +7,7 @@ import {
   deriveRoofZone,
   legacySpecToBuildingGraph,
   moveGraphVertex,
+  rotateGraphPlan,
   scaleGraphOpenings,
   scaleGraphPlan,
   singleStoreyGraphFromPolygon,
@@ -276,6 +277,44 @@ test("scaleGraphPlan grows the walls and leaves opening sizes put", () => {
   expect(storey.walls[0].openings[0]).toMatchObject({ widthFt: 5, heightFt: 4, offsetFt: 4 });
   expect(storey.rooms[0].areaSqft).toBeCloseTo(288, 6);
   expect(validateBuildingGraph(grown.graph).ok).toBe(true);
+});
+
+test("rotateGraphPlan turns the footprint about the origin and keeps opening sizes", () => {
+  const made = singleStoreyGraphFromPolygon([
+    [0, 0],
+    [20, 0],
+    [20, 10],
+    [0, 10],
+  ]);
+  expect(made.ok).toBe(true);
+  if (!made.ok) return;
+  const opened = addGraphOpening(made.graph, "storey-1", "wall-1", {
+    id: "window-1",
+    kind: "window",
+    offsetFt: 4,
+    widthFt: 5,
+    heightFt: 4,
+    sillFt: 3,
+  });
+  expect(opened.ok).toBe(true);
+  if (!opened.ok) return;
+
+  const turned = rotateGraphPlan(opened.graph, 90);
+  expect(turned.ok).toBe(true);
+  if (!turned.ok) return;
+  const xs = turned.graph.storeys[0].vertices.map((vertex) => vertex.xFt);
+  const zs = turned.graph.storeys[0].vertices.map((vertex) => vertex.zFt);
+  expect(Math.min(...xs)).toBeCloseTo(-10, 6);
+  expect(Math.max(...xs)).toBeCloseTo(0, 6);
+  expect(Math.min(...zs)).toBeCloseTo(0, 6);
+  expect(Math.max(...zs)).toBeCloseTo(20, 6);
+  expect(turned.graph.storeys[0].walls[0].openings[0]).toMatchObject({
+    widthFt: 5,
+    heightFt: 4,
+    offsetFt: 4,
+  });
+  expect(turned.graph.storeys[0].rooms[0].areaSqft).toBeCloseTo(200, 6);
+  expect(validateBuildingGraph(turned.graph).ok).toBe(true);
 });
 
 test("gable, hipped, shed and flat roof intent derive deterministically from one polygon", () => {

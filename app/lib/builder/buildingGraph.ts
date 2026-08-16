@@ -1351,6 +1351,58 @@ export function scaleGraphPlan(graph: BuildingGraph, factor: number): GraphMutat
   return checked.ok ? { ok: true, graph: candidate } : fail(graph, checked.problem);
 }
 
+const rotatePoint = (point: GraphPoint, cos: number, sin: number): GraphPoint => [
+  point[0] * cos - point[1] * sin,
+  point[0] * sin + point[1] * cos,
+];
+
+/**
+ * Rotation about the site origin. Vertices, stairs, shafts and roof guides
+ * turn; openings stay wall-relative so they come with the walls. Same
+ * contract `rotateHome` keeps for a rectangular spec: the glass does not
+ * change size, only which way the house faces.
+ */
+export function rotateGraphPlan(graph: BuildingGraph, deg: number): GraphMutation {
+  if (!finite(deg)) return fail(graph, "Plan rotation must be a finite number of degrees.");
+  const turns = ((deg % 360) + 360) % 360;
+  if (turns === 0) return { ok: true, graph };
+  const radians = (turns * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const storeys = graph.storeys.map((storey) => {
+    const vertices = storey.vertices.map((vertex) => {
+      const [xFt, zFt] = rotatePoint([vertex.xFt, vertex.zFt], cos, sin);
+      return { ...vertex, xFt, zFt };
+    });
+    const roofZones = storey.roofZones.map((zone) => ({
+      ...zone,
+      fallVector: zone.fallVector ? rotatePoint(zone.fallVector, cos, sin) : zone.fallVector,
+      ridge: zone.ridge
+        ? { start: rotatePoint(zone.ridge.start, cos, sin), end: rotatePoint(zone.ridge.end, cos, sin) }
+        : zone.ridge,
+    }));
+    const next: GraphStorey = { ...storey, vertices, roofZones };
+    return { ...next, rooms: deriveRoomFaces(next, storey.rooms) };
+  });
+  const stairs = graph.stairs?.map((stair) => ({
+    ...stair,
+    start: rotatePoint(stair.start, cos, sin),
+    end: rotatePoint(stair.end, cos, sin),
+  }));
+  const shafts = graph.shafts?.map((shaft) => ({
+    ...shaft,
+    centre: rotatePoint(shaft.centre, cos, sin),
+  }));
+  const candidate: BuildingGraph = {
+    ...graph,
+    storeys,
+    ...(stairs ? { stairs } : {}),
+    ...(shafts ? { shafts } : {}),
+  };
+  const checked = validateBuildingGraph(candidate);
+  return checked.ok ? { ok: true, graph: candidate } : fail(graph, checked.problem);
+}
+
 /** Duplicate one complete planar level, aligned in the shared site frame. */
 export function duplicateGraphStorey(
   graph: BuildingGraph,
