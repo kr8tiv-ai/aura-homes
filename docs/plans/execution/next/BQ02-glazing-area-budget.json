@@ -1,0 +1,128 @@
+{
+  "node": "BQ02",
+  "graphVersion": "1.1",
+  "job": "Make the project and FastAPI material budgets price glazing from the design's measured glazed area and doors from the design's door count, while preserving the existing Alberta reference band as a visibly derived proxy rather than inventing a local quote.",
+  "inputs": [
+    {
+      "type": "ApprovedGraph",
+      "version": "1.1",
+      "source": "docs/plans/2026-08-13-aura-full-system-graph.md",
+      "objectives": ["B16", "B39", "Q00"]
+    },
+    {
+      "type": "ApprovalRecord",
+      "version": "1.1",
+      "source": "docs/plans/approvals/2026-08-13-aura-full-system-graph-v1.1.md"
+    },
+    {
+      "type": "AlbertaReferenceBasis",
+      "version": "2026-08-15 working source snapshot",
+      "source": "data/alberta/cost-model.json",
+      "evidence": "The only checked-in glazing anchor is CAD 900–1,800 per triple-pane window. No separate per-square-foot supplier quote is registered."
+    },
+    {
+      "type": "ExistingWorkingSlice",
+      "version": "uncommitted Claude BQ02 handoff reviewed 2026-08-15",
+      "source": "current worktree"
+    }
+  ],
+  "outputs": [
+    {
+      "type": "MeasuredGlazingBudget",
+      "acceptance": "Equal glazed area produces equal glazing cost regardless of opening count; greater area produces proportionally greater proxy cost; the visible basis discloses the source band, reference-size divisor, limitations and date."
+    },
+    {
+      "type": "MeasuredDoorBudget",
+      "acceptance": "Project budgets use the exterior-door count drawn by the design; a zero-door dwelling carries one explicitly disclosed entry-door allowance rather than a silent constant."
+    },
+    {
+      "type": "BudgetEngineParity",
+      "acceptance": "The TypeScript app and FastAPI materials engine use the same quantities, rates, rounding semantics and limitation wording for a shared fixture."
+    },
+    {
+      "type": "VerifiedBudgetGate",
+      "acceptance": "Focused budget, copilot, API-parity, TypeScript and registered full-suite gates pass from an isolated committed snapshot."
+    }
+  ],
+  "dependsOn": [
+    {
+      "node": "G00",
+      "status": "verified",
+      "evidence": "Graph v1.1 approval commit 7d6028667b2ae061df9504eb3a52df091f138207"
+    },
+    {
+      "node": "B16",
+      "status": "implemented-foundation",
+      "evidence": "BuildingGraph and legacy builder documents already expose glazed area and opening kinds to the project budget on origin/main d0fc2f6."
+    },
+    {
+      "node": "Q00",
+      "status": "partial-foundation",
+      "evidence": "ProjectBudget already binds design hash, scenario, region, source references and date; BQ02 repairs one quantity/basis mismatch without claiming quote fidelity."
+    }
+  ],
+  "rejectionGates": [
+    "Reject if any landing-scene, Three.js, animation, model, meadow, tree, sky, mountain, shader, camera, lighting, builder plan geometry, GLB or generated-plan asset changes.",
+    "Reject if CAD 900–1,800 per window is presented as a separately sourced per-square-foot rate, local quote, supplier offer or construction take-off.",
+    "Reject if the reference-size divisor is justified by an uncommitted or frozen plan-catalog expansion.",
+    "Reject if a glazing count is multiplied by price, if doors remain a silent hardcoded quantity, or if app and FastAPI engines disagree on a shared fixture.",
+    "Reject if the pricing basis claims that NBC 9.36 compliance was checked by the budget function.",
+    "Reject if the existing Alberta cost-model numbers change, if unsupported-region pricing is introduced, or if any external supplier, legal, payment, HOMES, deployment or outreach gate is crossed.",
+    "Reject if any new test is absent from a declared test gate or if published gate counts change without a complete runner observation."
+  ],
+  "work": {
+    "owner": "root orchestrator",
+    "writeSet": [
+      "docs/plans/execution/next/BQ02-glazing-area-budget.json",
+      "app/lib/design/materials.ts",
+      "app/lib/builder/projectBudget.ts",
+      "app/tests/glazing-area-pricing.spec.ts",
+      "app/tests/copilot.spec.ts",
+      "app/tests/gate-coverage.spec.ts",
+      "app/package.json",
+      "README.md",
+      "docs/SUBMISSION.md",
+      "design-api/app/materials.py",
+      "design-api/app/routers_design.py",
+      "design-api/tests/test_materials.py"
+    ],
+    "doNotTouch": [
+      "app/components/story/**",
+      "app/lib/three/**",
+      "app/public/models/**",
+      "app/public/textures/meadow*",
+      "app/workers/meadow.worker.ts",
+      "app/lib/builder/planCatalog.ts",
+      "app/lib/builder/planCatalog.glass.ts",
+      "app/tests/plan-catalog-glass.spec.ts",
+      "app/lib/builder/spec.ts",
+      "app/lib/builder/graphGeometry.ts",
+      "data/alberta/cost-model.json",
+      "contracts/**",
+      "docs/plans/2026-08-14-aura-full-system-graph-v1.2.md"
+    ]
+  },
+  "verify": {
+    "freshContextVerifier": "A verifier that did not implement BQ02 must inspect the final stable snapshot when delegation is authorized.",
+    "commands": [
+      "cd app && npx playwright test tests/glazing-area-pricing.spec.ts tests/project-budget.spec.ts tests/copilot.spec.ts tests/gate-coverage.spec.ts --workers=1",
+      "cd design-api && python -m unittest tests.test_materials",
+      "cd app && npx tsc --noEmit --incremental false",
+      "cd app && npm test",
+      "cd app && npm run test:ui"
+    ],
+    "anchors": [
+      "One opening at 306 square feet costs more than one opening at 16 square feet under the disclosed proxy.",
+      "The same glazed area split across one or four openings has the same proxy price.",
+      "Two doors retain the old two-door allowance exactly; one or three doors use their actual quantities.",
+      "TypeScript and Python return matching glazing and door lines for the same fixture.",
+      "No changed path is under the frozen 3D, animation, model or plan-geometry sets."
+    ]
+  },
+  "repair": {
+    "limit": 1,
+    "scope": "Only BQ02 quantity, basis, parity or test-gate integration may be repaired. A second failure returns the node to blocked without touching any frozen visual path."
+  },
+  "sideEffect": "local",
+  "status": "ready"
+}
