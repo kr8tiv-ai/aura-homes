@@ -1,6 +1,7 @@
 import Link from "next/link";
 import RevealWords from "@/components/RevealWords";
 import { Reveal, Stagger, StaggerItem } from "@/components/Reveal";
+import { PLAN_TEMPLATES } from "@/lib/builder/planCatalog";
 import { HOMES_EXPLORER_URL, HOMES_TOKEN_ADDRESS } from "@/lib/homes/token";
 
 /* THE ROADMAP — one page, three arcs, one rule: nothing unbuilt is written in
@@ -36,7 +37,7 @@ const ARCS: Array<{
     lead:
       "What runs today, on the open MIT repo, with the tests that prove it.",
     items: [
-      { text: "A guided and pro editor over one durable project document — 3D, 2D plan, drawings, exports — with a 55-plan library whose every plan names its source and licence.", href: "/build", label: "Open the builder" },
+      { text: `A guided and pro editor over one durable project document — 3D, 2D plan, drawings, exports — with a ${PLAN_TEMPLATES.length}-plan library whose every plan names its source and licence.`, href: "/build", label: "Open the builder" },
       { text: "A demonstration land-fit pilot that evaluates sourced example rules and explains why a sample parcel may not fit. It is not a live listing or permit decision.", href: "/land", label: "Try the land-fit pilot" },
       { text: "An Alberta budget that reconciles to a published cost model to the dollar, with a DIY-or-hire toggle per line.", href: "/budget", label: "See the budget" },
       { text: "Contractor and manufacturer evidence workbenches for demonstration or user-supplied records, with source dates, visible expiries, and missing evidence shown.", href: "/contractors", label: "Check a team" },
