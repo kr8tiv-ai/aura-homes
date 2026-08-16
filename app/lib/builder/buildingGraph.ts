@@ -918,6 +918,32 @@ export function extrudeGraphWall(
   return checked.ok ? { ok: true, graph: candidate } : fail(graph, checked.problem);
 }
 
+/**
+ * Name a derived room face. Faces themselves are computed; this is the only
+ * field a person authors. An empty name is refused. Topology is untouched.
+ */
+export function renameGraphRoom(
+  graph: BuildingGraph,
+  storeyId: string,
+  roomId: string,
+  name: string,
+): GraphMutation {
+  const storey = graph.storeys.find((item) => item.id === storeyId);
+  if (!storey) return fail(graph, `Storey ${storeyId} does not exist.`);
+  const room = storey.rooms.find((item) => item.id === roomId);
+  if (!room) return fail(graph, `Room ${roomId} does not exist.`);
+  const trimmed = name.trim().replace(/\s+/g, " ");
+  if (!trimmed) return fail(graph, "A room needs a name.");
+  if (trimmed.length > 40) return fail(graph, "Keep the room name short enough to read on the plan.");
+  if (trimmed === room.name) return { ok: true, graph };
+  const candidate = graphWithStorey(graph, {
+    ...storey,
+    rooms: storey.rooms.map((item) => (item.id === roomId ? { ...item, name: trimmed } : item)),
+  });
+  const checked = validateBuildingGraph(candidate);
+  return checked.ok ? { ok: true, graph: candidate } : fail(graph, checked.problem);
+}
+
 export function splitWallAt(
   graph: BuildingGraph,
   storeyId: string,

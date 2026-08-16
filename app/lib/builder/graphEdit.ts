@@ -9,6 +9,7 @@
 import {
   extrudeGraphWall,
   moveGraphVertex,
+  renameGraphRoom,
   type BuildingGraph,
   type GraphPoint,
 } from "./buildingGraph";
@@ -115,6 +116,51 @@ export function applyGraphWallExtrude(
     geometry: {
       ...current.geometry,
       graph: extruded.graph,
+    },
+  };
+  const valid = validateBuilderDocument(next);
+  if (!valid.ok) {
+    return { ok: false, problem: valid.problem, document: current };
+  }
+  if (valid.document.geometry.kind !== "building-graph") {
+    return {
+      ok: false,
+      problem: "The edited document is no longer a building graph.",
+      document: current,
+    };
+  }
+  return { ok: true, document: valid.document, graph: valid.document.geometry.graph };
+}
+
+export function applyGraphRoomRename(
+  document: BuilderDocument,
+  ask: {
+    storeyId: string;
+    roomId: string;
+    name: string;
+  },
+): GraphDocumentEdit {
+  const checked = validateBuilderDocument(document);
+  if (!checked.ok) {
+    return { ok: false, problem: checked.problem, document };
+  }
+  const current = checked.document;
+  if (current.geometry.kind !== "building-graph") {
+    return {
+      ok: false,
+      problem: "This design is not a building graph.",
+      document: current,
+    };
+  }
+  const renamed = renameGraphRoom(current.geometry.graph, ask.storeyId, ask.roomId, ask.name);
+  if (!renamed.ok) {
+    return { ok: false, problem: renamed.problem, document: current };
+  }
+  const next: BuilderDocument = {
+    ...current,
+    geometry: {
+      ...current.geometry,
+      graph: renamed.graph,
     },
   };
   const valid = validateBuilderDocument(next);

@@ -17,6 +17,7 @@ import {
   GRAPH_VERTEX_SNAP_FT,
   applyGraphVertexEdit,
   applyGraphWallExtrude,
+  applyGraphRoomRename,
 } from "@/lib/builder/graphEdit";
 
 /* PR01 — a drag and the equivalent typed edit must share one writer.
@@ -212,6 +213,71 @@ test("an extrusion without a building graph is refused in a sentence, not by thr
   expect(hashBuilderDocument(refused.document)).toBe(hashBuilderDocument(legacy));
 });
 
+test("renaming a room and typing the same name again hash identically", () => {
+  const start = documentFromSquare();
+  const room = graphOf(start).storeys[0].rooms[0];
+  expect(room?.name).toBeTruthy();
+  const typed = applyGraphRoomRename(start, {
+    storeyId: "storey-1",
+    roomId: room.id,
+    name: "Kitchen",
+  });
+  expect(typed.ok).toBe(true);
+  if (!typed.ok) return;
+  expect(graphOf(typed.document).storeys[0].rooms[0].name).toBe("Kitchen");
+
+  const again = applyGraphRoomRename(start, {
+    storeyId: "storey-1",
+    roomId: room.id,
+    name: "Kitchen",
+  });
+  expect(again.ok).toBe(true);
+  if (!again.ok) return;
+  expect(hashBuilderDocument(typed.document)).toBe(hashBuilderDocument(again.document));
+});
+
+test("an empty room name is refused and a rename survives a vertex move", () => {
+  const start = documentFromSquare();
+  const room = graphOf(start).storeys[0].rooms[0];
+  const before = hashBuilderDocument(start);
+  const empty = applyGraphRoomRename(start, {
+    storeyId: "storey-1",
+    roomId: room.id,
+    name: "   ",
+  });
+  expect(empty.ok).toBe(false);
+  expect(hashBuilderDocument(empty.document)).toBe(before);
+
+  const named = applyGraphRoomRename(start, {
+    storeyId: "storey-1",
+    roomId: room.id,
+    name: "Living",
+  });
+  expect(named.ok).toBe(true);
+  if (!named.ok) return;
+  const moved = applyGraphVertexEdit(named.document, {
+    storeyId: "storey-1",
+    vertexId: "vertex-2",
+    point: [9, 0],
+  });
+  expect(moved.ok).toBe(true);
+  if (!moved.ok) return;
+  expect(graphOf(moved.document).storeys[0].rooms[0].name).toBe("Living");
+});
+
+test("a room rename without a building graph is refused in a sentence, not by throwing", () => {
+  const legacy = defaultBuilderDocument();
+  const refused = applyGraphRoomRename(legacy, {
+    storeyId: "storey-1",
+    roomId: "room-1",
+    name: "Kitchen",
+  });
+  expect(refused.ok).toBe(false);
+  if (refused.ok) return;
+  expect(refused.problem).toContain("building graph");
+  expect(hashBuilderDocument(refused.document)).toBe(hashBuilderDocument(legacy));
+});
+
 test("the 3D handles drag through the same mutator and snap as the typed path", () => {
   const appRoot = path.resolve(__dirname, "..");
   const editor = readFileSync(path.join(appRoot, "components", "builder", "GraphCanvasEditor.tsx"), "utf8");
@@ -222,6 +288,7 @@ test("the 3D handles drag through the same mutator and snap as the typed path", 
   expect(editor).not.toMatch(/snapFt\s*=\s*1\b/);
   expect(plan).toContain("extrudeGraphWall");
   expect(plan).toContain("Extrude selected wall 2 ft");
+  expect(plan).toContain("renameGraphRoom");
   expect(app).toContain("GraphCanvasEditor");
   expect(app).toContain("houseChildren");
 });

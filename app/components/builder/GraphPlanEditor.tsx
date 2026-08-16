@@ -14,6 +14,7 @@ import {
   addGraphStair,
   addPartitionEdge,
   extrudeGraphWall,
+  renameGraphRoom,
   deriveStackedRoomRelationships,
   duplicateGraphStorey,
   moveGraphVertex,
@@ -135,7 +136,8 @@ function graphBounds(storey: GraphStorey) {
 type Selection =
   | { kind: "vertex"; id: string }
   | { kind: "wall"; id: string }
-  | { kind: "opening"; wallId: string; id: string };
+  | { kind: "opening"; wallId: string; id: string }
+  | { kind: "room"; id: string };
 
 /**
  * A geometry field whose ONLY source of truth is the graph.
@@ -215,6 +217,54 @@ function NumberField({
   );
 }
 
+function NameField({
+  label,
+  value,
+  revision,
+  onCommit,
+  note,
+}: {
+  label: string;
+  value: string;
+  revision: number;
+  onCommit: (value: string) => void;
+  note?: string;
+}) {
+  const ref = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (ref.current) ref.current.value = value;
+  }, [value, revision]);
+
+  const commit = () => {
+    const input = ref.current;
+    if (!input) return;
+    onCommit(input.value);
+  };
+
+  return (
+    <label className="block">
+      <span className="aura-label mb-1.5 block">{label}</span>
+      <input
+        ref={ref}
+        type="text"
+        defaultValue={value}
+        maxLength={40}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter") return;
+          event.preventDefault();
+          commit();
+        }}
+        className="w-44 rounded-md border aura-hairline bg-aura-bg px-3 py-2 font-mono text-xs text-aura-text transition-colors focus:border-aura-emerald"
+      />
+      {note ? (
+        <span className="mt-1 block max-w-[16rem] text-[0.7rem] leading-snug text-aura-text/55">{note}</span>
+      ) : null}
+    </label>
+  );
+}
+
 export default function GraphPlanEditor({
   graph,
   onEdit,
@@ -267,6 +317,8 @@ export default function GraphPlanEditor({
     selection?.kind === "opening" && selectedWall
       ? (selectedWall.openings.find((opening) => opening.id === selection.id) ?? null)
       : null;
+  const selectedRoom =
+    selection?.kind === "room" ? (storey.rooms.find((room) => room.id === selection.id) ?? null) : null;
 
   /* Every outcome in this editor leaves through one of these two, so the
      violet notice a sighted person reads and the sentence a screen reader
@@ -415,7 +467,9 @@ export default function GraphPlanEditor({
         ? `Selected vertex ${next.id}.`
         : next.kind === "wall"
           ? `Selected wall ${next.id}.`
-          : `Selected opening ${next.id} on wall ${next.wallId}.`,
+          : next.kind === "room"
+            ? `Selected ${storey.rooms.find((room) => room.id === next.id)?.name ?? "room"}.`
+            : `Selected opening ${next.id} on wall ${next.wallId}.`,
     );
   };
 
@@ -514,6 +568,19 @@ export default function GraphPlanEditor({
     }
     report(`Wall ${selectedWall.id} extruded 2 ft outward.`);
     onEdit(extruded.graph, `graph:extrude:${selectedWall.id}`);
+  };
+
+  const commitRoomName = (name: string) => {
+    if (!selectedRoom) return;
+    setFieldRevision((revision) => revision + 1);
+    const renamed = renameGraphRoom(graph, storey.id, selectedRoom.id, name);
+    if (!renamed.ok) {
+      refuse(renamed.problem);
+      return;
+    }
+    const nextName = name.trim().replace(/\s+/g, " ");
+    report(`${selectedRoom.name} is now called ${nextName}.`);
+    onEdit(renamed.graph, `graph:room:${selectedRoom.id}`);
   };
 
   const addPartition = () => {
@@ -762,13 +829,20 @@ export default function GraphPlanEditor({
               (sum, vertex) => [sum[0] + vertex.xFt / points.length, sum[1] + vertex.zFt / points.length],
               [0, 0],
             );
+            const picked = selection?.kind === "room" && selection.id === room.id;
             return (
-              <g key={room.id} className="pointer-events-none">
+              <g key={room.id}>
                 <polygon
                   points={points.map((vertex) => `${vertex.xFt},${vertex.zFt}`).join(" ")}
-                  className="fill-aura-emerald/8"
+                  className={`${picked ? "fill-aura-emerald/20" : "fill-aura-emerald/8"} cursor-pointer`}
+                  onClick={() => tool === "shape" && selectObject({ kind: "room", id: room.id })}
                 />
-                <text x={centre[0]} y={centre[1]} textAnchor="middle" className="fill-aura-text/60 font-mono text-[0.65px]">
+                <text
+                  x={centre[0]}
+                  y={centre[1]}
+                  textAnchor="middle"
+                  className="pointer-events-none fill-aura-text/60 font-mono text-[0.65px]"
+                >
                   {room.name} · {Math.round(room.areaSqft)} sq ft
                 </text>
               </g>
@@ -895,6 +969,25 @@ export default function GraphPlanEditor({
             aria-labelledby="graph-objects-label"
             className="max-h-64 divide-y divide-aura-text/10 overflow-y-auto rounded-md border aura-hairline"
           >
+            {storey.rooms.map((room) => {
+              const picked = selection?.kind === "room" && selection.id === room.id;
+              return (
+                <li key={room.id}>
+                  <button
+                    type="button"
+                    aria-pressed={picked}
+                    aria-label={`${room.name}, ${Math.round(room.areaSqft)} square feet`}
+                    onClick={() => selectObject({ kind: "room", id: room.id })}
+                    className={`flex w-full items-baseline justify-between gap-3 px-3 py-2 text-left font-mono text-xs transition-colors ${
+                      picked ? "bg-aura-emerald/10 text-aura-text" : "text-aura-text/65 hover:text-aura-text"
+                    }`}
+                  >
+                    <span>{room.name}</span>
+                    <span className="tabular-nums text-aura-text/55">{Math.round(room.areaSqft)} sq ft</span>
+                  </button>
+                </li>
+              );
+            })}
             {storey.vertices.map((vertex) => {
               const picked = selection?.kind === "vertex" && selection.id === vertex.id;
               return (
@@ -966,7 +1059,15 @@ export default function GraphPlanEditor({
 
         <div>
           <p className="aura-label mb-2">Dimensions</p>
-          {selectedVertex ? (
+          {selectedRoom ? (
+            <NameField
+              label={`${selectedRoom.name} · name`}
+              value={selectedRoom.name}
+              revision={fieldRevision}
+              onCommit={commitRoomName}
+              note="The face is derived from the walls. The name is the only field a person authors."
+            />
+          ) : selectedVertex ? (
             <div className="flex flex-wrap gap-4">
               <NumberField
                 label={`Vertex ${selectedVertex.id} · X (feet)`}
@@ -1017,7 +1118,7 @@ export default function GraphPlanEditor({
             </div>
           ) : (
             <p className="text-xs leading-relaxed text-aura-text/55">
-              Select a vertex, wall or opening to read and type its exact dimensions.
+              Select a vertex, wall, opening or room to read and type its exact values.
             </p>
           )}
         </div>
