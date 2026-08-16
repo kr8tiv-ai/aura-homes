@@ -124,7 +124,7 @@
     "scope": "Only BQ02 quantity, basis, parity or test-gate integration may be repaired. A second failure returns the node to blocked without touching any frozen visual path."
   },
   "sideEffect": "local",
-  "status": "implemented-awaiting-isolated-verification",
+  "status": "implementation-verified-awaiting-fresh-context-review",
   "history": {
     "red": "The new FastAPI contracts failed twice because materials.build did not accept door_count; its glazing line still multiplied window_count and its door line still used the literal two.",
     "implementedAt": "2026-08-15",
@@ -134,8 +134,19 @@
       "TypeScript no-emit check passed.",
       "The full deterministic runner declared 607 tests and passed 605; its two expected governance failures were the newly observed 607 count and a separate frozen, untracked plan-catalog-glass spec in the shared worktree. The count was updated only after that observation; isolated verification remains required."
     ],
+    "isolatedVerification": {
+      "commit": "70fe8b333a72626220f4c19728f65b56624c173d",
+      "worktree": "C:/Users/lucid/Desktop/Kin/aura-bq02-verify-70fe8b3",
+      "results": [
+        "TypeScript no-emit check passed on the detached committed tree.",
+        "FastAPI materials and router suite passed 3 of 3.",
+        "GH_PAGES production build compiled and emitted all 24 static pages.",
+        "Post-build deterministic suite passed 607 of 607 with one worker. A prior six-worker attempt passed 601 and timed out six unrelated layout tests under machine contention; no product assertion failed, and the stable complete rerun passed.",
+        "Served-export UI suite passed 132 of 132 in 9.9 minutes.",
+        "The implementation commit contains no frozen story, Three.js, model, meadow, worker or plan-geometry path."
+      ]
+    },
     "knownOpenFindings": [
-      "Complete deterministic and UI verification must run from the committed tree, without the frozen untracked plan-catalog draft present.",
       "Fresh-context review remains pending because this run has no authority to create another agent."
     ]
   }
