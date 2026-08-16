@@ -51,6 +51,7 @@ import {
   createProjectBudget,
   defaultProjectBudgetScenario,
 } from "@/lib/builder/projectBudget";
+import { modelledGraphGlazingRatio } from "@/lib/builder/graphGeometry";
 import { parcelCheckApplies, readDesignReadiness } from "@/lib/builder/readiness";
 import { modelledGlazingRatio, type SpecParcelCheck } from "@/lib/builder/toPlan";
 
@@ -152,7 +153,14 @@ export default function LiveReadout({
      so the strip and the state below it cannot disagree. */
   const parcelApplies = parcelCheckApplies(document);
   const graphMode = !parcelApplies;
-  const glazingRatio = graphMode ? null : modelledGlazingRatio(document.spec);
+  /* EX03 leftover: glazing is a graph quantity. The parcel check is not —
+     `analyseParcel` still reads the frozen recovery spec — so fit and
+     coverage stay un-run. Glass does not have that problem: openings live
+     on the walls. */
+  const glazingRatio =
+    document.geometry.kind === "building-graph"
+      ? modelledGraphGlazingRatio(document.geometry.graph)
+      : modelledGlazingRatio(document.spec);
   const report = parcelApplies ? (parcelCheck?.report ?? null) : null;
 
   return (
@@ -263,10 +271,16 @@ export default function LiveReadout({
           qualifier={glazingRatio === null ? undefined : `of ${pct(FDWR_MAX)}`}
           detail={
             glazingRatio === null
-              ? "This project uses planar graph geometry; the ratio is not run against the recovery spec."
-              : "Your glass over modelled wall area, compared with the NBC 9.36 prescriptive ceiling. A comparison, not a code check."
+              ? "This design has no modelled wall area, so there is no glazing ratio to print."
+              : graphMode
+                ? "Your glass over the graph's own wall area, compared with the NBC 9.36 prescriptive ceiling. A comparison, not a code check. Fit and coverage stay un-run: those still need a parcel check that reads the graph, not the frozen recovery spec."
+                : "Your glass over modelled wall area, compared with the NBC 9.36 prescriptive ceiling. A comparison, not a code check."
           }
-          source="modelledGlazingRatio · FDWR_MAX"
+          source={
+            graphMode
+              ? "modelledGraphGlazingRatio · FDWR_MAX"
+              : "modelledGlazingRatio · FDWR_MAX"
+          }
           alert={glazingRatio !== null && glazingRatio > FDWR_MAX}
         />
       </div>

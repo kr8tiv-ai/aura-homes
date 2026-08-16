@@ -107,6 +107,30 @@ function roofPeak(storey: GraphStorey, zone: GraphRoofZone): number {
   return eave + ROOF_THICKNESS_FT;
 }
 
+/** Exterior wall area the glazing ratio uses: each wall's run times its storey
+ *  height. Openings are not subtracted — the same convention
+ *  `modelledWallAreaSqFt` keeps for a rectangular spec. */
+export function modelledGraphWallAreaSqFt(graph: BuildingGraph): number {
+  return graph.storeys.reduce((sum, storey) => {
+    const vertices = vertexMap(storey);
+    return (
+      sum +
+      storey.walls.reduce((wallSum, wall) => {
+        const start = vertices.get(wall.startVertexId);
+        const end = vertices.get(wall.endVertexId);
+        if (!start || !end) return wallSum;
+        return wallSum + Math.hypot(end.xFt - start.xFt, end.zFt - start.zFt) * storey.heightFt;
+      }, 0)
+    );
+  }, 0);
+}
+
+/** Graph analogue of `modelledGlazingRatio`: glass over modelled wall area. */
+export function modelledGraphGlazingRatio(graph: BuildingGraph): number {
+  const wall = modelledGraphWallAreaSqFt(graph);
+  return wall > 0 ? summarizeBuildingGraph(graph).glazedAreaSqFt / wall : 0;
+}
+
 /** Exact graph-owned areas and bounds used by the renderer, readout and quote handoff. */
 export function summarizeBuildingGraph(graph: BuildingGraph): SiteSummary {
   const volumes: VolumeSummary[] = graph.storeys.map((storey) => {
