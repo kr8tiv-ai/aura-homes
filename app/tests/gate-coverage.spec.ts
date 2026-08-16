@@ -200,8 +200,8 @@ test("the counter agrees with what the runners actually declare", () => {
   /* The counter is a regex over source, which is an approximation of what the
      runner does — and the first version of it was wrong by seven. So it is
      pinned against numbers OBSERVED from the runners themselves:
-       npm test        -> 612 declared, after the PR01 graph-vertex writer
-                          and its hash/refusal/snap/source pins joined the gate
+       npm test        -> 616 declared, after PR02 wall-length measures and
+                          the PR03 simultaneous-view source pins joined the gate
        npm run test:ui -> 132 declared and passed, on a full 13.3-minute run
                           against a fresh static export, after the stated-lot
                           journey and explicit City-register surface joined
@@ -210,7 +210,7 @@ test("the counter agrees with what the runners actually declare", () => {
      re-running both suites and writing down what they said — which is the
      point. A counter nobody ever checked against the thing it counts is how
      the README got its numbers wrong in the first place. */
-  expect(UNIT_TESTS).toBe(612);
+  expect(UNIT_TESTS).toBe(616);
   expect(UI_TESTS).toBe(132);
 
   const readme = read(repoRoot, "README.md");

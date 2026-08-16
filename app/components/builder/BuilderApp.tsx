@@ -225,6 +225,8 @@ import ExportRow from "./ExportRow";
 import FixturePalette, { FixtureLayer, useFixtureGeometry } from "./FixturePalette";
 import { OpeningHandles, OpeningNumbers, type OpeningStatus } from "./OpeningHandles";
 import { GraphCanvasEditor } from "./GraphCanvasEditor";
+import { GraphMeasureOverlay } from "./GraphMeasureOverlay";
+import { GraphImpactNote } from "./GraphImpactNote";
 import WalkthroughPanel, { WalkthroughCameraRig } from "./Walkthrough";
 import VariationStrip from "./VariationStrip";
 import ScenarioCompare from "./ScenarioCompare";
@@ -742,6 +744,7 @@ export default function BuilderApp() {
   const [selectedVolumeId, setSelectedVolumeId] = useState<string | null>(null);
   const [selectedOpeningId, setSelectedOpeningId] = useState<string | null>(null);
   const [openingStatus, setOpeningStatus] = useState<OpeningStatus | null>(null);
+  const [graphCanvasStatus, setGraphCanvasStatus] = useState<string | null>(null);
 
   /* OPENING IDS ARE UNIQUE PER VOLUME, NOT PER DESIGN — two volumes may both
      carry a `door-s`. Selection is therefore stored as the opening id alone
@@ -1268,6 +1271,10 @@ export default function BuilderApp() {
      alone rather than forced, so leaving the route puts back whichever view the
      step had; this is what everything on the stage actually renders against. */
   const viewMode: ViewMode = planRoute ? "3d" : mode;
+  /* PR03. In Pro graph mode the plan, the massing and the not-modelled note
+     stay visible together. The View toggle still decides which surface is
+     armed (3D grips vs plan handles) so two pointer grammars never fight. */
+  const simultaneous = graphMode && editorMode === "pro" && !planRoute;
 
   const openPlanRoute = useCallback(() => {
     setWorkspace("drawings");
@@ -1569,7 +1576,7 @@ export default function BuilderApp() {
 
           {/* The 3D canvas is never unmounted — it is the export root. See
               decision 4 in the header. */}
-          <div className={viewMode === "3d" ? "block" : "hidden"}>
+          <div className={viewMode === "3d" || simultaneous ? "block" : "hidden"}>
             <Viewport
               home={home}
               sun={sunPos}
@@ -1604,11 +1611,15 @@ export default function BuilderApp() {
               houseChildren={
                 <>
                   {graphMode ? (
-                    <GraphCanvasEditor
-                      graph={graphGeometry.graph}
-                      onEdit={editGraph}
-                      enabled={viewMode === "3d"}
-                    />
+                    <>
+                      <GraphCanvasEditor
+                        graph={graphGeometry.graph}
+                        onEdit={editGraph}
+                        onStatus={setGraphCanvasStatus}
+                        enabled={viewMode === "3d"}
+                      />
+                      <GraphMeasureOverlay graph={graphGeometry.graph} />
+                    </>
                   ) : (
                     <>
                       <FixtureLayer
@@ -1683,7 +1694,18 @@ export default function BuilderApp() {
             />
           ) : null}
 
-          <div className={viewMode === "2d" ? "block" : "hidden"}>
+          {graphMode ? (
+            <p
+              role="status"
+              aria-live="polite"
+              className="mt-3 min-h-5 font-mono text-xs leading-relaxed text-aura-text/70"
+              data-graph-canvas-status=""
+            >
+              {graphCanvasStatus ?? ""}
+            </p>
+          ) : null}
+
+          <div className={viewMode === "2d" || simultaneous ? "block" : "hidden"}>
             {graphGeometry ? (
               <GraphPlanEditor graph={graphGeometry.graph} onEdit={editGraph} />
             ) : (
@@ -1739,6 +1761,7 @@ export default function BuilderApp() {
               stepped in, which is a claim the spec checks rather than a
               promise this comment makes. */}
           {viewMode === "3d" ? <WalkthroughPanel summary={home.summary} /> : null}
+          {simultaneous ? <GraphImpactNote /> : null}
 
           {/* ------------------------------------------------ clearances, unburied
 
