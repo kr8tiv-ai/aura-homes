@@ -324,3 +324,18 @@ test("the 3D handles drag through the same mutator and snap as the typed path", 
   expect(app).toContain("GraphCanvasEditor");
   expect(app).toContain("houseChildren");
 });
+
+test("a 3D drag commits once on release and Escape emits no restore edit", () => {
+  /* Audit #10 finding 1: GraphCanvasEditor used to onEdit on every snapped
+     pointermove and onEdit(graph0) on Escape. That is a live mutate plus a
+     restore-edit, not preview-then-commit. Pin the grammar in source the
+     same way the snap pin already works — a second onEdit writer would be
+     the defect. */
+  const appRoot = path.resolve(__dirname, "..");
+  const editor = readFileSync(path.join(appRoot, "components", "builder", "GraphCanvasEditor.tsx"), "utf8");
+  expect(editor).not.toMatch(/onEdit\(\s*moved\.graph/);
+  expect(editor).not.toMatch(/onEdit\(\s*state\.graph0/);
+  expect(editor).toMatch(/intent === "preview"/);
+  expect(editor).toMatch(/cancelled/);
+  expect(editor).toContain("onEdit(candidate");
+});

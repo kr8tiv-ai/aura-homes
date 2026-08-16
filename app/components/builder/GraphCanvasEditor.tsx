@@ -51,6 +51,9 @@ export function GraphCanvasEditor({
   const gesture = useRef(0);
   const [grabbing, setGrabbing] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
+  const [preview, setPreview] = useState<BuildingGraph | null>(null);
+  const previewRef = useRef<BuildingGraph | null>(null);
+  const shown = preview ?? graph;
 
   const setCursor = useCallback(
     (value: string) => {
@@ -104,7 +107,12 @@ export function GraphCanvasEditor({
         state.applied.zFt === vertex.zFt;
       if (!same) {
         state.applied = { xFt: vertex.xFt, zFt: vertex.zFt };
-        live.current.onEdit(moved.graph, state.label);
+        /* Preview only. onEdit waits for pointerup. Audit #10 finding 1. */
+        const intent = "preview";
+        if (intent === "preview") {
+          previewRef.current = moved.graph;
+          setPreview(moved.graph);
+        }
       }
       invalidate();
     },
@@ -119,10 +127,17 @@ export function GraphCanvasEditor({
       if (controls) controls.enabled = true;
       setCursor("");
       if (!state) return;
-      if (cancelled) {
-        live.current.onStatus?.(null);
-        live.current.onEdit(state.graph0, state.label);
-      }
+      live.current.onStatus?.(null);
+      const candidate = previewRef.current;
+      previewRef.current = null;
+      setPreview(null);
+      if (cancelled) return;
+      if (!candidate || !state.applied) return;
+      const origin = state.graph0.storeys
+        .find((storey) => storey.id === state.storeyId)
+        ?.vertices.find((item) => item.id === state.vertexId);
+      if (origin && origin.xFt === state.applied.xFt && origin.zFt === state.applied.zFt) return;
+      live.current.onEdit(candidate, state.label);
     },
     [controls, setCursor],
   );
@@ -163,7 +178,7 @@ export function GraphCanvasEditor({
 
   return (
     <group userData={{ [EXPORT_IGNORE]: true }}>
-      {graph.storeys.flatMap((storey) => {
+      {shown.storeys.flatMap((storey) => {
         const yFt = storey.elevationFt + storey.heightFt * 0.5;
         return storey.vertices.map((vertex) => {
           const id = `${storey.id}:${vertex.id}`;
