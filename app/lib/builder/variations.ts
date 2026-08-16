@@ -51,6 +51,7 @@
 
 import { FDWR_MAX } from "../design/materials";
 import {
+  duplicateGraphStorey,
   rotateGraphPlan,
   scaleGraphOpenings,
   type BuildingGraph,
@@ -720,12 +721,6 @@ const GRAPH_AXIS_REFUSALS: readonly VariationRefusal[] = [
       "Proportion resizes a rectangular volume at constant area. A graph footprint is a polygon — " +
       "stretching it through that rule would invent a rectangle the walls do not have.",
   },
-  {
-    axis: "storeys",
-    reason:
-      "Storeys flip spec.volumes[].storeys. Adding a graph storey is duplicateGraphStorey, which " +
-      "this strip does not call yet.",
-  },
 ];
 
 function variationSetFromGraph(
@@ -975,6 +970,95 @@ function variationSetFromGraph(
         budgetHash: budget.budgetHash,
         blindSpots: notes,
       },
+    });
+  }
+
+  if (graph.storeys.length === 1) {
+    const source = graph.storeys[0];
+    const duplicated = duplicateGraphStorey(graph, source.id, {
+      id: graph.storeys.some((item) => item.id === "storey-2") ? "storey-variation-2" : "storey-2",
+      name: "Storey 2",
+      elevationFt: source.elevationFt + source.heightFt,
+      heightFt: source.heightFt,
+    });
+    if (!duplicated.ok) {
+      refusals.push({
+        axis: "storeys",
+        reason: `Second storey was not offered — ${duplicated.problem}`,
+      });
+    } else {
+      const candidate = validateBuilderDocument(withGraph(document, duplicated.graph));
+      if (!candidate.ok) {
+        refusals.push({
+          axis: "storeys",
+          reason: `Second storey was not offered — it does not validate as a builder document: ${candidate.problem}`,
+        });
+      } else {
+        const variantHash = hashBuilderDocument(candidate.document);
+        let budget = null as ReturnType<typeof createProjectBudget> | null;
+        if (variantHash === basis.designHash) {
+          refusals.push({
+            axis: "storeys",
+            reason: "Second storey was not offered — it produced the design you already have.",
+          });
+        } else {
+          try {
+            budget = price(candidate.document);
+          } catch (error) {
+            refusals.push({
+              axis: "storeys",
+              reason: `Second storey was not offered — it could not be costed: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+            });
+          }
+        }
+        const nextGraph =
+          candidate.document.geometry.kind === "building-graph"
+            ? candidate.document.geometry.graph
+            : null;
+        if (budget && nextGraph && variantHash !== basis.designHash) {
+          const nextSummary = summarizeBuildingGraph(nextGraph);
+          const ratio = modelledGraphGlazingRatio(nextGraph);
+          const glazing = glazingDisclosure(ratio);
+          variations.push({
+            id: "storeys-two",
+            title: "Second storey",
+            axis: "storeys",
+            document: candidate.document,
+            designHash: variantHash,
+            areaSqFt: nextSummary.totalFloorAreaSqFt,
+            glazedAreaSqFt: nextSummary.glazedAreaSqFt,
+            glazingRatio: ratio,
+            overCeiling: glazing.over,
+            glazingSentence: glazing.sentence,
+            deltas: [
+              {
+                sentence: `${source.name}: one storey → two, on the same ground. Floor area ${areaText(summary.totalFloorAreaSqFt)} → ${areaText(nextSummary.totalFloorAreaSqFt)} with no more footprint.`,
+              },
+            ],
+            cost: {
+              currency: "CAD",
+              total: budget.total,
+              midDeltaCad: budget.total.mid - basisBudget.total.mid,
+              budgetHash: budget.budgetHash,
+              blindSpots: budget.total.mid === basisBudget.total.mid ? [COST_MODEL_UNMOVED] : [],
+            },
+          });
+        } else if (budget && !nextGraph) {
+          refusals.push({
+            axis: "storeys",
+            reason: "Second storey was not offered — the candidate left planar graph geometry.",
+          });
+        }
+      }
+    }
+  } else {
+    refusals.push({
+      axis: "storeys",
+      reason:
+        "This graph already has more than one storey. Removing one would need a storey-delete " +
+        "mutator this strip does not call yet.",
     });
   }
 
