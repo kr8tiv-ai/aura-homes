@@ -26,5 +26,12 @@
     "note": "byte-identical atlas is the proof the refactor changed structure, not values"
   },
   "sideEffect": "local",
-  "status": "ready"
+  "status": "verified-with-open-finding",
+  "evidence": {
+    "closedAt": "2026-08-16",
+    "tree": "fa32024",
+    "meshesWired": "Scene.tsx imports DECK_RECT / WALKWAY_MESH / DECK_RAIL from lib/three/meadow/geometry.ts. meadow-progressive.spec.ts samples the clearance field at the mesh outlines.",
+    "atlas": "byte-identity was verified in Audit #9; this window did not re-run generate-meadow-atlas.mjs --verify",
+    "openFinding": "WriteSet still omits Scene.tsx in the JSON list above (historical). Skirt joist and four post literals in Scene.tsx:1705–1714 remain local numbers inside DECK_RECT — Audit #10 finding 7. Not closed here because that is a 3D-freeze write."
+  }
 }
