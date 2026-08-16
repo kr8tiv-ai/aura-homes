@@ -34,9 +34,10 @@ through the node tables, because a status column that lives beside a job
 description gets edited when the job is edited and quietly stops being true.
 
 **Shipped since the August 15 snapshot:** LC01 (owner-stated lot), BQ02/BQ03,
-Q04A/Q05A, PR01 vertex grips + exterior-wall extrude + room names, PR02 live
-wall lengths + refusals, PR03 Pro split view, PL04 fifteen-plan glass set
-(library 72 → 87). Landing-scene 3D remains frozen. Live HTML at `f8a159f`.
+Q04A/Q05A, PR01 vertex grips + exterior-wall extrude + room names + thickness
++ 3D preview-then-commit, PR02 live wall lengths + refusals, PR03 Pro split
+view, PL04 fifteen-plan glass set (library 72 → 87). Short-laptop landing
+gate fit. Landing-scene 3D remains frozen. Live HTML at `c76b533`.
 
 **Shipped and live at aurahomes.fun** — 37 of 39 named product nodes (PB04 and
 PF01 remain):
@@ -66,8 +67,8 @@ PF01 remain):
 OPEN01 (openings editable three ways), VAR01 (design variations), WALK01 (the
 derived walkthrough), SCEN01 (impact comparison), MARGIN01 (the cost-margin
 story), LAND01 (the baked Edmonton zoning register), ED01/NAV01 (findable
-features), and PL04 (the flat-roof glass set, in build). All shipped except
-PL04. The lesson worth keeping: **eight of the last ten things built came from
+features), and PL04 (the flat-roof glass set). All of those are shipped.
+The lesson worth keeping: **eight of the last ten things built came from
 the founder using the product, not from this document.** The graph is good at
 sequencing and terrible at noticing what is missing when you actually try to use
 the thing.

@@ -4,7 +4,10 @@ import { expect, test } from "playwright/test";
 
 import {
   addPartitionEdge,
+  extrudeGraphWall,
   moveGraphVertex,
+  renameGraphRoom,
+  setGraphWallThickness,
   singleStoreyGraphFromPolygon,
 } from "@/lib/builder/buildingGraph";
 import {
@@ -57,6 +60,26 @@ function graphOf(document: BuilderDocument) {
   return document.geometry.graph;
 }
 
+/** The 2D editor's path: mutate the graph, then validate the document. */
+function documentFromMutatedGraph(
+  start: BuilderDocument,
+  graph: ReturnType<typeof graphOf>,
+): BuilderDocument {
+  if (start.geometry.kind !== "building-graph") {
+    throw new Error("expected a building-graph document");
+  }
+  const candidate: BuilderDocument = {
+    ...start,
+    geometry: {
+      ...start.geometry,
+      graph,
+    },
+  };
+  const checked = validateBuilderDocument(candidate);
+  if (!checked.ok) throw new Error(checked.problem);
+  return checked.document;
+}
+
 test("a vertex move and the equivalent typed edit hash identically", () => {
   const start = documentFromSquare();
   const point: [number, number] = [8, 0];
@@ -81,16 +104,10 @@ test("a vertex move and the equivalent typed edit hash identically", () => {
   expect(dragged.ok).toBe(true);
   if (!dragged.ok) return;
 
-  const fromDrag = applyGraphVertexEdit(start, {
-    ...ask,
-    point: [dragged.graph.storeys[0].vertices.find((vertex) => vertex.id === "vertex-2")!.xFt,
-      dragged.graph.storeys[0].vertices.find((vertex) => vertex.id === "vertex-2")!.zFt],
-  });
-  expect(fromDrag.ok).toBe(true);
-  if (!fromDrag.ok) return;
-
-  expect(hashBuilderDocument(typed.document)).toBe(hashBuilderDocument(fromDrag.document));
-  expect(typed.document.geometry).toEqual(fromDrag.document.geometry);
+  expect(hashBuilderDocument(typed.document)).toBe(
+    hashBuilderDocument(documentFromMutatedGraph(start, dragged.graph)),
+  );
+  expect(typed.document.geometry).toEqual(documentFromMutatedGraph(start, dragged.graph).geometry);
 });
 
 test("an invalid move is refused and leaves the document untouched", () => {
@@ -151,15 +168,14 @@ test("extruding a wall grows the footprint and a typed extrude hashes the same",
   expect(after.vertices).toHaveLength(6);
   expect(after.walls).toHaveLength(6);
 
-  const again = applyGraphWallExtrude(start, {
-    storeyId: "storey-1",
-    wallId: "wall-1",
-    distanceFt: 2,
-    snapFt: GRAPH_VERTEX_SNAP_FT,
-  });
-  expect(again.ok).toBe(true);
-  if (!again.ok) return;
-  expect(hashBuilderDocument(typed.document)).toBe(hashBuilderDocument(again.document));
+  /* Audit #10 finding 2: GraphPlanEditor calls extrudeGraphWall, not
+     applyGraphWallExtrude. The typed wrapper must hash the same as that path. */
+  const ui = extrudeGraphWall(graphOf(start), "storey-1", "wall-1", 2, GRAPH_VERTEX_SNAP_FT);
+  expect(ui.ok).toBe(true);
+  if (!ui.ok) return;
+  expect(hashBuilderDocument(typed.document)).toBe(
+    hashBuilderDocument(documentFromMutatedGraph(start, ui.graph)),
+  );
 });
 
 test("a zero or partition extrusion is refused and leaves the hash untouched", () => {
@@ -227,14 +243,12 @@ test("renaming a room and typing the same name again hash identically", () => {
   if (!typed.ok) return;
   expect(graphOf(typed.document).storeys[0].rooms[0].name).toBe("Kitchen");
 
-  const again = applyGraphRoomRename(start, {
-    storeyId: "storey-1",
-    roomId: room.id,
-    name: "Kitchen",
-  });
-  expect(again.ok).toBe(true);
-  if (!again.ok) return;
-  expect(hashBuilderDocument(typed.document)).toBe(hashBuilderDocument(again.document));
+  const ui = renameGraphRoom(graphOf(start), "storey-1", room.id, "Kitchen");
+  expect(ui.ok).toBe(true);
+  if (!ui.ok) return;
+  expect(hashBuilderDocument(typed.document)).toBe(
+    hashBuilderDocument(documentFromMutatedGraph(start, ui.graph)),
+  );
 });
 
 test("an empty room name is refused and a rename survives a vertex move", () => {
@@ -291,14 +305,12 @@ test("setting a wall thickness twice hashes the same and a zero thickness is ref
   if (!typed.ok) return;
   expect(graphOf(typed.document).storeys[0].walls[0].thicknessFt).toBe(0.75);
 
-  const again = applyGraphWallThickness(start, {
-    storeyId: "storey-1",
-    wallId: "wall-1",
-    thicknessFt: 0.75,
-  });
-  expect(again.ok).toBe(true);
-  if (!again.ok) return;
-  expect(hashBuilderDocument(typed.document)).toBe(hashBuilderDocument(again.document));
+  const ui = setGraphWallThickness(graphOf(start), "storey-1", "wall-1", 0.75);
+  expect(ui.ok).toBe(true);
+  if (!ui.ok) return;
+  expect(hashBuilderDocument(typed.document)).toBe(
+    hashBuilderDocument(documentFromMutatedGraph(start, ui.graph)),
+  );
 
   const zero = applyGraphWallThickness(start, {
     storeyId: "storey-1",

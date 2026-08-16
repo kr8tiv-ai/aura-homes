@@ -408,6 +408,11 @@ applied to every candidate was one sentence: *what does this building know that 
 library knows?* Seventeen ideas answered it. The ones that did not are listed in § 11.2 — a rejected idea
 with its reason is worth more to the next wave than a thirtieth plan would have been to this one.
 
+**Update 2026-08-16.** PL04 mounted fifteen flat-roof glass plans. `PLAN_TEMPLATES.length` is now **87**
+(floor pin in `plan-catalog.spec.ts`). The tables in §11.1–11.4 describe the PL03 set of 72 as it stood
+when this section was written. They are a snapshot of that wave, not the live count. The live authority
+is `PLAN_TEMPLATES` in `app/lib/builder/planCatalog.ts`.
+
 ### 11.1 The set
 
 | # | Template id | Idea it exists for | Storeys | Area | Glazing |
