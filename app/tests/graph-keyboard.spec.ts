@@ -43,8 +43,11 @@ const appRoot = path.resolve(__dirname, "..");
 const editorSource = readFileSync(
   path.join(appRoot, "components/builder/GraphPlanEditor.tsx"),
   "utf8",
+).replace(/\r\n/g, "\n");
+const builderSource = readFileSync(path.join(appRoot, "components/builder/BuilderApp.tsx"), "utf8").replace(
+  /\r\n/g,
+  "\n",
 );
-const builderSource = readFileSync(path.join(appRoot, "components/builder/BuilderApp.tsx"), "utf8");
 
 /* Prose that quotes an attribute is documentation, not a declaration — the
    first run of the two "this attribute is gone" gates below flagged the

@@ -22,7 +22,12 @@ import ParcelPanel, {
   type LandStatus,
   type ParcelForm,
 } from "@/components/design/ParcelPanel";
-import type { BuilderSite } from "@/lib/builder/site";
+import {
+  provenanceForBuilderEdit,
+  sameParcel,
+  siteProvenanceNote,
+  type BuilderSite,
+} from "@/lib/builder/site";
 import type { SpecParcelCheck } from "@/lib/builder/toPlan";
 
 /** The stored parcel, back into the form's strings. */
@@ -77,9 +82,14 @@ export default function SitePanel({
     }
     if (invalid) return;
     const parcel = parseParcel(form);
+    /* An origin belongs to the numbers it describes. A lot stated on /land
+       arrives here already filled in, and simply LOOKING at this step must not
+       relabel it as typed-in-the-builder; retyping one of its numbers must.
+       `provenanceForBuilderEdit` owns that rule, and keeps `listing-derived`
+       sticky for the reason its own comment gives. */
     const next: BuilderSite = {
       parcel,
-      provenance: site?.provenance === "listing-derived" ? "listing-derived" : "manual",
+      provenance: provenanceForBuilderEdit(site, parcel),
       grade: gradeForSlope(form.slope),
     };
     const same =
@@ -87,7 +97,7 @@ export default function SitePanel({
       site.parcel !== null &&
       site.grade === next.grade &&
       site.provenance === next.provenance &&
-      JSON.stringify(site.parcel) === JSON.stringify(parcel);
+      sameParcel(site.parcel, parcel);
     if (!same) onSite(next, "site:parcel");
   }, [form, invalid, onSite, site, status]);
 
@@ -102,11 +112,13 @@ export default function SitePanel({
       />
       {status === "have" ? (
         <p className="builder-site-step__state" role="status">
+          {/* One sentence per origin, read from the same record the document
+              stores, so a parcel stated on /land is not described as one typed
+              here. Nothing saved yet reads as `manual`, which is what the very
+              next keystroke will make it. */}
           {invalid
             ? "The parcel is not saved yet — finish the numbers above."
-            : site?.provenance === "listing-derived"
-              ? "Saved with this design, from a listing. Its setbacks arrived as zero because the listed envelope is already inside them."
-              : "Saved with this design. It reaches the A1 site plan and the foundation schedule."}
+            : siteProvenanceNote(site?.provenance ?? "manual")}
         </p>
       ) : null}
 

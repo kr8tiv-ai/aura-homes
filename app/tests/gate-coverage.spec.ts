@@ -198,21 +198,20 @@ test("the counter agrees with what the runners actually declare", () => {
   /* The counter is a regex over source, which is an approximation of what the
      runner does — and the first version of it was wrong by seven. So it is
      pinned against numbers OBSERVED from the runners themselves:
-       npm test        -> 559 declared (558 passed + this assertion, which is
+       npm test        -> 603 declared (602 passed + this assertion, which is
                           red by construction while the number is being
-                          corrected), after waves 8-13 added margin-stack,
-                          builder-craft, builder-plans-first, opening-edit,
-                          variations, scenarios and copilot
-       npm run test:ui -> 120 declared, on a full 13.6-minute run against a
-                          fresh static export, up from 97 as walkthrough.spec
-                          moved here from the unit list — see the served-build
-                          gate above for why it had to
+                          corrected), after the owner-stated lot, Edmonton lot
+                          area, and land-page order contracts joined the gate
+       npm run test:ui -> 132 declared and passed, on a full 13.3-minute run
+                          against a fresh static export, after the stated-lot
+                          journey and explicit City-register surface joined
+                          the served-build gate
      If a spec is added or removed these numbers move, and moving them means
      re-running both suites and writing down what they said — which is the
      point. A counter nobody ever checked against the thing it counts is how
      the README got its numbers wrong in the first place. */
-  expect(UNIT_TESTS).toBe(559);
-  expect(UI_TESTS).toBe(120);
+  expect(UNIT_TESTS).toBe(603);
+  expect(UI_TESTS).toBe(132);
 
   const readme = read(repoRoot, "README.md");
   const submission = read(repoRoot, "docs", "SUBMISSION.md");

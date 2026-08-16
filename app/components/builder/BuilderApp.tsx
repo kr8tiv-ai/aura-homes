@@ -1806,11 +1806,28 @@ export default function BuilderApp() {
             </div>
           </Pane>
 
-          {/* The Site step's own panel. Mounted only while the walk is standing
-              on Site, because it owns form state that should start from the
-              document each time somebody arrives. */}
-          {editorMode === "guided" && guidedStep === "site" && !planRoute ? (
-            <SitePanel site={state.doc.site} onSite={editSite} check={siteCheck} />
+          {/* The Site panel, in BOTH editor modes.
+
+              It owns form state that should start from the document each time
+              somebody arrives, which is why it is mounted rather than hidden —
+              the `key` below makes arriving a remount in Pro the same way
+              stepping onto Site is a remount in Guided.
+
+              IT USED TO BE GUIDED-ONLY, AND THAT WAS A HOLE. A person can
+              commit a lot on /land — state the frontage, the depth and the
+              setbacks, press the button — and then open the builder in Pro and
+              find no trace of it: no dimensions, no "does this home fit this
+              land", no way to correct a number they mistyped. The land they
+              just told us about was invisible on the screen that exists to
+              show them their design against it. Guided reached it at step 5
+              of 8; Pro could not reach it at all. */}
+          {!planRoute && (editorMode === "guided" ? guidedStep === "site" : workspace === "shape") ? (
+            <SitePanel
+              key={editorMode === "guided" ? "guided-site" : `pro-site-${workspace}`}
+              site={state.doc.site}
+              onSite={editSite}
+              check={siteCheck}
+            />
           ) : null}
 
           {graphMode ? (

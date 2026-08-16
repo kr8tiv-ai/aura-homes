@@ -1,0 +1,749 @@
+{
+  "$schema": "aura-homes edmonton lot area set v1",
+  "retrievedAtISO": "2026-08-15T15:20:21.631Z",
+  "jurisdiction": {
+    "id": "city-of-edmonton",
+    "name": "City of Edmonton",
+    "province": "AB",
+    "country": "CA"
+  },
+  "whatThisIs": "A per-district summary of the lot AREAS the City of Edmonton records in its property assessment register, published under an open licence. Each row says how large a typical lot in one zoning district turns out to be, measured across every titled property the City files under that district's base code. It holds no individual property: no address, no coordinate, no owner, no account key and no legal description. A property register records who owns what. It never records what is being sold, and neither does this.",
+  "whatThisCannotAnswer": [
+    "What land somebody is selling. This is a municipal assessment register summary. It carries no offer, no price and no market status, and none of those can be inferred from anything in it.",
+    "A lot width or a lot depth. The register publishes an AREA and nothing else, and no free source in Edmonton Open Data publishes frontage at all. A width has to be stated by the person, and any depth computed from area divided by that width is arithmetic on their number, not a measurement.",
+    "A height ceiling for an address. The register's zone codes are base codes: they drop the h and f modifiers that carry the ceiling in edmonton-zoning-districts.json, so an address yields a district and the district still records the ceiling unknown.",
+    "The size of any one lot. These are district quantiles across thousands of properties. The median of a district is not a fact about the parcel a reader is standing on.",
+    "Anything a survey answers. This is an assessment register, not a Real Property Report, not a development permit, and not a subdivision approval. It certifies nothing."
+  ],
+  "licence": {
+    "name": "City of Edmonton Open Data Terms of Use, version 2.1 (January 2016)",
+    "url": "https://data.edmonton.ca/stories/s/msh8-if28",
+    "documentUrl": "https://www.edmonton.ca/public-files/assets/document?path=Web-version2.1-OpenDataAgreement.pdf",
+    "grant": "The City of Edmonton (the City) grants you a worldwide, royalty-free, non-exclusive licence to use, modify, and distribute the datasets in all current and future media and formats for any lawful purpose, including for commercial purposes.",
+    "redistributionCondition": "If you distribute or provide access to the datasets to any other person, whether in original or modified form, you agree to include a copy of, or this Uniform Resource Locator (URL) for, these Terms of Use and to ensure any such person agrees to, and is bound by, them without introducing any further restrictions of any kind.",
+    "attribution": "Contains information published by the City of Edmonton under the City of Edmonton Open Data Terms of Use. The City does not endorse Aura or this use of the data.",
+    "portalLicenceId": "SEE_TERMS_OF_USE"
+  },
+  "method": {
+    "filter": "zoning IS NOT NULL AND lot_size > 0. The rows with no zone code are condominium units whose recorded area is a unit share of the parcel rather than a lot; one sampled row carries 3.955 m2. Including them would hand a reader a 4 m2 lot.",
+    "units": "Square metres, as the City publishes them. Converted to square feet at read time.",
+    "quantile": "Linear-interpolated order statistic (the definition R calls type 7), computed over every retained row for the base code. Rounded to 0.1 m2.",
+    "join": "Rows are grouped by the register's zone code and kept only where that code is a baseCode in edmonton-zoning-districts.json. Codes the district register does not carry are dropped, and the drop is visible as the gap between zoneCodes and zoneCodesJoinedToRegister."
+  },
+  "source": {
+    "id": "dkk9-cj3x",
+    "title": "Property Information (Current Calendar Year)",
+    "publisher": "City of Edmonton",
+    "catalogueUrl": "https://data.edmonton.ca/d/dkk9-cj3x",
+    "apiEndpoint": "https://data.edmonton.ca/resource/dkk9-cj3x.json",
+    "updateFrequency": "Weekly",
+    "periodOfCoverage": "2025-01-01 to 2025-12-31",
+    "portalRowsUpdatedAtISO": "2026-08-10T08:59:37.000Z",
+    "rowsUpdatedAgeDays": 5.3,
+    "retrievedAtISO": "2026-08-15T15:20:21.631Z"
+  },
+  "refusedSources": [
+    {
+      "id": "q7d6-ambg",
+      "title": "Property Assessment Data",
+      "publisher": "City of Edmonton",
+      "catalogueUrl": "https://data.edmonton.ca/d/q7d6-ambg",
+      "reason": "It carries an assessed value per property and joins to this register on the same key. A dollar figure on a surface with nothing on offer reads as a price, and no wording fixes that. A municipal assessment for taxation is also not a market value. Adding it is a founder decision, not a builder decision.",
+      "checkedAtISO": "2026-08-15T15:20:21.631Z"
+    }
+  ],
+  "counts": {
+    "propertyRows": 439631,
+    "rowsWithZoneCode": 282666,
+    "rowsWithZoneCodeAndArea": 282666,
+    "zoneCodes": 79,
+    "zoneCodesJoinedToRegister": 76,
+    "rowJoinRate": 0.99999
+  },
+  "baseCodes": [
+    {
+      "baseCode": "A",
+      "n": 1040,
+      "p10SqM": 306.5,
+      "p25SqM": 399.3,
+      "medianSqM": 2004.2,
+      "p75SqM": 13645.3,
+      "p90SqM": 57026.2
+    },
+    {
+      "baseCode": "A1",
+      "n": 3,
+      "p10SqM": 146.3,
+      "p25SqM": 312.7,
+      "medianSqM": 590,
+      "p75SqM": 3000.4,
+      "p90SqM": 4446.7
+    },
+    {
+      "baseCode": "A5",
+      "n": 2,
+      "p10SqM": 8.5,
+      "p25SqM": 8.5,
+      "medianSqM": 8.5,
+      "p75SqM": 8.5,
+      "p90SqM": 8.5
+    },
+    {
+      "baseCode": "AED",
+      "n": 2,
+      "p10SqM": 6132.7,
+      "p25SqM": 7307.6,
+      "medianSqM": 9265.9,
+      "p75SqM": 11224.1,
+      "p90SqM": 12399.1
+    },
+    {
+      "baseCode": "AES",
+      "n": 312,
+      "p10SqM": 12133,
+      "p25SqM": 25855.1,
+      "medianSqM": 159938.9,
+      "p75SqM": 323634.8,
+      "p90SqM": 628401
+    },
+    {
+      "baseCode": "AG",
+      "n": 1023,
+      "p10SqM": 3110.8,
+      "p25SqM": 10134.7,
+      "medianSqM": 37216.5,
+      "p75SqM": 161741.7,
+      "p90SqM": 343241.6
+    },
+    {
+      "baseCode": "AJ",
+      "n": 102,
+      "p10SqM": 209.7,
+      "p25SqM": 442,
+      "medianSqM": 3288,
+      "p75SqM": 20151.3,
+      "p90SqM": 68549.2
+    },
+    {
+      "baseCode": "ALA",
+      "n": 1,
+      "p10SqM": 11033.4,
+      "p25SqM": 11033.4,
+      "medianSqM": 11033.4,
+      "p75SqM": 11033.4,
+      "p90SqM": 11033.4
+    },
+    {
+      "baseCode": "ASC",
+      "n": 3,
+      "p10SqM": 26565.4,
+      "p25SqM": 26723.9,
+      "medianSqM": 26988,
+      "p75SqM": 132843.9,
+      "p90SqM": 196357.5
+    },
+    {
+      "baseCode": "BE",
+      "n": 1799,
+      "p10SqM": 403.8,
+      "p25SqM": 2430.4,
+      "medianSqM": 5308.3,
+      "p75SqM": 11788.9,
+      "p90SqM": 21881.7
+    },
+    {
+      "baseCode": "BLMR",
+      "n": 7,
+      "p10SqM": 2662,
+      "p25SqM": 2691.3,
+      "medianSqM": 2734,
+      "p75SqM": 4826,
+      "p90SqM": 7018.9
+    },
+    {
+      "baseCode": "BP",
+      "n": 8,
+      "p10SqM": 675,
+      "p25SqM": 678.2,
+      "medianSqM": 873.3,
+      "p75SqM": 1418.6,
+      "p90SqM": 2620.2
+    },
+    {
+      "baseCode": "BRH",
+      "n": 385,
+      "p10SqM": 186.8,
+      "p25SqM": 212.3,
+      "medianSqM": 234.8,
+      "p75SqM": 275.7,
+      "p90SqM": 302.6
+    },
+    {
+      "baseCode": "CB",
+      "n": 189,
+      "p10SqM": 1407.4,
+      "p25SqM": 3444.4,
+      "medianSqM": 4904.6,
+      "p75SqM": 10101.8,
+      "p90SqM": 19993.4
+    },
+    {
+      "baseCode": "CCA",
+      "n": 119,
+      "p10SqM": 162.2,
+      "p25SqM": 462.9,
+      "medianSqM": 720.4,
+      "p75SqM": 2690.5,
+      "p90SqM": 4770
+    },
+    {
+      "baseCode": "CCHD",
+      "n": 4,
+      "p10SqM": 5517.8,
+      "p25SqM": 6576.9,
+      "medianSqM": 7169.5,
+      "p75SqM": 7174.5,
+      "p90SqM": 7175.7
+    },
+    {
+      "baseCode": "CCMD",
+      "n": 2,
+      "p10SqM": 16853.3,
+      "p25SqM": 17074.4,
+      "medianSqM": 17442.7,
+      "p75SqM": 17811.1,
+      "p90SqM": 18032.1
+    },
+    {
+      "baseCode": "CCNC",
+      "n": 1,
+      "p10SqM": 4006.2,
+      "p25SqM": 4006.2,
+      "medianSqM": 4006.2,
+      "p75SqM": 4006.2,
+      "p90SqM": 4006.2
+    },
+    {
+      "baseCode": "CCSD",
+      "n": 60,
+      "p10SqM": 375.7,
+      "p25SqM": 384.8,
+      "medianSqM": 396,
+      "p75SqM": 443.6,
+      "p90SqM": 537.6
+    },
+    {
+      "baseCode": "CG",
+      "n": 409,
+      "p10SqM": 576.5,
+      "p25SqM": 2279.4,
+      "medianSqM": 4701.4,
+      "p75SqM": 15303,
+      "p90SqM": 32437.4
+    },
+    {
+      "baseCode": "CMU",
+      "n": 69,
+      "p10SqM": 540.8,
+      "p25SqM": 696.6,
+      "medianSqM": 700.9,
+      "p75SqM": 1957.3,
+      "p90SqM": 3211.3
+    },
+    {
+      "baseCode": "CMUV",
+      "n": 21,
+      "p10SqM": 696.4,
+      "p25SqM": 696.6,
+      "medianSqM": 697.2,
+      "p75SqM": 743.8,
+      "p90SqM": 1392
+    },
+    {
+      "baseCode": "CN",
+      "n": 432,
+      "p10SqM": 344.3,
+      "p25SqM": 478.4,
+      "medianSqM": 1224.3,
+      "p75SqM": 3176.6,
+      "p90SqM": 7893.2
+    },
+    {
+      "baseCode": "DC",
+      "n": 621,
+      "p10SqM": 225.8,
+      "p25SqM": 374.1,
+      "medianSqM": 422,
+      "p75SqM": 723.7,
+      "p90SqM": 2294.2
+    },
+    {
+      "baseCode": "DC1",
+      "n": 4913,
+      "p10SqM": 184.8,
+      "p25SqM": 267.7,
+      "medianSqM": 322.2,
+      "p75SqM": 395.4,
+      "p90SqM": 696.2
+    },
+    {
+      "baseCode": "DC2",
+      "n": 2034,
+      "p10SqM": 137.9,
+      "p25SqM": 266.7,
+      "medianSqM": 528.3,
+      "p75SqM": 3136.4,
+      "p90SqM": 11938.2
+    },
+    {
+      "baseCode": "ECB",
+      "n": 4,
+      "p10SqM": 10785.9,
+      "p25SqM": 13993.7,
+      "medianSqM": 17424.9,
+      "p75SqM": 19670.6,
+      "p90SqM": 20744.4
+    },
+    {
+      "baseCode": "EETC",
+      "n": 13,
+      "p10SqM": 42883.6,
+      "p25SqM": 141579.5,
+      "medianSqM": 315875.2,
+      "p75SqM": 602245.6,
+      "p90SqM": 629969.7
+    },
+    {
+      "baseCode": "EETIM",
+      "n": 5,
+      "p10SqM": 13663.5,
+      "p25SqM": 20228.2,
+      "medianSqM": 72930,
+      "p75SqM": 161047.1,
+      "p90SqM": 161067.3
+    },
+    {
+      "baseCode": "EETL",
+      "n": 2,
+      "p10SqM": 589025.5,
+      "p25SqM": 591796.9,
+      "medianSqM": 596416,
+      "p75SqM": 601035.1,
+      "p90SqM": 603806.6
+    },
+    {
+      "baseCode": "EETM",
+      "n": 5,
+      "p10SqM": 204906.2,
+      "p25SqM": 418785,
+      "medianSqM": 571618.8,
+      "p75SqM": 620930.4,
+      "p90SqM": 634256.7
+    },
+    {
+      "baseCode": "EETR",
+      "n": 5,
+      "p10SqM": 17983.8,
+      "p25SqM": 22170.7,
+      "medianSqM": 33509.7,
+      "p75SqM": 44635.4,
+      "p90SqM": 45195.7
+    },
+    {
+      "baseCode": "EIB",
+      "n": 45,
+      "p10SqM": 4324.4,
+      "p25SqM": 4983,
+      "medianSqM": 8643.2,
+      "p75SqM": 12868.2,
+      "p90SqM": 20844.9
+    },
+    {
+      "baseCode": "EIM",
+      "n": 6,
+      "p10SqM": 35141.4,
+      "p25SqM": 41310.3,
+      "medianSqM": 74217.2,
+      "p75SqM": 101647.7,
+      "p90SqM": 137194.6
+    },
+    {
+      "baseCode": "FD",
+      "n": 279,
+      "p10SqM": 377,
+      "p25SqM": 747.3,
+      "medianSqM": 3885.9,
+      "p75SqM": 22084.2,
+      "p90SqM": 84155
+    },
+    {
+      "baseCode": "GLD",
+      "n": 235,
+      "p10SqM": 296.4,
+      "p25SqM": 334.4,
+      "medianSqM": 389.3,
+      "p75SqM": 433.6,
+      "p90SqM": 534.1
+    },
+    {
+      "baseCode": "GLDF",
+      "n": 1192,
+      "p10SqM": 312.7,
+      "p25SqM": 341.9,
+      "medianSqM": 395.9,
+      "p75SqM": 458.8,
+      "p90SqM": 558.6
+    },
+    {
+      "baseCode": "GLRA",
+      "n": 6,
+      "p10SqM": 7476.7,
+      "p25SqM": 8579.9,
+      "medianSqM": 9063.4,
+      "p75SqM": 9066.5,
+      "p90SqM": 10404.7
+    },
+    {
+      "baseCode": "GMRA",
+      "n": 3,
+      "p10SqM": 6218.8,
+      "p25SqM": 6763.8,
+      "medianSqM": 7672.1,
+      "p75SqM": 12689,
+      "p90SqM": 15699.1
+    },
+    {
+      "baseCode": "GRH",
+      "n": 108,
+      "p10SqM": 207.2,
+      "p25SqM": 217.6,
+      "medianSqM": 277,
+      "p75SqM": 325.1,
+      "p90SqM": 467.1
+    },
+    {
+      "baseCode": "GVC",
+      "n": 4,
+      "p10SqM": 2610.4,
+      "p25SqM": 3162.6,
+      "medianSqM": 6448.9,
+      "p75SqM": 16196.4,
+      "p90SqM": 28378.5
+    },
+    {
+      "baseCode": "HA",
+      "n": 24,
+      "p10SqM": 696.1,
+      "p25SqM": 697.1,
+      "medianSqM": 943.3,
+      "p75SqM": 1492,
+      "p90SqM": 2578.9
+    },
+    {
+      "baseCode": "HDR",
+      "n": 44,
+      "p10SqM": 181,
+      "p25SqM": 681.4,
+      "medianSqM": 772.4,
+      "p75SqM": 1631,
+      "p90SqM": 2788.1
+    },
+    {
+      "baseCode": "IH",
+      "n": 359,
+      "p10SqM": 399.8,
+      "p25SqM": 1379.9,
+      "medianSqM": 4091.9,
+      "p75SqM": 12191.1,
+      "p90SqM": 36407.6
+    },
+    {
+      "baseCode": "ILES",
+      "n": 67,
+      "p10SqM": 5691.5,
+      "p25SqM": 8911.1,
+      "medianSqM": 19072.5,
+      "p75SqM": 30866.9,
+      "p90SqM": 37541.6
+    },
+    {
+      "baseCode": "IM",
+      "n": 2719,
+      "p10SqM": 484,
+      "p25SqM": 1989.9,
+      "medianSqM": 4867.2,
+      "p75SqM": 10789.1,
+      "p90SqM": 23230.7
+    },
+    {
+      "baseCode": "JAMSC",
+      "n": 35,
+      "p10SqM": 609.4,
+      "p25SqM": 741.8,
+      "medianSqM": 745.8,
+      "p75SqM": 1487.3,
+      "p90SqM": 3179.5
+    },
+    {
+      "baseCode": "MRC",
+      "n": 3,
+      "p10SqM": 131159.8,
+      "p25SqM": 154453.3,
+      "medianSqM": 193275.8,
+      "p75SqM": 421710.1,
+      "p90SqM": 558770.7
+    },
+    {
+      "baseCode": "MU",
+      "n": 2015,
+      "p10SqM": 291.5,
+      "p25SqM": 374.3,
+      "medianSqM": 615,
+      "p75SqM": 1250.9,
+      "p90SqM": 2307.3
+    },
+    {
+      "baseCode": "MUN",
+      "n": 40,
+      "p10SqM": 240.9,
+      "p25SqM": 353.1,
+      "medianSqM": 414.7,
+      "p75SqM": 1482.3,
+      "p90SqM": 2801.4
+    },
+    {
+      "baseCode": "NA",
+      "n": 60,
+      "p10SqM": 679.4,
+      "p25SqM": 3541.2,
+      "medianSqM": 10803.3,
+      "p75SqM": 23513.7,
+      "p90SqM": 45954.5
+    },
+    {
+      "baseCode": "NSRVES",
+      "n": 14,
+      "p10SqM": 13172.7,
+      "p25SqM": 35094.7,
+      "medianSqM": 152938.7,
+      "p75SqM": 475897.8,
+      "p90SqM": 580641.4
+    },
+    {
+      "baseCode": "PLD",
+      "n": 948,
+      "p10SqM": 247.7,
+      "p25SqM": 261.5,
+      "medianSqM": 292.1,
+      "p75SqM": 357,
+      "p90SqM": 420.2
+    },
+    {
+      "baseCode": "PRH",
+      "n": 21,
+      "p10SqM": 203.6,
+      "p25SqM": 203.6,
+      "medianSqM": 224.8,
+      "p75SqM": 256.1,
+      "p90SqM": 265.5
+    },
+    {
+      "baseCode": "PS",
+      "n": 751,
+      "p10SqM": 383.5,
+      "p25SqM": 1988.6,
+      "medianSqM": 13529.9,
+      "p75SqM": 26359.4,
+      "p90SqM": 40338
+    },
+    {
+      "baseCode": "PSN",
+      "n": 948,
+      "p10SqM": 377.2,
+      "p25SqM": 643.5,
+      "medianSqM": 2469.5,
+      "p75SqM": 6442.6,
+      "p90SqM": 15241.1
+    },
+    {
+      "baseCode": "PU",
+      "n": 896,
+      "p10SqM": 442.1,
+      "p25SqM": 1397.6,
+      "medianSqM": 5526,
+      "p75SqM": 20743.4,
+      "p90SqM": 33683.6
+    },
+    {
+      "baseCode": "RAES",
+      "n": 21,
+      "p10SqM": 2438.2,
+      "p25SqM": 2975,
+      "medianSqM": 3305,
+      "p75SqM": 4859,
+      "p90SqM": 22854.2
+    },
+    {
+      "baseCode": "RCES",
+      "n": 6,
+      "p10SqM": 4603.2,
+      "p25SqM": 6736.6,
+      "medianSqM": 9991.8,
+      "p75SqM": 9994.9,
+      "p90SqM": 10853.9
+    },
+    {
+      "baseCode": "RL",
+      "n": 208,
+      "p10SqM": 347.8,
+      "p25SqM": 408,
+      "medianSqM": 699.9,
+      "p75SqM": 2573.7,
+      "p90SqM": 8480.2
+    },
+    {
+      "baseCode": "RM",
+      "n": 4738,
+      "p10SqM": 324.1,
+      "p25SqM": 374.6,
+      "medianSqM": 563.2,
+      "p75SqM": 1313.8,
+      "p90SqM": 2801.1
+    },
+    {
+      "baseCode": "RMU",
+      "n": 41,
+      "p10SqM": 348.6,
+      "p25SqM": 467.1,
+      "medianSqM": 697.2,
+      "p75SqM": 949.7,
+      "p90SqM": 2776.1
+    },
+    {
+      "baseCode": "RR",
+      "n": 554,
+      "p10SqM": 3904.4,
+      "p25SqM": 4155.6,
+      "medianSqM": 5369.3,
+      "p75SqM": 9947.9,
+      "p90SqM": 12996.8
+    },
+    {
+      "baseCode": "RS",
+      "n": 146562,
+      "p10SqM": 367.8,
+      "p25SqM": 493.9,
+      "medianSqM": 569.6,
+      "p75SqM": 656,
+      "p90SqM": 780.6
+    },
+    {
+      "baseCode": "RSF",
+      "n": 98581,
+      "p10SqM": 269.4,
+      "p25SqM": 312.2,
+      "medianSqM": 377.9,
+      "p75SqM": 450.1,
+      "p90SqM": 581.8
+    },
+    {
+      "baseCode": "RSM",
+      "n": 6075,
+      "p10SqM": 192.8,
+      "p25SqM": 216.7,
+      "medianSqM": 263.3,
+      "p75SqM": 317.3,
+      "p90SqM": 461
+    },
+    {
+      "baseCode": "RTCMR",
+      "n": 2,
+      "p10SqM": 11205.6,
+      "p25SqM": 11702.9,
+      "medianSqM": 12531.9,
+      "p75SqM": 13360.8,
+      "p90SqM": 13858.2
+    },
+    {
+      "baseCode": "RVRH",
+      "n": 152,
+      "p10SqM": 106.4,
+      "p25SqM": 106.7,
+      "medianSqM": 126.1,
+      "p75SqM": 138.1,
+      "p90SqM": 149.9
+    },
+    {
+      "baseCode": "SLD",
+      "n": 543,
+      "p10SqM": 242.7,
+      "p25SqM": 291.6,
+      "medianSqM": 329.6,
+      "p75SqM": 372,
+      "p90SqM": 443.8
+    },
+    {
+      "baseCode": "SRA",
+      "n": 194,
+      "p10SqM": 86.4,
+      "p25SqM": 86.8,
+      "medianSqM": 92.8,
+      "p75SqM": 114.9,
+      "p90SqM": 124.4
+    },
+    {
+      "baseCode": "SRH",
+      "n": 221,
+      "p10SqM": 130.1,
+      "p25SqM": 135.9,
+      "medianSqM": 148.2,
+      "p75SqM": 172.6,
+      "p90SqM": 193.8
+    },
+    {
+      "baseCode": "TC-C",
+      "n": 3,
+      "p10SqM": 25420.9,
+      "p25SqM": 26532.5,
+      "medianSqM": 28385.3,
+      "p75SqM": 40009.3,
+      "p90SqM": 46983.7
+    },
+    {
+      "baseCode": "UC3ES",
+      "n": 9,
+      "p10SqM": 24638.4,
+      "p25SqM": 26615.9,
+      "medianSqM": 26851.9,
+      "p75SqM": 27061.3,
+      "p90SqM": 105432.5
+    },
+    {
+      "baseCode": "UF",
+      "n": 233,
+      "p10SqM": 384.1,
+      "p25SqM": 1565.6,
+      "medianSqM": 3985.6,
+      "p75SqM": 12289.6,
+      "p90SqM": 35580.1
+    },
+    {
+      "baseCode": "UI",
+      "n": 16,
+      "p10SqM": 1499.7,
+      "p25SqM": 7506.9,
+      "medianSqM": 24423.2,
+      "p75SqM": 47379.3,
+      "p90SqM": 64290.4
+    },
+    {
+      "baseCode": "UW",
+      "n": 87,
+      "p10SqM": 650.4,
+      "p25SqM": 695.9,
+      "medianSqM": 696.9,
+      "p75SqM": 1891.5,
+      "p90SqM": 2786.1
+    }
+  ]
+}

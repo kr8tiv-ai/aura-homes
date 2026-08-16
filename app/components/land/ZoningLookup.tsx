@@ -51,8 +51,25 @@
  * is a rule that only exists in a comment.
  */
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState, type CSSProperties } from "react";
 
+import StatedLotPanel from "@/components/land/StatedLotPanel";
+import {
+  EDMONTON_LOT_AREA_SET,
+  LOT_AREA_BOUNDARY,
+  LOT_AREA_COVERAGE_NOTE,
+  lotAreaAttribution,
+  lotAreaSummaryForBaseCode,
+  lotAreaSummarySentence,
+  sqMetresToSqFeet,
+} from "@/lib/land/lotAreas";
+import {
+  PROPERTY_LOOKUP_SENDS_NOTE,
+  lookupProperty,
+  parseTypedAddress,
+  type PropertyAddressMatch,
+  type PropertyQuery,
+} from "@/lib/land/propertyLookup";
 import type { LandDesignRequirements, LandFitFinding } from "@/lib/marketplace/discovery";
 import {
   CITY_ZONING_MAP_URL,
@@ -255,6 +272,370 @@ export function overlayStatusText(overlay: EdmontonZoningOverlay): string {
   const bylaw = overlay.bylawNumber === null ? "no bylaw recorded" : `Bylaw ${overlay.bylawNumber}`;
   if (inForce === null) return `Status not recorded · ${bylaw}`;
   return inForce ? `In force · ${bylaw}` : `Not in force · ${bylaw}`;
+}
+
+/* ------------------------------------------------- the property register */
+
+/* WHAT THIS BLOCK IS FOR, and why it is on screen rather than in a module
+ * nobody imports.
+ *
+ * /land's boundary panel says Aura can tell you what the City's rules AND ITS
+ * PROPERTY REGISTER say about a lot you already have. Before this block that
+ * second half was false: `lib/land/lotAreas.ts` and `lib/land/propertyLookup.ts`
+ * were reachable only from their own spec, so no register figure had ever
+ * reached a reader. A sentence on a page claiming a capability the code does not
+ * have is worse than the capability being absent, because a reader cannot see
+ * the difference.
+ *
+ * TWO HALVES, AND THE DIFFERENCE BETWEEN THEM IS THE WHOLE DESIGN.
+ *
+ *   1. THE DISTRICT TYPICAL is offline. It is the aggregate that was baked
+ *      instead of 282,034 parcel rows, and the reason that scope call was made
+ *      was so somebody could see what a lot in their district turns out to be.
+ *      It is quantiles over thousands of properties. It is never the reader's
+ *      lot, it is an AREA rather than a width or a depth, and both of those
+ *      sentences are printed rather than implied.
+ *
+ *   2. THE ONE LIVE CALL is the only thing on this page that needs a network,
+ *      and it fires on a button press and on nothing else — no effect, no
+ *      keystroke handler, no district select. `PROPERTY_LOOKUP_SENDS_NOTE` sits
+ *      beside the button BEFORE it is pressed, so the person knows what leaves
+ *      the browser and where it goes while deciding. Every failure the module
+ *      can produce comes back as a sentence naming what failed, and the lot-area
+ *      field in "Your own lot" directly below stays typable in all of them.
+ *      Offline is the default mode here, not a degraded one.
+ *
+ * WHERE A RETURNED NUMBER LANDS. The register publishes an area. It is not a
+ * frontage and it is not a depth — no free City of Edmonton source publishes
+ * frontage at all — so the answer is printed as an area, said to be an area, and
+ * pointed at the "Lot area (sq ft)" field below, which the reader fills in.
+ * Aura does not reach into that panel and overwrite what somebody typed.
+ */
+
+/** The lot-area dataset's own catalogue page. Every figure this block states
+ *  links to it, the same rule the district figures above follow. */
+const LOT_AREA_CATALOGUE = EDMONTON_LOT_AREA_SET.source.catalogueUrl;
+const LOT_AREA_READ_DATE = EDMONTON_LOT_AREA_SET.retrievedAtISO.slice(0, 10);
+const LOT_AREA_SOURCE_LABEL = `City of Edmonton property register · read ${LOT_AREA_READ_DATE}`;
+
+/** Fixed-locale and integer, like every other figure on this surface: a number
+ *  formatted against the runtime's locale differs between the export build and
+ *  the reader's browser, and a hydration mismatch on a figure is the kind of
+ *  defect nobody goes looking for. */
+function areaBothUnits(sqM: number): string {
+  return `${NUM.format(Math.round(sqM))} m2 · ${NUM.format(Math.round(sqMetresToSqFeet(sqM)))} sq ft`;
+}
+
+/**
+ * The district's lot-area distribution as five stated figures, each carrying
+ * the source it came from — `ZoningFigure` rather than a bare string for the
+ * same reason `districtFigures` uses it: an unsourced number cannot be built.
+ *
+ * Empty when the City's register files no titled lot under this base code. That
+ * is a real state and not a rare one: 19 of the 156 districts' base codes have
+ * no row in the aggregate, counted rather than assumed, so the surface says why
+ * rather than rendering a blank — a blank reads as a page still loading.
+ */
+export function districtTypicalFigures(district: EdmontonZoningDistrict): ZoningFigure[] {
+  const summary = lotAreaSummaryForBaseCode(district.baseCode);
+  if (!summary) return [];
+  const figure = (id: string, label: string, sqM: number): ZoningFigure => ({
+    id,
+    label,
+    value: areaBothUnits(sqM),
+    sourceHref: LOT_AREA_CATALOGUE,
+    sourceLabel: LOT_AREA_SOURCE_LABEL,
+  });
+  return [
+    figure("p10", "10th percentile", summary.p10SqM),
+    figure("p25", "Lower quartile", summary.p25SqM),
+    figure("median", "Median lot area", summary.medianSqM),
+    figure("p75", "Upper quartile", summary.p75SqM),
+    figure("p90", "90th percentile", summary.p90SqM),
+  ];
+}
+
+/** Why there is nothing to show, when there is nothing to show. */
+export function noTypicalNote(district: EdmontonZoningDistrict): string {
+  return (
+    `The City's register files no titled lot under the base code ${district.baseCode}, so there is no ` +
+    `district typical to state here. The ${NUM.format(EDMONTON_LOT_AREA_SET.baseCodes.length)} codes it ` +
+    "does carry are the ones with titled property behind them, and inventing a figure for the rest would " +
+    "be arithmetic on nothing."
+  );
+}
+
+/** The sentence that stops a quantile from being read as a parcel fact, and an
+ *  area from being read as a dimension. Both mistakes are one word apart. */
+export const REGISTER_AREA_NOTE =
+  "Every figure above is an AREA. The register publishes no frontage and no depth, so it cannot say how " +
+  "wide a lot is or how far back it runs, and a quantile over thousands of properties is not a statement " +
+  "about the one you are standing on.";
+
+/** Said beside the button, so the cost of the one live call is on screen before
+ *  anybody pays it. */
+export const REGISTER_NETWORK_NOTE =
+  "This button is the only thing on this page that uses the network. The district rules, the district " +
+  "figures above and your own lot below are baked into Aura and run in your browser, so if the City does " +
+  "not answer, nothing else here stops working.";
+
+/**
+ * The field a returned area is meant to be typed into. It lives in
+ * `StatedLotPanel`, which is another module's file, so the name is held here as
+ * a constant and `tests/land-register-surface.spec.ts` asserts that the panel
+ * on screen still carries it. A rename there turns this sentence into a
+ * direction to a field that does not exist, and the point of the constant is
+ * that the rename goes red instead of quietly misdirecting a reader.
+ */
+export const LOT_AREA_FIELD_LABEL = "Lot area (sq ft)";
+
+/** Where a returned number goes, said where the number lands. Aura does not
+ *  write it into the panel below: overwriting numbers somebody typed is not a
+ *  thing a lookup gets to do. */
+export const REGISTER_LANDING_NOTE =
+  `An area is not a frontage and not a depth. Type the square footage into “${LOT_AREA_FIELD_LABEL}” under ` +
+  "Your own lot below and state your own frontage there — no free City of Edmonton source publishes it — " +
+  "and the buildable envelope is worked out from your numbers.";
+
+/** The register's own change stamp, when the portal lets a browser read it. */
+export function REGISTER_AS_OF_NOTE(asOfISO: string): string {
+  return (
+    `The register's own stamp says these rows last changed ${asOfISO.slice(0, 10)}. That is the City's ` +
+    "statement about when its data moved, not Aura's about when the property did."
+  );
+}
+
+/** And when it does not. A header a browser is not permitted to read is not a
+ *  missing date to gloss over; it is a fact about this call, so it is stated. */
+export const REGISTER_NO_STAMP_NOTE =
+  "The portal did not hand this browser a change stamp for this row — it does not expose that header " +
+  "across origins — so the row carries no date of its own, and the coverage window the City states above " +
+  "is the only currency claim on screen.";
+
+/** Typed text this dataset cannot be asked about, answered without sending it.
+ *  A refusal that explains itself beats a request that comes back empty. */
+export const ADDRESS_UNREADABLE_NOTE =
+  "That does not start with a house number, so there is nothing here to ask the City for. The register " +
+  "files an address as a house number and then a street name, as in 12110 148 Ave NW. Nothing was sent.";
+
+/** An empty answer is a fact about this dataset, never a fact about the place. */
+export function noRowNote(query: PropertyQuery): string {
+  return (
+    `The City's register returns no row for ${query.houseNumber} ${query.streetName}. That is what this ` +
+    "dataset holds and not a statement about the address: a condominium unit carries a share of a parcel " +
+    "rather than a lot and is filtered out, a recent subdivision may not be in the rows yet, and a street " +
+    "spelled another way or in another quadrant is a different street. Type the lot area yourself below."
+  );
+}
+
+/** One returned row, in one sentence. The zone code is stated as the BASE code
+ *  it is: the register drops the `h` and `f` modifiers, which are the only
+ *  thing the district register can evidence, so an address still leaves the
+ *  height ceiling unknown. */
+export function registerRowSentence(row: PropertyAddressMatch): string {
+  return (
+    `${row.houseNumber} ${row.streetName} — the City records a lot area of ${areaBothUnits(row.lotAreaSqM)}. ` +
+    `It files the property under zone code ${row.zoneCode}, which is a base code with the h and f modifiers ` +
+    "stripped, so this still carries no height ceiling."
+  );
+}
+
+/** Everything the lookup can be in. `asking` is a real state with a real end:
+ *  `lookupProperty` never throws and times out at eight seconds, so there is no
+ *  path that leaves this stuck. */
+export type RegisterAskState =
+  | { kind: "idle" }
+  | { kind: "asking" }
+  | { kind: "unreadable" }
+  | { kind: "rows"; query: PropertyQuery; rows: PropertyAddressMatch[]; asOf: string | null }
+  | { kind: "no-row"; query: PropertyQuery }
+  | { kind: "unreachable"; reason: string };
+
+const REGISTER_BLOCK: CSSProperties = {
+  display: "grid",
+  gap: "0.75rem",
+  padding: "clamp(0.9rem, 2vw, 1.2rem)",
+  border: "1px solid var(--st-hair-soft)",
+  background: "rgb(var(--tone-sunken))",
+};
+
+/* One fixed min-width anywhere in this section pushes /land sideways at 390 px,
+   which tests/land-ui.spec.ts measures. Same `minmax(min(…), 100%)` shape the
+   rest of the `.zoning-*` block uses. */
+const REGISTER_ASK_ROW: CSSProperties = {
+  display: "grid",
+  gap: "0.5rem",
+  gridTemplateColumns: "repeat(auto-fit, minmax(min(14rem, 100%), 1fr))",
+  alignItems: "end",
+};
+
+function RegisterSurface({ district }: { district: EdmontonZoningDistrict }) {
+  const [typed, setTyped] = useState("");
+  const [ask, setAsk] = useState<RegisterAskState>({ kind: "idle" });
+
+  const typical = useMemo(() => districtTypicalFigures(district), [district]);
+  const summary = useMemo(() => lotAreaSummaryForBaseCode(district.baseCode), [district]);
+  const attribution = lotAreaAttribution();
+
+  /* THE ONLY CALLER. There is no effect in this file and no handler on the
+     input that reaches the network — typing sends nothing, choosing a district
+     sends nothing, and mounting sends nothing. */
+  const askTheCity = useCallback(async () => {
+    const query = parseTypedAddress(typed);
+    if (!query) {
+      setAsk({ kind: "unreadable" });
+      return;
+    }
+    setAsk({ kind: "asking" });
+    const outcome = await lookupProperty(query);
+    if (outcome.kind === "matches") {
+      setAsk({ kind: "rows", query, rows: outcome.matches, asOf: outcome.truthLastModifiedISO });
+    } else if (outcome.kind === "no-row") {
+      setAsk({ kind: "no-row", query: outcome.query });
+    } else {
+      setAsk({ kind: "unreachable", reason: outcome.reason });
+    }
+  }, [typed]);
+
+  return (
+    <div style={REGISTER_BLOCK} data-slot="land-register-surface">
+      <p className="zoning-section-head">What the City&rsquo;s property register says</p>
+      <p className="zoning-boundary">{LOT_AREA_BOUNDARY}</p>
+
+      {/* HALF ONE: the district typical, offline. */}
+      {summary && typical.length > 0 ? (
+        <>
+          <p className="zoning-detail">{lotAreaSummarySentence(summary)}</p>
+          <div className="zoning-figures">
+            {typical.map((figure) => (
+              <p key={figure.id} className="zoning-figure">
+                <strong className="zoning-figure-value">{figure.value}</strong>
+                <span className="zoning-figure-label">{figure.label}</span>
+                <a className="zoning-source" href={figure.sourceHref} target="_blank" rel="noreferrer">
+                  {figure.sourceLabel}
+                </a>
+              </p>
+            ))}
+          </div>
+          <p className="zoning-reason">{REGISTER_AREA_NOTE}</p>
+          <p className="zoning-reason">{LOT_AREA_COVERAGE_NOTE}</p>
+        </>
+      ) : (
+        <p className="zoning-reason">{noTypicalNote(district)}</p>
+      )}
+
+      {/* HALF TWO: one address, on a press. */}
+      <div className="zoning-question" data-slot="land-register-ask">
+        <div className="zoning-question-head">
+          <p className="zoning-question-label">Ask the City about one address</p>
+          <span className="zoning-state zoning-state-open">Needs the network</span>
+        </div>
+        <p className="zoning-reason">{PROPERTY_LOOKUP_SENDS_NOTE}</p>
+        <p className="zoning-reason">{REGISTER_NETWORK_NOTE}</p>
+
+        <div style={REGISTER_ASK_ROW}>
+          <label style={{ display: "grid", gap: "0.3rem", minWidth: 0 }}>
+            <span className="zoning-search-label" id="register-address-label">
+              Edmonton street address
+            </span>
+            <input
+              id="register-address"
+              className="zoning-input"
+              type="text"
+              autoComplete="off"
+              placeholder="12110 148 Ave NW"
+              value={typed}
+              data-slot="land-register-address"
+              /* onChange sets state and nothing else. No debounce, no
+                 as-you-type request: the note above promises nothing is sent
+                 until the button is pressed, and this is that promise. */
+              onChange={(event) => {
+                setTyped(event.target.value);
+                setAsk({ kind: "idle" });
+              }}
+            />
+          </label>
+          <button
+            type="button"
+            className="zoning-result"
+            data-slot="land-register-button"
+            onClick={() => void askTheCity()}
+            disabled={typed.trim().length === 0 || ask.kind === "asking"}
+            aria-disabled={typed.trim().length === 0 || ask.kind === "asking"}
+          >
+            <span className="zoning-result-code">
+              {ask.kind === "asking" ? "Asking the City…" : "Ask the City for this lot's area"}
+            </span>
+            <span className="zoning-result-meta">
+              {typed.trim().length === 0
+                ? "Waiting on an address. Nothing is sent until you press it."
+                : "Sends this address to data.edmonton.ca and asks for the area it records"}
+            </span>
+          </button>
+        </div>
+
+        {/* EVERY OUTCOME SAYS WHAT HAPPENED. There is no branch here that
+            renders nothing, and none that leaves the reader without the next
+            move — the lot-area field below takes a typed number in all of
+            them. */}
+        <div role="status" style={{ display: "grid", gap: "0.4rem" }}>
+          {ask.kind === "asking" ? (
+            <p className="zoning-reason">
+              Asking data.edmonton.ca for this address. It has eight seconds to answer, and if it does
+              not, this says so rather than waiting.
+            </p>
+          ) : null}
+          {ask.kind === "unreadable" ? <p className="zoning-detail">{ADDRESS_UNREADABLE_NOTE}</p> : null}
+          {ask.kind === "no-row" ? <p className="zoning-detail">{noRowNote(ask.query)}</p> : null}
+          {ask.kind === "unreachable" ? <p className="zoning-detail">{ask.reason}</p> : null}
+          {ask.kind === "rows" ? (
+            <>
+              {ask.rows.length > 1 ? (
+                <p className="zoning-reason">
+                  The City files {NUM.format(ask.rows.length)} titles at that address — duplex halves and
+                  multiple titles on one parcel both do this — so all of them are here and the one that
+                  is yours is yours to pick.
+                </p>
+              ) : null}
+              {ask.rows.map((row, index) => (
+                <p
+                  key={`${row.houseNumber}-${row.streetName}-${row.legalDescription}-${index}`}
+                  className="zoning-detail"
+                  data-slot="land-register-row"
+                >
+                  {registerRowSentence(row)}
+                  {row.legalDescription ? ` ${row.legalDescription}.` : ""}
+                  {row.neighbourhood ? ` ${row.neighbourhood}.` : ""}
+                </p>
+              ))}
+              <p className="zoning-reason">{REGISTER_LANDING_NOTE}</p>
+              {/* FRESHNESS, INCLUDING WHEN THERE IS NONE TO STATE. `lookupProperty`
+                  reads the portal's `X-SODA2-Truth-Last-Modified` header, and a
+                  browser can only read a header the server exposes across
+                  origins. Asked from a real page, data.edmonton.ca exposes
+                  `content-type` and `last-modified` and nothing else — observed,
+                  not assumed — so this comes back null and the second branch is
+                  the one a reader actually sees. Both are written because
+                  printing nothing would read as a stamp Aura had decided not to
+                  show, and printing a date Aura cannot read would be worse. */}
+              {ask.asOf ? (
+                <p className="zoning-reason">{REGISTER_AS_OF_NOTE(ask.asOf)}</p>
+              ) : (
+                <p className="zoning-reason">{REGISTER_NO_STAMP_NOTE}</p>
+              )}
+            </>
+          ) : null}
+        </div>
+      </div>
+
+      <p className="zoning-attrib">
+        {attribution.text}{" "}
+        <a href={attribution.termsUrl} target="_blank" rel="noreferrer">
+          Open Data Terms of Use
+        </a>
+      </p>
+    </div>
+  );
 }
 
 /* ------------------------------------------------------------- the default */
@@ -466,6 +847,25 @@ export default function ZoningLookup({
               fit controls above and this answer changes with them.
             </p>
           </div>
+
+          {/* WHAT THE CITY'S REGISTER SAYS. It sits directly above the panel
+              where a reader states their own lot because that is where its one
+              answerable number goes: the register publishes an AREA, and the
+              "Lot area (sq ft)" field below is what takes one. Below the
+              unanswered count, because a district typical answers none of the
+              seven questions — it is context for the lot somebody states, not
+              a published rule, and the panel's ordering rule is that what the
+              district cannot answer leads. */}
+          <RegisterSurface district={district} />
+
+          {/* THE ONE QUESTION THE READER CAN ANSWER. It sits here, below the
+              unanswered count and above the published figure, on purpose: the
+              ordering rule for this panel is that what the district cannot
+              answer leads, and the lot somebody states is the answer to one of
+              those six — not a second published fact. It takes no props beyond
+              what this block already holds, so /land keeps mounting
+              `<ZoningLookup requirements={requirements} />` unchanged. */}
+          <StatedLotPanel district={district} requirements={requirements} />
 
           <div className="zoning-published">
             <p className="zoning-section-head">What the City publishes about {district.code}</p>

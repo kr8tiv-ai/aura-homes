@@ -1,17 +1,75 @@
 import { expect, test } from "playwright/test";
 
-test("land discovery states the feed boundary and never overflows on mobile", async ({ page }) => {
-  await page.goto("/land");
-  await expect(page.getByRole("heading", { name: "Find land for the home you actually designed" })).toBeVisible();
-  await expect(page.getByText("Live MLS not connected")).toBeVisible();
-  await expect(page.getByText("Demonstration only · not an active listing")).toHaveCount(4);
+const BADGE = "Demonstration only · not an active listing";
 
-  await page.setViewportSize({ width: 390, height: 844 });
+/** Is the real surface ahead of the fixture, in the document the browser built?
+ *  `compareDocumentPosition` rather than a source index: a mount moved inside a
+ *  conditional keeps its position in the file and loses it on the page. */
+const realPrecedesFixture = (page: import("playwright/test").Page) =>
+  page.evaluate(() => {
+    const real = document.querySelector('[data-slot="land-real-surface"]');
+    const fixture = document.querySelector('[data-slot="land-demonstration"]');
+    if (!real || !fixture) return null;
+    return (real.compareDocumentPosition(fixture) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+  });
+
+const noOverflow = async (page: import("playwright/test").Page, at: string) => {
   const widths = await page.evaluate(() => ({
     scroll: document.documentElement.scrollWidth,
     client: document.documentElement.clientWidth,
   }));
-  expect(widths.scroll).toBe(widths.client);
+  expect(widths.scroll, `/land overflows a 390 px phone ${at}`).toBe(widths.client);
+};
+
+test("land discovery leads with published rules and keeps invented parcels behind a press", async ({ page }) => {
+  /* THIS TEST CHANGED WITH THE RESTRUCTURE, DELIBERATELY. It used to assert
+     four demonstration badges on a cold visit, which was true and was the
+     problem: a person arriving at /land met four invented parcels before any
+     published data. The fixture is now behind an explicit toggle, so the same
+     four badges are asserted — after the press that asks for them. Deleting the
+     assertion instead would have quietly ended all coverage of the demo path. */
+  await page.goto("/land");
+  await expect(page.getByRole("heading", { name: "Find land for the home you actually designed" })).toBeVisible();
+  await expect(page.getByText("Live MLS not connected")).toBeVisible();
+
+  /* THE DETECTOR for the ordering check below, built from a detached pair in
+     the wrong order. Without it, a renamed data-slot would return null and the
+     ordering assertion would report nothing at all. */
+  const detector = await page.evaluate(() => {
+    const host = document.createElement("div");
+    host.innerHTML = '<i data-role="fixture"></i><i data-role="real"></i>';
+    const real = host.querySelector('[data-role="real"]')!;
+    const fixture = host.querySelector('[data-role="fixture"]')!;
+    return (real.compareDocumentPosition(fixture) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+  });
+  expect(detector, "the ordering detector does not detect the ordering it exists to detect").toBe(false);
+
+  expect(
+    await realPrecedesFixture(page),
+    "published City of Edmonton data must reach a reader before the invented records do",
+  ).toBe(true);
+
+  /* COLD: no invented parcel, no fit map, and a control that says what it does. */
+  await expect(page.getByText(BADGE)).toHaveCount(0);
+  await expect(page.getByLabel("Map of demonstration parcel fit results")).toHaveCount(0);
+  /* `exact` is load-bearing: the listing-access heading ends with "Aura holds no
+     land inventory of its own", so a substring match resolves to two headings
+     and Playwright refuses it under strict mode. */
+  await expect(page.getByRole("heading", { name: "Aura holds no land inventory", exact: true })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await noOverflow(page, "in its cold state");
+
+  /* PRESSED: the fixture arrives, all four of it. This is also the detector for
+     the two zero-counts above — the same locators find four records here, so
+     finding none there is a decision and not a broken query. */
+  await page.getByRole("button", { name: "Open demonstration parcels" }).click();
+  await expect(page.getByText(BADGE)).toHaveCount(4);
+  await expect(page.getByLabel("Map of demonstration parcel fit results")).toBeVisible();
+  await noOverflow(page, "with the demonstration records open");
+
+  /* AND BACK. A toggle that only goes one way strands a reader in the fixture. */
+  await page.getByRole("button", { name: "Return to your own land" }).click();
+  await expect(page.getByText(BADGE)).toHaveCount(0);
 });
 
 test("the builder hands exact durable geometry to land matching", async ({ page }) => {
@@ -46,6 +104,10 @@ test("project land and contractor choices become a hash-bound RFQ", async ({ pag
   await page.getByLabel("Project name").fill("RFQ field house");
   await page.getByRole("button", { name: "Create my project" }).click();
   await page.goto("/land");
+  /* The demonstration comparison is still saveable, and still saves as
+     demonstration evidence — it is just asked for now rather than assumed. The
+     press is the only line that changed here. */
+  await page.getByRole("button", { name: "Open demonstration parcels" }).click();
   await expect(page.getByLabel("Map of demonstration parcel fit results")).toBeVisible();
   await page.getByRole("button", { name: "Save demo comparison" }).first().click();
   await expect(page.getByRole("button", { name: "Saved to project" })).toBeVisible();

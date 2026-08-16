@@ -15,7 +15,7 @@
 [![Live](https://img.shields.io/badge/live-aurahomes.fun-047857?style=flat-square&labelColor=f5f5f4)](https://aurahomes.fun)
 [![HOMES](https://img.shields.io/badge/%24HOMES-live_on_X_Layer_196-047857?style=flat-square&labelColor=f5f5f4)](https://aurahomes.fun/homes)
 [![X Layer](https://img.shields.io/badge/labs-X_Layer_testnet_1952-171a18?style=flat-square&labelColor=f5f5f4)](#x-layer-experiments)
-[![Tests](https://img.shields.io/badge/gates-559_unit_%2B_120_UI_%2B_hardware_proof-171a18?style=flat-square&labelColor=f5f5f4)](#verification)
+[![Tests](https://img.shields.io/badge/gates-603_unit_%2B_132_UI_%2B_hardware_proof-171a18?style=flat-square&labelColor=f5f5f4)](#verification)
 [![License](https://img.shields.io/badge/license-MIT-171a18?style=flat-square&labelColor=f5f5f4)](LICENSE)
 
 <sub>Open-source product and hackathon submission by <a href="https://github.com/Matt-Aurora-Ventures">Matt Haynes / Aura Ventures</a>. Alberta first; designed to travel.</sub>
@@ -301,8 +301,8 @@ The current release checkpoint (August 14, 2026, deploy `8e98b68`) produced:
 | Suite | Result |
 | --- | ---: |
 | TypeScript / production compilation | Passed |
-| Deterministic app + contract-truth specs | **559 passed** |
-| Playwright UI specs against a fresh static export | **120 passed** |
+| Deterministic app + contract-truth specs | **603 passed** |
+| Playwright UI specs against a fresh static export | **132 passed** |
 | Hardware scene proof (real GPU, desktop + mobile) | **Passed at `3e00c66`** — meadow settled both tiers, wind measured at 26% pixel motion on an idle scene, render p95 8.3 ms at the full tier. Not re-run since; it needs a quiet machine and a real GPU, so it is dated rather than implied. |
 | Money anchor (`agent/` `npm run demo`) | **Reconciles to the dollar** — ex-land $199,100 / $301,280 / $443,900 vs `data/alberta/cost-model.json` |
 | Release tooling (`npm run test:release`) | Passed — append-only two-phase gh-pages publishing with chunk recovery |
