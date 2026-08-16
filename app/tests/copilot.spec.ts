@@ -30,9 +30,10 @@ import {
   defaultProjectBudgetScenario,
 } from "@/lib/builder/projectBudget";
 import { NOT_MODELLED } from "@/lib/builder/scenarios";
-import { modelledGraphGlazingRatio } from "@/lib/builder/graphGeometry";
 import { glazedAreaSqFt, totalFloorAreaSqFt, type HomeSpec } from "@/lib/builder/spec";
+import { modelledGraphGlazingRatio, summarizeBuildingGraph } from "@/lib/builder/graphGeometry";
 import {
+  checkMeasuredFootprintAgainstParcel,
   checkSpecAgainstParcel,
   modelledGlazingRatio,
   storeysOf,
@@ -784,9 +785,59 @@ test("a planar-graph project is read from the graph, not refused as a frozen cop
     true,
   );
   expect(report.refusals.find((entry) => entry.id === "footprint-over-buildable-envelope")?.reason)
-    .toContain("applyPhrase");
+    .toContain("graph-measured parcel check");
   expect(report.refusals.find((entry) => entry.id === "opening-off-its-wall")?.reason).toContain(
     "setGraphOpening",
+  );
+});
+
+test("a graph that does not fit its lot gets a stretch card that writes the graph", () => {
+  const bare = withSpec(DOC, {
+    ...DOC.spec,
+    volumes: DOC.spec.volumes.map((volume) => ({ ...volume, openings: [] })),
+  });
+  const converted = convertBuilderDocumentToGraph(bare, 0.5);
+  expect(converted.ok).toBe(true);
+  if (!converted.ok) return;
+  const document = converted.document;
+  expect(document.geometry.kind).toBe("building-graph");
+  if (document.geometry.kind !== "building-graph") return;
+  const summary = summarizeBuildingGraph(document.geometry.graph);
+  const parcelCheck = checkMeasuredFootprintAgainstParcel(
+    document.spec,
+    TIGHT_LOT,
+    {
+      widthFt: summary.bounds.widthFt,
+      depthFt: summary.bounds.depthFt,
+      floorAreaSqFt: summary.totalFloorAreaSqFt,
+      storeys: 1,
+    },
+    "building-graph",
+  );
+  expect(parcelCheck.report?.fits).toBe(false);
+
+  const report = readCoPilot({ document, parcelCheck });
+  const card = report.suggestions.find((entry) => entry.kind === "footprint-over-buildable-envelope");
+  if (!card) {
+    const refusal = report.refusals.find((entry) => entry.id === "footprint-over-buildable-envelope");
+    expect(refusal, "the advisor neither offered a stretch nor named why").toBeDefined();
+    expect(refusal?.reason).toMatch(/stretch|does not fit wall|Opening/i);
+    expect(refusal?.reason).not.toContain("applyPhrase");
+    return;
+  }
+  expect(card.action.payload.via).toBe("graph-stretch");
+
+  const applied = applyPreparedAction(document, card.action, {
+    confirmedId: card.id,
+    confirmedText: card.action.confirmText,
+  });
+  expect(applied.ok, applied.ok ? "" : applied.problem).toBe(true);
+  if (!applied.ok) return;
+  expect(applied.graph).toBeDefined();
+  if (!applied.graph) return;
+  const after = summarizeBuildingGraph(applied.graph);
+  expect(after.bounds.widthFt * after.bounds.depthFt).toBeLessThan(
+    summary.bounds.widthFt * summary.bounds.depthFt + 1,
   );
 });
 

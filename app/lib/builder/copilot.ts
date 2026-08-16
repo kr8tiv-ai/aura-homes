@@ -37,11 +37,9 @@
    there is no fourth path and no new edit primitive in this module:
 
      · `applyPhrase`      — components/builder/phrases.ts, the Ctrl-K grammar.
-                            A footprint suggestion is literally two phrases a
-                            person could have typed, applied through the same
-                            parser, with the same LIMITS clamps and the same
-                            "width → 80 ft (limit)" admission when a value is
-                            clamped.
+                            A spec footprint suggestion is two phrases a
+                            person could have typed. A graph footprint
+                            suggestion is a plan stretch, not those phrases.
      · `applyOpeningEdit` — components/builder/openingEdit.ts, the one function
                             every window and door move goes through, from a 3D
                             grip, a plan handle or a typed field.
@@ -91,7 +89,7 @@ import {
 } from "@/components/builder/openingEdit";
 import { applyPhrase } from "@/components/builder/phrases";
 
-import type { BuildingGraph } from "./buildingGraph";
+import { stretchGraphPlan, type BuildingGraph } from "./buildingGraph";
 import { builderDocumentFromLegacySpec, type BuilderDocument } from "./document";
 import {
   modelledGraphGlazingRatio,
@@ -114,6 +112,7 @@ import {
 } from "./projectBudget";
 import { glazedAreaSqFt, totalFloorAreaSqFt, type HomeSpec, type Volume } from "./spec";
 import {
+  checkMeasuredFootprintAgainstParcel,
   checkSpecAgainstParcel,
   modelledGlazingRatio,
   modelledWallAreaSqFt,
@@ -147,6 +146,7 @@ export type CoPilotSource =
   | "glazedAreaSqFt · lib/builder/spec.ts"
   | "FDWR_MAX · lib/design/materials.ts"
   | "checkSpecAgainstParcel · lib/builder/toPlan.ts"
+  | "checkMeasuredFootprintAgainstParcel · lib/builder/toPlan.ts"
   | "totalFloorAreaSqFt · lib/builder/spec.ts"
   | "envelopeFor · lib/design/layout.ts"
   | "createProjectBudget · lib/builder/projectBudget.ts"
@@ -183,7 +183,9 @@ export type PreparedActionPayload =
   /** an Impact-panel move, applied to the whole document */
   | { via: "scenario-move"; move: ScenarioMoveId }
   /** an opening re-asked for its own box, so the editor's clamps pull it legal */
-  | { via: "refit-opening"; volumeId: string; openingId: string };
+  | { via: "refit-opening"; volumeId: string; openingId: string }
+  /** stretch the live graph about its plan centroid */
+  | { via: "graph-stretch"; kx: number; kz: number };
 
 export interface PreparedAction {
   /** The suggestion this belongs to. A confirmation must name it. */
@@ -419,6 +421,20 @@ function candidateFor(document: BuilderDocument, action: PreparedAction): Candid
       return emptyCandidate(`The ${payload.move} move leaves this home exactly as it is.`);
     }
     return { spec: moved.spec, graph: null, say: [], problem: null };
+  }
+
+  if (payload.via === "graph-stretch") {
+    if (!graphMode) {
+      return emptyCandidate("A graph stretch cannot be applied to a legacy-volume project.");
+    }
+    const stretched = stretchGraphPlan(document.geometry.graph, payload.kx, payload.kz);
+    if (!stretched.ok) {
+      return emptyCandidate(stretched.problem);
+    }
+    if (sameGraph(stretched.graph, document.geometry.graph)) {
+      return emptyCandidate("This stretch leaves the plan exactly as it is.");
+    }
+    return { spec: null, graph: stretched.graph, say: [], problem: null };
   }
 
   if (graphMode) {
@@ -802,6 +818,134 @@ function glazing(
 
 /* -------------------------------------------------------------- footprint */
 
+function footprintFromGraph(
+  document: BuilderDocument,
+  parcelCheck: SpecParcelCheck | null,
+  suggestions: CoPilotSuggestion[],
+  refusals: CoPilotRefusal[],
+): void {
+  if (document.geometry.kind !== "building-graph") return;
+  if (parcelCheck === null || parcelCheck.measuredFrom !== "building-graph") {
+    refusals.push({
+      id: "footprint-over-buildable-envelope",
+      topic: "Fitting the land",
+      reason:
+        "No graph-measured parcel check is attached, so there is no buildable envelope to stretch toward. Describe the lot in the Site step.",
+    });
+    return;
+  }
+  const report = parcelCheck.report;
+  if (report === null || report.fits) return;
+  if (report.suggestedTotalSqFt === null) {
+    refusals.push({
+      id: "footprint-over-buildable-envelope",
+      topic: "Fitting the land",
+      reason:
+        `This graph does not fit its buildable envelope — ${ft(report.buildableWidthFt)} × ` +
+        `${ft(report.buildableDepthFt)} against a ${sqFt(report.footprintSqFt)} footprint — and ` +
+        "`analyseParcel` found no floor area that solves small enough for it. The setbacks or " +
+        "the lot are the conversation, not the house.",
+    });
+    return;
+  }
+  const summary = summarizeBuildingGraph(document.geometry.graph);
+  if (summary.bounds.widthFt <= 0 || summary.bounds.depthFt <= 0) {
+    refusals.push({
+      id: "footprint-over-buildable-envelope",
+      topic: "Fitting the land",
+      reason: "This graph has no plan bounds to stretch.",
+    });
+    return;
+  }
+  const storeys = document.geometry.graph.storeys.length > 1 ? 2 : 1;
+  const [widthFt, depthFt] = envelopeFor(report.suggestedTotalSqFt, storeys);
+  const wantWidth = boundedFt(widthFt, LIMITS.widthFt);
+  const wantDepth = boundedFt(depthFt, LIMITS.depthFt);
+  const kx = wantWidth / summary.bounds.widthFt;
+  const kz = wantDepth / summary.bounds.depthFt;
+  const action: PreparedAction = {
+    suggestionId: "footprint-over-buildable-envelope",
+    confirmText: `Stretch the plan to ${ft(wantWidth)} × ${ft(wantDepth)}`,
+    label: "co-pilot: fit the parcel",
+    payload: { via: "graph-stretch", kx, kz },
+    routedThrough: "stretchGraphPlan · lib/builder/buildingGraph.ts",
+  };
+  const candidate = candidateFor(document, action);
+  if (candidate.graph === null) {
+    refusals.push({
+      id: "footprint-over-buildable-envelope",
+      topic: "Fitting the land",
+      reason:
+        `This graph does not fit its buildable envelope, and the stretch that would aim at ` +
+        `${ft(wantWidth)} × ${ft(wantDepth)} — ${candidate.problem ?? "changes nothing"}. ` +
+        "Move a vertex on the plan, or change the setbacks.",
+    });
+    return;
+  }
+  const afterSummary = summarizeBuildingGraph(candidate.graph);
+  const after = checkMeasuredFootprintAgainstParcel(
+    document.spec,
+    {
+      lotWidthFt: parcelCheck.facts.lotWidthFt,
+      lotDepthFt: parcelCheck.facts.lotDepthFt,
+      frontSetbackFt: parcelCheck.facts.frontSetbackFt,
+      sideSetbackFt: parcelCheck.facts.sideSetbackFt,
+      rearSetbackFt: parcelCheck.facts.rearSetbackFt,
+    },
+    {
+      widthFt: afterSummary.bounds.widthFt,
+      depthFt: afterSummary.bounds.depthFt,
+      floorAreaSqFt: afterSummary.totalFloorAreaSqFt,
+      storeys,
+    },
+    "building-graph",
+  );
+  suggestions.push({
+    id: "footprint-over-buildable-envelope",
+    kind: "footprint-over-buildable-envelope",
+    proposal:
+      `Stretch the whole plan from ${ft(summary.bounds.widthFt)} × ${ft(summary.bounds.depthFt)} ` +
+      `to about ${ft(wantWidth)} × ${ft(wantDepth)} about its own centre. Openings stay on ` +
+      "their walls. This is not a phrase — `applyPhrase` still writes the frozen recovery spec.",
+    because:
+      `Your buildable envelope is ${ft(report.buildableWidthFt)} across the frontage by ` +
+      `${ft(report.buildableDepthFt)} front to back, and this graph's bounds are ` +
+      `${ft(summary.bounds.widthFt)} × ${ft(summary.bounds.depthFt)}. \`analyseParcel\` names ` +
+      `${sqFt(report.suggestedTotalSqFt)} of floor area as an area that does fit.`,
+    evidence: [
+      {
+        label: "Buildable envelope, across the frontage",
+        value: report.buildableWidthFt,
+        formatted: ft(report.buildableWidthFt),
+        source: "checkMeasuredFootprintAgainstParcel · lib/builder/toPlan.ts",
+      },
+      {
+        label: "Buildable envelope, front to back",
+        value: report.buildableDepthFt,
+        formatted: ft(report.buildableDepthFt),
+        source: "checkMeasuredFootprintAgainstParcel · lib/builder/toPlan.ts",
+      },
+      {
+        label: "Plan bounds now",
+        value: summary.bounds.widthFt,
+        formatted: `${ft(summary.bounds.widthFt)} × ${ft(summary.bounds.depthFt)}`,
+        source: "summarizeBuildingGraph · lib/builder/graphGeometry.ts",
+      },
+    ],
+    tradeOffs: [
+      "Every wall moves. A stretch that would hang an opening off its wall is refused rather than trimmed.",
+      "The proportion is the plan engine's envelope, not the massing you drew.",
+      "Easements, environmental reserve and utility rights-of-way are not modelled.",
+    ],
+    notModelled: [],
+    outcome:
+      after.report?.fits === true
+        ? "Measured on the result by re-running `checkMeasuredFootprintAgainstParcel`: it fits the buildable envelope."
+        : "Measured on the result by re-running `checkMeasuredFootprintAgainstParcel`: it still does not fit. The stretch gets you closer and the lot still needs a conversation.",
+    action,
+  });
+}
+
 function footprint(
   document: BuilderDocument,
   parcelCheck: SpecParcelCheck | null,
@@ -809,14 +953,7 @@ function footprint(
   refusals: CoPilotRefusal[],
 ): void {
   if (document.geometry.kind === "building-graph") {
-    refusals.push({
-      id: "footprint-over-buildable-envelope",
-      topic: "Fitting the land",
-      reason:
-        "This project is planar graph geometry. Fitting the land through `applyPhrase` would " +
-        "resize the frozen recovery spec, not the walls on screen. Move a vertex on the plan, " +
-        "or use the Impact panel's footprint move — that one writes the graph.",
-    });
+    footprintFromGraph(document, parcelCheck, suggestions, refusals);
     return;
   }
 
