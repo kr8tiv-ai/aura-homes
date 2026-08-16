@@ -304,7 +304,11 @@ function designMeasures(document: BuilderDocument) {
       footprintSqFt: summary.groundFootprintSqFt,
       storeys: document.geometry.graph.storeys.length,
       glazedAreaSqFt: summary.glazedAreaSqFt,
+      /* Reported on the glazing line's label, never multiplied by a price.
+         `glazedAreaSqFt` is what the glazing line is priced on — see the
+         GLAZING block in lib/design/materials.ts. */
       windowCount: openings.filter((opening) => opening.kind !== "door").length,
+      doorCount: openings.filter((opening) => opening.kind === "door").length,
       widthFt: Math.max(1, summary.bounds.widthFt),
       depthFt: Math.max(1, summary.bounds.depthFt),
     };
@@ -317,6 +321,10 @@ function designMeasures(document: BuilderDocument) {
     glazedAreaSqFt: summary.glazedAreaSqFt,
     windowCount: document.spec.volumes.reduce(
       (sum, volume) => sum + volume.openings.filter((opening) => opening.kind !== "door").length,
+      0,
+    ),
+    doorCount: document.spec.volumes.reduce(
+      (sum, volume) => sum + volume.openings.filter((opening) => opening.kind === "door").length,
       0,
     ),
     widthFt: Math.max(1, summary.bounds.widthFt),
@@ -381,6 +389,7 @@ export function createProjectBudget(input: ProjectBudgetInput): ProjectBudget {
     gross_sq_ft: measures.areaSqFt,
     window_count: measures.windowCount,
     glazing_sq_ft: measures.glazedAreaSqFt,
+    door_count: measures.doorCount,
     material: document.spec.material,
     systems,
     storeys: measures.storeys,

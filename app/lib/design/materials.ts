@@ -563,14 +563,60 @@ const SHELL_RATES: Readonly<Record<StructuralMaterial, ShellRate>> = {
   ],
 };
 
+/**
+ * Explicit 4 ft × 4 ft reference-size ASSUMPTION used to normalize the only
+ * checked-in Alberta glazing band ($900–1,800 per window) into an area proxy.
+ * The source does not state a window size, so neither this divisor nor the
+ * quotient may be described as supplier pricing. Keeping it named makes the
+ * assumption visible and replaceable when a real quote table exists.
+ */
+export const GLAZING_REFERENCE_WINDOW_SQ_FT = 16;
+
+/**
+ * The same sourced band, per square foot: $56.25 / $84.375 / $112.50.
+ *
+ * Written as a division rather than as the quotient so the arithmetic in the
+ * basis string cannot drift from the arithmetic in the numbers.
+ */
+export const GLAZING_CAD_PER_SQ_FT = {
+  low: 900 / GLAZING_REFERENCE_WINDOW_SQ_FT,
+  mid: 1350 / GLAZING_REFERENCE_WINDOW_SQ_FT,
+  high: 1800 / GLAZING_REFERENCE_WINDOW_SQ_FT,
+} as const;
+
+/**
+ * The two-door allowance ($1,400 / $2,200 / $3,200), per door.
+ *
+ * Same correction as the glazing rate and for the same reason: the old line
+ * multiplied a per-door price by a hardcoded `2`, so the price was already
+ * per unit and only the COUNT was invented. Dividing the allowance by the two
+ * doors it assumed keeps the sourced amount and lets the design supply the
+ * quantity.
+ */
+export const DOOR_CAD_EACH = { low: 700, mid: 1100, high: 1600 } as const;
+
 export interface BuildBomArgs {
   width_ft: number;
   depth_ft: number;
   gross_sq_ft: number;
-  /** Windows the layout engine actually placed — not a rule of thumb. */
+  /**
+   * Non-door openings the layout engine actually placed — not a rule of thumb.
+   *
+   * REPORTED, NOT PRICED. Glazing is priced by `glazing_sq_ft`; this count is
+   * a fact about the design that belongs on the label, and pricing by it was
+   * the BQ02 defect (a 34 ft × 9 ft glazing wall billed as one casement).
+   */
   window_count: number;
-  /** Their glazed area, sq ft. Subtracted from the wall take-off. */
+  /** Their glazed area, sq ft. Subtracted from the wall take-off, and the
+   *  quantity the glazing line is priced on. */
   glazing_sq_ft: number;
+  /**
+   * Exterior doors the design draws. Doors are genuinely bought by the unit,
+   * so this is a count on purpose — but it has to be the design's count.
+   * Optional only for compatibility with older catalog-estimate callers; new
+   * project and API paths must pass the measured count.
+   */
+  door_count?: number;
   material: EcoMaterialKey;
   systems: EcoSystems;
   storeys?: number;
@@ -583,6 +629,7 @@ export function buildBom({
   gross_sq_ft,
   window_count,
   glazing_sq_ft,
+  door_count,
   material,
   systems,
   storeys = 1,
@@ -677,32 +724,74 @@ export function buildBom({
     supplier_tags: ["roofing", "steel"],
   });
 
-  // ---- GLAZING
-  if (window_count) {
+  /* ---- GLAZING — priced by AREA.
+
+     The old line priced every non-door opening as one $900/1,350/1,800 unit,
+     so a broad glazing wall and a small casement could receive the same cost.
+     This uses measured glazed area and an explicitly assumed 16 sq ft
+     reference size. It is a reference-size planning proxy, not a new quote.
+
+     `glazing_sq_ft` excludes doors — `glazedAreaSqFt` (lib/builder/spec.ts)
+     and the graph summariser both filter `kind !== "door"` — so the doors line
+     below is not double-counted here.
+
+     The guard is on AREA, not on the count: a design with openings but no
+     glazed area buys no glass, and one with glazed area always buys some. */
+  if (glazing_sq_ft > 0) {
     add({
       key: "windows",
-      label: "Triple-glazed windows, black anodised frames",
+      label: `Triple-glazed windows and glazing walls, black anodised frames (${window_count} ${window_count === 1 ? "opening" : "openings"})`,
       category: "glazing",
-      qty: window_count,
-      unit: "units",
-      cad_low: window_count * 900,
-      cad_mid: window_count * 1350,
-      cad_high: window_count * 1800,
-      // The 22% is the NBC 9.36 prescriptive FDWR ceiling — see FDWR_MAX.
-      basis: "Zone 7A triple-pane $900–1,800/window. Glass-forward but FDWR ≤ 22%.",
+      qty: pyRound(glazing_sq_ft, 0),
+      unit: "sq ft glazing",
+      cad_low: glazing_sq_ft * GLAZING_CAD_PER_SQ_FT.low,
+      cad_mid: glazing_sq_ft * GLAZING_CAD_PER_SQ_FT.mid,
+      cad_high: glazing_sq_ft * GLAZING_CAD_PER_SQ_FT.high,
+      // The 22% is the NBC 9.36 prescriptive FDWR reference — see FDWR_MAX.
+      // It is a reference here, not a result: nothing in this function checks
+      // a design against it, and the old basis string claimed otherwise.
+      basis:
+        "Alberta reference-size planning proxy, source date 2026-08: triple-pane " +
+        "$900–1,800 per window (Lux Calgary, All Weather Edmonton and Duxton Winnipeg, " +
+        "via data/alberta/cost-model.json), divided by an explicit 16 sq ft (4 ft × 4 ft) " +
+        "reference-size assumption to give $56.25, $84.38 and $112.50 per sq ft. The source " +
+        "does not state a reference window size: this is derived by division, not separately " +
+        "sourced, and is not a supplier quote or construction take-off. " +
+        "Quantity is glazed area with doors excluded; doors carry their own line. One rate " +
+        "covers punched windows and glazing walls: a large fixed lite buys glass more cheaply " +
+        "per square foot, while large-format framing, safety glazing, and installation cost " +
+        "more, and this codebase has a sourced figure for neither. NBC 9.36's prescriptive " +
+        "zone 7A FDWR reference is 22 percent, and nothing here checks a design against it.",
       supplier_tags: ["windows", "glazing"],
     });
   }
+  /* ---- DOORS — same class of defect, smaller blast radius.
+
+     The quantity was the literal `2`, so a one-door cabin and a four-door
+     courtyard house paid the same. Doors are bought by the unit, so the unit
+     was right and only the count was invented; the allowance is divided by the
+     two doors it assumed and the design supplies the rest. A design that draws
+     no exterior door is still priced for one — a dwelling has an entry — and
+     the basis says so rather than letting the floor act silently. */
+  const doors = Math.max(1, door_count ?? 2);
   add({
     key: "doors",
     label: "Insulated exterior doors",
     category: "glazing",
-    qty: 2,
+    qty: doors,
     unit: "units",
-    cad_low: 1400,
-    cad_mid: 2200,
-    cad_high: 3200,
-    basis: "Entry + secondary egress.",
+    cad_low: doors * DOOR_CAD_EACH.low,
+    cad_mid: doors * DOOR_CAD_EACH.mid,
+    cad_high: doors * DOOR_CAD_EACH.high,
+    basis:
+      "Entry and secondary egress at $700–1,600 per door, the previous two-door allowance " +
+      "of $1,400–3,200 divided by the two doors it assumed. Quantity is the exterior doors " +
+      (door_count === undefined
+        ? "the design's door count is unavailable to this legacy caller, so the existing two-door allowance is retained."
+        : "the design draws" +
+          (door_count < 1
+            ? ", and this design draws none, so one entry door is priced."
+            : ".")),
     supplier_tags: ["doors"],
   });
 

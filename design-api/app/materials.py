@@ -22,6 +22,16 @@ from .eco import NON_STRUCTURAL, EcoMaterial, EcoSystems
 
 FT2_PER_M2 = 10.7639
 WALL_HEIGHT_FT = 9.0
+# Explicit assumption used to normalize the only checked-in glazing band.
+# data/alberta/cost-model.json does not state a reference window size, so the
+# resulting per-square-foot values are a planning proxy, not supplier pricing.
+GLAZING_REFERENCE_WINDOW_SQ_FT = 16.0
+GLAZING_CAD_PER_SQ_FT = {
+    "low": 900 / GLAZING_REFERENCE_WINDOW_SQ_FT,
+    "mid": 1350 / GLAZING_REFERENCE_WINDOW_SQ_FT,
+    "high": 1800 / GLAZING_REFERENCE_WINDOW_SQ_FT,
+}
+DOOR_CAD_EACH = {"low": 700, "mid": 1100, "high": 1600}
 
 
 class Category(str, Enum):
@@ -87,6 +97,7 @@ def build(
     material: EcoMaterial,
     systems: EcoSystems,
     storeys: int = 1,
+    door_count: int | None = None,
 ) -> BillOfMaterials:
     """Derive the BOM from solved geometry."""
     items: list[LineItem] = []
@@ -143,16 +154,54 @@ def build(
         basis="Metal roof $8–15/sq ft installed; required for the rainwater catchment.",
         supplier_tags=["roofing", "steel"])
 
-    # ---- GLAZING
-    if window_count:
-        add(key="windows", label="Triple-glazed windows, black anodised frames",
-            category=Category.GLAZING, qty=window_count, unit="units",
-            cad_low=window_count * 900, cad_mid=window_count * 1350, cad_high=window_count * 1800,
-            basis="Zone 7A triple-pane $900–1,800/window. Glass-forward but FDWR ≤ 22%.",
-            supplier_tags=["windows", "glazing"])
+    # ---- GLAZING — measured area with an explicitly assumed reference size.
+    # This fixes the quantity dimension without pretending the quotient is a
+    # supplier rate. Doors are excluded from glazing_sq_ft and priced below.
+    if glazing_sq_ft > 0:
+        opening_label = "opening" if window_count == 1 else "openings"
+        add(
+            key="windows",
+            label=("Triple-glazed windows and glazing walls, black anodised frames "
+                   f"({window_count} {opening_label})"),
+            category=Category.GLAZING,
+            qty=round(glazing_sq_ft, 0),
+            unit="sq ft glazing",
+            cad_low=glazing_sq_ft * GLAZING_CAD_PER_SQ_FT["low"],
+            cad_mid=glazing_sq_ft * GLAZING_CAD_PER_SQ_FT["mid"],
+            cad_high=glazing_sq_ft * GLAZING_CAD_PER_SQ_FT["high"],
+            basis=(
+                "Alberta reference-size planning proxy, source date 2026-08: triple-pane "
+                "$900–1,800 per window (Lux Calgary, All Weather Edmonton and Duxton Winnipeg, "
+                "via data/alberta/cost-model.json), divided by an explicit 16 sq ft (4 ft × 4 ft) "
+                "reference-size assumption to give $56.25, $84.38 and $112.50 per sq ft. The source "
+                "does not state a reference window size: this is derived by division, not separately "
+                "sourced, and is not a supplier quote or construction take-off. "
+                "Quantity is glazed area with doors excluded; doors carry their own line. One rate "
+                "covers punched windows and glazing walls: a large fixed lite buys glass more cheaply "
+                "per square foot, while large-format framing, safety glazing, and installation cost "
+                "more, and this codebase has a sourced figure for neither. NBC 9.36's prescriptive "
+                "zone 7A FDWR reference is 22 percent, and nothing here checks a design against it."
+            ),
+            supplier_tags=["windows", "glazing"],
+        )
+    doors = max(1, door_count if door_count is not None else 2)
     add(key="doors", label="Insulated exterior doors",
-        category=Category.GLAZING, qty=2, unit="units",
-        cad_low=1400, cad_mid=2200, cad_high=3200, basis="Entry + secondary egress.",
+        category=Category.GLAZING, qty=doors, unit="units",
+        cad_low=doors * DOOR_CAD_EACH["low"],
+        cad_mid=doors * DOOR_CAD_EACH["mid"],
+        cad_high=doors * DOOR_CAD_EACH["high"],
+        basis=(
+            "Entry and secondary egress at $700–1,600 per door, the previous two-door allowance "
+            "of $1,400–3,200 divided by the two doors it assumed. Quantity is the exterior doors "
+            + (
+                "the design's door count is unavailable to this legacy caller, so the "
+                "existing two-door allowance is retained."
+                if door_count is None
+                else "the design draws"
+                + (", and this design draws none, so one entry door is priced."
+                   if door_count < 1 else ".")
+            )
+        ),
         supplier_tags=["doors"])
 
     # ---- ENERGY

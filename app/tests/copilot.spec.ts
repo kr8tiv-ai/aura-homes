@@ -227,15 +227,26 @@ const TIGHT_LOT = {
 const tightCheck = (document: BuilderDocument): SpecParcelCheck =>
   checkSpecAgainstParcel(document.spec, TIGHT_LOT);
 
-/** The smallest home the budget ladder can reach from the reference volume:
- *  34 × 0.6 and 23.5 × 0.6, each on the editor's own half-foot step. */
-function smallestLadderRung(): HomeSpec {
-  const volume = DOC.spec.volumes[0];
+/** The smallest home the budget ladder can reach from a given volume:
+ *  34 × 0.6 and 23.5 × 0.6, each on the editor's own half-foot step.
+ *
+ *  TAKES ITS SPEC RATHER THAN CLOSING OVER `DOC`, and the reason is a real
+ *  finding rather than tidiness. The ladder shrinks width and depth only —
+ *  openings keep their sizes, which the footprint card says out loud — so a
+ *  glass-heavy home's glazing cost does not shrink with it. Once glazing was
+ *  priced by AREA instead of by opening count (BQ02, 2026-08-15), a cap
+ *  derived from the plain reference home's smallest rung sat BELOW the glassy
+ *  fixture's cheapest rung, and the budget card correctly stopped existing.
+ *  The cap has to be derived from the same home the card is read against. */
+function smallestLadderRung(spec: HomeSpec): HomeSpec {
+  const volume = spec.volumes[0];
   return {
-    ...DOC.spec,
+    ...spec,
     volumes: [{ ...volume, widthFt: 20.5, depthFt: 14 }],
   };
 }
+
+const GLASSY = glassyFixture();
 
 const priceOf = (spec: HomeSpec, capCad: number | null) =>
   createProjectBudget({
@@ -250,7 +261,7 @@ const priceOf = (spec: HomeSpec, capCad: number | null) =>
  *  derived from two real prices rather than picked. `createProjectBudget`
  *  calls a design "over" when even its LEAN path exceeds the cap, so the
  *  bound that matters is `total.low`. */
-const REACHABLE_CAP = Math.ceil(priceOf(smallestLadderRung(), null).total.low / 50) * 50;
+const REACHABLE_CAP = Math.ceil(priceOf(smallestLadderRung(GLASSY.spec), null).total.low / 50) * 50;
 
 const basis = (capCad: number | null): CoPilotBasis => ({
   ...defaultCoPilotBasis(),
@@ -258,7 +269,6 @@ const basis = (capCad: number | null): CoPilotBasis => ({
   budgetCapCad: capCad,
 });
 
-const GLASSY = glassyFixture();
 const BAD_OPENING = badOpeningFixture();
 
 /** One document with three findings at once: glass over the reference, a

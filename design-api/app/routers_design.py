@@ -41,6 +41,10 @@ def _glazing(plan: FloorPlan) -> tuple[int, float]:
     return len(wins), sum(o.width * 4.0 for o in wins)
 
 
+def _door_count(plan: FloorPlan) -> int:
+    return sum(1 for room in plan.rooms for opening in room.openings if opening.kind == "door")
+
+
 def solve_design(req: DesignRequest) -> tuple[DesignResponse, FloorPlan]:
     notes: list[str] = []
     program, prompts, offline = llm.design_program(req)
@@ -100,7 +104,7 @@ def bom_for(req: DesignRequest, plan: FloorPlan) -> BillOfMaterials:
     return build_bom(
         width_ft=plan.width, depth_ft=plan.height, gross_sq_ft=plan.gross_sq_ft,
         window_count=n, glazing_sq_ft=area, material=req.material,
-        systems=req.systems, storeys=req.storeys,
+        systems=req.systems, storeys=req.storeys, door_count=_door_count(plan),
     )
 
 

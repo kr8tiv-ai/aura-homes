@@ -65,7 +65,7 @@
     "Reject if any landing-scene, Three.js, animation, model, meadow, tree, sky, mountain, shader, camera, lighting, builder plan geometry, GLB or generated-plan asset changes.",
     "Reject if CAD 900–1,800 per window is presented as a separately sourced per-square-foot rate, local quote, supplier offer or construction take-off.",
     "Reject if the reference-size divisor is justified by an uncommitted or frozen plan-catalog expansion.",
-    "Reject if a glazing count is multiplied by price, if doors remain a silent hardcoded quantity, or if app and FastAPI engines disagree on a shared fixture.",
+    "Reject if a glazing count is multiplied by price, if project or FastAPI budgets retain a silent hardcoded door quantity, or if app and FastAPI engines disagree on a shared fixture. A frozen legacy catalog caller may retain the old two-door allowance only when its basis explicitly says the design count is unavailable.",
     "Reject if the pricing basis claims that NBC 9.36 compliance was checked by the budget function.",
     "Reject if the existing Alberta cost-model numbers change, if unsupported-region pricing is introduced, or if any external supplier, legal, payment, HOMES, deployment or outreach gate is crossed.",
     "Reject if any new test is absent from a declared test gate or if published gate counts change without a complete runner observation."
@@ -124,5 +124,19 @@
     "scope": "Only BQ02 quantity, basis, parity or test-gate integration may be repaired. A second failure returns the node to blocked without touching any frozen visual path."
   },
   "sideEffect": "local",
-  "status": "ready"
+  "status": "implemented-awaiting-isolated-verification",
+  "history": {
+    "red": "The new FastAPI contracts failed twice because materials.build did not accept door_count; its glazing line still multiplied window_count and its door line still used the literal two.",
+    "implementedAt": "2026-08-15",
+    "focusedEvidence": [
+      "35 of 35 focused TypeScript budget, project-budget and copilot tests passed.",
+      "3 of 3 FastAPI material and router-wiring tests passed.",
+      "TypeScript no-emit check passed.",
+      "The full deterministic runner declared 607 tests and passed 605; its two expected governance failures were the newly observed 607 count and a separate frozen, untracked plan-catalog-glass spec in the shared worktree. The count was updated only after that observation; isolated verification remains required."
+    ],
+    "knownOpenFindings": [
+      "Complete deterministic and UI verification must run from the committed tree, without the frozen untracked plan-catalog draft present.",
+      "Fresh-context review remains pending because this run has no authority to create another agent."
+    ]
+  }
 }
