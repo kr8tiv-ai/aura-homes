@@ -116,7 +116,7 @@
     "scope": "Only BQ03 tax-basis normalization, calculation, persistence, invalidation, UI disclosure or focused test integration may be repaired. A second failure returns the node to blocked without touching any frozen visual path."
   },
   "sideEffect": "local",
-  "status": "implementation-verified-awaiting-fresh-context-review",
+  "status": "verified-with-open-finding",
   "history": {
     "red": "The focused 31-test gate produced six expected failures: the budget had no tax range or normalized tax field, a tax-only change left the hash unchanged, the custom value was dropped on project/RFQ reload, and RFQ/quote diagnostics had no named tax change.",
     "implementedAt": "2026-08-15",
@@ -134,7 +134,7 @@
       "environmentNote": "The first pre-export full-suite attempt stopped before assertions because the detached worktree lacked the already-installed agent-level MCP dependency. Linking the verifier to the primary checkout's installed agent/node_modules resolved only the test environment; no source changed. Its 603 pass plus four expected build-only skips was superseded by the clean post-export 607-of-607 run."
     },
     "knownOpenFindings": [
-      "Fresh-context review remains pending because this run has no authority to create another agent."
+      "Fresh-context review of this commit range was performed 2026-08-15 in the shared checkout, not in a detached worktree. UI coverage was the land/marketplace slice (18), not the full 132-test test:ui suite."
     ]
   }
 }

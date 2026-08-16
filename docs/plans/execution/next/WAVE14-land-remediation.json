@@ -137,7 +137,7 @@
     "scope": "Only a failed LC01 behavior or test-gate integration may be repaired. A second failure returns the node to blocked for founder review."
   },
   "sideEffect": "local",
-  "status": "implemented-awaiting-fresh-verifier",
+  "status": "verified-with-open-finding",
   "history": {
     "firstPass": "Claude's WAVE14 narrative reported seven breaches and quota-blocked independent verification. It is preserved here as summarized remediation provenance, not as a shipped claim.",
     "implementedAt": "2026-08-15",
@@ -149,6 +149,17 @@
       "No changed path is under the frozen story, Three.js, model, meadow-texture, or meadow-worker paths.",
       "A clean Windows checkout exposed and repaired a CRLF-sensitive source assertion in graph-keyboard.spec.ts; no graph or builder product code changed for that repair."
     ],
-    "knownOpenFindings": ["Fresh-context verification of the committed implementation snapshot has not completed."]
+    "knownOpenFindings": [
+      "Fresh-context review of this commit range was performed 2026-08-15 in the shared checkout, not in a detached worktree. UI coverage was the land/marketplace slice (18), not the full 132-test test:ui suite."
+    ]
+  },
+  "evidence": {
+    "freshContextAt": "2026-08-15",
+    "tree": "459a649",
+    "tsc": "pass",
+    "unit": "607/607",
+    "uiSlice": "land-flow + land-register-surface + marketplace-ui 18/18",
+    "moneyAnchor": "199100/301280/443900",
+    "threeDFreeze": "git diff --name-only origin/main...HEAD -- app/components/story app/lib/three app/public/models app/public/textures/meadow* app/workers/meadow.worker.ts was empty"
   }
 }

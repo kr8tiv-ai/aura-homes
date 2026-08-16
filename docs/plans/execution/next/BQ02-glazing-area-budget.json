@@ -124,7 +124,7 @@
     "scope": "Only BQ02 quantity, basis, parity or test-gate integration may be repaired. A second failure returns the node to blocked without touching any frozen visual path."
   },
   "sideEffect": "local",
-  "status": "implementation-verified-awaiting-fresh-context-review",
+  "status": "verified-with-open-finding",
   "history": {
     "red": "The new FastAPI contracts failed twice because materials.build did not accept door_count; its glazing line still multiplied window_count and its door line still used the literal two.",
     "implementedAt": "2026-08-15",
@@ -147,7 +147,7 @@
       ]
     },
     "knownOpenFindings": [
-      "Fresh-context review remains pending because this run has no authority to create another agent."
+      "Fresh-context review of this commit range was performed 2026-08-15 in the shared checkout, not in a detached worktree. UI coverage was the land/marketplace slice (18), not the full 132-test test:ui suite."
     ]
   }
 }
