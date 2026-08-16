@@ -15,6 +15,7 @@ import {
   addPartitionEdge,
   extrudeGraphWall,
   renameGraphRoom,
+  setGraphOpening,
   setGraphWallThickness,
   deriveStackedRoomRelationships,
   duplicateGraphStorey,
@@ -571,6 +572,22 @@ export default function GraphPlanEditor({
     onEdit(extruded.graph, `graph:extrude:${selectedWall.id}`);
   };
 
+  const commitOpening = (
+    opening: GraphOpening,
+    wall: GraphWallEdge,
+    box: { offsetFt: number; widthFt: number; sillFt: number; heightFt: number },
+  ) => {
+    const changed = setGraphOpening(graph, storey.id, wall.id, opening.id, box);
+    if (!changed.ok) {
+      refuse(changed.problem);
+      return;
+    }
+    report(
+      `${openingNoun(opening)} ${opening.id} is ${feet(box.widthFt)} by ${feet(box.heightFt)} feet at offset ${feet(box.offsetFt)}.`,
+    );
+    onEdit(changed.graph, `graph:opening:${opening.id}`);
+  };
+
   const commitWallThickness = (wall: GraphWallEdge, thicknessFt: number) => {
     const changed = setGraphWallThickness(graph, storey.id, wall.id, thicknessFt);
     if (!changed.ok) {
@@ -1098,15 +1115,62 @@ export default function GraphPlanEditor({
             </div>
           ) : selectedOpening && selectedWall ? (
             <div className="flex flex-wrap gap-4">
-              <NumberField label="Offset (feet)" value={selectedOpening.offsetFt} revision={fieldRevision} step={GRID_SNAP_FT} />
-              <NumberField label="Width (feet)" value={selectedOpening.widthFt} revision={fieldRevision} step={GRID_SNAP_FT} />
-              <NumberField label="Sill (feet)" value={selectedOpening.sillFt} revision={fieldRevision} step={GRID_SNAP_FT} />
+              <NumberField
+                label="Offset (feet)"
+                value={selectedOpening.offsetFt}
+                revision={fieldRevision}
+                step={GRID_SNAP_FT}
+                onCommit={fieldCommit((value) =>
+                  commitOpening(selectedOpening, selectedWall, {
+                    offsetFt: value,
+                    widthFt: selectedOpening.widthFt,
+                    sillFt: selectedOpening.sillFt,
+                    heightFt: selectedOpening.heightFt,
+                  }),
+                )}
+              />
+              <NumberField
+                label="Width (feet)"
+                value={selectedOpening.widthFt}
+                revision={fieldRevision}
+                step={GRID_SNAP_FT}
+                onCommit={fieldCommit((value) =>
+                  commitOpening(selectedOpening, selectedWall, {
+                    offsetFt: selectedOpening.offsetFt,
+                    widthFt: value,
+                    sillFt: selectedOpening.sillFt,
+                    heightFt: selectedOpening.heightFt,
+                  }),
+                )}
+              />
+              <NumberField
+                label="Sill (feet)"
+                value={selectedOpening.sillFt}
+                revision={fieldRevision}
+                step={GRID_SNAP_FT}
+                onCommit={fieldCommit((value) =>
+                  commitOpening(selectedOpening, selectedWall, {
+                    offsetFt: selectedOpening.offsetFt,
+                    widthFt: selectedOpening.widthFt,
+                    sillFt: value,
+                    heightFt: selectedOpening.heightFt,
+                  }),
+                )}
+              />
               <NumberField
                 label="Head height (feet)"
                 value={selectedOpening.heightFt}
                 revision={fieldRevision}
                 step={GRID_SNAP_FT}
-                note="Read-only: buildingGraph.ts can add an opening and split a wall around one, but exposes no mutator that edits an existing opening. Writing these four numbers without one would mean hand-editing the graph past its own validation."
+                onCommit={fieldCommit((value) =>
+                  commitOpening(selectedOpening, selectedWall, {
+                    offsetFt: selectedOpening.offsetFt,
+                    widthFt: selectedOpening.widthFt,
+                    sillFt: selectedOpening.sillFt,
+                    heightFt: value,
+                  }),
+                )}
+                note="A typed value writes this opening through setGraphOpening. A hang-off or overlap is refused and the numbers snap back to the box the wall actually has."
               />
             </div>
           ) : selectedWall ? (

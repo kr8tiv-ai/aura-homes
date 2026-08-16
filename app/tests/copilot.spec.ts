@@ -786,7 +786,7 @@ test("a planar-graph project is read from the graph, not refused as a frozen cop
   expect(report.refusals.find((entry) => entry.id === "footprint-over-buildable-envelope")?.reason)
     .toContain("applyPhrase");
   expect(report.refusals.find((entry) => entry.id === "opening-off-its-wall")?.reason).toContain(
-    "applyOpeningEdit",
+    "setGraphOpening",
   );
 });
 

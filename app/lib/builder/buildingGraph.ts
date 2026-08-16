@@ -1142,6 +1142,68 @@ export function addGraphOpening(
   return checked.ok ? { ok: true, graph: candidate } : fail(graph, checked.problem);
 }
 
+/**
+ * Change one opening's box on its host wall. Topology stays put. Zero or
+ * non-finite dimensions are refused; hanging off the wall or overlapping a
+ * neighbour is refused by `validateBuildingGraph` in the same words the
+ * add-and-split path already uses.
+ */
+export function setGraphOpening(
+  graph: BuildingGraph,
+  storeyId: string,
+  wallId: string,
+  openingId: string,
+  box: { offsetFt: number; widthFt: number; sillFt: number; heightFt: number },
+): GraphMutation {
+  const storey = graph.storeys.find((item) => item.id === storeyId);
+  if (!storey) return fail(graph, `Storey ${storeyId} does not exist.`);
+  const wall = storey.walls.find((item) => item.id === wallId);
+  if (!wall) return fail(graph, `Wall ${wallId} does not exist.`);
+  const opening = wall.openings.find((item) => item.id === openingId);
+  if (!opening) return fail(graph, `Opening ${openingId} does not exist on ${wallId}.`);
+  const snapped = {
+    offsetFt: Math.round(box.offsetFt * 100) / 100,
+    widthFt: Math.round(box.widthFt * 100) / 100,
+    sillFt: Math.round(box.sillFt * 100) / 100,
+    heightFt: Math.round(box.heightFt * 100) / 100,
+  };
+  if (
+    !finite(snapped.offsetFt) ||
+    !finite(snapped.widthFt) ||
+    !finite(snapped.sillFt) ||
+    !finite(snapped.heightFt)
+  ) {
+    return fail(graph, `Opening ${openingId} needs finite offset, width, sill and height.`);
+  }
+  if (snapped.widthFt <= EPS || snapped.heightFt <= EPS) {
+    return fail(graph, `Opening ${openingId} width and height must be greater than zero.`);
+  }
+  if (
+    snapped.offsetFt === opening.offsetFt &&
+    snapped.widthFt === opening.widthFt &&
+    snapped.sillFt === opening.sillFt &&
+    snapped.heightFt === opening.heightFt
+  ) {
+    return { ok: true, graph };
+  }
+  const candidateStorey = {
+    ...storey,
+    walls: storey.walls.map((item) =>
+      item.id === wallId
+        ? {
+            ...item,
+            openings: item.openings.map((candidate) =>
+              candidate.id === openingId ? { ...candidate, ...snapped } : candidate,
+            ),
+          }
+        : item,
+    ),
+  };
+  const candidate = graphWithStorey(graph, candidateStorey);
+  const checked = validateBuildingGraph(candidate);
+  return checked.ok ? { ok: true, graph: candidate } : fail(graph, checked.problem);
+}
+
 /** Same buildable step `scenarios.ts` uses so a graph move and a spec move
  *  cannot disagree about what "60% of this opening" lands on. */
 const GRAPH_STEP_FT = 0.25;

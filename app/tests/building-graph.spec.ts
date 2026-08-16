@@ -2,6 +2,7 @@ import { expect, test } from "playwright/test";
 
 import {
   addGraphOpening,
+  setGraphOpening,
   addPartitionEdge,
   deriveRoofZone,
   legacySpecToBuildingGraph,
@@ -152,6 +153,55 @@ test("an opening crossing a proposed split is quarantined by refusal, not cut", 
   const split = splitWallAt(opened.graph, "storey-1", "wall-1", 10, "vertex-mid");
   expect(split.ok).toBe(false);
   if (!split.ok) expect(split.problem).toContain("opening-wide");
+});
+
+test("setGraphOpening writes a new box and refuses a hang-off", () => {
+  const made = singleStoreyGraphFromPolygon([
+    [0, 0],
+    [20, 0],
+    [20, 10],
+    [0, 10],
+  ]);
+  expect(made.ok).toBe(true);
+  if (!made.ok) return;
+  const opened = addGraphOpening(made.graph, "storey-1", "wall-1", {
+    id: "window-1",
+    kind: "window",
+    offsetFt: 4,
+    widthFt: 5,
+    heightFt: 4,
+    sillFt: 3,
+  });
+  expect(opened.ok).toBe(true);
+  if (!opened.ok) return;
+
+  const moved = setGraphOpening(opened.graph, "storey-1", "wall-1", "window-1", {
+    offsetFt: 6,
+    widthFt: 4,
+    heightFt: 3.5,
+    sillFt: 2.5,
+  });
+  expect(moved.ok).toBe(true);
+  if (!moved.ok) return;
+  expect(moved.graph.storeys[0].walls[0].openings[0]).toMatchObject({
+    id: "window-1",
+    offsetFt: 6,
+    widthFt: 4,
+    heightFt: 3.5,
+    sillFt: 2.5,
+  });
+
+  const hanging = setGraphOpening(opened.graph, "storey-1", "wall-1", "window-1", {
+    offsetFt: 18,
+    widthFt: 5,
+    heightFt: 4,
+    sillFt: 3,
+  });
+  expect(hanging.ok).toBe(false);
+  if (!hanging.ok) {
+    expect(hanging.problem).toContain("window-1");
+    expect(hanging.graph).toBe(opened.graph);
+  }
 });
 
 test("scaleGraphOpenings shrinks glazed openings and leaves doors alone", () => {

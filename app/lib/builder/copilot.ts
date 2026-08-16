@@ -1160,9 +1160,9 @@ function openings(
       id: "opening-off-its-wall",
       topic: "An opening off its wall",
       reason:
-        "`applyOpeningEdit` writes the frozen recovery spec. There is no graph opening-refit " +
-        "writer in this build, so an opening that sits badly on a graph wall has to be moved " +
-        "on the plan by hand.",
+        "A planar-graph opening cannot hang off its wall or overlap a neighbour — " +
+        "`validateBuildingGraph` refuses those states — so there is nothing here to refit. " +
+        "Change offset, width, sill or height on the plan; `setGraphOpening` writes them.",
     });
     return;
   }
