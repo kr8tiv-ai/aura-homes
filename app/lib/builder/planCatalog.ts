@@ -3563,8 +3563,16 @@ export function estimatePlanTemplate(id: string): PlanTemplateEstimate {
   const aspect = bounds.depth > 0 ? Math.max(0.4, Math.min(2.5, bounds.width / bounds.depth)) : 1;
   const equivalentWidth = Math.sqrt(Math.max(footprint, 1) * aspect);
   const equivalentDepth = Math.max(footprint, 1) / equivalentWidth;
+  /* Reported on the glazing line's label, never multiplied by a price — the
+     glazing line is priced on `glazedAreaSqFt` below. Counting a full-height
+     glazing wall as one priced unit was the BQ02 defect; see the GLAZING block
+     in lib/design/materials.ts. */
   const windowCount = specification.volumes.reduce(
     (sum, item) => sum + item.openings.filter((candidate) => candidate.kind !== "door").length,
+    0,
+  );
+  const doorCount = specification.volumes.reduce(
+    (sum, item) => sum + item.openings.filter((candidate) => candidate.kind === "door").length,
     0,
   );
   const bom = buildBom({
@@ -3573,6 +3581,7 @@ export function estimatePlanTemplate(id: string): PlanTemplateEstimate {
     gross_sq_ft: area,
     window_count: windowCount,
     glazing_sq_ft: glazedAreaSqFt(specification),
+    door_count: doorCount,
     material: specification.material,
     systems: systemsFor(specification),
     storeys: plan.storeys,

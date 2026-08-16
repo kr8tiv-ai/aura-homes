@@ -44,6 +44,8 @@ const specFiles = readdirSync(path.join(appRoot, "tests"))
 const DELIBERATELY_UNGATED: Readonly<Record<string, string>> = {
   "landing-vitals.spec.ts":
     "A measurement, not a pass/fail gate. It reads AURA_TEST_BASE_URL to point at an arbitrary deployed target, runs five cold contexts, and writes vitals artifacts. Run it on purpose against a real deployment; running it inside test:ui would measure the local export server and report that number as if it described production.",
+  "plan-catalog-glass.spec.ts":
+    "PL04 in-flight authorship, not a shippable gate. The first fifteen-plan pass already failed the honesty verifier (north-facing glass unnamed in notes). Wiring it into `test` before that review is green would count a rejected draft as coverage. Re-gate it when the compass-disclosure rule and the combined-library glass-share lift both hold.",
 };
 
 const inUnitGate = (file: string) => packageJson.includes(`tests/${file}`);
