@@ -13,6 +13,7 @@ import {
   addGraphShaft,
   addGraphStair,
   addPartitionEdge,
+  extrudeGraphWall,
   deriveStackedRoomRelationships,
   duplicateGraphStorey,
   moveGraphVertex,
@@ -499,6 +500,20 @@ export default function GraphPlanEditor({
     setSelection({ kind: "vertex", id: vertexId });
     report(`Corner ${vertexId} added at the midpoint of wall ${wall.id} and selected.`);
     onEdit(split.graph, `graph:split:${wall.id}`);
+  };
+
+  const extrudeSelectedWall = () => {
+    if (!selectedWall || selectedWall.kind !== "external") {
+      refuse("Select an exterior wall first, then extrude it outward.");
+      return;
+    }
+    const extruded = extrudeGraphWall(graph, storey.id, selectedWall.id, 2, GRID_SNAP_FT);
+    if (!extruded.ok) {
+      refuse(extruded.problem);
+      return;
+    }
+    report(`Wall ${selectedWall.id} extruded 2 ft outward.`);
+    onEdit(extruded.graph, `graph:extrude:${selectedWall.id}`);
   };
 
   const addPartition = () => {
@@ -1012,6 +1027,7 @@ export default function GraphPlanEditor({
         {tool === "shape" ? (
           <>
             <Button onClick={addCorner}>Add corner to selected wall</Button>
+            <Button onClick={extrudeSelectedWall}>Extrude selected wall 2 ft</Button>
             <span className="text-xs text-aura-text/55">Select a wall, add its midpoint, then drag that new corner.</span>
           </>
         ) : (

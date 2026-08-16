@@ -2,7 +2,11 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { expect, test } from "playwright/test";
 
-import { moveGraphVertex, singleStoreyGraphFromPolygon } from "@/lib/builder/buildingGraph";
+import {
+  addPartitionEdge,
+  moveGraphVertex,
+  singleStoreyGraphFromPolygon,
+} from "@/lib/builder/buildingGraph";
 import {
   defaultBuilderDocument,
   hashBuilderDocument,
@@ -12,6 +16,7 @@ import {
 import {
   GRAPH_VERTEX_SNAP_FT,
   applyGraphVertexEdit,
+  applyGraphWallExtrude,
 } from "@/lib/builder/graphEdit";
 
 /* PR01 — a drag and the equivalent typed edit must share one writer.
@@ -129,13 +134,94 @@ test("the snap the drag will use is the snap the typed path uses", () => {
   expect(vertex).toMatchObject({ xFt: 8, zFt: 0 });
 });
 
+test("extruding a wall grows the footprint and a typed extrude hashes the same", () => {
+  const start = documentFromSquare();
+  const beforeArea = graphOf(start).storeys[0].rooms[0].areaSqft;
+  const typed = applyGraphWallExtrude(start, {
+    storeyId: "storey-1",
+    wallId: "wall-1",
+    distanceFt: 2,
+  });
+  expect(typed.ok).toBe(true);
+  if (!typed.ok) return;
+  const after = graphOf(typed.document).storeys[0];
+  expect(after.rooms[0].areaSqft).toBe(beforeArea + 20);
+  expect(after.vertices).toHaveLength(6);
+  expect(after.walls).toHaveLength(6);
+
+  const again = applyGraphWallExtrude(start, {
+    storeyId: "storey-1",
+    wallId: "wall-1",
+    distanceFt: 2,
+    snapFt: GRAPH_VERTEX_SNAP_FT,
+  });
+  expect(again.ok).toBe(true);
+  if (!again.ok) return;
+  expect(hashBuilderDocument(typed.document)).toBe(hashBuilderDocument(again.document));
+});
+
+test("a zero or partition extrusion is refused and leaves the hash untouched", () => {
+  const start = documentFromSquare();
+  const before = hashBuilderDocument(start);
+  const zero = applyGraphWallExtrude(start, {
+    storeyId: "storey-1",
+    wallId: "wall-1",
+    distanceFt: 0,
+  });
+  expect(zero.ok).toBe(false);
+  expect(hashBuilderDocument(zero.document)).toBe(before);
+
+  const partitioned = addPartitionEdge(graphOf(start), "storey-1", "partition-1", "vertex-1", "vertex-3");
+  expect(partitioned.ok).toBe(true);
+  if (!partitioned.ok) return;
+  const withPartition: BuilderDocument = {
+    ...start,
+    geometry: {
+      ...start.geometry,
+      kind: "building-graph",
+      graph: partitioned.graph,
+      legacyRecovery: start.geometry.kind === "building-graph" ? start.geometry.legacyRecovery : start.spec,
+      migrationWarnings: start.geometry.kind === "building-graph" ? start.geometry.migrationWarnings : [],
+    },
+  };
+  const checked = validateBuilderDocument(withPartition);
+  expect(checked.ok).toBe(true);
+  if (!checked.ok) return;
+  const partitionBefore = hashBuilderDocument(checked.document);
+  const refused = applyGraphWallExtrude(checked.document, {
+    storeyId: "storey-1",
+    wallId: "partition-1",
+    distanceFt: 2,
+  });
+  expect(refused.ok).toBe(false);
+  if (refused.ok) return;
+  expect(refused.problem).toMatch(/exterior|partition/i);
+  expect(hashBuilderDocument(refused.document)).toBe(partitionBefore);
+});
+
+test("an extrusion without a building graph is refused in a sentence, not by throwing", () => {
+  const legacy = defaultBuilderDocument();
+  const refused = applyGraphWallExtrude(legacy, {
+    storeyId: "storey-1",
+    wallId: "wall-1",
+    distanceFt: 2,
+  });
+  expect(refused.ok).toBe(false);
+  if (refused.ok) return;
+  expect(refused.problem).toContain("building graph");
+  expect(hashBuilderDocument(refused.document)).toBe(hashBuilderDocument(legacy));
+});
+
 test("the 3D handles drag through the same mutator and snap as the typed path", () => {
   const appRoot = path.resolve(__dirname, "..");
   const editor = readFileSync(path.join(appRoot, "components", "builder", "GraphCanvasEditor.tsx"), "utf8");
+  const plan = readFileSync(path.join(appRoot, "components", "builder", "GraphPlanEditor.tsx"), "utf8");
   const app = readFileSync(path.join(appRoot, "components", "builder", "BuilderApp.tsx"), "utf8");
   expect(editor).toContain("moveGraphVertex");
   expect(editor).toContain("GRAPH_VERTEX_SNAP_FT");
   expect(editor).not.toMatch(/snapFt\s*=\s*1\b/);
+  expect(plan).toContain("extrudeGraphWall");
+  expect(plan).toContain("Extrude selected wall 2 ft");
   expect(app).toContain("GraphCanvasEditor");
   expect(app).toContain("houseChildren");
 });

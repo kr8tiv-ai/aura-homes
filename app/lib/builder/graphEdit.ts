@@ -7,6 +7,7 @@
  */
 
 import {
+  extrudeGraphWall,
   moveGraphVertex,
   type BuildingGraph,
   type GraphPoint,
@@ -62,6 +63,58 @@ export function applyGraphVertexEdit(
     geometry: {
       ...current.geometry,
       graph: moved.graph,
+    },
+  };
+  const valid = validateBuilderDocument(next);
+  if (!valid.ok) {
+    return { ok: false, problem: valid.problem, document: current };
+  }
+  if (valid.document.geometry.kind !== "building-graph") {
+    return {
+      ok: false,
+      problem: "The edited document is no longer a building graph.",
+      document: current,
+    };
+  }
+  return { ok: true, document: valid.document, graph: valid.document.geometry.graph };
+}
+
+export function applyGraphWallExtrude(
+  document: BuilderDocument,
+  ask: {
+    storeyId: string;
+    wallId: string;
+    distanceFt: number;
+    snapFt?: number;
+  },
+): GraphDocumentEdit {
+  const checked = validateBuilderDocument(document);
+  if (!checked.ok) {
+    return { ok: false, problem: checked.problem, document };
+  }
+  const current = checked.document;
+  if (current.geometry.kind !== "building-graph") {
+    return {
+      ok: false,
+      problem: "This design is not a building graph.",
+      document: current,
+    };
+  }
+  const extruded = extrudeGraphWall(
+    current.geometry.graph,
+    ask.storeyId,
+    ask.wallId,
+    ask.distanceFt,
+    ask.snapFt ?? GRAPH_VERTEX_SNAP_FT,
+  );
+  if (!extruded.ok) {
+    return { ok: false, problem: extruded.problem, document: current };
+  }
+  const next: BuilderDocument = {
+    ...current,
+    geometry: {
+      ...current.geometry,
+      graph: extruded.graph,
     },
   };
   const valid = validateBuilderDocument(next);

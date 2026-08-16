@@ -763,6 +763,161 @@ function insertBoundaryVertex(ids: readonly string[], start: string, end: string
   return out;
 }
 
+function insertExtrudeIntoBoundary(
+  ids: readonly string[],
+  startId: string,
+  endId: string,
+  startOutId: string,
+  endOutId: string,
+): string[] {
+  for (let index = 0; index < ids.length; index += 1) {
+    const current = ids[index];
+    const next = ids[(index + 1) % ids.length];
+    if (current === startId && next === endId) {
+      return [...ids.slice(0, index + 1), startOutId, endOutId, ...ids.slice(index + 1)];
+    }
+    if (current === endId && next === startId) {
+      return [...ids.slice(0, index + 1), endOutId, startOutId, ...ids.slice(index + 1)];
+    }
+  }
+  return [...ids];
+}
+
+/**
+ * Push an exterior wall outward, growing the footprint. Two new vertices are
+ * created; the original wall keeps its openings and becomes the new outer
+ * run. Adjacent walls stay where they are. This is not two vertex moves —
+ * moving the endpoints would shear the neighbouring walls.
+ */
+export function extrudeGraphWall(
+  graph: BuildingGraph,
+  storeyId: string,
+  wallId: string,
+  distanceFt: number,
+  snapFt = 0,
+): GraphMutation {
+  const storey = graph.storeys.find((item) => item.id === storeyId);
+  if (!storey) return fail(graph, `Storey ${storeyId} does not exist.`);
+  const wall = storey.walls.find((item) => item.id === wallId);
+  if (!wall) return fail(graph, `Wall ${wallId} does not exist.`);
+  if (wall.kind !== "external") {
+    return fail(graph, `Only an exterior wall can be extruded. ${wallId} is a partition.`);
+  }
+  const snap = (value: number): number =>
+    snapFt > EPS ? Math.round(value / snapFt) * snapFt : value;
+  const distance = snap(distanceFt);
+  if (!finite(distance) || distance <= EPS) {
+    return fail(graph, "An extrusion must move the wall a positive distance.");
+  }
+
+  const vertices = vertexMap(storey);
+  const start = vertices.get(wall.startVertexId);
+  const end = vertices.get(wall.endVertexId);
+  if (!start || !end) return fail(graph, `Wall ${wallId} is missing an endpoint.`);
+  const dx = end.xFt - start.xFt;
+  const dz = end.zFt - start.zFt;
+  const run = Math.hypot(dx, dz);
+  if (run <= EPS) return fail(graph, `Wall ${wallId} has no direction to extrude along.`);
+  /* Footprints are stored counter-clockwise. The outward normal is a clockwise
+     quarter-turn of the wall direction. */
+  const ox = (dz / run) * distance;
+  const oz = (-dx / run) * distance;
+
+  const used = new Set([
+    ...storey.vertices.map((item) => item.id),
+    ...storey.walls.map((item) => item.id),
+  ]);
+  const nextId = (prefix: string): string => {
+    let n = 1;
+    let id = `${prefix}-${n}`;
+    while (used.has(id)) {
+      n += 1;
+      id = `${prefix}-${n}`;
+    }
+    used.add(id);
+    return id;
+  };
+  const startOutId = nextId("vertex");
+  const endOutId = nextId("vertex");
+  const returnStartId = nextId("wall");
+  const returnEndId = nextId("wall");
+
+  const startOut: GraphVertex = {
+    id: startOutId,
+    xFt: start.xFt + ox,
+    zFt: start.zFt + oz,
+  };
+  const endOut: GraphVertex = {
+    id: endOutId,
+    xFt: end.xFt + ox,
+    zFt: end.zFt + oz,
+  };
+
+  const candidateStorey: GraphStorey = {
+    ...storey,
+    vertices: [...storey.vertices, startOut, endOut],
+    walls: [
+      ...storey.walls.filter((item) => item.id !== wallId),
+      {
+        id: returnStartId,
+        startVertexId: wall.startVertexId,
+        endVertexId: startOutId,
+        kind: "external",
+        thicknessFt: wall.thicknessFt,
+        openings: [],
+      },
+      {
+        ...wall,
+        startVertexId: startOutId,
+        endVertexId: endOutId,
+      },
+      {
+        id: returnEndId,
+        startVertexId: endOutId,
+        endVertexId: wall.endVertexId,
+        kind: "external",
+        thicknessFt: wall.thicknessFt,
+        openings: [],
+      },
+    ],
+    slabs: storey.slabs.map((slab) => ({
+      ...slab,
+      boundaryVertexIds: insertExtrudeIntoBoundary(
+        slab.boundaryVertexIds,
+        wall.startVertexId,
+        wall.endVertexId,
+        startOutId,
+        endOutId,
+      ),
+    })),
+    voids: storey.voids.map((item) => ({
+      ...item,
+      boundaryVertexIds: insertExtrudeIntoBoundary(
+        item.boundaryVertexIds,
+        wall.startVertexId,
+        wall.endVertexId,
+        startOutId,
+        endOutId,
+      ),
+    })),
+    roofZones: storey.roofZones.map((zone) => ({
+      ...zone,
+      boundaryVertexIds: insertExtrudeIntoBoundary(
+        zone.boundaryVertexIds,
+        wall.startVertexId,
+        wall.endVertexId,
+        startOutId,
+        endOutId,
+      ),
+    })),
+    rooms: [],
+  };
+  const withRooms = { ...candidateStorey, rooms: deriveRoomFaces(candidateStorey, storey.rooms) };
+  const candidate = graphWithStorey(graph, withRooms);
+  const checked = validateBuildingGraph(candidate);
+  return checked.ok ? { ok: true, graph: candidate } : fail(graph, checked.problem);
+}
+
 export function splitWallAt(
   graph: BuildingGraph,
   storeyId: string,
