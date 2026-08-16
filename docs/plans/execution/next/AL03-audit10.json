@@ -1,0 +1,64 @@
+{
+  "node": "AL03",
+  "graphVersion": "1.2",
+  "job": "Audit #10: fresh-context grading of d0fc2f6..8060ab2 — LC01, BQ02/BQ03, Q04A/Q05A, PR01 (vertex+extrude+room+thickness), PR02/PR03, PL04 72→87, BN01, TR01, live /build SHA, and re-verification of Audit #9's open findings. Due 2026-08-16.",
+  "writeSet": [
+    "docs/AUDIT-LOG.md (append only)",
+    "docs/plans/execution/next/AL03-audit10.json"
+  ],
+  "rejectionGates": [
+    "the auditor must be a context that did not write the code under audit — if you built any of it, hand this manifest to a fresh session",
+    "append-only: never edit prior audit entries",
+    "do NOT re-run test:ui or meadow-proof.mjs",
+    "do not touch app/components/story/**, app/lib/three/**, app/public/models/**, app/workers/meadow.worker.ts, or any product/source file"
+  ],
+  "status": "verified",
+  "dueISO": "2026-08-16",
+  "nextAuditDueISO": "2026-08-18",
+  "sideEffect": "local",
+  "evidence": {
+    "verifiedAt": "2026-08-16",
+    "tree": "8060ab2567c0049d799687fbffe827ec4579f9ee",
+    "branch": "codex/bq02-glazing-pricing",
+    "auditedRange": "d0fc2f6..8060ab2 (25 commits)",
+    "appendedAs": "Audit #10 — 2026-08-16 — fresh-context checker",
+    "writeSetRespected": "docs/AUDIT-LOG.md appended after the Audit #10 marker with no prior entry edited; this manifest created. AL02-audit8.json and all prior audit text untouched. Temporary _audit10-body.md used only as an append buffer and deleted.",
+    "commands": [
+      "cd C:\\Users\\lucid\\Desktop\\aura-homes\\app && npx tsc --noEmit --incremental false  → exit 0",
+      "cd C:\\Users\\lucid\\Desktop\\aura-homes\\app && npm test  → 637/637 passed (38.5s)",
+      "cd C:\\Users\\lucid\\Desktop\\aura-homes\\agent && npm run demo  → LOW $199,100 / MID $301,280 / HIGH $443,900 ex-land",
+      "git log --oneline d0fc2f6..HEAD  → 25 commits, HEAD 8060ab2",
+      "git diff --name-only d0fc2f6...HEAD -- app/components/story app/lib/three app/public/models app/workers/meadow.worker.ts  → empty",
+      "GET https://aurahomes.fun/build  → 200, HTML contains 8060ab2567c0049d799687fbffe827ec4579f9ee"
+    ],
+    "deliberatelyNotRun": "npm run test:ui, scripts/meadow-proof.mjs, npm run build — per the brief. Recorded evidence audited instead.",
+    "anchors": {
+      "tsc": "pass",
+      "unit": "637/637",
+      "demo": "199100/301280/443900",
+      "threeDFreeze": "empty",
+      "liveBuildSha": "8060ab2 present"
+    },
+    "findingCounts": {
+      "high": 0,
+      "medium": 3,
+      "lowMedium": 2,
+      "low": 2,
+      "total": 7
+    },
+    "auditNineFollowThrough": "10 findings re-verified: 4 closed (FD1 Scene.tsx coupling in code, handoff re-derive, ProjectSpine comment, guidance standing), 2 partial (stale-ready manifests; AWG — materials.ts fixed, eco.py/FEASIBILITY/VISION not), 2 open (meadow-proof now 41 commits stale; FD1 record still ready), 2 unexercised (manifest-less waves; old BuilderApp three-node clash). LiveReadout coverage lie closed; listings provenance unchanged.",
+    "nodeGrades": {
+      "LC01": "pass (no test:ui this pass; demo default-off verified in source)",
+      "BQ02": "pass",
+      "BQ03": "pass",
+      "Q04A": "pass (package reader/clock gates in source; no browser download this pass)",
+      "Q05A": "pass (validEvidence decodes bytes)",
+      "PR01": "partial-fail (3D live-commit + Escape restore; hash spec never calls UI path; GraphPlanEditor doNotTouch + graphEdit.ts outside writeSet)",
+      "PR02-PR03": "pass (thin manifest)",
+      "PL04": "partial (87 mounted; floor pin still >= 72)",
+      "BN01": "pass (bundle-isolation ran in 637; concierge unrouted)",
+      "TR01": "pass",
+      "liveBuild": "pass"
+    }
+  }
+}
