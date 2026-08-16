@@ -224,6 +224,7 @@ import DrawingSheets from "./DrawingSheets";
 import ExportRow from "./ExportRow";
 import FixturePalette, { FixtureLayer, useFixtureGeometry } from "./FixturePalette";
 import { OpeningHandles, OpeningNumbers, type OpeningStatus } from "./OpeningHandles";
+import { GraphCanvasEditor } from "./GraphCanvasEditor";
 import WalkthroughPanel, { WalkthroughCameraRig } from "./Walkthrough";
 import VariationStrip from "./VariationStrip";
 import ScenarioCompare from "./ScenarioCompare";
@@ -1602,7 +1603,13 @@ export default function BuilderApp() {
                   has graph-mode geometry to attach to yet. */
               houseChildren={
                 <>
-                  {graphMode ? null : (
+                  {graphMode ? (
+                    <GraphCanvasEditor
+                      graph={graphGeometry.graph}
+                      onEdit={editGraph}
+                      enabled={viewMode === "3d"}
+                    />
+                  ) : (
                     <>
                       <FixtureLayer
                         geometry={fixtureGeometry}

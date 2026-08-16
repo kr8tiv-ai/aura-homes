@@ -1,0 +1,79 @@
+/**
+ * One writer for BuildingGraph vertex edits.
+ *
+ * `moveGraphVertex` is the mutator. This module is the document wrapper so a
+ * drag and a typed figure can share a hash. Nothing here invents a second
+ * snap, a second validate, or a second history label grammar.
+ */
+
+import {
+  moveGraphVertex,
+  type BuildingGraph,
+  type GraphPoint,
+} from "./buildingGraph";
+import {
+  validateBuilderDocument,
+  type BuilderDocument,
+} from "./document";
+
+/** Same 0.5 ft snap GraphPlanEditor already uses. Do not invent another. */
+export const GRAPH_VERTEX_SNAP_FT = 0.5;
+
+export type GraphDocumentEdit =
+  | { ok: true; document: BuilderDocument; graph: BuildingGraph }
+  | { ok: false; problem: string; document: BuilderDocument };
+
+export function applyGraphVertexEdit(
+  document: BuilderDocument,
+  ask: {
+    storeyId: string;
+    vertexId: string;
+    point: GraphPoint;
+    snapFt?: number;
+  },
+): GraphDocumentEdit {
+  const checked = validateBuilderDocument(document);
+  if (!checked.ok) {
+    return { ok: false, problem: checked.problem, document };
+  }
+  const current = checked.document;
+  if (current.geometry.kind !== "building-graph") {
+    return {
+      ok: false,
+      problem: "This design is not a building graph.",
+      document: current,
+    };
+  }
+
+  const snapFt = ask.snapFt ?? GRAPH_VERTEX_SNAP_FT;
+  const moved = moveGraphVertex(
+    current.geometry.graph,
+    ask.storeyId,
+    ask.vertexId,
+    ask.point,
+    snapFt,
+  );
+  if (!moved.ok) {
+    return { ok: false, problem: moved.problem, document: current };
+  }
+
+  const next: BuilderDocument = {
+    ...current,
+    geometry: {
+      ...current.geometry,
+      graph: moved.graph,
+    },
+  };
+  const valid = validateBuilderDocument(next);
+  if (!valid.ok) {
+    return { ok: false, problem: valid.problem, document: current };
+  }
+  if (valid.document.geometry.kind !== "building-graph") {
+    return {
+      ok: false,
+      problem: "The edited document is no longer a building graph.",
+      document: current,
+    };
+  }
+  return { ok: true, document: valid.document, graph: valid.document.geometry.graph };
+}

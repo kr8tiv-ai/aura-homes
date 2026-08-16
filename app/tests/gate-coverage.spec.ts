@@ -200,10 +200,8 @@ test("the counter agrees with what the runners actually declare", () => {
   /* The counter is a regex over source, which is an approximation of what the
      runner does — and the first version of it was wrong by seven. So it is
      pinned against numbers OBSERVED from the runners themselves:
-       npm test        -> 607 declared (606 passed + this assertion, which is
-                          red by construction while the number is being
-                          corrected), after the measured-glazing and door-count
-                          budget contracts joined the gate
+       npm test        -> 612 declared, after the PR01 graph-vertex writer
+                          and its hash/refusal/snap/source pins joined the gate
        npm run test:ui -> 132 declared and passed, on a full 13.3-minute run
                           against a fresh static export, after the stated-lot
                           journey and explicit City-register surface joined
@@ -212,7 +210,7 @@ test("the counter agrees with what the runners actually declare", () => {
      re-running both suites and writing down what they said — which is the
      point. A counter nobody ever checked against the thing it counts is how
      the README got its numbers wrong in the first place. */
-  expect(UNIT_TESTS).toBe(607);
+  expect(UNIT_TESTS).toBe(612);
   expect(UI_TESTS).toBe(132);
 
   const readme = read(repoRoot, "README.md");
@@ -293,6 +291,18 @@ test("the published plan count is the real plan count", () => {
     statesPlanCount(submission, String(total)),
     `docs/SUBMISSION.md does not state the real plan count (${total}) near the word "plan" — it is the document a judge opens, and a number that happens to be in a timestamp is not a published count.`,
   ).toBe(true);
+
+  /* The live /roadmap Now arc used to hardcode "55-plan library" after the
+     library had already grown. The page must derive the count, not type it. */
+  const roadmap = read(appRoot, "app", "roadmap", "page.tsx");
+  expect(
+    roadmap.includes("PLAN_TEMPLATES.length"),
+    "app/app/roadmap/page.tsx must derive its library size from PLAN_TEMPLATES.length",
+  ).toBe(true);
+  expect(
+    roadmap,
+    "app/app/roadmap/page.tsx still contains a hardcoded 55-plan claim",
+  ).not.toMatch(/\b55-plan\b/);
 });
 
 /** The README writes the count in words ("Fifty-five-plan editable library"),
