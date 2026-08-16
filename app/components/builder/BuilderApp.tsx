@@ -175,6 +175,7 @@ import {
 import type { BuildingGraph } from "@/lib/builder/buildingGraph";
 import { drawingSet, type DrawingRooms, type DrawingSetResult } from "@/lib/builder/drawings";
 import { buildHome, disposeHome, type HomeGeometry } from "@/lib/builder/geometry";
+import { fixtureSpecForDocument } from "@/lib/builder/fixturesGraph";
 import { buildGraphHome, summarizeBuildingGraph } from "@/lib/builder/graphGeometry";
 import type { HomeSpec } from "@/lib/builder/spec";
 import { documentFromLocation } from "@/lib/builder/share";
@@ -1009,8 +1010,11 @@ export default function BuilderApp() {
          to one question is how a clearance warning ends up contradicting the
          red box next to it. Disposal follows the same previous-value rule
          `home` does, and for the same StrictMode reason. */
+  /* EX03: after conversion the recovery spec's volumes are not the house on
+     screen. Fixture snap hosts are the graph storeys' bounding boxes. */
+  const fixtureSpec = useMemo(() => fixtureSpecForDocument(state.doc), [state.doc]);
   const { resolution: fixtureResolution, geometry: fixtureGeometry } = useFixtureGeometry(
-    spec,
+    fixtureSpec,
     fixtures,
     showClearances,
   );
@@ -1024,12 +1028,12 @@ export default function BuilderApp() {
   /* A clearance that is only visible on the tab that made it is a clearance
      nobody reads. These two are hoisted out of the palette and onto the page. */
   const clashes = useMemo(
-    () => (graphMode ? [] : fixtureResolution.issues.filter((i) => i.severity === "blocked")),
-    [fixtureResolution, graphMode],
+    () => fixtureResolution.issues.filter((i) => i.severity === "blocked"),
+    [fixtureResolution],
   );
   const worthChecking = useMemo(
-    () => (graphMode ? [] : fixtureResolution.issues.filter((i) => i.severity === "check")),
-    [fixtureResolution, graphMode],
+    () => fixtureResolution.issues.filter((i) => i.severity === "check"),
+    [fixtureResolution],
   );
 
   const sunPos = useMemo(() => sunPosition(sun.hour, sun.season), [sun]);
@@ -1615,10 +1619,15 @@ export default function BuilderApp() {
                   the rig renders null anyway.
 
                   The rig is UNCONDITIONAL because a walkthrough works in graph
-                  mode too; the fixtures and the grips are not, because neither
-                  has graph-mode geometry to attach to yet. */
+                  mode too. Fixtures now attach to graph storey hosts. Opening
+                  grips still belong to the legacy spec. */
               houseChildren={
                 <>
+                  <FixtureLayer
+                    geometry={fixtureGeometry}
+                    selectedId={activeFixtureId}
+                    onSelect={pickFixture}
+                  />
                   {graphMode ? (
                     <>
                       <GraphCanvasEditor
@@ -1631,11 +1640,6 @@ export default function BuilderApp() {
                     </>
                   ) : (
                     <>
-                      <FixtureLayer
-                        geometry={fixtureGeometry}
-                        selectedId={activeFixtureId}
-                        onSelect={pickFixture}
-                      />
                       {/* The grips are 3D-only ON PURPOSE, not by omission: the
                           plan view has its own drag handles inside Plan2D, and
                           two live grip sets over one wall would fight for the
@@ -2073,12 +2077,9 @@ export default function BuilderApp() {
               is why `FixtureLayer` is mounted with the model and a click there
               opens this tab. */}
           <Pane on={workspace === "fixtures"}>
-            {graphMode ? (
-              <GraphPending feature="Fixture placement" />
-            ) : (
-              <>
+            <>
                 <FixturePalette
-                  spec={spec}
+                  spec={fixtureSpec}
                   value={fixtures}
                   onChange={editFixtures}
                   selectedId={activeFixtureId}
@@ -2093,12 +2094,12 @@ export default function BuilderApp() {
               fifteen inches of a wall turns square and seats flat against it, and a solar array is held
               inside a roof-edge setback — snapping is doing something a free drag cannot express, and
               the numbers you set here are the numbers that reach the schedule. Fixtures travel in the
-              .glb, project file, share links, library saves and autosave. They are not yet represented
-              on the legacy drawing set, in DXF or in IFC; those writers still derive their shell from
-              HomeSpec, and each export names that limitation.
+              .glb, project file, share links, library saves and autosave.
+              {graphMode
+                ? " In planar-graph mode they sit on each storey's bounding box, not on the frozen recovery volumes, and not on the true slab polygon. There is no graph deck."
+                : " They are not yet represented on the drawing set, in DXF or in IFC; those writers still derive their shell from HomeSpec, and each export names that limitation."}
                 </p>
               </>
-            )}
           </Pane>
 
           {/* ============================================================ COMFORT
