@@ -2,6 +2,7 @@ import { expect, test } from "playwright/test";
 
 import { convertBuilderDocumentToGraph, defaultBuilderDocument } from "@/lib/builder/document";
 import { drawingSet } from "@/lib/builder/drawings";
+import { homeToDxf, homeToIfc } from "@/lib/builder/exportPro";
 import { buildHomeModelFromGraph, nearestCompassWall, outwardNormal } from "@/lib/builder/drawings/graphModel";
 import { resolveLegacyGeometryExportSource } from "@/lib/builder/exportSource";
 
@@ -48,6 +49,17 @@ test("the same graph and the same date produce byte-identical sheets", () => {
   const a = drawingSet({ document, dateISO: "2026-08-16", projectName: "Same" });
   const b = drawingSet({ document, dateISO: "2026-08-16", projectName: "Same" });
   expect(a.sheets.map((sheet) => sheet.svg)).toEqual(b.sheets.map((sheet) => sheet.svg));
+});
+
+test("DXF and IFC consume the graph model instead of refusing it", () => {
+  const document = graphDocument();
+  const dxf = homeToDxf(document, { dateISO: "2026-08-16" });
+  expect(dxf).toContain("SECTION");
+  expect(dxf).toContain("ENTITIES");
+  expect(dxf).toMatch(/FLOOR|WALL|TEXT/);
+  const ifc = homeToIfc(document, { dateISO: "2026-08-16T00:00:00Z" });
+  expect(ifc).toContain("ISO-10303-21");
+  expect(ifc).toContain("IFCWALL");
 });
 
 test("outward normals point off the slab, and a south-facing wall is south", () => {

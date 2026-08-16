@@ -410,11 +410,10 @@ export default function ExportRow({
       >
       <div className="space-y-6">
         {graphMode ? (
-          <p className="rounded-md border border-aura-violet px-4 py-3 text-xs leading-relaxed text-aura-text/70">
-            This project uses planar graph geometry. The project file, share link, glTF and OBJ below
-            use the current graph-backed design. DXF, IFC and ifcJSON remain visibly disabled until
-            their writers consume the graph; Aura will not export the rectangular recovery copy as
-            though it were the design on screen.
+          <p className="rounded-md border aura-hairline px-4 py-3 text-xs leading-relaxed text-aura-text/70">
+            This project uses planar graph geometry. DXF and IFC are drawn from the same graph
+            model as the eight-sheet set — slabs, walls and openings on screen, not the frozen
+            recovery HomeSpec. ifcJSON still waits; Aura will not invent a second IFC shape for it.
           </p>
         ) : null}
         {/* ================================================== the handoff */}
@@ -432,7 +431,7 @@ export default function ExportRow({
               body="The 2D drawings — floor plan, roof plan, foundation, all four elevations, the section and the schedule — laid out in model space at full size, on named layers a drafter can turn off one at a time. This is the file somebody opens to correct the wall we got wrong, add the dimension we could not know, and seal it. R12 ASCII, which is the DXF version with the widest reader support."
               action={
                 <div className="space-y-2">
-                  <Button tone="loud" onClick={() => void dxf()} disabled={busy !== null || graphMode}>
+                  <Button tone="loud" onClick={() => void dxf()} disabled={busy !== null}>
                     {busy === "dxf" ? "Drafting and checking…" : "Download .dxf"}
                   </Button>
                   <p className="text-[0.7rem] leading-snug text-aura-text/55">
@@ -447,7 +446,7 @@ export default function ExportRow({
               opens="Revit, ArchiCAD, Vectorworks, Allplan, Tekla, Solibri, BIMcollab ZOOM, Navisworks, FreeCAD's BIM workbench, and Blender with the Bonsai add-on."
               body="The building as a building, not as a shape: walls carrying a real material layer at the real thickness, windows and doors sitting in openings that genuinely void the wall they are in, slabs, roofs and the pile layout. This is the one a BIM-using designer imports and starts editing, and the one a quantity surveyor or an energy modeller can read. ISO 10303-21 text — the serialisation the tools above actually import."
               action={
-                <Button tone="loud" onClick={() => void ifc()} disabled={busy !== null || graphMode}>
+                <Button tone="loud" onClick={() => void ifc()} disabled={busy !== null}>
                   {busy === "ifc" ? "Authoring…" : "Download .ifc"}
                 </Button>
               }
@@ -456,7 +455,7 @@ export default function ExportRow({
         </div>
 
         {/* ============================================ the round-trip proof */}
-        {graphMode ? null : <DxfVerdict run={dxfRun} stale={dxfStale} />}
+        <DxfVerdict run={dxfRun} stale={dxfStale} />
 
         {/* ================================================== web and data */}
         <div>
