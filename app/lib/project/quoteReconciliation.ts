@@ -1,12 +1,14 @@
+import { sha256, toHex } from "viem";
 import {
   diagnoseProjectBudgetBasis,
   type ProjectBudget,
   type ProjectBudgetBasisChange,
   type ProjectBudgetScenario,
 } from "../builder/projectBudget";
+import type { ProjectRfq } from "./rfq";
 
 export const PROJECT_QUOTE_FORMAT = "aura-project-quote" as const;
-export const PROJECT_QUOTE_VERSION = 2 as const;
+export const PROJECT_QUOTE_VERSION = 3 as const;
 
 export interface QuoteEvidence {
   name: string;
@@ -43,7 +45,7 @@ export interface LegacyProjectQuote extends ProjectQuoteBase {
 }
 
 export interface ProjectQuoteV2 extends ProjectQuoteBase {
-  version: typeof PROJECT_QUOTE_VERSION;
+  version: 2;
   budgetHash: `0x${string}`;
   budgetBasis: {
     region: string;
@@ -53,7 +55,13 @@ export interface ProjectQuoteV2 extends ProjectQuoteBase {
   };
 }
 
-export type ProjectQuote = LegacyProjectQuote | ProjectQuoteV2;
+export interface ProjectQuoteV3 extends Omit<ProjectQuoteV2, "version"> {
+  version: typeof PROJECT_QUOTE_VERSION;
+  rfqId: string | null;
+  rfqHash: `0x${string}` | null;
+}
+
+export type ProjectQuote = LegacyProjectQuote | ProjectQuoteV2 | ProjectQuoteV3;
 
 export type ProjectQuoteValidation =
   | { ok: true; quote: ProjectQuote }
@@ -74,6 +82,7 @@ export interface QuoteReconciliation {
   budgetChanged: boolean | null;
   basisState: "current" | "changed" | "legacy-unbound";
   basisChanges: ProjectBudgetBasisChange[];
+  rfqLinkState: "matched" | "not-linked" | "missing" | "changed" | "legacy-unbound";
 }
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
@@ -89,7 +98,7 @@ export function validateProjectQuote(value: unknown): ProjectQuoteValidation {
   if (typeof value.version === "number" && value.version > PROJECT_QUOTE_VERSION) {
     return { ok: false, problem: `This quote was captured by a newer version (v${value.version}).`, futureVersion: value.version };
   }
-  if (value.version !== 1 && value.version !== PROJECT_QUOTE_VERSION) return { ok: false, problem: "Quote version is not supported." };
+  if (value.version !== 1 && value.version !== 2 && value.version !== PROJECT_QUOTE_VERSION) return { ok: false, problem: "Quote version is not supported." };
   if (typeof value.id !== "string" || !value.id.trim()) return { ok: false, problem: "Quote id is missing." };
   if (typeof value.vendorName !== "string" || !value.vendorName.trim()) return { ok: false, problem: "Vendor name is missing." };
   if (!isISO(value.capturedAtISO)) return { ok: false, problem: "Quote capture date is invalid." };
@@ -103,7 +112,7 @@ export function validateProjectQuote(value: unknown): ProjectQuoteValidation {
 
   let budgetHash: `0x${string}` | null = null;
   let budgetBasis: ProjectQuoteV2["budgetBasis"] | null = null;
-  if (value.version === PROJECT_QUOTE_VERSION) {
+  if (value.version === 2 || value.version === PROJECT_QUOTE_VERSION) {
     if (typeof value.budgetHash !== "string" || !HASH_HEX.test(value.budgetHash)) return { ok: false, problem: "Quote budget hash is invalid." };
     if (!isObject(value.budgetBasis) || typeof value.budgetBasis.region !== "string" || typeof value.budgetBasis.municipality !== "string" || !validScenario(value.budgetBasis.scenario)) return { ok: false, problem: "Quote planning scenario is invalid." };
     if (value.budgetBasis.budgetCapCad !== null && !(typeof value.budgetBasis.budgetCapCad === "number" && Number.isFinite(value.budgetBasis.budgetCapCad) && value.budgetBasis.budgetCapCad >= 0)) return { ok: false, problem: "Quote budget cap is invalid." };
@@ -114,6 +123,19 @@ export function validateProjectQuote(value: unknown): ProjectQuoteValidation {
       scenario: structuredClone(value.budgetBasis.scenario) as ProjectBudgetScenario,
       budgetCapCad: value.budgetBasis.budgetCapCad as number | null,
     };
+  }
+
+  let rfqId: string | null = null;
+  let rfqHash: `0x${string}` | null = null;
+  if (value.version === PROJECT_QUOTE_VERSION) {
+    const bothNull = value.rfqId === null && value.rfqHash === null;
+    const bothBound = typeof value.rfqId === "string" && value.rfqId.trim().length > 0
+      && typeof value.rfqHash === "string" && HASH_HEX.test(value.rfqHash);
+    if (!bothNull && !bothBound) return { ok: false, problem: "Quote RFQ id and hash must either both be present or both be null." };
+    if (bothBound) {
+      rfqId = (value.rfqId as string).trim().slice(0, 96);
+      rfqHash = value.rfqHash as `0x${string}`;
+    }
   }
 
   const lineIds = new Set<string>();
@@ -147,9 +169,9 @@ export function validateProjectQuote(value: unknown): ProjectQuoteValidation {
     notes: value.notes.trim().slice(0, 4_000),
     lines,
   };
-  return value.version === 1
-    ? { ok: true, quote: { ...base, version: 1 } }
-    : { ok: true, quote: { ...base, version: PROJECT_QUOTE_VERSION, budgetHash: budgetHash!, budgetBasis: budgetBasis! } };
+  if (value.version === 1) return { ok: true, quote: { ...base, version: 1 } };
+  if (value.version === 2) return { ok: true, quote: { ...base, version: 2, budgetHash: budgetHash!, budgetBasis: budgetBasis! } };
+  return { ok: true, quote: { ...base, version: PROJECT_QUOTE_VERSION, budgetHash: budgetHash!, budgetBasis: budgetBasis!, rfqId, rfqHash } };
 }
 
 export function projectQuotesFromUnknown(values: readonly unknown[]): ProjectQuote[] {
@@ -163,6 +185,7 @@ export function reconcileProjectQuote(
   budget: ProjectBudget,
   value: ProjectQuote,
   nowISO: string,
+  rfqs: readonly ProjectRfq[] = [],
 ): QuoteReconciliation {
   const checked = validateProjectQuote(value);
   if (!checked.ok) throw new Error(`Cannot reconcile this quote: ${checked.problem}`);
@@ -187,6 +210,15 @@ export function reconcileProjectQuote(
   const quotedTotalCad = Math.round(quote.lines.reduce((sum, line) => sum + line.amountCad, 0) * 100) / 100;
   const modelCoveredMidCad = budget.lines.filter((line) => covered.has(line.id)).reduce((sum, line) => sum + line.mid, 0);
   const varianceCad = Math.round((quotedTotalCad - modelCoveredMidCad) * 100) / 100;
+  const rfqLinkState = quote.version === 1 || quote.version === 2
+    ? "legacy-unbound"
+    : quote.rfqId === null
+      ? "not-linked"
+      : (() => {
+          const linked = rfqs.find((rfq) => rfq.id === quote.rfqId);
+          if (!linked) return "missing";
+          return linked.canonicalHash === quote.rfqHash ? "matched" : "changed";
+        })();
   return {
     quote,
     quotedTotalCad,
@@ -202,6 +234,7 @@ export function reconcileProjectQuote(
     budgetChanged: quote.version === 1 ? null : quote.budgetHash !== budget.budgetHash,
     basisState: diagnostic.state,
     basisChanges: diagnostic.changes,
+    rfqLinkState,
   };
 }
 
@@ -220,12 +253,21 @@ export async function evidenceFromFile(file: File): Promise<QuoteEvidence> {
 }
 
 function validEvidence(value: unknown): value is QuoteEvidence {
-  return isObject(value)
-    && typeof value.name === "string"
-    && typeof value.mediaType === "string"
-    && typeof value.sizeBytes === "number" && Number.isFinite(value.sizeBytes) && value.sizeBytes >= 0
-    && typeof value.sha256 === "string" && SHA256_HEX.test(value.sha256)
-    && typeof value.dataUrl === "string" && value.dataUrl.startsWith("data:");
+  if (!isObject(value)
+    || typeof value.name !== "string"
+    || typeof value.mediaType !== "string"
+    || typeof value.sizeBytes !== "number" || !Number.isInteger(value.sizeBytes) || value.sizeBytes < 0
+    || typeof value.sha256 !== "string" || !SHA256_HEX.test(value.sha256)
+    || typeof value.dataUrl !== "string") return false;
+  const match = /^data:([^;,]+)(;base64)?,([\s\S]*)$/.exec(value.dataUrl);
+  if (!match || match[1] !== value.mediaType || match[2] !== ";base64") return false;
+  try {
+    const binary = atob(match[3]);
+    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+    return bytes.byteLength === value.sizeBytes && sha256(toHex(bytes)).slice(2) === value.sha256.toLowerCase();
+  } catch {
+    return false;
+  }
 }
 
 function validScenario(value: unknown): value is ProjectBudgetScenario {

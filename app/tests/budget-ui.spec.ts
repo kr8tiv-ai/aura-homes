@@ -60,8 +60,10 @@ test("the budget follows the active project and changes real system lines", asyn
   expect(savedQuote).toMatchObject({
     scenario: expect.objectContaining({ utilities: "serviced", salesTaxPct: 5 }),
     quote: {
-      version: 2,
+      version: 3,
       budgetHash: expect.stringMatching(/^0x[a-f0-9]{64}$/),
+      rfqId: null,
+      rfqHash: null,
       budgetBasis: {
         region: "Alberta",
         municipality: "Foothills County",
@@ -70,6 +72,7 @@ test("the budget follows the active project and changes real system lines", asyn
       },
     },
   });
+  await expect(page.getByText("No RFQ linked", { exact: true })).toBeVisible();
 
   await page.getByLabel("Project tax allowance percentage").fill("6");
   await expect(page.getByText("Planning basis changed after quote", { exact: true })).toBeVisible();

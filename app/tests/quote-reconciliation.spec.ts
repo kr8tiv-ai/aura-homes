@@ -1,4 +1,5 @@
 import { expect, test } from "playwright/test";
+import { sha256, toHex } from "viem";
 import { defaultBuilderDocument } from "@/lib/builder/document";
 import { createProjectBudget, defaultProjectBudgetScenario } from "@/lib/builder/projectBudget";
 import {
@@ -66,10 +67,24 @@ test("invalid quote evidence cannot enter a project", () => {
   expect(validateProjectQuote(quote()).ok).toBe(true);
   expect(validateProjectQuote({ ...quote(), lines: [{ ...quote().lines[0], amountCad: -1 }] }).ok).toBe(false);
   expect(validateProjectQuote({ ...quote(), evidence: { name: "quote.pdf", mediaType: "application/pdf", sizeBytes: 2, sha256: "not-a-hash", dataUrl: "data:application/pdf;base64,AA==" } }).ok).toBe(false);
+  const bytes = new TextEncoder().encode("vendor quote bytes");
+  const checksum = sha256(toHex(bytes)).slice(2);
+  const evidence = {
+    name: "quote.txt",
+    mediaType: "text/plain",
+    sizeBytes: bytes.byteLength,
+    sha256: checksum,
+    dataUrl: `data:text/plain;base64,${btoa(String.fromCharCode.apply(null, Array.from(bytes)))}`,
+  };
+  expect(validateProjectQuote({ ...quote(), evidence }).ok).toBe(true);
+  expect(validateProjectQuote({ ...quote(), evidence: { ...evidence, dataUrl: `data:text/plain;base64,${btoa("vendor quote bytez")}` } }).ok).toBe(false);
+  expect(validateProjectQuote({ ...quote(), evidence: { ...evidence, sizeBytes: evidence.sizeBytes + 1 } }).ok).toBe(false);
+  expect(validateProjectQuote({ ...quote(), evidence: { ...evidence, mediaType: "application/pdf" } }).ok).toBe(false);
 });
 
-test("version two quotes bind both hashes and explain changed planning inputs", () => {
-  expect(PROJECT_QUOTE_VERSION).toBe(2);
+test("current quotes bind budget and RFQ hashes and explain changed inputs", () => {
+  expect(PROJECT_QUOTE_VERSION).toBe(3);
+  const rfqHash = `0x${"1".repeat(64)}` as `0x${string}`;
   const latest = {
     ...quote(),
     format: PROJECT_QUOTE_FORMAT,
@@ -81,8 +96,11 @@ test("version two quotes bind both hashes and explain changed planning inputs", 
       scenario: budget.scenario,
       budgetCapCad: budget.cap?.capCad ?? null,
     },
+    rfqId: "rfq-shell-1",
+    rfqHash,
   };
   expect(validateProjectQuote(latest).ok).toBe(true);
+  expect(validateProjectQuote({ ...latest, rfqHash: null }).ok).toBe(false);
   const invalidTax = structuredClone(latest);
   invalidTax.budgetBasis.scenario.salesTaxPct = Number.POSITIVE_INFINITY;
   expect(validateProjectQuote(invalidTax).ok).toBe(false);
@@ -94,11 +112,18 @@ test("version two quotes bind both hashes and explain changed planning inputs", 
     municipality: "Nelson",
     budgetCapCad: 600_000,
   });
-  const result = reconcileProjectQuote(changedBudget, latest as never, "2026-08-12T00:00:00.000Z");
+  const result = reconcileProjectQuote(changedBudget, latest as never, "2026-08-12T00:00:00.000Z", [{ id: "rfq-shell-1", canonicalHash: rfqHash } as never]);
   expect((result as unknown as { basisState: string }).basisState).toBe("changed");
+  expect((result as unknown as { rfqLinkState: string }).rfqLinkState).toBe("matched");
   expect((result as unknown as { basisChanges: Array<{ field: string }> }).basisChanges.map((change) => change.field)).toEqual(expect.arrayContaining([
     "utilities", "finish", "delivery", "contingency", "tax", "region", "municipality", "budget-cap",
   ]));
+  const changedRfq = reconcileProjectQuote(budget, latest as never, "2026-08-12T00:00:00.000Z", [{ id: "rfq-shell-1", canonicalHash: `0x${"2".repeat(64)}` } as never]);
+  expect((changedRfq as unknown as { rfqLinkState: string }).rfqLinkState).toBe("changed");
+  const missingRfq = reconcileProjectQuote(budget, latest as never, "2026-08-12T00:00:00.000Z", []);
+  expect((missingRfq as unknown as { rfqLinkState: string }).rfqLinkState).toBe("missing");
+  const unlinked = reconcileProjectQuote(budget, { ...latest, rfqId: null, rfqHash: null } as never, "2026-08-12T00:00:00.000Z", []);
+  expect((unlinked as unknown as { rfqLinkState: string }).rfqLinkState).toBe("not-linked");
 });
 
 test("version one quotes remain readable and are identified as unbound to a canonical budget", () => {
@@ -111,4 +136,5 @@ test("version one quotes remain readable and are identified as unbound to a cano
   expect((result as unknown as { basisChanges: Array<{ field: string }> }).basisChanges).toEqual([
     expect.objectContaining({ field: "legacy" }),
   ]);
+  expect((result as unknown as { rfqLinkState: string }).rfqLinkState).toBe("legacy-unbound");
 });

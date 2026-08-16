@@ -154,6 +154,15 @@ test("project land and contractor choices become a hash-bound RFQ", async ({ pag
   await page.reload();
   await expect(page.getByRole("button", { name: "Download JSON package" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Build complete package" })).toBeVisible();
+
+  await page.goto("/budget");
+  await page.getByLabel("Vendor or contractor").fill("Prairie Field Build Ltd.");
+  await page.getByLabel("Description").fill("Shell package response");
+  await page.getByLabel("Amount CAD").fill("82000");
+  await page.getByLabel("Aura scope").selectOption("shell");
+  await page.getByLabel("RFQ basis").selectOption({ index: 1 });
+  await page.getByRole("button", { name: "Save and reconcile" }).click();
+  await expect(page.getByText("Matches prepared RFQ", { exact: true })).toBeVisible();
 });
 
 test("the buy catalog renders the honest card hierarchy with no ranking and no routing detail", async ({ page }) => {

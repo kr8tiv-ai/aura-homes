@@ -12,6 +12,7 @@ import {
   type ProjectQuoteLine,
   type QuoteEvidence,
 } from "@/lib/project/quoteReconciliation";
+import { validateProjectRfq, type ProjectRfqV2 } from "@/lib/project/rfq";
 import { useAuraProject } from "./ProjectContext";
 
 const cad = (value: number) => new Intl.NumberFormat("en-CA", {
@@ -27,14 +28,19 @@ export default function QuoteWorkbench({ budget }: { budget: ProjectBudget }) {
   const [vendor, setVendor] = useState("");
   const [validUntil, setValidUntil] = useState("");
   const [notes, setNotes] = useState("");
+  const [rfqId, setRfqId] = useState("");
   const [lines, setLines] = useState<ProjectQuoteLine[]>([blankLine()]);
   const [evidence, setEvidence] = useState<QuoteEvidence | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const quotes = useMemo(() => projectQuotesFromUnknown(project?.delivery.quotes ?? []), [project?.delivery.quotes]);
+  const rfqs = useMemo(() => (project?.delivery.rfqs ?? []).flatMap((value) => {
+    const checked = validateProjectRfq(value);
+    return checked.ok && checked.rfq.version === 2 ? [checked.rfq] : [];
+  }) as ProjectRfqV2[], [project?.delivery.rfqs]);
   const reconciled = useMemo(
-    () => quotes.map((quote) => reconcileProjectQuote(budget, quote, new Date().toISOString())),
-    [budget, quotes],
+    () => quotes.map((quote) => reconcileProjectQuote(budget, quote, new Date().toISOString(), rfqs)),
+    [budget, quotes, rfqs],
   );
 
   function changeLine(lineId: string, change: Partial<ProjectQuoteLine>) {
@@ -54,6 +60,7 @@ export default function QuoteWorkbench({ budget }: { budget: ProjectBudget }) {
     setSaving(true);
     setProblem(null);
     const now = new Date();
+    const linkedRfq = rfqs.find((rfq) => rfq.id === rfqId) ?? null;
     const checked = validateProjectQuote({
       format: PROJECT_QUOTE_FORMAT,
       version: PROJECT_QUOTE_VERSION,
@@ -70,6 +77,8 @@ export default function QuoteWorkbench({ budget }: { budget: ProjectBudget }) {
         scenario: budget.scenario,
         budgetCapCad: budget.cap?.capCad ?? null,
       },
+      rfqId: linkedRfq?.id ?? null,
+      rfqHash: linkedRfq?.canonicalHash ?? null,
       modelTotalMidCad: budget.total.mid,
       evidence,
       notes,
@@ -82,7 +91,7 @@ export default function QuoteWorkbench({ budget }: { budget: ProjectBudget }) {
         delivery: { ...current.delivery, quotes: [...current.delivery.quotes, checked.quote] },
         updatedAtISO: now.toISOString(),
       }));
-      setVendor(""); setValidUntil(""); setNotes(""); setLines([blankLine()]); setEvidence(null);
+      setVendor(""); setValidUntil(""); setNotes(""); setRfqId(""); setLines([blankLine()]); setEvidence(null);
     } catch (error) { setProblem(error instanceof Error ? error.message : String(error)); }
     finally { setSaving(false); }
   }
@@ -101,6 +110,7 @@ export default function QuoteWorkbench({ budget }: { budget: ProjectBudget }) {
             <label>Vendor or contractor<input value={vendor} onChange={(event) => setVendor(event.target.value)} required /></label>
             <label>Valid until<input type="date" value={validUntil} onChange={(event) => setValidUntil(event.target.value)} /></label>
           </div>
+          <label>RFQ basis<select value={rfqId} onChange={(event) => setRfqId(event.target.value)}><option value="">No linked RFQ — independently supplied quote</option>{rfqs.map((rfq) => <option key={rfq.id} value={rfq.id}>{rfq.scope.replaceAll("-", " ")} · {rfq.canonicalHash.slice(0, 12)}…</option>)}</select><span>{rfqs.length ? "Choose the exact package this response answers, or leave it explicitly unlinked." : "No prepared RFQ exists in this project yet; this quote will remain explicitly unlinked."}</span></label>
           <div className="quote-line-head"><span>Quote lines</span><button type="button" onClick={() => setLines((current) => [...current, blankLine()])}>+ Add line</button></div>
           <div className="quote-lines">
             {lines.map((line, index) => (
@@ -132,6 +142,11 @@ export default function QuoteWorkbench({ budget }: { budget: ProjectBudget }) {
                 {result.designChanged ? <span className="is-risk">Design changed after quote</span> : <span>Matches current design</span>}
                 {result.basisState === "changed" ? <span className="is-risk">Planning basis changed after quote</span> : null}
                 {result.basisState === "legacy-unbound" ? <span className="is-risk">Legacy quote · budget basis unbound</span> : null}
+                {result.rfqLinkState === "matched" ? <span>Matches prepared RFQ</span> : null}
+                {result.rfqLinkState === "not-linked" ? <span className="is-risk">No RFQ linked</span> : null}
+                {result.rfqLinkState === "missing" ? <span className="is-risk">Linked RFQ missing</span> : null}
+                {result.rfqLinkState === "changed" ? <span className="is-risk">Prepared RFQ changed</span> : null}
+                {result.rfqLinkState === "legacy-unbound" ? <span className="is-risk">Legacy quote · RFQ unbound</span> : null}
                 {result.unmappedLines.length ? <span className="is-risk">{result.unmappedLines.length} unmapped</span> : null}
                 {result.allowances.length ? <span>{result.allowances.length} allowance{result.allowances.length === 1 ? "" : "s"}</span> : null}
               </div>
