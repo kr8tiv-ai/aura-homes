@@ -92,55 +92,74 @@ more informative than the features:
   a video timestamp reading 72-84s
 - a locator had been passing for months by accident
 
-Gates now: 559 unit specs and 120 UI specs against a fresh static build.
+Gates now: 664 deterministic specs and 132 browser specs against a fresh static
+build, plus the typecheck.
 
 ---
 
 **8/**
 
-Next up: land. You cannot pick a plot yet and the reason is worth saying
-plainly.
+Land works now. You can state your own lot on /land — frontage, depth, setbacks,
+which way the front faces — press one button, and the builder checks your actual
+design against your actual rectangle. A 44 × 130 lot with 25/10/25 setbacks
+gives a 24 × 80 buildable envelope, and the fit check says whether the home you
+drew goes in it.
 
-The picking machinery is real and works end to end — choose a parcel and the
-builder re-checks your exact design against it. It just has nothing real to
-pick. The only parcels in there are four demonstration records, and the 156
-Edmonton zoning districts we baked in are rules, not lots. A zoning district
-does not know the size of your yard.
+Before this, the picking machinery was real and had nothing real to pick.
 
 ---
 
 **9/**
 
-The honest fix is two things: let you state your own lot, and bake the City's
-open property register so a real address resolves to a real zone and a real lot
-area.
+There is a live lookup too. Type an Edmonton address and the City's own property
+register answers with the real lot area and the real zone code — on a button
+press, never on load, and the page says where your typed address goes.
 
 What we will not do is pretend we have listings. Free, legal, redistributable
-listing data does not exist in Canada — active MLS needs a broker relationship.
-A property register says who owns what; it never says what is for sale, and we
-are not going to dress one up as the other.
+listing data does not exist in Canada. A property register records who owns what
+and never what is for sale.
 
 ---
 
 **10/**
 
-Also in build: more flat-roof, glass-led models.
+The library is 87 plans. The newest 15 are flat-roofed and glass-led.
 
-The library is 72 plans, but measured by roof form it still skews gable — 39
-gable, 36 shed, 21 flat — and only nine read as glass-led. The engine already
-supports flat roofs and full-height glazing, so this was never a limitation.
-Nobody had drawn them.
+Getting them in was the interesting part. They passed every geometric gate —
+zero overlapping openings, the real engine returning zero warnings where the
+existing plans return forty — and then failed an honesty review on eleven
+counts. One put 41% of its glass on north walls and never used the word "north"
+anywhere in its record.
 
-The constraint being designed against: this is Edmonton, 53.5° north. A glass
-wall facing north is a heat-loss problem, so the glass goes south and into
-sheltered courts, with overhangs sized to shade in summer.
+No automated gate could see it, because every plan discloses its glazing ratio
+correctly and a ratio is orientation-blind. There is a gate for it now: if a
+material share of your glass faces away from the sun, the plan has to say so.
 
 ---
 
 **11/**
 
+Two things we found in our own code this week, worth passing on.
+
+Glazing was priced per window. Every non-door opening counted as one unit, so a
+306 sq ft glass wall priced the same as a 4×4 casement — roughly a nineteen-fold
+understatement, in the direction that hurts somebody planning a build. It is
+priced by area now, from the same sourced band, with the arithmetic printed in
+the bill of materials.
+
+And a nineteen-commit wave passed its entire test suite while `tsc --noEmit` was
+red the whole time. Playwright transpiles each spec and never typechecks the
+project. One of those errors was a hipped roof cast into a type that has no hip
+— a real approximation somebody owed the reader, silenced by a cast. The
+compiler runs inside the gate now, and the drawing set says when a hip is drawn
+as a gable.
+
+---
+
+**12/**
+
 Open source, MIT: github.com/kr8tiv-ai/aura-homes
 Live: aurahomes.fun
 $HOMES is live on X Layer.
 
-Built for OKX BuildX AI Season. Submission is the 21st.
+Built for OKX BuildX AI Season.
