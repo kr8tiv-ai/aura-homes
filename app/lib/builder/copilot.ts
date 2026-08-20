@@ -375,7 +375,14 @@ function sameGraph(a: BuildingGraph, b: BuildingGraph): boolean {
 
 function candidateFor(document: BuilderDocument, action: PreparedAction): Candidate {
   const payload = action.payload;
-  const graphMode = document.geometry.kind === "building-graph";
+  /* THE GRAPH ITSELF, NOT A FLAG. A boolean answers the reader's question —
+     which mode is this — and answers the compiler's not at all: `graphMode`
+     cannot narrow `document.geometry`, so every later `document.geometry.graph`
+     was reaching into a union that may be legacy volumes. Holding the narrowed
+     value does both jobs, and `graphMode` stays for the branches that only
+     need to know the mode. */
+  const baseGraph = document.geometry.kind === "building-graph" ? document.geometry.graph : null;
+  const graphMode = baseGraph !== null;
 
   if (payload.via === "phrases") {
     if (graphMode) {
@@ -408,11 +415,11 @@ function candidateFor(document: BuilderDocument, action: PreparedAction): Candid
 
   if (payload.via === "scenario-move") {
     const moved = applyScenarioMove(document, payload.move);
-    if (graphMode) {
+    if (baseGraph) {
       if (moved.geometry.kind !== "building-graph") {
         return emptyCandidate(`The ${payload.move} move did not return planar graph geometry.`);
       }
-      if (sameGraph(moved.geometry.graph, document.geometry.graph)) {
+      if (sameGraph(moved.geometry.graph, baseGraph)) {
         return emptyCandidate(`The ${payload.move} move leaves this home exactly as it is.`);
       }
       return { spec: null, graph: moved.geometry.graph, say: [], problem: null };
@@ -424,14 +431,14 @@ function candidateFor(document: BuilderDocument, action: PreparedAction): Candid
   }
 
   if (payload.via === "graph-stretch") {
-    if (!graphMode) {
+    if (!baseGraph) {
       return emptyCandidate("A graph stretch cannot be applied to a legacy-volume project.");
     }
-    const stretched = stretchGraphPlan(document.geometry.graph, payload.kx, payload.kz);
+    const stretched = stretchGraphPlan(baseGraph, payload.kx, payload.kz);
     if (!stretched.ok) {
       return emptyCandidate(stretched.problem);
     }
-    if (sameGraph(stretched.graph, document.geometry.graph)) {
+    if (sameGraph(stretched.graph, baseGraph)) {
       return emptyCandidate("This stretch leaves the plan exactly as it is.");
     }
     return { spec: null, graph: stretched.graph, say: [], problem: null };

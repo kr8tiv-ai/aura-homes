@@ -8,7 +8,7 @@
  * can be derived consistently.
  */
 
-import type { HomeSpec, Volume, Wall } from "./spec";
+import type { HomeSpec, RoofForm, Volume, Wall } from "./spec";
 
 export const BUILDING_GRAPH_VERSION = 1 as const;
 const EPS = 1e-8;
@@ -17,6 +17,31 @@ export type GraphPoint = readonly [xFt: number, zFt: number];
 export type GraphWallKind = "external" | "partition";
 export type GraphOpeningKind = "window" | "door" | "glazing-wall";
 export type GraphRoofForm = "gable" | "hipped" | "shed" | "flat";
+
+/**
+ * A graph roof form as the LEGACY `RoofForm` union can express it.
+ *
+ * THE GRAPH KNOWS ONE ROOF THE SPEC DOES NOT. `RoofForm` is
+ * gable | a-frame | shed | flat | saltbox, with no hip, and the graph builds
+ * real hips — `buildRoofModel` has its own `form === "hipped"` branch. So every
+ * boundary that turns a graph storey back into a `Volume` has to answer what a
+ * hip becomes, and until now two of them answered by casting, which is how a
+ * roof the drawing cannot express became a type error rather than a disclosed
+ * approximation.
+ *
+ * A hip is a gable whose ends also slope, so `gable` is the nearest honest
+ * neighbour and the only one that keeps the ridge. It is still an
+ * APPROXIMATION and it is lossy in a direction that matters: a gable end is
+ * full height where a hip's is cut away, so anything reading headroom near the
+ * end walls from the mapped volume reads more room than the graph builds.
+ * Callers must say so rather than let the shape pass silently — the drawing
+ * model pushes a warning, and the fixture host names it in the palette.
+ */
+export const legacyRoofFormFor = (form: GraphRoofForm): RoofForm =>
+  form === "hipped" ? "gable" : form;
+
+/** True when `legacyRoofFormFor` had to give something up. */
+export const roofFormIsApproximated = (form: GraphRoofForm): boolean => form === "hipped";
 
 export interface GraphVertex {
   id: string;
@@ -1432,7 +1457,16 @@ export function stretchGraphPlan(graph: BuildingGraph, kx: number, kz: number): 
     });
     const roofZones = storey.roofZones.map((zone) => ({
       ...zone,
-      fallVector: zone.fallVector ? [zone.fallVector[0] * kx, zone.fallVector[1] * kz] : zone.fallVector,
+      /* The tuple has to be written as a tuple. An array literal widens to
+         number[], which `GraphPoint` — a readonly two-element tuple — will not
+         accept, and the loss is not cosmetic: a fall vector with one element
+         or three is a roof that slopes nowhere or in a direction the renderer
+         cannot read. `stretchPoint` is not reusable here because a fall vector
+         is a DIRECTION, not a position: it scales but must not be translated
+         about the centroid the way a vertex is. */
+      fallVector: zone.fallVector
+        ? ([zone.fallVector[0] * kx, zone.fallVector[1] * kz] as GraphPoint)
+        : zone.fallVector,
       ridge: zone.ridge
         ? { start: stretchPoint(zone.ridge.start), end: stretchPoint(zone.ridge.end) }
         : zone.ridge,

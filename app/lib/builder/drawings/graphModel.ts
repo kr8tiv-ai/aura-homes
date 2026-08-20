@@ -17,7 +17,14 @@
    NO THREE.JS. Same rule as `model.ts`: this module is plain numbers.
    =========================================================================== */
 
-import type { BuildingGraph, GraphOpening, GraphStorey, GraphWallEdge } from "@/lib/builder/buildingGraph";
+import {
+  legacyRoofFormFor,
+  roofFormIsApproximated,
+  type BuildingGraph,
+  type GraphOpening,
+  type GraphStorey,
+  type GraphWallEdge,
+} from "@/lib/builder/buildingGraph";
 import type { HomeSpec, OpeningKind, RoofForm, Volume, Wall } from "@/lib/builder/spec";
 import { WALL_R_VALUE } from "@/lib/design/materials";
 
@@ -95,7 +102,12 @@ export function nearestCompassWall(normal: Pt): Wall {
 
 const asOpeningKind = (kind: GraphOpening["kind"]): OpeningKind => kind;
 
-const asRoofForm = (form: GraphStorey["roofZones"][number]["form"]): RoofForm => form;
+/* A hip has no `RoofForm`, so the drawing shows its nearest neighbour and the
+   sheet set says so. See `legacyRoofFormFor` for why a gable is that neighbour
+   and what it costs. Casting here is what turned a disclosable approximation
+   into a type error. */
+const asRoofForm = (form: GraphStorey["roofZones"][number]["form"]): RoofForm =>
+  legacyRoofFormFor(form);
 
 function storeyVolume(storey: GraphStorey, outer: readonly Pt[]): Volume {
   const xs = outer.map((p) => p[0]);
@@ -248,6 +260,20 @@ export function buildHomeModelFromGraph(graph: BuildingGraph, spec: HomeSpec): H
     "The graph has no deck record, so no deck is drawn.",
     "Clear interior dimensions on A3 are the storey bounding box minus wall thickness; they are not a room schedule.",
   ];
+
+  /* A hip is drawn as a gable, because `RoofForm` has no hip and this set is
+     inked through it. The end walls are therefore drawn full height where the
+     graph cuts them away, which is the one place this translation reads
+     GENEROUS rather than conservative — so it is named on the set rather than
+     left for somebody to notice on site. Pushed only when a hip is actually
+     present: a standing sentence about a roof nobody drew is noise, and noise
+     is how a real caveat stops being read. */
+  if (graph.storeys.some((storey) => storey.roofZones.some((zone) => roofFormIsApproximated(zone.form)))) {
+    warnings.push(
+      "A hipped roof zone is drawn as a gable: the drawing set has no hip, so the end walls " +
+        "are shown at full height where the model cuts them back to the hip.",
+    );
+  }
   const wallT = wallThicknessFt(spec);
   const volumes = graph.storeys
     .map((storey) => volumeModelFromStorey(storey, wallT))

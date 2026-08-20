@@ -17,7 +17,7 @@
    faces, not to an angled graph edge. There is no graph deck.
    =========================================================================== */
 
-import type { BuildingGraph, GraphStorey } from "./buildingGraph";
+import { legacyRoofFormFor, type BuildingGraph, type GraphStorey } from "./buildingGraph";
 import type { BuilderDocument } from "./document";
 import type { HomeSpec, Opening, Volume, Wall } from "./spec";
 
@@ -101,7 +101,12 @@ function volumeFromStorey(storey: GraphStorey): Volume | null {
     storeys: 1,
     wallHeightFt: storey.heightFt,
     roof: {
-      form: zone ? zone.form : "flat",
+      /* A hip has no `RoofForm`. It maps to a gable, which reads FULL HEIGHT
+         at the end walls where the graph cuts them back — so a wall fixture
+         snapped near an end reads more headroom here than the model builds.
+         Named in the header translation list above, beside the floor clip and
+         the box faces, because this file is the one that promises to name them. */
+      form: zone ? legacyRoofFormFor(zone.form) : "flat",
       pitchDeg: zone?.pitchDeg ?? 0,
       overhangFt: 0,
     },

@@ -57,11 +57,24 @@ test("drawingModel for a graph document is the graph model, not the recovery rec
   if (document.geometry.kind !== "building-graph") return;
   const fromHelper = drawingModel(document);
   const fromGraph = buildHomeModelFromGraph(document.geometry.graph, document.spec);
-  expect(fromHelper.volumes.map((volume) => volume.id)).toEqual(
-    fromGraph.volumes.map((volume) => volume.id),
+  /* A `VolumeModel` HOLDS a spec volume rather than being one, so the id is a
+     level down; and the outer ring is per volume — `HomeModel` carries
+     `bounds`, not an `outer`. This spec asked for both as if the shapes were
+     flat, so it never compiled, which is worth saying out loud: it shipped in a
+     commit whose message says the drawings are checked against the graph model,
+     and `npx tsc --noEmit` was red the whole time.
+
+     Comparing every volume's ring is also stricter than the single outline it
+     replaces: a model that got the overall extent right while placing one
+     storey wrongly would pass an outline check and fails this one. */
+  expect(fromHelper.volumes.map((item) => item.volume.id)).toEqual(
+    fromGraph.volumes.map((item) => item.volume.id),
   );
   expect(fromHelper.totalFloorAreaSqFt).toBe(fromGraph.totalFloorAreaSqFt);
-  expect(fromHelper.outer).toEqual(fromGraph.outer);
+  expect(fromHelper.volumes.map((item) => item.outer)).toEqual(
+    fromGraph.volumes.map((item) => item.outer),
+  );
+  expect(fromHelper.bounds).toEqual(fromGraph.bounds);
 });
 
 test("DXF and IFC consume the graph model instead of refusing it", () => {
