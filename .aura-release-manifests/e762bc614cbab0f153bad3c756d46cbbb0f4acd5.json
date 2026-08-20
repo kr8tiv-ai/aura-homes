@@ -1,7 +1,7 @@
 {
   "releaseId": "e762bc614cbab0f153bad3c756d46cbbb0f4acd5",
   "createdAt": "2026-08-20T04:41:42.585Z",
-  "phase": "assets-staged",
+  "phase": "published",
   "assets": [
     "audio/forest-ambience-loop.mp3",
     "aura-mark.png",
@@ -164,5 +164,6 @@
     "kr8tiv-badge.png",
     "story/aura-landing-still-v2.jpg",
     "video/enter-poster.avif"
-  ]
+  ],
+  "publishedAt": "2026-08-20T04:42:58.494Z"
 }
