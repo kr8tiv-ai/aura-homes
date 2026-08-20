@@ -1,7 +1,12 @@
-x-article-cover-1600x900.png  — X article cover (16:9). Primary.
-x-article-cover-1600x800.png  — 2:1 timeline card.
+x-article-cover-1600x900.png  - X article cover (16:9). Primary, use this one.
+x-article-cover-1600x800.png  - 2:1 timeline card.
 
 Built by app/scripts/build-x-cover.mjs from plan portraits captured by
-app/scripts/capture-plan-portraits.mjs against the live site. The three
-plates are real plan diagrams with the captions the product printed.
-Palette and type quoted from assets/brand-kit/palette.json.
+app/scripts/capture-plan-portraits.mjs against the live site. The three plates
+are real plan diagrams with the captions the product printed - Horisont,
+Trappelys and Klarhet, from the flat-roof glass set. Palette and type are
+quoted from assets/brand-kit/palette.json.
+
+Re-run both, in order:
+  node app/scripts/capture-plan-portraits.mjs
+  node app/scripts/build-x-cover.mjs
