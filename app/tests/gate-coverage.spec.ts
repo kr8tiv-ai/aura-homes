@@ -280,6 +280,41 @@ test("the published plan count is the real plan count", () => {
     return false;
   };
 
+  /* AND THE OTHER HALF, WHICH THE ABOVE CANNOT SEE. Proximity proves the RIGHT
+     number is somewhere; it says nothing about a WRONG one sitting in the same
+     document. The library went 72 -> 87 and this gate stayed green while
+     SUBMISSION.md's own launch-post draft still read "The plan library hit 72",
+     because "87-plan library" appeared two rows above and satisfied the search.
+     A judge reads the post draft.
+
+     So every number written in the SHAPE of a plan count has to BE the plan
+     count. The shapes are the ones these documents actually use; a number in
+     any other phrasing is left alone, because widening this to "every integer
+     near the word plan" would fail on floor areas, bedroom counts and dates. */
+  const COUNT_SHAPES: readonly RegExp[] = [
+    /(\d+)[-\s]plan\b/gi,
+    /plan library (?:hit|is|has|reached|now holds|holds)\s+(\d+)/gi,
+    /library of (\d+) plans?\b/gi,
+    /(\d+) (?:editable |real )?plans? in the library/gi,
+  ];
+  const miscounts: string[] = [];
+  for (const [label, source] of [
+    ["README.md", readme],
+    ["docs/SUBMISSION.md", submission],
+  ] as const) {
+    for (const shape of COUNT_SHAPES) {
+      for (const hit of source.matchAll(shape)) {
+        if (Number(hit[1]) !== total) {
+          miscounts.push(`${label}: "${hit[0].trim()}" — the library holds ${total}`);
+        }
+      }
+    }
+  }
+  expect(
+    miscounts,
+    "a number written in the shape of a plan count is not the plan count. Proximity alone cannot catch this: the right number elsewhere in the file satisfies it while a stale one stays on the page.",
+  ).toEqual([]);
+
   expect(
     statesPlanCount(readme, String(total)) || statesPlanCount(readme, spelled(total)),
     `README.md does not state the real plan count (${total}) anywhere near the word "plan".`,

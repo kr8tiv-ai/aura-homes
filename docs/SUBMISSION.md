@@ -230,7 +230,7 @@ contracts stay off mainnet until a replacement design passes review."
 1. "Our land-fit pilot just rejected an example parcel: the sourced district
    rule requires 1,076 sq ft and the design was 800. It is a first screen, not
    a listing feed or permit decision."
-2. "The plan library hit 72 — including three 1960s USDA A-frames reborn
+2. "The plan library hit 87 — including three 1960s USDA A-frames reborn
    from public-domain federal drawings, provenance published per plan. The
    best plans ever drawn are free; someone just has to do the licence work."
 3. "Honesty corner: atmospheric water generation is recommended on every Aura
