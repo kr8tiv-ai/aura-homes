@@ -87,9 +87,47 @@ const artifact = {
   token: { address: TOKEN, name, symbol, decimals },
   totalSupply: { raw: totalSupply.toString(), tokens: asTokens(totalSupply.toString()) },
   knownHolders: balances,
+  /* COVERAGE IS DERIVED, NOT ASSERTED, and the reason is that the honest
+     sentence changed under us. The first run of this script found the three
+     published addresses holding ~95% of supply, so it carried a caveat saying a
+     full holder census would need an indexer. At the next read they hold
+     essentially all of it — which makes that caveat wrong in the flattering
+     direction for anybody else and the unflattering direction for us: there is
+     no unexamined 5%, and the true statement is stronger and more concentrated
+     than the hedge it replaced.
+
+     Computing it here means the sentence cannot go stale again while the page
+     that prints it stays confident. */
+  coverage: (() => {
+    /* Summed over `balances` rather than over three named holders, so adding a
+       fourth published address to the read cannot leave this sentence quietly
+       describing only three of them. */
+    const held = Object.values(balances).reduce((sum, holder) => sum + holder.tokens, 0);
+    const supply = asTokens(totalSupply.toString());
+    const pct = (held / supply) * 100;
+    const unaccounted = supply - held;
+    return {
+      publishedAddressTokens: held,
+      percentOfSupply: Number(pct.toFixed(6)),
+      unaccountedTokens: Number(unaccounted.toFixed(6)),
+      /* NOT A PERCENTAGE, once the percentage rounds to 100. 99.99999998% prints
+         as "100.0000%" at four decimals, and an exact 100 that is not exact is
+         precisely the kind of claim this project exists not to make. Above the
+         threshold the honest unit is the REMAINDER — a token count nobody has to
+         trust a rounding rule to read. */
+      sentence:
+        pct >= 99.999
+          ? `The published addresses hold all but ${unaccounted.toFixed(2)} HOMES of the ` +
+            `${supply.toLocaleString("en-CA")} minted at this block, so no indexer is needed ` +
+            `to say who holds this token.`
+          : `The published addresses hold ${pct.toFixed(2)}% of supply at this block. ` +
+            `The remaining ${(100 - pct).toFixed(2)}% sits with holders this read does not enumerate; ` +
+            `a full census needs an indexer and is out of scope here.`,
+    };
+  })(),
   notes: [
     "Read directly from the public X Layer RPC; no indexer, no third-party API.",
-    "knownHolders covers only the addresses the site already publishes (creator, venue locker, pool). A full holder census needs an indexer and is out of scope here.",
+    "knownHolders covers only the addresses the site already publishes (creator, venue locker, pool). See `coverage` for how much of supply that actually accounts for at this block — it is computed, not assumed.",
     "Compare knownHolders percentages against the DESIGN split (30/10/10/20/30) before ever presenting a design number as live.",
   ],
 };

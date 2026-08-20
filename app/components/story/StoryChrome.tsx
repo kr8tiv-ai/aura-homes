@@ -19,6 +19,8 @@ import { FOLLOW_INTENT } from "../SocialShareLinks";
 import { withBase } from "../../lib/basePath";
 import { GATE, type StoryAudience } from "./copy";
 
+import { HOMES_EXPLORER_URL } from "@/lib/homes/token";
+
 export const REPO_URL = "https://github.com/kr8tiv-ai/aura-homes";
 /* The star pill's destination. GitHub publishes no star-intent URL, so this
    uses the login?return_to pattern the star-button services (ghbtns class)
@@ -290,6 +292,15 @@ export function EnterGate({
         <p className="story-gate-sub">{GATE.sub}</p>
         {/* Both journeys are visible together — there is no hidden or default
             selection. Copy is the founder's verbatim pick (copy.ts GATE). */}
+        {/* ONE LINE, BECAUSE A REVIEWER SCROLLED AND CONCLUDED THE SITE WAS
+            BROKEN. The gate is a modal and the scroll lock beneath it
+            (`html.story-gated { overflow: hidden }`) is deliberate and correct —
+            the whole story scrolls normally the moment a path is chosen. But a
+            scrollbar is visible, the wheel does nothing, and nothing on screen
+            said the two cards were the way through. A lock that is right and
+            unexplained reads exactly like a page that is broken, and the first
+            fifteen seconds are the only ones some visitors spend. */}
+        <p className="story-gate-hint">Choose a path to enter</p>
         <div className="story-gate-paths" aria-label="Choose your journey">
           <button type="button" className="story-gate-path" onClick={() => go("project")} disabled={!hydrated || leaving}>
             <strong>{GATE.paths.project.title}</strong>
@@ -312,9 +323,23 @@ export function EnterGate({
             Forest sound {soundOn ? "on" : "off"}
           </button>
         </div>
+        {/* TWO FACTS, NOT ONE. This strip said "X Layer testnet" and stopped,
+            which is the wrong half of the story on the one screen every visitor
+            sees. $HOMES has been live on mainnet 196 since August 13; it is
+            Aura's OWN escrow and registry that stay on testnet, under the
+            recorded mainnet hold. Naming only the testnet under-claims the
+            strongest verifiable fact this project owns; naming only the mainnet
+            would over-claim the contracts. Both, in that order, is the accurate
+            sentence — and the address comes from `lib/homes/token.ts` rather
+            than a second copy pasted here. */}
         <p className="story-gate-proof">
           <a href={BUILDX_URL} target="_blank" rel="noreferrer">OKX Build X · AI Season 2026</a>
-          {" · "}<a href={XLAYER_URL} target="_blank" rel="noreferrer">X Layer testnet</a>
+          {" · "}
+          <a href={HOMES_EXPLORER_URL} target="_blank" rel="noreferrer">
+            $HOMES live on X Layer mainnet
+          </a>
+          {" · "}
+          <a href={XLAYER_URL} target="_blank" rel="noreferrer">Aura escrow on X Layer testnet</a>
           {" · HOMES trust and owner launchpad planned"}
         </p>
       </div>

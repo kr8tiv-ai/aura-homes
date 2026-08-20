@@ -16,6 +16,7 @@ import {
   currentHomesSnapshot,
 } from "@/lib/homes/fund";
 import { HOMES_TOKEN_ADDRESS, HOMES_TOKEN_CHAIN_ID } from "@/lib/homes/token";
+import mintVerification from "@data/homes/mint-verification.json";
 
 test("HOMES fee allocation is complete and sends 60 percent to the property fund", () => {
   expect(Object.values(HOMES_FEE_ALLOCATION).reduce((sum, share) => sum + share, 0)).toBe(100);
@@ -169,8 +170,23 @@ test("the profit ledger and distributions make fabricated numbers structurally i
 });
 
 test("the snapshot carries its last independently verified block", () => {
+  /* DERIVED FROM THE ARTIFACT, NOT PINNED TO A NUMBER. This asserted
+     67_921_152 and went red the first time anyone re-ran
+     `verify-homes-mint.mjs` — a script whose entire purpose is to be re-run.
+     A pin like that punishes the honest action and rewards leaving a stale
+     figure on the page, which is the opposite of what this suite is for.
+
+     What matters is that the snapshot reports the block the ARTIFACT was read
+     at rather than a number somebody typed, so compare the two directly. The
+     lower bound stops that comparison from passing by agreeing with itself: a
+     zeroed or truncated artifact would make both sides equal and this catches
+     it. The bound sits below the launch block and never needs moving. */
   const snapshot = currentHomesSnapshot();
-  expect(snapshot.chain.lastVerifiedBlock).toBe(67_921_152);
+  expect(snapshot.chain.lastVerifiedBlock).toBe(mintVerification.block);
+  expect(
+    snapshot.chain.lastVerifiedBlock ?? 0,
+    "the verified block is at or below the HOMES launch, so the artifact is empty or truncated",
+  ).toBeGreaterThan(67_000_000);
   expect(typeof snapshot.chain.verifiedAtISO).toBe("string");
   expect(snapshot.profitLedger).toEqual([]);
 });

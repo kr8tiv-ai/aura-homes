@@ -216,9 +216,12 @@ a permissionless launchpad on X Layer mainnet 196:
 The facts, once: this is a micro-cap on a permissionless venue — it can go to
 zero, locked liquidity is not a price floor, and the wrapped-stock quote asset
 can be paused by its issuer. Every address is published so you can verify
-instead of trust. The live mint is verified on-chain at block 67,921,152:
-1,000,000,000 HOMES total, 94.63% in the venue pool, 0.80% in the creator
-wallet — a launchpad curve, not the design split
+instead of trust. The live mint is verified on-chain: 1,000,000,000 HOMES total,
+with the venue pool and the creator wallet together holding all but a fraction of
+one token — a launchpad curve, not the design split. The exact balances and the
+block they were read at live in
+[the artifact](data/homes/mint-verification.json) rather than in this sentence,
+because they move whenever anyone trades
 ([reproduce the read](app/scripts/verify-homes-mint.mjs)).
 
 **The trust layer around it is being built in public.** No trust, staking,
@@ -296,7 +299,7 @@ Solidity + OpenZeppelin + Hardhat on X Layer. The active product direction is pr
 
 ## Verification
 
-The current release checkpoint (August 14, 2026, deploy `8e98b68`) produced:
+The current release checkpoint produced:
 
 | Suite | Result |
 | --- | ---: |

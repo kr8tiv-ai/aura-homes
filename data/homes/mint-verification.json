@@ -1,9 +1,9 @@
 {
   "schema": "HomesMintVerificationV1",
-  "verifiedAt": "2026-08-14T06:49:45.480Z",
+  "verifiedAt": "2026-08-20T08:16:30.242Z",
   "rpc": "https://rpc.xlayer.tech",
   "chainId": 196,
-  "block": 67921152,
+  "block": 68444752,
   "token": {
     "address": "0x642855d557ada1eba8a66014aaff902e6394c0de",
     "name": "Aura Homes",
@@ -29,14 +29,20 @@
     },
     "wspcxxPool": {
       "address": "0xf59d07dfe38807b398f0b4697f187d2f943b06a4",
-      "raw": "946330181878460633860582657",
-      "tokens": 946330181.87846,
-      "percentOfSupply": 94.63
+      "raw": "991980057484356052773437339",
+      "tokens": 991980057.484356,
+      "percentOfSupply": 99.19
     }
+  },
+  "coverage": {
+    "publishedAddressTokens": 999999999.7660661,
+    "percentOfSupply": 100,
+    "unaccountedTokens": 0.233934,
+    "sentence": "The published addresses hold all but 0.23 HOMES of the 1,000,000,000 minted at this block, so no indexer is needed to say who holds this token."
   },
   "notes": [
     "Read directly from the public X Layer RPC; no indexer, no third-party API.",
-    "knownHolders covers only the addresses the site already publishes (creator, venue locker, pool). A full holder census needs an indexer and is out of scope here.",
+    "knownHolders covers only the addresses the site already publishes (creator, venue locker, pool). See `coverage` for how much of supply that actually accounts for at this block — it is computed, not assumed.",
     "Compare knownHolders percentages against the DESIGN split (30/10/10/20/30) before ever presenting a design number as live."
   ]
 }

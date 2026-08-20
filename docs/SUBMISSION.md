@@ -6,8 +6,9 @@
 + an X post from the project account tagging @XLayerOfficial.*
 
 *This file is the CANONICAL home of the demo script — the copy that lived in
-[PHASED-ROADMAP.md](PHASED-ROADMAP.md) is a superseded pointer now. Every claim
-below maps to a row in [`docs/plans/registry/claims.json`](plans/registry/claims.json);
+[PHASED-ROADMAP.md](PHASED-ROADMAP.md) is a superseded pointer now. The
+load-bearing crypto and money claims below map to rows in
+[`docs/plans/registry/claims.json`](plans/registry/claims.json);
 every founder call maps to a dated row in
 [`decisions.json`](plans/registry/decisions.json). Numbers are quoted from their
 anchor, never retyped from another document.*
@@ -47,20 +48,33 @@ print a number it cannot prove.
 
 ### The live token, in full
 
-The mint is verified on-chain, not asserted. Read at block **67,921,152** from
-the public X Layer RPC and stored in
+The mint is verified on-chain, not asserted. Read from the public X Layer RPC
+and stored with its block number in
 [`data/homes/mint-verification.json`](../data/homes/mint-verification.json),
-reproducible with `node app/scripts/verify-homes-mint.mjs`:
+reproducible in seconds with `node app/scripts/verify-homes-mint.mjs`:
 
 | Fact | Value |
 |---|---|
 | Total supply | 1,000,000,000 HOMES |
-| Venue pool `0xf59d…b06a4` | 94.63% |
-| Creator wallet `0x5e8a…41de` | 0.80% |
-| Coverage | Published addresses only. A full holder census needs an indexer and was out of scope |
+| Venue pool `0xf59d…b06a4` | the large majority — exact share in the artifact |
+| Creator wallet `0x5e8a…41de` | under 1% — exact share in the artifact |
+| Coverage | The published addresses hold all but a fraction of one HOMES. No indexer needed |
 
-That is a launchpad bonding curve, not the 30/10/10/20/30 design split. The
-design split is a target and is labelled as one everywhere it appears.
+**The balances are deliberately not quoted here as numbers, and that is the
+point.** They move whenever anyone trades on the venue: an earlier read put the
+pool at 94.63%, and by the next it was over 99%, because launch buyers sold back
+into the curve. A percentage frozen into a document is a claim that goes stale
+without anyone touching it, so the artifact carries the figures and the block
+they were read at, and this table carries only what stays true.
+
+That coverage row is also a stronger statement than the one it replaces. The
+earlier read said a full holder census would need an indexer; at the current read
+the three published addresses account for all but 0.23 HOMES of the billion
+minted, so there is nothing left for an indexer to find.
+
+What that distribution describes is a launchpad bonding curve, not the
+30/10/10/20/30 design split. The design split is a target and is labelled as one
+everywhere it appears.
 
 The risk, stated once: this is a micro-cap launched through a permissionless
 venue factory that Aura did not write or audit. It can go to zero, locked
@@ -132,7 +146,7 @@ professional handoff.
 
 **Description (long):**
 Aura Homes turns an eco-home idea into one durable project record. Its guided
-and professional editors share a 25-item catalog of editable design starts.
+and professional editors share an 87-plan catalog of editable design starts.
 Each catalog entry names its source and licence. The editor creates schematic
 drawings and exchange files for review and handoff, not construction or permit
 sets.
@@ -172,7 +186,8 @@ the public ledger only when a receipt exists for it.
 
 **X Layer integration:** the $HOMES token is live on mainnet 196 through the
 XLaunch venue, with its contract, pool, locker, and creator fee-claim wallet
-published and its mint verified against the public RPC at block 67,921,152.
+published and its mint verified against the public RPC, at the block recorded in
+the artifact.
 Aura's own experimental escrow and registry contracts are deployed on testnet
 1952 as an isolated lab; the app reads their empty state and links to their
 OKLink creation receipts. Project, design, and budget records use deterministic
@@ -238,9 +253,11 @@ contracts stay off mainnet until a replacement design passes review."
    concept. Winter water still needs a confirmed well, cistern, or municipal
    source."
 4. "We read our own token's mint off the X Layer RPC instead of quoting our
-   design doc: 1B supply, 94.63% in the venue pool, 0.80% in the creator
-   wallet at block 67,921,152. That is a launchpad curve, not our 30/10/10/20/30
-   design split, and the site now shows both side by side."
+   design doc. 1B supply, and the venue pool plus the creator wallet hold all
+   but a fraction of one token — a launchpad curve, not our 30/10/10/20/30
+   design split, and the site shows both side by side. We stopped writing the
+   percentages into documents: they move every time anyone trades, so the
+   figures live in the artifact with the block they were read at."
 5. "The X Layer proof lab reads deployed experimental contracts on testnet
    1952. Their public state has zero milestones and zero home records. It is
    not Aura's checkout, escrow service, or evidence that physical work occurred."
@@ -255,7 +272,7 @@ contracts stay off mainnet until a replacement design passes review."
 
 ## Verification a judge can reproduce
 
-At the August 14, 2026 checkpoint:
+At the current release checkpoint:
 
 | Gate | Result |
 |---|---|

@@ -3172,6 +3172,18 @@ html.story-gated body { overflow: hidden; }
   margin-top: 1.1rem;
   margin-bottom: 1.55rem;
 }
+/* The line that tells a first-time visitor the two cards are the way through.
+   Quiet on purpose — it is an instruction, not a headline, and it sits directly
+   above the controls it describes so it is read in the same glance. */
+.story-gate-hint {
+  width: 100%;
+  margin: 0 0 0.55rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.66;
+}
+
 .story-gate-paths {
   width: 100%;
   display: grid;
