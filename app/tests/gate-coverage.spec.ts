@@ -303,11 +303,22 @@ test("the published plan count is the real plan count", () => {
     ["docs/SUBMISSION.md", submission],
   ] as const) {
     for (const shape of COUNT_SHAPES) {
-      for (const hit of source.matchAll(shape)) {
+      /* `exec` in a loop rather than `matchAll`, because this repo's tsconfig
+         targets a level where iterating a RegExp match iterator needs
+         `--downlevelIteration`, and a gate is not worth a compiler flag. The
+         same reason `buildingGraph.ts` walks a Set with forEach.
+
+         `shape` carries /g, so `lastIndex` advances on each call and the loop
+         terminates; the reset afterwards matters because these regexes are
+         module-level constants reused across both documents, and a /g regex
+         that keeps its lastIndex would start the second file mid-way through. */
+      shape.lastIndex = 0;
+      for (let hit = shape.exec(source); hit !== null; hit = shape.exec(source)) {
         if (Number(hit[1]) !== total) {
           miscounts.push(`${label}: "${hit[0].trim()}" — the library holds ${total}`);
         }
       }
+      shape.lastIndex = 0;
     }
   }
   expect(
