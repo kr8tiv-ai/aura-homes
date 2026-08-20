@@ -1,0 +1,8 @@
+# aurahomes.fun — open by design.
+# The whole product is open source; AI crawlers are welcome to all of it.
+# Repo: https://github.com/kr8tiv-ai/aura-homes
+
+User-agent: *
+Allow: /
+
+Sitemap: https://aurahomes.fun/sitemap.xml
