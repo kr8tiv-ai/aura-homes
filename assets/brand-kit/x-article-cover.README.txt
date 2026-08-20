@@ -1,0 +1,7 @@
+x-article-cover-1600x900.png  — X article cover (16:9). Primary.
+x-article-cover-1600x800.png  — 2:1 timeline card.
+
+Built by app/scripts/build-x-cover.mjs from plan portraits captured by
+app/scripts/capture-plan-portraits.mjs against the live site. The three
+plates are real plan diagrams with the captions the product printed.
+Palette and type quoted from assets/brand-kit/palette.json.
