@@ -157,7 +157,7 @@ import type * as THREE from "three";
 import {
   SEASON_LABEL,
   comfortPlates,
-  comfortReport,
+  comfortReportForDocument,
   fmt0,
   fmt1,
   type Season,
@@ -175,7 +175,8 @@ import {
 import type { BuildingGraph } from "@/lib/builder/buildingGraph";
 import { drawingSet, type DrawingRooms, type DrawingSetResult } from "@/lib/builder/drawings";
 import { buildHome, disposeHome, type HomeGeometry } from "@/lib/builder/geometry";
-import { buildGraphHome } from "@/lib/builder/graphGeometry";
+import { fixtureSpecForDocument } from "@/lib/builder/fixturesGraph";
+import { buildGraphHome, summarizeBuildingGraph } from "@/lib/builder/graphGeometry";
 import type { HomeSpec } from "@/lib/builder/spec";
 import { documentFromLocation } from "@/lib/builder/share";
 import type { BuilderSite } from "@/lib/builder/site";
@@ -215,7 +216,12 @@ import {
   type WallPlacement,
 } from "@/lib/builder/fixtures";
 import { documentSignature, readAutosave, writeAutosave } from "@/lib/builder/store";
-import { checkSpecAgainstParcel, planFromSpec, type PlanHandoff } from "@/lib/builder/toPlan";
+import {
+  checkMeasuredFootprintAgainstParcel,
+  checkSpecAgainstParcel,
+  planFromSpec,
+  type PlanHandoff,
+} from "@/lib/builder/toPlan";
 import AxonSheet from "./AxonSheet";
 import BuilderOrderHandoff from "./BuilderOrderHandoff";
 import CoPilot from "./CoPilot";
@@ -562,8 +568,10 @@ function reducer(state: EditorState, action: Action): EditorState {
    showing a stale sheet as though it were current. */
 interface Drawn {
   document: BuilderDocument;
-  /** the plan engine's sheet, plus the account of what the translation cost */
-  handoff: PlanHandoff;
+  /** the plan engine's sheet, plus the account of what the translation cost.
+   *  Null when the set was drawn from a planar graph — the engine solves a
+   *  rectangle from HomeSpec, which is the frozen recovery copy. */
+  handoff: PlanHandoff | null;
   /** the eight-sheet set drawn from the model itself */
   set: DrawingSetResult;
   /** the issue date stamped into every title block */
@@ -828,14 +836,30 @@ export default function BuilderApp() {
   const siteCheck = useMemo(() => {
     const parcel = state.doc.site?.parcel;
     if (!parcel) return null;
-    return checkSpecAgainstParcel(spec, {
+    const lot = {
       lotWidthFt: parcel.lotWidthFt,
       lotDepthFt: parcel.lotDepthFt,
       frontSetbackFt: parcel.frontSetbackFt,
       sideSetbackFt: parcel.sideSetbackFt,
       rearSetbackFt: parcel.rearSetbackFt,
-    });
-  }, [spec, state.doc.site]);
+    };
+    if (state.doc.geometry.kind === "building-graph") {
+      const summary = summarizeBuildingGraph(state.doc.geometry.graph);
+      const storeys = state.doc.geometry.graph.storeys.length > 1 ? 2 : 1;
+      return checkMeasuredFootprintAgainstParcel(
+        spec,
+        lot,
+        {
+          widthFt: summary.bounds.widthFt,
+          depthFt: summary.bounds.depthFt,
+          floorAreaSqFt: summary.totalFloorAreaSqFt,
+          storeys,
+        },
+        "building-graph",
+      );
+    }
+    return checkSpecAgainstParcel(spec, lot);
+  }, [spec, state.doc.geometry, state.doc.site]);
 
   const convertToPlanarGraph = useCallback(() => {
     const converted = convertBuilderDocumentToGraph(state.doc, 0.5);
@@ -986,8 +1010,11 @@ export default function BuilderApp() {
          to one question is how a clearance warning ends up contradicting the
          red box next to it. Disposal follows the same previous-value rule
          `home` does, and for the same StrictMode reason. */
+  /* EX03: after conversion the recovery spec's volumes are not the house on
+     screen. Fixture snap hosts are the graph storeys' bounding boxes. */
+  const fixtureSpec = useMemo(() => fixtureSpecForDocument(state.doc), [state.doc]);
   const { resolution: fixtureResolution, geometry: fixtureGeometry } = useFixtureGeometry(
-    spec,
+    fixtureSpec,
     fixtures,
     showClearances,
   );
@@ -1001,12 +1028,12 @@ export default function BuilderApp() {
   /* A clearance that is only visible on the tab that made it is a clearance
      nobody reads. These two are hoisted out of the palette and onto the page. */
   const clashes = useMemo(
-    () => (graphMode ? [] : fixtureResolution.issues.filter((i) => i.severity === "blocked")),
-    [fixtureResolution, graphMode],
+    () => fixtureResolution.issues.filter((i) => i.severity === "blocked"),
+    [fixtureResolution],
   );
   const worthChecking = useMemo(
-    () => (graphMode ? [] : fixtureResolution.issues.filter((i) => i.severity === "check")),
-    [fixtureResolution, graphMode],
+    () => fixtureResolution.issues.filter((i) => i.severity === "check"),
+    [fixtureResolution],
   );
 
   const sunPos = useMemo(() => sunPosition(sun.hour, sun.season), [sun]);
@@ -1024,10 +1051,10 @@ export default function BuilderApp() {
          `null` here is not "no comfort in the export": `exportPro` and
          `exportSemantic` derive the defaults when the option is OMITTED, so
          the export row hands them `undefined` rather than this null. */
-  const comfortWanted = !graphMode && (heatmap || workspace === "comfort" || workspace === "export");
+  const comfortWanted = heatmap || workspace === "comfort" || workspace === "export";
   const comfort = useMemo(
-    () => (comfortWanted ? comfortReport(spec, comfortSettings) : null),
-    [comfortWanted, spec, comfortSettings],
+    () => (comfortWanted ? comfortReportForDocument(state.doc, comfortSettings) : null),
+    [comfortWanted, comfortSettings, state.doc],
   );
 
   /* The overlay the viewport draws, built here so the frame change and the
@@ -1166,16 +1193,24 @@ export default function BuilderApp() {
   /* ---- the drawing */
   const stale = drawn !== null && drawn.document !== state.doc;
   const generate = useCallback(() => {
-    if (state.doc.geometry.kind === "building-graph") return;
-    const handoff = planFromSpec(spec);
+    const dateISO = new Date().toISOString().slice(0, 10);
+    const siteParcel = state.doc.site?.parcel ?? null;
+    const parcel = siteParcel
+      ? {
+          lotWidthFt: siteParcel.lotWidthFt,
+          lotDepthFt: siteParcel.lotDepthFt,
+          frontSetbackFt: siteParcel.frontSetbackFt,
+          sideSetbackFt: siteParcel.sideSetbackFt,
+          rearSetbackFt: siteParcel.rearSetbackFt,
+        }
+      : null;
 
-    /* The plan engine's solved rooms are handed STRAIGHT to the drawing set,
-       so sheet A3 carries the same room program the floor plan below it does.
-       Two drawings of one house that disagree about the rooms would be worse
-       than one drawing; `DrawingRooms` is structurally typed for exactly this
-       handoff, and the plan engine's frame (feet, origin top-left, +y down) is
-       already the frame the sheet wants. */
-    const plan = handoff.response?.plan ?? null;
+    const graph = state.doc.geometry.kind === "building-graph";
+    /* The plan engine solves a rectangle from HomeSpec. After conversion that
+       spec is a frozen recovery copy, so it is not asked. Rooms stay null and
+       the eight sheets consume the graph. */
+    const handoff = graph ? null : planFromSpec(spec);
+    const plan = handoff?.response?.plan ?? null;
     const rooms: DrawingRooms | null = plan
       ? {
           envelopeWidthFt: plan.width,
@@ -1183,19 +1218,6 @@ export default function BuilderApp() {
           rooms: plan.rooms.map((r) => ({ name: r.name, x: r.x, y: r.y, w: r.w, h: r.h })),
         }
       : null;
-
-    /* THE ONE CLOCK READ IN THE BUILDER, and it is not geometry: it is the
-       issue date in a title block, which is a fact about when a drawing was
-       produced. The drawing module refuses to read a clock itself precisely so
-       that this is a parameter — hand it the same date and the same spec and
-       the SVG is byte-identical. */
-    const dateISO = new Date().toISOString().slice(0, 10);
-
-    /* B-P1: the A1 SITE PLAN sheet has always known how to draw a parcel and
-       has always been handed nothing, so it printed its honest blank. The
-       Site step's answers reach it here — and only when they are real, so
-       an absent site still gets the blank rather than an invented lot. */
-    const siteParcel = state.doc.site?.parcel ?? null;
 
     setDrawn({
       document: state.doc,
@@ -1205,15 +1227,7 @@ export default function BuilderApp() {
         dateISO,
         projectName: spec.name,
         rooms,
-        parcel: siteParcel
-          ? {
-              lotWidthFt: siteParcel.lotWidthFt,
-              lotDepthFt: siteParcel.lotDepthFt,
-              frontSetbackFt: siteParcel.frontSetbackFt,
-              sideSetbackFt: siteParcel.sideSetbackFt,
-              rearSetbackFt: siteParcel.rearSetbackFt,
-            }
-          : null,
+        parcel,
       }),
       dateISO,
     });
@@ -1282,8 +1296,7 @@ export default function BuilderApp() {
        me see the plan". The set is generated on arrival when there is none —
        once, and never again on its own, because a REDRAW is a judgement about
        a model that has since moved and the pane already offers that as a
-       press. `generate` is a no-op in graph mode, where the sheets honestly
-       cannot be drawn at all. */
+       press. In graph mode the sheets now consume the graph itself. */
     if (drawn === null) generate();
   }, [drawn, generate]);
 
@@ -1606,10 +1619,15 @@ export default function BuilderApp() {
                   the rig renders null anyway.
 
                   The rig is UNCONDITIONAL because a walkthrough works in graph
-                  mode too; the fixtures and the grips are not, because neither
-                  has graph-mode geometry to attach to yet. */
+                  mode too. Fixtures now attach to graph storey hosts. Opening
+                  grips still belong to the legacy spec. */
               houseChildren={
                 <>
+                  <FixtureLayer
+                    geometry={fixtureGeometry}
+                    selectedId={activeFixtureId}
+                    onSelect={pickFixture}
+                  />
                   {graphMode ? (
                     <>
                       <GraphCanvasEditor
@@ -1622,11 +1640,6 @@ export default function BuilderApp() {
                     </>
                   ) : (
                     <>
-                      <FixtureLayer
-                        geometry={fixtureGeometry}
-                        selectedId={activeFixtureId}
-                        onSelect={pickFixture}
-                      />
                       {/* The grips are 3D-only ON PURPOSE, not by omission: the
                           plan view has its own drag handles inside Plan2D, and
                           two live grip sets over one wall would fight for the
@@ -1828,6 +1841,7 @@ export default function BuilderApp() {
               <VariationStrip
                 document={state.doc}
                 onApply={edit}
+                onApplyGraph={editGraph}
                 region={auraProject?.requirements.location.region ?? "Alberta"}
                 municipality={auraProject?.requirements.location.municipality ?? ""}
                 scenario={auraProject?.budgetBasis?.scenario}
@@ -1899,15 +1913,15 @@ export default function BuilderApp() {
           {/* AI01 — the co-pilot, beside the read-out that raised most of what
               it talks about. Off in the plan route for the same reason the undo
               bar and the surface picker are: that screen is read-only, and a
-              panel offering to change the design on it would not be. It is NOT
-              gated on graph mode — `readCoPilot` refuses a planar-graph project
-              in its own words, and a panel that explains why it is silent is
-              worth more than one that vanishes. */}
+              panel offering to change the design on it would not be. Graph
+              glazing writes through `editGraph`; phrase resize and opening
+              refit still refuse in the module's own words. */}
           {planRoute ? null : (
             <CoPilot
               document={state.doc}
               parcelCheck={siteCheck}
               onApply={edit}
+              onApplyGraph={editGraph}
               region={auraProject?.requirements.location.region ?? "Alberta"}
               municipality={auraProject?.requirements.location.municipality ?? ""}
               scenario={auraProject?.budgetBasis?.scenario}
@@ -2064,12 +2078,9 @@ export default function BuilderApp() {
               is why `FixtureLayer` is mounted with the model and a click there
               opens this tab. */}
           <Pane on={workspace === "fixtures"}>
-            {graphMode ? (
-              <GraphPending feature="Fixture placement" />
-            ) : (
-              <>
+            <>
                 <FixturePalette
-                  spec={spec}
+                  spec={fixtureSpec}
                   value={fixtures}
                   onChange={editFixtures}
                   selectedId={activeFixtureId}
@@ -2084,12 +2095,12 @@ export default function BuilderApp() {
               fifteen inches of a wall turns square and seats flat against it, and a solar array is held
               inside a roof-edge setback — snapping is doing something a free drag cannot express, and
               the numbers you set here are the numbers that reach the schedule. Fixtures travel in the
-              .glb, project file, share links, library saves and autosave. They are not yet represented
-              on the legacy drawing set, in DXF or in IFC; those writers still derive their shell from
-              HomeSpec, and each export names that limitation.
+              .glb, project file, share links, library saves and autosave.
+              {graphMode
+                ? " In planar-graph mode they sit on each storey's bounding box, not on the frozen recovery volumes, and not on the true slab polygon. There is no graph deck."
+                : " They are not yet represented on the drawing set, in DXF or in IFC; those writers still derive their shell from HomeSpec, and each export names that limitation."}
                 </p>
               </>
-            )}
           </Pane>
 
           {/* ============================================================ COMFORT
@@ -2103,9 +2114,7 @@ export default function BuilderApp() {
               season and the heatmap all live in `BuilderApp`, so leaving and
               coming back finds everything exactly as it was. */}
           <Pane on={workspace === "comfort"}>
-            {graphMode ? (
-              <GraphPending feature="Comfort spaces" />
-            ) : workspace === "comfort" && comfort ? (
+            {workspace === "comfort" && comfort ? (
               <ComfortPanel
                 report={comfort}
                 settings={comfortSettings}
@@ -2150,17 +2159,6 @@ export default function BuilderApp() {
               <Button onClick={leavePlanRoute}>Back to {activeGuidedStep.label}</Button>
             </div>
           ) : null}
-          {graphMode ? (
-            <GraphPending
-              feature="Professional drawings"
-              /* Gate 3 of the VW03 contract: the block stays, and it names what
-                 the person can do instead of leaving them at a dead end. Both
-                 sentences are things this build actually offers — the
-                 conversion is an ordinary undoable edit (see the Shape pane's
-                 own copy), and `.aura.json` carries the graph itself. */
-              instead="Undo returns through the conversion to the recovery HomeSpec, and the eight-sheet set draws from that. To keep the graph and still hand somebody a file today, the Export workspace writes .aura.json, which carries the exact planar geometry."
-            />
-          ) : (
           <>
           <section className="rounded-xl border border-aura-emerald p-6">
             <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -2172,13 +2170,9 @@ export default function BuilderApp() {
               ) : null}
             </div>
             <p className="mt-3 max-w-3xl text-sm leading-relaxed text-aura-text/75">
-              The same object you have been dragging goes two ways at once. To the deterministic plan
-              engine — the one the design page uses — which solves a room program and returns a
-              dimensioned sheet at 1/4&quot; = 1&apos;-0&quot;, with every cost of that translation
-              itemised, because it solves ONE rectangle and you may well have built something else. And
-              to the drawing engine, which draws your model directly: site, foundation, roof plan, all
-              four elevations, a building section and the schedules. Both run in this browser — no
-              server, no key, no wait.
+              {graphMode
+                ? "These eight sheets are drawn from the planar graph on screen — slabs, walls and openings — not from the frozen recovery HomeSpec. The plan engine is not asked to invent a rectangle. Elevations still silhouette each storey as its bounding box; that limit is named on the cover."
+                : "The same object you have been dragging goes two ways at once. To the deterministic plan engine — the one the design page uses — which solves a room program and returns a dimensioned sheet at 1/4\" = 1'-0\", with every cost of that translation itemised, because it solves ONE rectangle and you may well have built something else. And to the drawing engine, which draws your model directly: site, foundation, roof plan, all four elevations, a building section and the schedules. Both run in this browser — no server, no key, no wait."}
             </p>
             <div className="mt-5 flex flex-wrap items-center gap-3">
               <button
@@ -2215,9 +2209,19 @@ export default function BuilderApp() {
 
           {drawn ? (
             <>
-              {/* The account of the translation leads, then the plan engine's own
-                  sheet, then the eight sheets drawn from the model itself. */}
-              <PlanSheet handoff={drawn.handoff} />
+              {drawn.handoff ? (
+                <PlanSheet handoff={drawn.handoff} />
+              ) : (
+                <section className="aura-panel mt-8 p-6">
+                  <p className="aura-label">Drawn from the planar graph</p>
+                  <p className="mt-3 max-w-3xl text-sm leading-relaxed text-aura-text/70">
+                    The plan engine solves one rectangle from a HomeSpec. After conversion that
+                    spec is a frozen recovery copy, so it was not asked. The eight sheets below
+                    are inked from the graph&rsquo;s own slabs and walls. Elevations still
+                    silhouette each storey as its bounding box; that limit is named on the cover.
+                  </p>
+                </section>
+              )}
               {/* The hash is taken over the document the SET was generated
                   from — `drawn.document`, not the live one — so a PDF saved
                   after a later edit still identifies the design it actually
@@ -2260,7 +2264,6 @@ export default function BuilderApp() {
             </div>
           ) : null}
           </>
-          )}
           </Pane>
 
           {/* ============================================================= EXPORT */}

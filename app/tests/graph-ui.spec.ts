@@ -43,8 +43,9 @@ test("planar conversion drives the visible plan, 3D model and honest exports", a
   await expect(
     page.getByText("The project file, share link, glTF and OBJ below use the current graph-backed design", { exact: false }),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: "Download .dxf" })).toBeDisabled();
-  await expect(page.getByRole("button", { name: "Download .ifc", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Download .dxf" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Download .ifc", exact: true })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Download .ifcjson" })).toBeEnabled();
   await expect(page.getByRole("button", { name: "Download .aura.json" })).toBeEnabled();
 });
 

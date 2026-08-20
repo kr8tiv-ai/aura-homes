@@ -8,7 +8,7 @@
  * can be derived consistently.
  */
 
-import type { HomeSpec, Volume, Wall } from "./spec";
+import type { HomeSpec, RoofForm, Volume, Wall } from "./spec";
 
 export const BUILDING_GRAPH_VERSION = 1 as const;
 const EPS = 1e-8;
@@ -17,6 +17,31 @@ export type GraphPoint = readonly [xFt: number, zFt: number];
 export type GraphWallKind = "external" | "partition";
 export type GraphOpeningKind = "window" | "door" | "glazing-wall";
 export type GraphRoofForm = "gable" | "hipped" | "shed" | "flat";
+
+/**
+ * A graph roof form as the LEGACY `RoofForm` union can express it.
+ *
+ * THE GRAPH KNOWS ONE ROOF THE SPEC DOES NOT. `RoofForm` is
+ * gable | a-frame | shed | flat | saltbox, with no hip, and the graph builds
+ * real hips — `buildRoofModel` has its own `form === "hipped"` branch. So every
+ * boundary that turns a graph storey back into a `Volume` has to answer what a
+ * hip becomes, and until now two of them answered by casting, which is how a
+ * roof the drawing cannot express became a type error rather than a disclosed
+ * approximation.
+ *
+ * A hip is a gable whose ends also slope, so `gable` is the nearest honest
+ * neighbour and the only one that keeps the ridge. It is still an
+ * APPROXIMATION and it is lossy in a direction that matters: a gable end is
+ * full height where a hip's is cut away, so anything reading headroom near the
+ * end walls from the mapped volume reads more room than the graph builds.
+ * Callers must say so rather than let the shape pass silently — the drawing
+ * model pushes a warning, and the fixture host names it in the palette.
+ */
+export const legacyRoofFormFor = (form: GraphRoofForm): RoofForm =>
+  form === "hipped" ? "gable" : form;
+
+/** True when `legacyRoofFormFor` had to give something up. */
+export const roofFormIsApproximated = (form: GraphRoofForm): boolean => form === "hipped";
 
 export interface GraphVertex {
   id: string;
@@ -1142,6 +1167,334 @@ export function addGraphOpening(
   return checked.ok ? { ok: true, graph: candidate } : fail(graph, checked.problem);
 }
 
+/**
+ * Change one opening's box on its host wall. Topology stays put. Zero or
+ * non-finite dimensions are refused; hanging off the wall or overlapping a
+ * neighbour is refused by `validateBuildingGraph` in the same words the
+ * add-and-split path already uses.
+ */
+export function setGraphOpening(
+  graph: BuildingGraph,
+  storeyId: string,
+  wallId: string,
+  openingId: string,
+  box: { offsetFt: number; widthFt: number; sillFt: number; heightFt: number },
+): GraphMutation {
+  const storey = graph.storeys.find((item) => item.id === storeyId);
+  if (!storey) return fail(graph, `Storey ${storeyId} does not exist.`);
+  const wall = storey.walls.find((item) => item.id === wallId);
+  if (!wall) return fail(graph, `Wall ${wallId} does not exist.`);
+  const opening = wall.openings.find((item) => item.id === openingId);
+  if (!opening) return fail(graph, `Opening ${openingId} does not exist on ${wallId}.`);
+  const snapped = {
+    offsetFt: Math.round(box.offsetFt * 100) / 100,
+    widthFt: Math.round(box.widthFt * 100) / 100,
+    sillFt: Math.round(box.sillFt * 100) / 100,
+    heightFt: Math.round(box.heightFt * 100) / 100,
+  };
+  if (
+    !finite(snapped.offsetFt) ||
+    !finite(snapped.widthFt) ||
+    !finite(snapped.sillFt) ||
+    !finite(snapped.heightFt)
+  ) {
+    return fail(graph, `Opening ${openingId} needs finite offset, width, sill and height.`);
+  }
+  if (snapped.widthFt <= EPS || snapped.heightFt <= EPS) {
+    return fail(graph, `Opening ${openingId} width and height must be greater than zero.`);
+  }
+  if (
+    snapped.offsetFt === opening.offsetFt &&
+    snapped.widthFt === opening.widthFt &&
+    snapped.sillFt === opening.sillFt &&
+    snapped.heightFt === opening.heightFt
+  ) {
+    return { ok: true, graph };
+  }
+  const candidateStorey = {
+    ...storey,
+    walls: storey.walls.map((item) =>
+      item.id === wallId
+        ? {
+            ...item,
+            openings: item.openings.map((candidate) =>
+              candidate.id === openingId ? { ...candidate, ...snapped } : candidate,
+            ),
+          }
+        : item,
+    ),
+  };
+  const candidate = graphWithStorey(graph, candidateStorey);
+  const checked = validateBuildingGraph(candidate);
+  return checked.ok ? { ok: true, graph: candidate } : fail(graph, checked.problem);
+}
+
+/** Same buildable step `scenarios.ts` uses so a graph move and a spec move
+ *  cannot disagree about what "60% of this opening" lands on. */
+const GRAPH_STEP_FT = 0.25;
+const stepGraphDown = (value: number): number => Math.floor(value / GRAPH_STEP_FT) * GRAPH_STEP_FT;
+const spansOverlap = (a0: number, a1: number, b0: number, b1: number): boolean =>
+  Math.min(a1, b1) - Math.max(a0, b0) > 1e-9;
+const isGlazedOpening = (opening: GraphOpening): boolean => opening.kind !== "door";
+
+/**
+ * Every glazed opening scaled on its host wall. Doors stay put — they still
+ * act as obstacles — matching `scaleGlass` in scenarios.ts so the Impact
+ * panel and the co-pilot write the same house they already write for a spec.
+ *
+ * Height first, then width, each clamped to the storey head / wall run and
+ * to the first neighbour in that direction. A failed validation returns the
+ * input graph unchanged.
+ */
+export function scaleGraphOpenings(graph: BuildingGraph, factor: number): GraphMutation {
+  if (!finite(factor) || factor <= 0) return fail(graph, "Opening scale factor must be positive.");
+  const grow = factor > 1;
+  const storeys = graph.storeys.map((storey) => {
+    const head = storey.heightFt;
+    return {
+      ...storey,
+      walls: storey.walls.map((wall) => {
+        const run = wallLength(storey, wall);
+        if (!finite(run)) return wall;
+
+        const heights = wall.openings.map((opening) => {
+          if (!isGlazedOpening(opening)) return opening.heightFt;
+          if (!grow) {
+            return Math.min(
+              opening.heightFt,
+              Math.max(GRAPH_STEP_FT, stepGraphDown(opening.heightFt * factor)),
+            );
+          }
+          let ceiling = head;
+          for (const other of wall.openings) {
+            if (other === opening) continue;
+            const above = other.sillFt >= opening.sillFt + opening.heightFt - 1e-9;
+            if (!above) continue;
+            if (
+              spansOverlap(
+                opening.offsetFt,
+                opening.offsetFt + opening.widthFt,
+                other.offsetFt,
+                other.offsetFt + other.widthFt,
+              )
+            ) {
+              ceiling = Math.min(ceiling, other.sillFt);
+            }
+          }
+          const room = ceiling - opening.sillFt;
+          return Math.max(opening.heightFt, Math.min(stepGraphDown(opening.heightFt * factor), room));
+        });
+
+        const widths = wall.openings.map((opening, index) => {
+          if (!isGlazedOpening(opening)) return opening.widthFt;
+          if (!grow) {
+            return Math.min(
+              opening.widthFt,
+              Math.max(GRAPH_STEP_FT, stepGraphDown(opening.widthFt * factor)),
+            );
+          }
+          const y0 = opening.sillFt;
+          const y1 = opening.sillFt + heights[index];
+          let edge = run;
+          wall.openings.forEach((other, otherIndex) => {
+            if (otherIndex === index) return;
+            const right = other.offsetFt >= opening.offsetFt + opening.widthFt - 1e-9;
+            if (!right) return;
+            const oy0 = other.sillFt;
+            const oy1 = other.sillFt + heights[otherIndex];
+            if (spansOverlap(y0, y1, oy0, oy1)) edge = Math.min(edge, other.offsetFt);
+          });
+          const room = edge - opening.offsetFt;
+          return Math.max(opening.widthFt, Math.min(stepGraphDown(opening.widthFt * factor), room));
+        });
+
+        return {
+          ...wall,
+          openings: wall.openings.map((opening, index) => ({
+            ...opening,
+            widthFt: widths[index],
+            heightFt: heights[index],
+          })),
+        };
+      }),
+    };
+  });
+  const candidate: BuildingGraph = { ...graph, storeys };
+  const checked = validateBuildingGraph(candidate);
+  return checked.ok ? { ok: true, graph: candidate } : fail(graph, checked.problem);
+}
+
+const scalePoint = (point: GraphPoint, factor: number): GraphPoint => [
+  point[0] * factor,
+  point[1] * factor,
+];
+
+/**
+ * Similarity about the site origin. Vertices, stairs, shafts and roof
+ * guides scale; openings keep their modelled sizes so the glass stays the
+ * glass that was drawn while the wall denominator grows — the same
+ * contract `scaleFootprint` keeps for a rectangular spec.
+ */
+export function scaleGraphPlan(graph: BuildingGraph, factor: number): GraphMutation {
+  if (!finite(factor) || factor <= 0) return fail(graph, "Plan scale factor must be positive.");
+  if (factor === 1) return { ok: true, graph };
+  const storeys = graph.storeys.map((storey) => {
+    const vertices = storey.vertices.map((vertex) => ({
+      ...vertex,
+      xFt: vertex.xFt * factor,
+      zFt: vertex.zFt * factor,
+    }));
+    const roofZones = storey.roofZones.map((zone) => ({
+      ...zone,
+      fallVector: zone.fallVector ? scalePoint(zone.fallVector, factor) : zone.fallVector,
+      ridge: zone.ridge
+        ? { start: scalePoint(zone.ridge.start, factor), end: scalePoint(zone.ridge.end, factor) }
+        : zone.ridge,
+    }));
+    const next: GraphStorey = { ...storey, vertices, roofZones };
+    return { ...next, rooms: deriveRoomFaces(next, storey.rooms) };
+  });
+  const stairs = graph.stairs?.map((stair) => ({
+    ...stair,
+    start: scalePoint(stair.start, factor),
+    end: scalePoint(stair.end, factor),
+    widthFt: Math.max(stair.widthFt, stepGraphDown(stair.widthFt * factor)),
+  }));
+  const shafts = graph.shafts?.map((shaft) => ({
+    ...shaft,
+    centre: scalePoint(shaft.centre, factor),
+    widthFt: Math.max(shaft.widthFt, stepGraphDown(shaft.widthFt * factor)),
+    depthFt: Math.max(shaft.depthFt, stepGraphDown(shaft.depthFt * factor)),
+  }));
+  const candidate: BuildingGraph = {
+    ...graph,
+    storeys,
+    ...(stairs ? { stairs } : {}),
+    ...(shafts ? { shafts } : {}),
+  };
+  const checked = validateBuildingGraph(candidate);
+  return checked.ok ? { ok: true, graph: candidate } : fail(graph, checked.problem);
+}
+
+const rotatePoint = (point: GraphPoint, cos: number, sin: number): GraphPoint => [
+  point[0] * cos - point[1] * sin,
+  point[0] * sin + point[1] * cos,
+];
+
+/**
+ * Rotation about the site origin. Vertices, stairs, shafts and roof guides
+ * turn; openings stay wall-relative so they come with the walls. Same
+ * contract `rotateHome` keeps for a rectangular spec: the glass does not
+ * change size, only which way the house faces.
+ */
+export function rotateGraphPlan(graph: BuildingGraph, deg: number): GraphMutation {
+  if (!finite(deg)) return fail(graph, "Plan rotation must be a finite number of degrees.");
+  const turns = ((deg % 360) + 360) % 360;
+  if (turns === 0) return { ok: true, graph };
+  const radians = (turns * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const storeys = graph.storeys.map((storey) => {
+    const vertices = storey.vertices.map((vertex) => {
+      const [xFt, zFt] = rotatePoint([vertex.xFt, vertex.zFt], cos, sin);
+      return { ...vertex, xFt, zFt };
+    });
+    const roofZones = storey.roofZones.map((zone) => ({
+      ...zone,
+      fallVector: zone.fallVector ? rotatePoint(zone.fallVector, cos, sin) : zone.fallVector,
+      ridge: zone.ridge
+        ? { start: rotatePoint(zone.ridge.start, cos, sin), end: rotatePoint(zone.ridge.end, cos, sin) }
+        : zone.ridge,
+    }));
+    const next: GraphStorey = { ...storey, vertices, roofZones };
+    return { ...next, rooms: deriveRoomFaces(next, storey.rooms) };
+  });
+  const stairs = graph.stairs?.map((stair) => ({
+    ...stair,
+    start: rotatePoint(stair.start, cos, sin),
+    end: rotatePoint(stair.end, cos, sin),
+  }));
+  const shafts = graph.shafts?.map((shaft) => ({
+    ...shaft,
+    centre: rotatePoint(shaft.centre, cos, sin),
+  }));
+  const candidate: BuildingGraph = {
+    ...graph,
+    storeys,
+    ...(stairs ? { stairs } : {}),
+    ...(shafts ? { shafts } : {}),
+  };
+  const checked = validateBuildingGraph(candidate);
+  return checked.ok ? { ok: true, graph: candidate } : fail(graph, checked.problem);
+}
+
+/**
+ * Stretch about the plan centroid: X × kx and Z × kz. Area is preserved when
+ * kx × kz = 1. Openings stay wall-relative; a wall that becomes shorter than
+ * its glass is refused by validation rather than silently trimmed.
+ */
+export function stretchGraphPlan(graph: BuildingGraph, kx: number, kz: number): GraphMutation {
+  if (!finite(kx) || !finite(kz) || kx <= 0 || kz <= 0) {
+    return fail(graph, "Plan stretch factors must be positive.");
+  }
+  if (kx === 1 && kz === 1) return { ok: true, graph };
+  const vertices = graph.storeys.flatMap((storey) => storey.vertices);
+  if (vertices.length === 0) return fail(graph, "There is no plan to stretch.");
+  const minX = Math.min(...vertices.map((vertex) => vertex.xFt));
+  const maxX = Math.max(...vertices.map((vertex) => vertex.xFt));
+  const minZ = Math.min(...vertices.map((vertex) => vertex.zFt));
+  const maxZ = Math.max(...vertices.map((vertex) => vertex.zFt));
+  const cx = (minX + maxX) / 2;
+  const cz = (minZ + maxZ) / 2;
+  const stretchPoint = (point: GraphPoint): GraphPoint => [
+    cx + (point[0] - cx) * kx,
+    cz + (point[1] - cz) * kz,
+  ];
+  const storeys = graph.storeys.map((storey) => {
+    const nextVertices = storey.vertices.map((vertex) => {
+      const [xFt, zFt] = stretchPoint([vertex.xFt, vertex.zFt]);
+      return { ...vertex, xFt, zFt };
+    });
+    const roofZones = storey.roofZones.map((zone) => ({
+      ...zone,
+      /* The tuple has to be written as a tuple. An array literal widens to
+         number[], which `GraphPoint` — a readonly two-element tuple — will not
+         accept, and the loss is not cosmetic: a fall vector with one element
+         or three is a roof that slopes nowhere or in a direction the renderer
+         cannot read. `stretchPoint` is not reusable here because a fall vector
+         is a DIRECTION, not a position: it scales but must not be translated
+         about the centroid the way a vertex is. */
+      fallVector: zone.fallVector
+        ? ([zone.fallVector[0] * kx, zone.fallVector[1] * kz] as GraphPoint)
+        : zone.fallVector,
+      ridge: zone.ridge
+        ? { start: stretchPoint(zone.ridge.start), end: stretchPoint(zone.ridge.end) }
+        : zone.ridge,
+    }));
+    const next: GraphStorey = { ...storey, vertices: nextVertices, roofZones };
+    return { ...next, rooms: deriveRoomFaces(next, storey.rooms) };
+  });
+  const stairs = graph.stairs?.map((stair) => ({
+    ...stair,
+    start: stretchPoint(stair.start),
+    end: stretchPoint(stair.end),
+  }));
+  const shafts = graph.shafts?.map((shaft) => ({
+    ...shaft,
+    centre: stretchPoint(shaft.centre),
+    widthFt: shaft.widthFt * kx,
+    depthFt: shaft.depthFt * kz,
+  }));
+  const candidate: BuildingGraph = {
+    ...graph,
+    storeys,
+    ...(stairs ? { stairs } : {}),
+    ...(shafts ? { shafts } : {}),
+  };
+  const checked = validateBuildingGraph(candidate);
+  return checked.ok ? { ok: true, graph: candidate } : fail(graph, checked.problem);
+}
+
 /** Duplicate one complete planar level, aligned in the shared site frame. */
 export function duplicateGraphStorey(
   graph: BuildingGraph,
@@ -1582,6 +1935,39 @@ export function deriveRoofZone(
       ridge: { start: intersections[0].point, end: intersections[1].point },
     },
   };
+}
+
+/**
+ * Replace one storey's authored roof zones with a single derived zone.
+ * Saltbox and a-frame stay spec-only — they are not GraphRoofForm values.
+ */
+export function setGraphRoofForm(
+  graph: BuildingGraph,
+  storeyId: string,
+  form: GraphRoofForm,
+  pitchDeg?: number,
+): GraphMutation {
+  const storey = graph.storeys.find((item) => item.id === storeyId);
+  if (!storey) return fail(graph, `Storey ${storeyId} does not exist.`);
+  const current = storey.roofZones[0];
+  const pitch =
+    pitchDeg ??
+    (form === "flat" ? 0 : current && current.form !== "flat" && current.pitchDeg > 0 ? current.pitchDeg : 30);
+  const derived = deriveRoofZone(storey, form, pitch);
+  if (!derived.ok) return fail(graph, derived.problem);
+  if (
+    storey.roofZones.length === 1 &&
+    current &&
+    current.form === derived.zone.form &&
+    current.pitchDeg === derived.zone.pitchDeg &&
+    JSON.stringify(current.ridge) === JSON.stringify(derived.zone.ridge) &&
+    JSON.stringify(current.fallVector) === JSON.stringify(derived.zone.fallVector)
+  ) {
+    return { ok: true, graph };
+  }
+  const candidate = graphWithStorey(graph, { ...storey, roofZones: [derived.zone] });
+  const checked = validateBuildingGraph(candidate);
+  return checked.ok ? { ok: true, graph: candidate } : fail(graph, checked.problem);
 }
 
 const LEGACY_WALL_ORDER: readonly Wall[] = ["n", "e", "s", "w"];

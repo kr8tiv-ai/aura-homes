@@ -8,6 +8,8 @@ import {
 import {
   buildGraphHome,
   disposeGraphHome,
+  modelledGraphGlazingRatio,
+  modelledGraphWallAreaSqFt,
   summarizeBuildingGraph,
 } from "@/lib/builder/graphGeometry";
 import * as legacyGeometry from "@/lib/builder/geometry";
@@ -96,6 +98,15 @@ test("openings are holes in graph walls with stable glass and door parts", () =>
   expect(parts.some((part) => part.id.includes("roof") && part.surface === "roof")).toBe(true);
   expect(home.summary.maxRidgeHeightFt).toBeGreaterThan(9.5);
   disposeGraphHome(home);
+
+  /* EX03: the live readout used to refuse glazing on a graph document. The
+     glass is on the walls; the ratio is glass over those walls' run × height,
+     same convention as a rectangular spec. A door is not glass. */
+  const wall = modelledGraphWallAreaSqFt(graph);
+  expect(wall).toBeCloseTo(2 * (24 + 16) * graph.storeys[0].heightFt, 6);
+  const glass = summarizeBuildingGraph(graph).glazedAreaSqFt;
+  expect(glass).toBeCloseTo(8 * 5, 6);
+  expect(modelledGraphGlazingRatio(graph)).toBeCloseTo(glass / wall, 9);
 });
 
 test("camera framing targets the actual centre of an offset multi-volume home", () => {

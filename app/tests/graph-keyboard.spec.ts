@@ -283,16 +283,16 @@ test("the keyboard surface is a named object list, not dozens of unnamed SVG sto
 });
 
 test("the read-only dimensions say why they are read-only", () => {
-  /* HONESTY. Openings on an existing wall still have no mutator here — those
-     edits go through applyOpeningEdit. Thickness now does, so the field is
-     writable and the old read-only sentence must be gone. */
+  /* Thickness and openings now have mutators. The old read-only sentences
+     must stay gone so a later edit cannot silently freeze the fields again. */
   expect(editorCode).not.toContain(
     "Read-only: buildingGraph.ts sets a thickness when a wall is created and validates it, but exposes no mutator that changes one afterwards.",
   );
-  expect(editorCode).toContain("setGraphWallThickness");
-  expect(editorCode).toContain(
+  expect(editorCode).not.toContain(
     "Read-only: buildingGraph.ts can add an opening and split a wall around one, but exposes no mutator that edits an existing opening.",
   );
+  expect(editorCode).toContain("setGraphWallThickness");
+  expect(editorCode).toContain("setGraphOpening");
 
   const graphModule = readFileSync(path.join(appRoot, "lib/builder/buildingGraph.ts"), "utf8");
   const exported = (graphModule.match(/^export function (\w+)/gm) ?? []).map((line) =>
@@ -301,7 +301,7 @@ test("the read-only dimensions say why they are read-only", () => {
   expect(exported).toContain("moveGraphVertex");
   expect(exported).toContain("addGraphOpening");
   expect(exported).toContain("setGraphWallThickness");
-  expect(exported.filter((name) => /Opening.*(Move|Set|Update)|setGraphOpening/.test(name))).toEqual([]);
+  expect(exported).toContain("setGraphOpening");
 });
 
 test("the new controls carry the one focus ring the tokens describe", async ({ page }) => {

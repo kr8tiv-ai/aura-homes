@@ -20,7 +20,7 @@
    So every sentence below is assembled from arithmetic that already exists,
    and `readCoPilot` cannot say anything the engines cannot back:
 
-     · `modelledGlazingRatio`   — lib/builder/toPlan.ts
+     · `modelledGlazingRatio` / `modelledGraphGlazingRatio`
      · `FDWR_MAX`               — lib/design/materials.ts
      · `checkSpecAgainstParcel` — lib/builder/toPlan.ts, over `analyseParcel`
      · `createProjectBudget`    — lib/builder/projectBudget.ts
@@ -37,11 +37,9 @@
    there is no fourth path and no new edit primitive in this module:
 
      · `applyPhrase`      — components/builder/phrases.ts, the Ctrl-K grammar.
-                            A footprint suggestion is literally two phrases a
-                            person could have typed, applied through the same
-                            parser, with the same LIMITS clamps and the same
-                            "width → 80 ft (limit)" admission when a value is
-                            clamped.
+                            A spec footprint suggestion is two phrases a
+                            person could have typed. A graph footprint
+                            suggestion is a plan stretch, not those phrases.
      · `applyOpeningEdit` — components/builder/openingEdit.ts, the one function
                             every window and door move goes through, from a 3D
                             grip, a plan handle or a typed field.
@@ -64,11 +62,14 @@
 
    NOTHING IS APPLIED. `readCoPilot` returns no `HomeSpec` anywhere in its
    result, and neither does `previewPreparedAction`. The ONLY function in this
-   module that can turn a suggestion into a spec is `applyPreparedAction`, and
-   it refuses any `Confirmation` that does not name the exact suggestion and
-   quote the exact words that were on the control. `tests/copilot.spec.ts`
-   pins both halves: that no other export leaks a spec, and that the refusal
-   fires.
+   module that can turn a suggestion into a spec or a graph is
+   `applyPreparedAction`, and it refuses any `Confirmation` that does not name
+   the exact suggestion and quote the exact words that were on the control.
+   `tests/copilot.spec.ts` pins both halves: that no other export leaks a spec,
+   and that the refusal fires. On a planar-graph project the glazing card
+   writes the graph through `applyScenarioMove`; phrase resize and opening
+   refit still refuse, because those writers only touch the frozen recovery
+   spec.
 
    PURE AND TOTAL. No React, no DOM, no storage, no network, no clock, no
    randomness, no locale-dependent formatting. The same inputs always produce
@@ -88,7 +89,13 @@ import {
 } from "@/components/builder/openingEdit";
 import { applyPhrase } from "@/components/builder/phrases";
 
-import type { BuilderDocument } from "./document";
+import { stretchGraphPlan, type BuildingGraph } from "./buildingGraph";
+import { builderDocumentFromLegacySpec, type BuilderDocument } from "./document";
+import {
+  modelledGraphGlazingRatio,
+  modelledGraphWallAreaSqFt,
+  summarizeBuildingGraph,
+} from "./graphGeometry";
 import {
   NOT_MODELLED,
   applyScenarioMove,
@@ -103,9 +110,9 @@ import {
   type ProjectBudget,
   type ProjectBudgetScenario,
 } from "./projectBudget";
-import { parcelCheckApplies } from "./readiness";
 import { glazedAreaSqFt, totalFloorAreaSqFt, type HomeSpec, type Volume } from "./spec";
 import {
+  checkMeasuredFootprintAgainstParcel,
   checkSpecAgainstParcel,
   modelledGlazingRatio,
   modelledWallAreaSqFt,
@@ -133,9 +140,13 @@ export const COPILOT_ENGINE = "deterministic-advisor" as const;
 export type CoPilotSource =
   | "modelledGlazingRatio · lib/builder/toPlan.ts"
   | "modelledWallAreaSqFt · lib/builder/toPlan.ts"
+  | "modelledGraphGlazingRatio · lib/builder/graphGeometry.ts"
+  | "modelledGraphWallAreaSqFt · lib/builder/graphGeometry.ts"
+  | "summarizeBuildingGraph · lib/builder/graphGeometry.ts"
   | "glazedAreaSqFt · lib/builder/spec.ts"
   | "FDWR_MAX · lib/design/materials.ts"
   | "checkSpecAgainstParcel · lib/builder/toPlan.ts"
+  | "checkMeasuredFootprintAgainstParcel · lib/builder/toPlan.ts"
   | "totalFloorAreaSqFt · lib/builder/spec.ts"
   | "envelopeFor · lib/design/layout.ts"
   | "createProjectBudget · lib/builder/projectBudget.ts"
@@ -172,7 +183,9 @@ export type PreparedActionPayload =
   /** an Impact-panel move, applied to the whole document */
   | { via: "scenario-move"; move: ScenarioMoveId }
   /** an opening re-asked for its own box, so the editor's clamps pull it legal */
-  | { via: "refit-opening"; volumeId: string; openingId: string };
+  | { via: "refit-opening"; volumeId: string; openingId: string }
+  /** stretch the live graph about its plan centroid */
+  | { via: "graph-stretch"; kx: number; kz: number };
 
 export interface PreparedAction {
   /** The suggestion this belongs to. A confirmation must name it. */
@@ -212,6 +225,9 @@ export type ApplyResult =
        *  path already reconciles partitions, finishes, fixtures and comfort
        *  targets inside one commit. Same convention as `VariationStrip`. */
       spec: HomeSpec;
+      /** Present when the write is planar graph geometry. The recovery spec
+       *  is left unchanged; the editor must take this through `editGraph`. */
+      graph?: BuildingGraph;
       label: string;
       /** What actually happened, clamps included, in sentences. */
       announcement: string;
@@ -327,13 +343,22 @@ function notModelled(...ids: readonly NotModelledId[]): NotModelledEntry[] {
    =========================================================================== */
 
 interface Candidate {
-  /** null when the payload produced no change, or could not be applied */
+  /** null when the payload produced no spec change, or could not be applied */
   spec: HomeSpec | null;
+  /** set when the write is planar graph geometry rather than the recovery spec */
+  graph: BuildingGraph | null;
   /** what actually happened, clamps and refusals included */
   say: string[];
   /** why nothing came back, when nothing did */
   problem: string | null;
 }
+
+const emptyCandidate = (problem: string, say: string[] = []): Candidate => ({
+  spec: null,
+  graph: null,
+  say,
+  problem,
+});
 
 /**
  * Run a prepared action's payload through the edit function that owns it.
@@ -344,10 +369,28 @@ interface Candidate {
  * has already checked a confirmation. Exporting it would put a second door
  * beside the confirmed one.
  */
+function sameGraph(a: BuildingGraph, b: BuildingGraph): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
 function candidateFor(document: BuilderDocument, action: PreparedAction): Candidate {
   const payload = action.payload;
+  /* THE GRAPH ITSELF, NOT A FLAG. A boolean answers the reader's question —
+     which mode is this — and answers the compiler's not at all: `graphMode`
+     cannot narrow `document.geometry`, so every later `document.geometry.graph`
+     was reaching into a union that may be legacy volumes. Holding the narrowed
+     value does both jobs, and `graphMode` stays for the branches that only
+     need to know the mode. */
+  const baseGraph = document.geometry.kind === "building-graph" ? document.geometry.graph : null;
+  const graphMode = baseGraph !== null;
 
   if (payload.via === "phrases") {
+    if (graphMode) {
+      return emptyCandidate(
+        "Phrases write the frozen recovery spec. This project is planar graph geometry, so a " +
+          "resize through `applyPhrase` would change a home that is no longer on screen.",
+      );
+    }
     let spec = document.spec;
     const say: string[] = [];
     for (const phrase of payload.phrases) {
@@ -362,25 +405,50 @@ function candidateFor(document: BuilderDocument, action: PreparedAction): Candid
       say.push(edit.say);
     }
     if (spec === document.spec) {
-      return {
-        spec: null,
+      return emptyCandidate(
+        `None of these phrases changes this home: ${payload.phrases.join(" · ")}.`,
         say,
-        problem: `None of these phrases changes this home: ${payload.phrases.join(" · ")}.`,
-      };
+      );
     }
-    return { spec, say, problem: null };
+    return { spec, graph: null, say, problem: null };
   }
 
   if (payload.via === "scenario-move") {
     const moved = applyScenarioMove(document, payload.move);
-    if (moved.spec === document.spec) {
-      return {
-        spec: null,
-        say: [],
-        problem: `The ${payload.move} move leaves this home exactly as it is.`,
-      };
+    if (baseGraph) {
+      if (moved.geometry.kind !== "building-graph") {
+        return emptyCandidate(`The ${payload.move} move did not return planar graph geometry.`);
+      }
+      if (sameGraph(moved.geometry.graph, baseGraph)) {
+        return emptyCandidate(`The ${payload.move} move leaves this home exactly as it is.`);
+      }
+      return { spec: null, graph: moved.geometry.graph, say: [], problem: null };
     }
-    return { spec: moved.spec, say: [], problem: null };
+    if (moved.spec === document.spec) {
+      return emptyCandidate(`The ${payload.move} move leaves this home exactly as it is.`);
+    }
+    return { spec: moved.spec, graph: null, say: [], problem: null };
+  }
+
+  if (payload.via === "graph-stretch") {
+    if (!baseGraph) {
+      return emptyCandidate("A graph stretch cannot be applied to a legacy-volume project.");
+    }
+    const stretched = stretchGraphPlan(baseGraph, payload.kx, payload.kz);
+    if (!stretched.ok) {
+      return emptyCandidate(stretched.problem);
+    }
+    if (sameGraph(stretched.graph, baseGraph)) {
+      return emptyCandidate("This stretch leaves the plan exactly as it is.");
+    }
+    return { spec: null, graph: stretched.graph, say: [], problem: null };
+  }
+
+  if (graphMode) {
+    return emptyCandidate(
+      "`applyOpeningEdit` writes the frozen recovery spec. There is no graph opening-refit " +
+        "writer in this build — move the opening on the plan, or delete it.",
+    );
   }
 
   const refit = applyOpeningEdit(
@@ -394,13 +462,12 @@ function candidateFor(document: BuilderDocument, action: PreparedAction): Candid
     boxOf(document.spec, payload.volumeId, payload.openingId),
   );
   if (!refit.changed) {
-    return {
-      spec: null,
-      say: refit.refusals,
-      problem: `Re-asking for this opening's own box moves nothing, so there is nothing to apply.`,
-    };
+    return emptyCandidate(
+      `Re-asking for this opening's own box moves nothing, so there is nothing to apply.`,
+      refit.refusals,
+    );
   }
-  return { spec: refit.spec, say: refit.refusals, problem: null };
+  return { spec: refit.spec, graph: null, say: refit.refusals, problem: null };
 }
 
 /** The opening's own box, or a zero box when it has gone. `applyOpeningEdit`
@@ -440,7 +507,7 @@ export function previewPreparedAction(
 ): PreparedActionPreview {
   const candidate = candidateFor(document, action);
   return {
-    changes: candidate.spec !== null,
+    changes: candidate.spec !== null || candidate.graph !== null,
     say: candidate.say,
     problem: candidate.problem,
   };
@@ -494,7 +561,7 @@ export function applyPreparedAction(
   }
 
   const candidate = candidateFor(document, action);
-  if (candidate.spec === null) {
+  if (candidate.graph === null && candidate.spec === null) {
     return {
       ok: false,
       problem: candidate.problem ?? "This suggestion no longer changes the design on screen.",
@@ -503,7 +570,8 @@ export function applyPreparedAction(
 
   return {
     ok: true,
-    spec: candidate.spec,
+    spec: candidate.spec ?? document.spec,
+    ...(candidate.graph ? { graph: candidate.graph } : {}),
     label: action.label,
     announcement:
       candidate.say.length > 0
@@ -541,12 +609,6 @@ export interface CoPilotInput {
   basis?: CoPilotBasis;
 }
 
-const GRAPH_REFUSAL =
-  "This project uses planar graph geometry. Every reading the co-pilot has is derived from " +
-  "`document.spec`, which became a frozen recovery copy at conversion — so advice built from it " +
-  "would be about a home that is no longer on screen. Undo returns through the conversion, where " +
-  "these readings run again.";
-
 /** Deterministic change detector over two specs. Not a canonical hash: both
  *  sides are built by spreading the same shapes, so key order is stable, and
  *  `hashBuilderDocument` would need a whole valid document to answer a
@@ -583,16 +645,6 @@ export function readCoPilot(input: CoPilotInput): CoPilotReport {
   const basis = input.basis ?? defaultCoPilotBasis();
   const suggestions: CoPilotSuggestion[] = [];
   const refusals: CoPilotRefusal[] = [];
-
-  if (!parcelCheckApplies(document)) {
-    return {
-      engine: COPILOT_ENGINE,
-      suggestions: [],
-      refusals: [],
-      unavailable: GRAPH_REFUSAL,
-      disclaimer: COPILOT_DISCLAIMER,
-    };
-  }
 
   const spec = document.spec;
 
@@ -639,16 +691,53 @@ export function readCoPilot(input: CoPilotInput): CoPilotReport {
 
 /* ---------------------------------------------------------------- glazing */
 
+function glazingFacts(document: BuilderDocument): {
+  wallSqFt: number;
+  ratio: number;
+  glassSqFt: number;
+  wallSource: CoPilotSource;
+  ratioSource: CoPilotSource;
+  glassSource: CoPilotSource;
+} | null {
+  if (document.geometry.kind === "building-graph") {
+    const graph = document.geometry.graph;
+    const wallSqFt = modelledGraphWallAreaSqFt(graph);
+    if (wallSqFt <= 0) return null;
+    return {
+      wallSqFt,
+      ratio: modelledGraphGlazingRatio(graph),
+      glassSqFt: summarizeBuildingGraph(graph).glazedAreaSqFt,
+      wallSource: "modelledGraphWallAreaSqFt · lib/builder/graphGeometry.ts",
+      ratioSource: "modelledGraphGlazingRatio · lib/builder/graphGeometry.ts",
+      glassSource: "summarizeBuildingGraph · lib/builder/graphGeometry.ts",
+    };
+  }
+  const wallSqFt = modelledWallAreaSqFt(document.spec);
+  if (wallSqFt <= 0) return null;
+  return {
+    wallSqFt,
+    ratio: modelledGlazingRatio(document.spec),
+    glassSqFt: glazedAreaSqFt(document.spec),
+    wallSource: "modelledWallAreaSqFt · lib/builder/toPlan.ts",
+    ratioSource: "modelledGlazingRatio · lib/builder/toPlan.ts",
+    glassSource: "glazedAreaSqFt · lib/builder/spec.ts",
+  };
+}
+
+function glazingAfter(document: BuilderDocument, candidate: Candidate): number | null {
+  if (candidate.graph) return modelledGraphGlazingRatio(candidate.graph);
+  if (candidate.spec) return modelledGlazingRatio(candidate.spec);
+  return null;
+}
+
 function glazing(
   document: BuilderDocument,
   suggestions: CoPilotSuggestion[],
   refusals: CoPilotRefusal[],
 ): void {
-  const spec = document.spec;
-  const wallSqFt = modelledWallAreaSqFt(spec);
-  if (wallSqFt <= 0) return;
-
-  const ratio = modelledGlazingRatio(spec);
+  const facts = glazingFacts(document);
+  if (!facts) return;
+  const { wallSqFt, ratio, glassSqFt } = facts;
   if (ratio <= FDWR_MAX + RATIO_EPS) return;
 
   const action: PreparedAction = {
@@ -660,7 +749,8 @@ function glazing(
   };
 
   const candidate = candidateFor(document, action);
-  if (candidate.spec === null) {
+  const after = glazingAfter(document, candidate);
+  if (after === null) {
     refusals.push({
       id: "glazing-over-prescriptive",
       topic: "Glazing over the prescriptive reference",
@@ -673,7 +763,6 @@ function glazing(
     return;
   }
 
-  const after = modelledGlazingRatio(candidate.spec);
   const lands = after <= FDWR_MAX + RATIO_EPS;
 
   suggestions.push({
@@ -693,7 +782,7 @@ function glazing(
         label: "Glazing ratio now",
         value: ratio,
         formatted: scenarioPct(ratio),
-        source: "modelledGlazingRatio · lib/builder/toPlan.ts",
+        source: facts.ratioSource,
       },
       {
         label: "NBC 9.36 prescriptive reference",
@@ -703,15 +792,15 @@ function glazing(
       },
       {
         label: "Glazed area",
-        value: glazedAreaSqFt(spec),
-        formatted: sqFt(glazedAreaSqFt(spec)),
-        source: "glazedAreaSqFt · lib/builder/spec.ts",
+        value: glassSqFt,
+        formatted: sqFt(glassSqFt),
+        source: facts.glassSource,
       },
       {
         label: "Modelled wall area",
         value: wallSqFt,
         formatted: sqFt(wallSqFt),
-        source: "modelledWallAreaSqFt · lib/builder/toPlan.ts",
+        source: facts.wallSource,
       },
     ],
     tradeOffs: [
@@ -736,12 +825,145 @@ function glazing(
 
 /* -------------------------------------------------------------- footprint */
 
+function footprintFromGraph(
+  document: BuilderDocument,
+  parcelCheck: SpecParcelCheck | null,
+  suggestions: CoPilotSuggestion[],
+  refusals: CoPilotRefusal[],
+): void {
+  if (document.geometry.kind !== "building-graph") return;
+  if (parcelCheck === null || parcelCheck.measuredFrom !== "building-graph") {
+    refusals.push({
+      id: "footprint-over-buildable-envelope",
+      topic: "Fitting the land",
+      reason:
+        "No graph-measured parcel check is attached, so there is no buildable envelope to stretch toward. Describe the lot in the Site step.",
+    });
+    return;
+  }
+  const report = parcelCheck.report;
+  if (report === null || report.fits) return;
+  if (report.suggestedTotalSqFt === null) {
+    refusals.push({
+      id: "footprint-over-buildable-envelope",
+      topic: "Fitting the land",
+      reason:
+        `This graph does not fit its buildable envelope — ${ft(report.buildableWidthFt)} × ` +
+        `${ft(report.buildableDepthFt)} against a ${sqFt(report.footprintSqFt)} footprint — and ` +
+        "`analyseParcel` found no floor area that solves small enough for it. The setbacks or " +
+        "the lot are the conversation, not the house.",
+    });
+    return;
+  }
+  const summary = summarizeBuildingGraph(document.geometry.graph);
+  if (summary.bounds.widthFt <= 0 || summary.bounds.depthFt <= 0) {
+    refusals.push({
+      id: "footprint-over-buildable-envelope",
+      topic: "Fitting the land",
+      reason: "This graph has no plan bounds to stretch.",
+    });
+    return;
+  }
+  const storeys = document.geometry.graph.storeys.length > 1 ? 2 : 1;
+  const [widthFt, depthFt] = envelopeFor(report.suggestedTotalSqFt, storeys);
+  const wantWidth = boundedFt(widthFt, LIMITS.widthFt);
+  const wantDepth = boundedFt(depthFt, LIMITS.depthFt);
+  const kx = wantWidth / summary.bounds.widthFt;
+  const kz = wantDepth / summary.bounds.depthFt;
+  const action: PreparedAction = {
+    suggestionId: "footprint-over-buildable-envelope",
+    confirmText: `Stretch the plan to ${ft(wantWidth)} × ${ft(wantDepth)}`,
+    label: "co-pilot: fit the parcel",
+    payload: { via: "graph-stretch", kx, kz },
+    routedThrough: "stretchGraphPlan · lib/builder/buildingGraph.ts",
+  };
+  const candidate = candidateFor(document, action);
+  if (candidate.graph === null) {
+    refusals.push({
+      id: "footprint-over-buildable-envelope",
+      topic: "Fitting the land",
+      reason:
+        `This graph does not fit its buildable envelope, and the stretch that would aim at ` +
+        `${ft(wantWidth)} × ${ft(wantDepth)} — ${candidate.problem ?? "changes nothing"}. ` +
+        "Move a vertex on the plan, or change the setbacks.",
+    });
+    return;
+  }
+  const afterSummary = summarizeBuildingGraph(candidate.graph);
+  const after = checkMeasuredFootprintAgainstParcel(
+    document.spec,
+    {
+      lotWidthFt: parcelCheck.facts.lotWidthFt,
+      lotDepthFt: parcelCheck.facts.lotDepthFt,
+      frontSetbackFt: parcelCheck.facts.frontSetbackFt,
+      sideSetbackFt: parcelCheck.facts.sideSetbackFt,
+      rearSetbackFt: parcelCheck.facts.rearSetbackFt,
+    },
+    {
+      widthFt: afterSummary.bounds.widthFt,
+      depthFt: afterSummary.bounds.depthFt,
+      floorAreaSqFt: afterSummary.totalFloorAreaSqFt,
+      storeys,
+    },
+    "building-graph",
+  );
+  suggestions.push({
+    id: "footprint-over-buildable-envelope",
+    kind: "footprint-over-buildable-envelope",
+    proposal:
+      `Stretch the whole plan from ${ft(summary.bounds.widthFt)} × ${ft(summary.bounds.depthFt)} ` +
+      `to about ${ft(wantWidth)} × ${ft(wantDepth)} about its own centre. Openings stay on ` +
+      "their walls. This is not a phrase — `applyPhrase` still writes the frozen recovery spec.",
+    because:
+      `Your buildable envelope is ${ft(report.buildableWidthFt)} across the frontage by ` +
+      `${ft(report.buildableDepthFt)} front to back, and this graph's bounds are ` +
+      `${ft(summary.bounds.widthFt)} × ${ft(summary.bounds.depthFt)}. \`analyseParcel\` names ` +
+      `${sqFt(report.suggestedTotalSqFt)} of floor area as an area that does fit.`,
+    evidence: [
+      {
+        label: "Buildable envelope, across the frontage",
+        value: report.buildableWidthFt,
+        formatted: ft(report.buildableWidthFt),
+        source: "checkMeasuredFootprintAgainstParcel · lib/builder/toPlan.ts",
+      },
+      {
+        label: "Buildable envelope, front to back",
+        value: report.buildableDepthFt,
+        formatted: ft(report.buildableDepthFt),
+        source: "checkMeasuredFootprintAgainstParcel · lib/builder/toPlan.ts",
+      },
+      {
+        label: "Plan bounds now",
+        value: summary.bounds.widthFt,
+        formatted: `${ft(summary.bounds.widthFt)} × ${ft(summary.bounds.depthFt)}`,
+        source: "summarizeBuildingGraph · lib/builder/graphGeometry.ts",
+      },
+    ],
+    tradeOffs: [
+      "Every wall moves. A stretch that would hang an opening off its wall is refused rather than trimmed.",
+      "The proportion is the plan engine's envelope, not the massing you drew.",
+      "Easements, environmental reserve and utility rights-of-way are not modelled.",
+    ],
+    notModelled: [],
+    outcome:
+      after.report?.fits === true
+        ? "Measured on the result by re-running `checkMeasuredFootprintAgainstParcel`: it fits the buildable envelope."
+        : "Measured on the result by re-running `checkMeasuredFootprintAgainstParcel`: it still does not fit. The stretch gets you closer and the lot still needs a conversation.",
+    action,
+  });
+}
+
 function footprint(
   document: BuilderDocument,
   parcelCheck: SpecParcelCheck | null,
   suggestions: CoPilotSuggestion[],
   refusals: CoPilotRefusal[],
 ): void {
+  if (document.geometry.kind === "building-graph") {
+    footprintFromGraph(document, parcelCheck, suggestions, refusals);
+    return;
+  }
+
   if (parcelCheck === null) {
     refusals.push({
       id: "footprint-over-buildable-envelope",
@@ -927,6 +1149,20 @@ function budget(
   suggestions: CoPilotSuggestion[],
   refusals: CoPilotRefusal[],
 ): void {
+  if (document.geometry.kind === "building-graph") {
+    if (basis.budgetCapCad === null) return;
+    refusals.push({
+      id: "budget-over-stated-cap",
+      topic: "Your stated budget cap",
+      reason:
+        "This project is planar graph geometry. A budget resize through `applyPhrase` would " +
+        "change the frozen recovery spec, not the walls on screen. There is no graph phrase " +
+        "writer in this build — shrink the plan by moving vertices, and the live read-out " +
+        "will follow.",
+    });
+    return;
+  }
+
   if (basis.budgetCapCad === null) return;
 
   const spec = document.spec;
@@ -1063,6 +1299,18 @@ function openings(
   suggestions: CoPilotSuggestion[],
   refusals: CoPilotRefusal[],
 ): void {
+  if (document.geometry.kind === "building-graph") {
+    refusals.push({
+      id: "opening-off-its-wall",
+      topic: "An opening off its wall",
+      reason:
+        "A planar-graph opening cannot hang off its wall or overlap a neighbour — " +
+        "`validateBuildingGraph` refuses those states — so there is nothing here to refit. " +
+        "Change offset, width, sill or height on the plan; `setGraphOpening` writes them.",
+    });
+    return;
+  }
+
   const spec = document.spec;
   const illegal: Array<{ volume: Volume; openingId: string }> = [];
 
@@ -1185,4 +1433,61 @@ function openings(
         "time so the sidebar stays readable; apply these and the next ones appear.",
     });
   }
+}
+
+/* ===========================================================================
+   THE QUIET-STATE DEMO PATH
+
+   The default design breaches nothing this advisor measures, which is correct
+   and also the least convincing first impression: an empty sidebar that looks
+   like a feature that is not working. WAVE13 named this leftover. The sentence
+   below does not invent a finding on the default home — it names a catalog
+   plan that already produces a real glazing card, so a person can see the
+   panel do its job without this module rewriting anybody's document.
+   =========================================================================== */
+
+export interface CoPilotQuietDemo {
+  planId: string;
+  title: string;
+  ratio: number;
+  /** The empty-sidebar sentence. JSX prints this; it does not author it. */
+  sentence: string;
+}
+
+/**
+ * The catalog plan that most clearly shows this advisor working: the highest
+ * modelled glazing ratio that actually produces a `glazing-over-prescriptive`
+ * card. Returns null only if the library has no such plan.
+ */
+export function copilotQuietDemo(
+  plans: readonly { id: string; title: string; spec: HomeSpec }[],
+): CoPilotQuietDemo | null {
+  let best: { id: string; title: string; ratio: number } | null = null;
+
+  for (const plan of plans) {
+    const ratio = modelledGlazingRatio(plan.spec);
+    if (ratio <= FDWR_MAX + RATIO_EPS) continue;
+    const report = readCoPilot({
+      document: builderDocumentFromLegacySpec(plan.spec),
+      parcelCheck: null,
+    });
+    if (!report.suggestions.some((card) => card.kind === "glazing-over-prescriptive")) {
+      continue;
+    }
+    if (!best || ratio > best.ratio) best = { id: plan.id, title: plan.title, ratio };
+  }
+
+  if (!best) return null;
+
+  return {
+    planId: best.id,
+    title: best.title,
+    ratio: best.ratio,
+    sentence:
+      `Nothing this build can check has anything to say about this design right now. That is a ` +
+      `statement about what Aura measures, not a verdict on the home: the list underneath says ` +
+      `what was looked at and what could not be. To see this advisor work, open the plan library ` +
+      `and pick ${best.id} (${best.title}) — it is modelled at ${scenarioPct(best.ratio)}, over ` +
+      `the ${scenarioPct(FDWR_MAX)} NBC 9.36 prescriptive ceiling this panel can name.`,
+  };
 }

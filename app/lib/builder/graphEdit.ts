@@ -10,6 +10,7 @@ import {
   extrudeGraphWall,
   moveGraphVertex,
   renameGraphRoom,
+  setGraphOpening,
   setGraphWallThickness,
   type BuildingGraph,
   type GraphPoint,
@@ -204,6 +205,60 @@ export function applyGraphWallThickness(
     ask.wallId,
     ask.thicknessFt,
   );
+  if (!changed.ok) {
+    return { ok: false, problem: changed.problem, document: current };
+  }
+  const next: BuilderDocument = {
+    ...current,
+    geometry: {
+      ...current.geometry,
+      graph: changed.graph,
+    },
+  };
+  const valid = validateBuilderDocument(next);
+  if (!valid.ok) {
+    return { ok: false, problem: valid.problem, document: current };
+  }
+  if (valid.document.geometry.kind !== "building-graph") {
+    return {
+      ok: false,
+      problem: "The edited document is no longer a building graph.",
+      document: current,
+    };
+  }
+  return { ok: true, document: valid.document, graph: valid.document.geometry.graph };
+}
+
+export function applyGraphOpeningEdit(
+  document: BuilderDocument,
+  ask: {
+    storeyId: string;
+    wallId: string;
+    openingId: string;
+    offsetFt: number;
+    widthFt: number;
+    sillFt: number;
+    heightFt: number;
+  },
+): GraphDocumentEdit {
+  const checked = validateBuilderDocument(document);
+  if (!checked.ok) {
+    return { ok: false, problem: checked.problem, document };
+  }
+  const current = checked.document;
+  if (current.geometry.kind !== "building-graph") {
+    return {
+      ok: false,
+      problem: "This design is not a building graph.",
+      document: current,
+    };
+  }
+  const changed = setGraphOpening(current.geometry.graph, ask.storeyId, ask.wallId, ask.openingId, {
+    offsetFt: ask.offsetFt,
+    widthFt: ask.widthFt,
+    sillFt: ask.sillFt,
+    heightFt: ask.heightFt,
+  });
   if (!changed.ok) {
     return { ok: false, problem: changed.problem, document: current };
   }

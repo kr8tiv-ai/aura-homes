@@ -6,10 +6,13 @@ import {
   PLAN_TEMPLATES,
   estimatePlanTemplate,
   instantiatePlanTemplate,
+  loftFromSleeping,
   paddedPlanPairs,
   planFootprintOverlapSqFt,
+  planLoft,
   planMassingDistance,
   planStructuralAxes,
+  sleepingFacts,
   type PlanTemplate,
 } from "@/lib/builder/planCatalog";
 import { summarizeHome } from "@/lib/builder/geometry";
@@ -527,6 +530,37 @@ test("the anti-padding gate catches a plan that is another plan with one dimensi
     honestFloor,
     "two honestly different plans are no longer closer than a nudged clone — a plain distance threshold may now be possible, and this rule can be simplified",
   ).toBeLessThan(clonedGap);
+
+  /* PL02 — the loft is a field. Appending one character to the sleeping
+     sentence used to acquit a clone on the programme axis. It must not. */
+  const proseClone = clone("glasrum-studio", (plan) => {
+    plan.id = "glasrum-studio-guests";
+    plan.title = "Glasrum Studio Guests";
+    plan.spec.volumes[0].widthFt = 15;
+    plan.sleeping = `${plan.sleeping}s`;
+  });
+  expect(planLoft(proseClone)).toBe(planLoft(PLAN_TEMPLATES.find((plan) => plan.id === "glasrum-studio")!));
+  const proseVerdicts = paddedPlanPairs([...PLAN_TEMPLATES, proseClone]);
+  expect(
+    proseVerdicts.map((v) => `${v.a} ~ ${v.b}`),
+    "a spelling change in the sleeping sentence acquitted a nudged clone",
+  ).toEqual(["glasrum-studio ~ glasrum-studio-guests"]);
+
+  const postcard = PLAN_TEMPLATES.find((plan) => plan.id === "postcard-a-frame")!;
+  const lakeview = PLAN_TEMPLATES.find((plan) => plan.id === "lakeview-a-frame")!;
+  const ridge = PLAN_TEMPLATES.find((plan) => plan.id === "ridge-a-frame")!;
+  const libertiny = PLAN_TEMPLATES.find((plan) => plan.id === "libertiny-study")!;
+  const bunkhouse = PLAN_TEMPLATES.find((plan) => plan.id === "bunkhouse-loft")!;
+  expect(planLoft(postcard)).toBe("none");
+  expect(planLoft(lakeview)).toBe("unmodelled");
+  expect(loftFromSleeping(lakeview.sleeping)).toBe("unmodelled");
+  expect(sleepingFacts(postcard).enclosed).toBe(false);
+  expect(sleepingFacts(ridge).enclosed).toBe(true);
+  expect(sleepingFacts(libertiny).loftRole).toBe("primary");
+  expect(sleepingFacts(bunkhouse).loftRole).toBe("dormitory");
+  expect(planStructuralAxes(postcard, lakeview)).toContain("programme");
+  expect(planStructuralAxes(ridge, postcard)).toContain("programme");
+  expect(planStructuralAxes(libertiny, bunkhouse)).toContain("programme");
 });
 
 test("no plan is so large that it shrinks every thumbnail in the catalog", () => {

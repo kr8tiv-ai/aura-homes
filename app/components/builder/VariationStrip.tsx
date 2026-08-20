@@ -26,6 +26,7 @@
    =========================================================================== */
 
 import { useCallback, useMemo, useRef, useState } from "react";
+import type { BuildingGraph } from "@/lib/builder/buildingGraph";
 import type { BuilderDocument } from "@/lib/builder/document";
 import type { ProjectBudgetScenario } from "@/lib/builder/projectBudget";
 import type { HomeSpec } from "@/lib/builder/spec";
@@ -109,6 +110,7 @@ function VariationCard({
 export default function VariationStrip({
   document,
   onApply,
+  onApplyGraph,
   region = "Alberta",
   municipality = "",
   scenario,
@@ -123,6 +125,9 @@ export default function VariationStrip({
    * makes applying a variation one undo step instead of two states.
    */
   onApply: (spec: HomeSpec, label: string) => void;
+  /** Graph variants must not go through `onApply` — that would rewrite the
+   *  frozen recovery spec and leave the live walls untouched. */
+  onApplyGraph?: (graph: BuildingGraph, label: string) => void;
   /** The same four values the live read-out prices with, so the strip and the
    *  read-out can never quote two different bands for one design. */
   region?: string;
@@ -149,10 +154,20 @@ export default function VariationStrip({
         setAnnouncement(result.problem);
         return;
       }
-      onApply(result.spec, result.label);
+      if (result.graph) {
+        if (!onApplyGraph) {
+          setAnnouncement(
+            "This variation writes planar graph geometry and this screen has no graph editor path.",
+          );
+          return;
+        }
+        onApplyGraph(result.graph, result.label);
+      } else {
+        onApply(result.spec, result.label);
+      }
       setAnnouncement(result.announcement);
     },
-    [onApply, set],
+    [onApply, onApplyGraph, set],
   );
 
   return (

@@ -86,6 +86,7 @@ import {
   type WorldOpening,
   type WorldWall,
 } from "./drawings/model";
+import { buildHomeModelFromGraph } from "./drawings/graphModel";
 import {
   COMFORT_DISCLAIMER,
   NEUTRAL_BAND,
@@ -101,10 +102,30 @@ import { fmtFt, fmtFtFrac, fmtG, pyRound, riseOver12, sqFt, wrap } from "./drawi
 import { EXPORT_DISCLAIMER, FEET_TO_METRES, exportFilename, type ExportArtifact } from "./exportSpec";
 import {
   exportSourceLimitation,
-  resolveLegacyGeometryExportSource,
+  resolveBuilderExportSource,
   type BuilderExportSource,
 } from "./exportSource";
 import type { HomeSpec, RoofForm } from "./spec";
+
+/** EX03. DXF and IFC used to refuse a graph so they would not export the
+ *  frozen recovery rectangle. They now consume the same HomeModel the
+ *  drawing set uses, which is built from the graph when that is what is on
+ *  screen. */
+function resolveDrawingExport(source: BuilderExportSource) {
+  const resolved = resolveBuilderExportSource(source);
+  const graph =
+    resolved.document.geometry.kind === "building-graph"
+      ? resolved.document.geometry.graph
+      : null;
+  return {
+    resolved,
+    spec: resolved.spec,
+    model: graph
+      ? buildHomeModelFromGraph(graph, resolved.spec)
+      : buildHomeModel(resolved.spec),
+    graph,
+  };
+}
 
 /* ===========================================================================
    SHARED — the sentences and constants both writers put in their files
@@ -1354,9 +1375,7 @@ const LAYOUT_COLUMNS = 3;
  * they can XREF or copy out of. That is what this produces.
  */
 export function homeToDxf(source: BuilderExportSource, options: DxfOptions = {}): string {
-  const resolved = resolveLegacyGeometryExportSource(source);
-  const { spec } = resolved;
-  const model = buildHomeModel(spec);
+  const { resolved, spec, model } = resolveDrawingExport(source);
   const section = sectionOf(model);
   const elevations = allElevations(model);
   const rows = openingSchedule(model);
@@ -1449,9 +1468,8 @@ export function homeToDxf(source: BuilderExportSource, options: DxfOptions = {})
 
 /** The DXF as a downloadable artifact. */
 export function exportDxf(source: BuilderExportSource, options: DxfOptions = {}): ExportArtifact {
-  const { spec } = resolveLegacyGeometryExportSource(source);
+  const { spec, model } = resolveDrawingExport(source);
   const text = homeToDxf(source, options);
-  const model = buildHomeModel(spec);
   const units = options.units ?? "feet";
   const views = (options.views ?? DXF_VIEWS).length;
   const blob = new Blob([text], { type: "application/dxf" });
@@ -1735,15 +1753,14 @@ interface WallFrameRec {
  * answer, and better than a parse error.
  */
 export function homeToIfc(source: BuilderExportSource, options: IfcOptions): string {
-  const resolved = resolveLegacyGeometryExportSource(source);
-  const { spec } = resolved;
-  const model = buildHomeModel(spec);
+  const { resolved, spec, model, graph } = resolveDrawingExport(source);
   const s = new Step();
   const guids = new GuidPool();
   const includePiles = options.includePiles ?? true;
   const includeDeck = options.includeDeck ?? true;
-  const comfort =
-    options.comfort === undefined
+  const comfort = graph
+    ? (options.comfort ?? null)
+    : options.comfort === undefined
       ? comfortReport(spec, resolved.document.comfort)
       : options.comfort;
 
@@ -2949,9 +2966,8 @@ function ccwRing(ring: readonly Pt[]): Pt[] {
 
 /** The IFC as a downloadable artifact. */
 export function exportIfc(source: BuilderExportSource, options: IfcOptions): ExportArtifact {
-  const { spec } = resolveLegacyGeometryExportSource(source);
+  const { spec, model } = resolveDrawingExport(source);
   const text = homeToIfc(source, options);
-  const model = buildHomeModel(spec);
   const blob = new Blob([text], { type: "application/x-step" });
   const openings = model.volumes.reduce(
     (n, vm) => n + vm.walls.reduce((m, w) => m + w.openings.length, 0),

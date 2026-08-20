@@ -65,6 +65,24 @@ export type PlanSource =
       relationship: "dimensional-adaptation" | "system-informed-study";
     };
 
+/** Whether the plan's sleeping loft is a modelled volume, an admitted gap, or
+ *  not part of the building. A loft is a fact; the `sleeping` sentence is not. */
+export type PlanLoft = "none" | "unmodelled" | "modelled";
+
+/** How the loft relates to the rest of the sleeping. `primary` is a loft-only
+ *  cabin; `secondary` sits over a main floor; `dormitory` is group sleeping. */
+export type PlanLoftRole = "none" | "primary" | "secondary" | "dormitory";
+
+export interface PlanSleepingFacts {
+  loft: PlanLoft;
+  loftRole: PlanLoftRole;
+  enclosed: boolean;
+  studio: boolean;
+  cabins: boolean;
+  alcoves: boolean;
+  suite: boolean;
+}
+
 export interface PlanTemplate {
   id: string;
   title: string;
@@ -3373,27 +3391,68 @@ const roofForms = (plan: PlanTemplate): string =>
     .sort()
     .join(",");
 
-/* `sleeping` IS PROSE, AND IT IS A KNOWN WEAKNESS IN THIS SIGNATURE.
-   A fresh-context verifier defeated the padding gate with one character: a
-   byte-copy of an existing plan, width nudged by a foot, and a single "s"
-   appended to this sentence ("occasional guest" -> "occasional guests"). The
-   clone was acquitted on the `programme` axis.
+/* PL02 — `sleeping` IS PROSE. A fresh-context verifier defeated the padding
+   gate with one character: a byte-copy of an existing plan, width nudged by
+   a foot, and a single "s" appended ("occasional guest" -> "occasional
+   guests"). The clone was acquitted on the `programme` axis.
 
-   Removing it was tried and REVERTED, because it is also doing real work.
-   Dropping `sleeping` immediately collided `postcard-a-frame` (576 sq ft,
-   USDA 6003, 1966) with `lakeview-a-frame` (528 sq ft, USDA 5964, 1963) —
-   two adaptations of two DIFFERENT federal drawings whose genuine difference
-   is that one has a loft. That difference is architectural; it simply happens
-   to be recorded in prose. A gate that rejects two honest public-domain
-   adaptations to catch a hypothetical padder is the worse trade, and this
-   node's own contract said so: pin the weaker property rather than fail
-   honest work.
+   Dropping the sentence entirely collided honest pairs whose real difference
+   is architectural: `postcard-a-frame` (USDA 6003, open main-floor sleeping)
+   vs `lakeview-a-frame` (USDA 5964, loft unmodelled); `ridge-a-frame`
+   (enclosed bedroom, no loft) vs `postcard-a-frame`; `libertiny-study`
+   (loft is the sleeping) vs `bunkhouse-loft` (dormitory loft over a main
+   floor). The programme axis now uses `sleepingFacts` — loft, loft role,
+   enclosure — so a spelling change cannot acquit a clone and those pairs
+   still separate. */
+export function sleepingFacts(plan: Pick<PlanTemplate, "sleeping">): PlanSleepingFacts {
+  const text = plan.sleeping.toLowerCase();
+  const loft: PlanLoft = !/\bloft\b/.test(text)
+    ? "none"
+    : /not modelled/.test(text)
+      ? "unmodelled"
+      : "modelled";
+  const loftRole: PlanLoftRole =
+    loft === "none"
+      ? "none"
+      : /dormitory/.test(text)
+        ? "dormitory"
+        : /\bmain[- ]floor/.test(text)
+          ? "secondary"
+          : "primary";
+  return {
+    loft,
+    loftRole,
+    enclosed: /\bbedroom/.test(text) || /\benclosed/.test(text),
+    studio: /studio|murphy/.test(text),
+    cabins: /cabin/.test(text),
+    alcoves: /alcove/.test(text),
+    suite: /suite/.test(text),
+  };
+}
 
-   So the weaker property is pinned, and the hole is named here rather than
-   left for someone to rediscover. The real fix is structured sleeping data —
-   a loft is a fact about a building and deserves a field, not a sentence. */
-const programme = (plan: PlanTemplate): string =>
-  `${plan.bedrooms}/${plan.bathrooms}/${plan.sleeping}/${plan.storeys}`;
+export function loftFromSleeping(sleeping: string): PlanLoft {
+  return sleepingFacts({ sleeping }).loft;
+}
+
+export function planLoft(plan: Pick<PlanTemplate, "sleeping">): PlanLoft {
+  return sleepingFacts(plan).loft;
+}
+
+const programme = (plan: PlanTemplate): string => {
+  const facts = sleepingFacts(plan);
+  return [
+    plan.bedrooms,
+    plan.bathrooms,
+    plan.storeys,
+    facts.loft,
+    facts.loftRole,
+    facts.enclosed ? "enclosed" : "open",
+    facts.studio ? "studio" : "not-studio",
+    facts.cabins ? "cabins" : "no-cabins",
+    facts.alcoves ? "alcoves" : "no-alcoves",
+    facts.suite ? "suite" : "no-suite",
+  ].join("/");
+};
 
 /** The axes on which two plans are genuinely different buildings. */
 export function planStructuralAxes(a: PlanTemplate, b: PlanTemplate): PlanStructuralAxis[] {

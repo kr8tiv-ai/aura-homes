@@ -53,16 +53,22 @@ import { useCallback, useMemo, useState } from "react";
 import {
   COPILOT_ENGINE,
   applyPreparedAction,
+  copilotQuietDemo,
   defaultCoPilotBasis,
   readCoPilot,
   type CoPilotSuggestion,
   type CoPilotSuggestionKind,
 } from "@/lib/builder/copilot";
+import type { BuildingGraph } from "@/lib/builder/buildingGraph";
 import type { BuilderDocument } from "@/lib/builder/document";
+import { PLAN_TEMPLATES } from "@/lib/builder/planCatalog";
 import type { ProjectBudgetScenario } from "@/lib/builder/projectBudget";
 import type { HomeSpec } from "@/lib/builder/spec";
 import type { SpecParcelCheck } from "@/lib/builder/toPlan";
 import { Button } from "./ui";
+
+/** Derived once from the live catalog. The sentence lives in `copilot.ts`. */
+const QUIET_DEMO = copilotQuietDemo(PLAN_TEMPLATES);
 
 /** The heading over a card. A label, not a fact — the sentences underneath it
  *  all come from the module. */
@@ -77,6 +83,7 @@ export default function CoPilot({
   document,
   parcelCheck,
   onApply,
+  onApplyGraph,
   region = "Alberta",
   municipality = "",
   scenario,
@@ -95,6 +102,10 @@ export default function CoPilot({
    * confirming a suggestion one undo step. Same contract as `VariationStrip`.
    */
   onApply: (spec: HomeSpec, label: string) => void;
+  /** The editor's graph-edit path. A graph write must not go through `onApply`
+   *  — that would leave the live geometry untouched and rewrite the frozen
+   *  recovery spec. */
+  onApplyGraph?: (graph: BuildingGraph, label: string) => void;
   /** The same four values the live read-out prices with. */
   region?: string;
   municipality?: string;
@@ -144,11 +155,22 @@ export default function CoPilot({
         setArmedId(null);
         return;
       }
-      onApply(result.spec, result.label);
+      if (result.graph) {
+        if (!onApplyGraph) {
+          setNotice(
+            "This suggestion writes planar graph geometry and this screen has no graph editor path.",
+          );
+          setArmedId(null);
+          return;
+        }
+        onApplyGraph(result.graph, result.label);
+      } else {
+        onApply(result.spec, result.label);
+      }
       setNotice(result.announcement);
       setArmedId(null);
     },
-    [armedId, document, onApply],
+    [armedId, document, onApply, onApplyGraph],
   );
   /* == CO-PILOT APPLY PATH · END == */
 
@@ -190,10 +212,12 @@ export default function CoPilot({
       ) : null}
 
       {report.unavailable === null && open.length === 0 ? (
-        <p className="mt-4 rounded-md border aura-hairline px-4 py-3 text-xs leading-relaxed text-aura-text/65">
-          Nothing this build can check has anything to say about this design right now. That is a
-          statement about what Aura measures, not a verdict on the home: the list underneath says
-          what was looked at and what could not be.
+        <p
+          className="mt-4 rounded-md border aura-hairline px-4 py-3 text-xs leading-relaxed text-aura-text/65"
+          data-copilot-quiet-demo={QUIET_DEMO?.planId ?? "none"}
+        >
+          {QUIET_DEMO?.sentence ??
+            "Nothing this build can check has anything to say about this design right now. That is a statement about what Aura measures, not a verdict on the home: the list underneath says what was looked at and what could not be."}
         </p>
       ) : null}
 

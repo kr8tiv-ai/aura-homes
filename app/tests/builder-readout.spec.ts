@@ -31,8 +31,13 @@ import {
   type ProjectBudget,
   type ProjectBudgetScenario,
 } from "@/lib/builder/projectBudget";
-import { readDesignReadiness, type ReadinessInput } from "@/lib/builder/readiness";
-import { checkSpecAgainstParcel, type ParcelLot } from "@/lib/builder/toPlan";
+import { summarizeBuildingGraph } from "@/lib/builder/graphGeometry";
+import { parcelCheckApplies, readDesignReadiness, type ReadinessInput } from "@/lib/builder/readiness";
+import {
+  checkMeasuredFootprintAgainstParcel,
+  checkSpecAgainstParcel,
+  type ParcelLot,
+} from "@/lib/builder/toPlan";
 
 /** Big enough that the reference home fits with room to spare, so a failure
  *  here is a failure of the check rather than of the numbers. */
@@ -258,6 +263,43 @@ test("a design missing a required input cannot read review-ready", () => {
       everyGapIsActionable: true,
     })),
   );
+});
+
+test("a graph-derived parcel check describes the design on screen", () => {
+  /* EX03. A spec-derived check on a converted project is still refused — the
+     case above pins that. The same project with a rectangle taken from the
+     graph is the design on screen, so the graph-parcel-check gap must go. */
+  const document = asGraph(defaultBuilderDocument());
+  expect(document.geometry.kind).toBe("building-graph");
+  if (document.geometry.kind !== "building-graph") return;
+  expect(parcelCheckApplies(document)).toBe(false);
+  expect(parcelCheckApplies(document, checkSpecAgainstParcel(document.spec, ROOMY_LOT))).toBe(
+    false,
+  );
+
+  const summary = summarizeBuildingGraph(document.geometry.graph);
+  const graphCheck = checkMeasuredFootprintAgainstParcel(
+    document.spec,
+    ROOMY_LOT,
+    {
+      widthFt: summary.bounds.widthFt,
+      depthFt: summary.bounds.depthFt,
+      floorAreaSqFt: summary.totalFloorAreaSqFt,
+      storeys: 1,
+    },
+    "building-graph",
+  );
+  expect(graphCheck.measuredFrom).toBe("building-graph");
+  expect(graphCheck.report?.fits).toBe(true);
+  expect(parcelCheckApplies(document, graphCheck)).toBe(true);
+
+  const readiness = readDesignReadiness({
+    document,
+    budget: budgetFor(document),
+    parcelCheck: graphCheck,
+  });
+  expect(readiness.gaps.map((gap) => gap.id)).not.toContain("graph-parcel-check");
+  expect(readiness.state).toBe("review-ready");
 });
 
 test("the readiness reading is pure and deterministic", () => {

@@ -867,6 +867,48 @@ for (const theme of ["light", "dark"] as const) {
   });
 }
 
+test("a pointer on the ring edge, not just the painted mark, is over the grip", async ({
+  page,
+}) => {
+  /* WAVE13 leftover: the previous gate measured the ring's box. A 24 px circle
+     can sit in the tree, pass every size assertion, and still miss a pointer
+     on its own edge if the hit target is the inner mark. This asks a real
+     pointer, through elementFromPoint, at three places. */
+  await mountPlan(page, "light");
+
+  const ring = page.locator('[data-opening-handle="slide"] .opening-plan-handle__ring');
+  const box = await ring.boundingBox();
+  expect(box, "the slide ring was not laid out").not.toBeNull();
+  const cx = box!.x + box!.width / 2;
+  const cy = box!.y + box!.height / 2;
+  const radius = box!.width / 2;
+
+  const probe = (x: number, y: number) =>
+    page.evaluate(
+      ({ x, y }) => {
+        const el = document.elementFromPoint(x, y);
+        if (!el) return { handle: null, cursor: null };
+        const handle = el.closest(".opening-plan-handle");
+        return {
+          handle: handle?.getAttribute("data-opening-handle") ?? null,
+          cursor: getComputedStyle(handle ?? el).cursor,
+        };
+      },
+      { x, y },
+    );
+
+  const center = await probe(cx, cy);
+  expect(center.handle, "the ring centre is not over the slide grip").toBe("slide");
+  expect(center.cursor).toBe("grab");
+
+  const onEdge = await probe(cx + radius - 1, cy);
+  expect(onEdge.handle, "the ring edge is not over the slide grip").toBe("slide");
+  expect(onEdge.cursor).toBe("grab");
+
+  const outside = await probe(cx + radius + 4, cy);
+  expect(outside.handle, "a point past the ring still reads as the grip").not.toBe("slide");
+});
+
 test("the grip ink is remapped for night rather than reused", async ({ page }) => {
   /* The stylesheet's own stated rule is that accents are perceptually REMAPPED
      for the dark theme rather than reused, because a shade that is legible on

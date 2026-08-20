@@ -533,6 +533,12 @@ function coverSheet(ctx: Ctx, index: { number: string; title: string; scale: str
   }
 
   notes.push(...SET_NOTES);
+  /* Graph-set limitations live on the model.warnings list the caller prints
+     beside the set. They are also the first notes on A0 so a reviewer who
+     only opens the cover still sees that this is not a recovery-spec drawing. */
+  if (model.warnings.some((note) => note.includes("planar building graph"))) {
+    notes.unshift(...model.warnings);
+  }
 
   return {
     number: "A0",
@@ -2284,7 +2290,7 @@ export function buildSheets(input: DrawingSetInput, model: HomeModel): DrawingSe
   const projectName = (input.projectName ?? spec.name ?? "AURA HOME").trim() || "AURA HOME";
 
   const meta = [
-    `${sqFt(model.totalFloorAreaSqFt)} FLOOR AREA  ·  ${sqFt(model.groundFootprintSqFt)} FOOTPRINT  ·  ${spec.volumes.length} VOLUME${spec.volumes.length === 1 ? "" : "S"}`,
+    `${sqFt(model.totalFloorAreaSqFt)} FLOOR AREA  ·  ${sqFt(model.groundFootprintSqFt)} FOOTPRINT  ·  ${model.volumes.length} VOLUME${model.volumes.length === 1 ? "" : "S"}`,
     `${MATERIAL_LABEL(spec.material)}  ·  ${WALL_THICKNESS_MM[spec.material]} mm WALL  ·  R-${fmtG(WALL_R_VALUE[spec.material])}  ·  CLIMATE ZONE ${spec.climateZone}`,
     `SCREW-PILE FOUNDATION, NO CONCRETE  ·  MAX RIDGE ${fmtFt(model.maxRidgeHeightFt)} A.F.F. / ${fmtFt(model.maxRidgeHeightFt - GRADE_Y_FT)} ABOVE GRADE`,
     input.address?.trim() ? input.address.trim().toUpperCase() : "SITE ADDRESS NOT SUPPLIED",

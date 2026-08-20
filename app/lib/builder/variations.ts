@@ -51,11 +51,21 @@
 
 import { FDWR_MAX } from "../design/materials";
 import {
+  duplicateGraphStorey,
+  rotateGraphPlan,
+  scaleGraphOpenings,
+  setGraphRoofForm,
+  stretchGraphPlan,
+  type BuildingGraph,
+  type GraphRoofForm,
+} from "./buildingGraph";
+import {
   hashBuilderDocument,
   validateBuilderDocument,
   type BuilderDocument,
 } from "./document";
 import { wallRunFt, wallThicknessFt } from "./geometry";
+import { modelledGraphGlazingRatio, summarizeBuildingGraph } from "./graphGeometry";
 import {
   createProjectBudget,
   defaultProjectBudgetScenario,
@@ -684,6 +694,546 @@ function candidatesFor(spec: HomeSpec): Candidate[] {
   return list;
 }
 
+const withGraph = (document: BuilderDocument, graph: BuildingGraph): BuilderDocument => {
+  if (document.geometry.kind !== "building-graph") return document;
+  return { ...document, geometry: { ...document.geometry, graph } };
+};
+
+const graphWindowCount = (graph: BuildingGraph): number =>
+  graph.storeys.reduce(
+    (sum, storey) =>
+      sum +
+      storey.walls.reduce(
+        (wallSum, wall) =>
+          wallSum + wall.openings.filter((opening) => opening.kind !== "door").length,
+        0,
+      ),
+    0,
+  );
+
+const GRAPH_ROOF_ORDER: readonly GraphRoofForm[] = ["gable", "shed", "hipped", "flat"];
+const GRAPH_ROOF_NOTES: Readonly<Record<GraphRoofForm, string>> = {
+  gable: "two slopes off a central ridge — the default small-home roof",
+  shed: "one plane, one direction: cheapest to frame and the best solar deck",
+  hipped: "slopes on every side, meeting toward the centre",
+  flat: "near-flat with a drainage fall and a parapet detail",
+};
+
+function variationSetFromGraph(
+  document: BuilderDocument,
+  price: (candidate: BuilderDocument) => ReturnType<typeof createProjectBudget>,
+): VariationSet {
+  if (document.geometry.kind !== "building-graph") {
+    return {
+      engine: VARIATION_ENGINE,
+      basis: null,
+      variations: [],
+      refusals: [],
+      unavailable: "variationSetFromGraph was asked to read a document that is not planar graph geometry.",
+    };
+  }
+
+  let basisBudget;
+  try {
+    basisBudget = price(document);
+  } catch (error) {
+    return {
+      engine: VARIATION_ENGINE,
+      basis: null,
+      variations: [],
+      refusals: [],
+      unavailable: `This design cannot be priced, so no variant can carry a cost: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    };
+  }
+
+  const graph = document.geometry.graph;
+  const summary = summarizeBuildingGraph(graph);
+  const basisRatio = modelledGraphGlazingRatio(graph);
+  const basisGlazing = glazingDisclosure(basisRatio);
+  const basis: VariationBasis = {
+    designHash: hashBuilderDocument(document),
+    areaSqFt: summary.totalFloorAreaSqFt,
+    glazedAreaSqFt: summary.glazedAreaSqFt,
+    glazingRatio: basisRatio,
+    overCeiling: basisGlazing.over,
+    glazingSentence: basisGlazing.sentence,
+    total: basisBudget.total,
+  };
+
+  const variations: DesignVariation[] = [];
+  const refusals: VariationRefusal[] = [];
+
+  const glassSteps: Array<{ id: string; title: string; factor: number; note: string }> = [
+    {
+      id: "glazing-more",
+      title: "More glass",
+      factor: 1.35,
+      note: "Every glazed opening grows on its host wall, stopping at its neighbours and at the storey head. Doors stay put.",
+    },
+    {
+      id: "glazing-less",
+      title: "Less glass",
+      factor: 0.7,
+      note: "Smaller openings cost less to buy and lose less heat in January; they also collect less of the sun that pays for them.",
+    },
+  ];
+
+  for (const step of glassSteps) {
+    const scaled = scaleGraphOpenings(graph, step.factor);
+    if (!scaled.ok) {
+      refusals.push({
+        axis: "glazing",
+        reason: `${step.title} was not offered — ${scaled.problem}`,
+      });
+      continue;
+    }
+    const candidate = validateBuilderDocument(withGraph(document, scaled.graph));
+    if (!candidate.ok) {
+      refusals.push({
+        axis: "glazing",
+        reason: `${step.title} was not offered — it does not validate as a builder document: ${candidate.problem}`,
+      });
+      continue;
+    }
+    const variantHash = hashBuilderDocument(candidate.document);
+    if (variantHash === basis.designHash) {
+      refusals.push({
+        axis: "glazing",
+        reason: `${step.title} was not offered — it produced the design you already have.`,
+      });
+      continue;
+    }
+    let budget;
+    try {
+      budget = price(candidate.document);
+    } catch (error) {
+      refusals.push({
+        axis: "glazing",
+        reason: `${step.title} was not offered — it could not be costed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      });
+      continue;
+    }
+    const nextGraph =
+      candidate.document.geometry.kind === "building-graph"
+        ? candidate.document.geometry.graph
+        : null;
+    if (!nextGraph) {
+      refusals.push({
+        axis: "glazing",
+        reason: `${step.title} was not offered — the candidate left planar graph geometry.`,
+      });
+      continue;
+    }
+    const nextSummary = summarizeBuildingGraph(nextGraph);
+    const ratio = modelledGraphGlazingRatio(nextGraph);
+    const glazing = glazingDisclosure(ratio);
+    const notes: string[] = [];
+    const unmoved =
+      budget.total.low === basisBudget.total.low &&
+      budget.total.mid === basisBudget.total.mid &&
+      budget.total.high === basisBudget.total.high;
+    if (unmoved) notes.push(COST_MODEL_UNMOVED);
+    if (
+      Math.abs(nextSummary.glazedAreaSqFt - summary.glazedAreaSqFt) > 1e-6 &&
+      graphWindowCount(nextGraph) === graphWindowCount(graph)
+    ) {
+      notes.push(WINDOW_UNIT_PRICING);
+    }
+    variations.push({
+      id: step.id,
+      title: step.title,
+      axis: "glazing",
+      document: candidate.document,
+      designHash: variantHash,
+      areaSqFt: nextSummary.totalFloorAreaSqFt,
+      glazedAreaSqFt: nextSummary.glazedAreaSqFt,
+      glazingRatio: ratio,
+      overCeiling: glazing.over,
+      glazingSentence: glazing.sentence,
+      deltas: [
+        {
+          sentence: `Glazed area ${
+            nextSummary.glazedAreaSqFt > summary.glazedAreaSqFt
+              ? "up"
+              : nextSummary.glazedAreaSqFt < summary.glazedAreaSqFt
+                ? "down"
+                : "unchanged at"
+          } ${areaText(summary.glazedAreaSqFt)} → ${areaText(nextSummary.glazedAreaSqFt)}.`,
+        },
+        { sentence: step.note },
+      ],
+      cost: {
+        currency: "CAD",
+        total: budget.total,
+        midDeltaCad: budget.total.mid - basisBudget.total.mid,
+        budgetHash: budget.budgetHash,
+        blindSpots: notes,
+      },
+    });
+  }
+
+  const turns: Array<{ id: string; title: string; deg: number; sentence: string }> = [
+    {
+      id: "orientation-quarter-turn",
+      title: "Quarter turn",
+      deg: 90,
+      sentence:
+        "The plan was turned 90° about the site origin. Openings stay on their walls. What that is worth in a zone 7A winter is not modelled here.",
+    },
+    {
+      id: "orientation-half-turn",
+      title: "Half turn",
+      deg: 180,
+      sentence:
+        "The plan was turned 180° about the site origin. Openings stay on their walls. What that is worth in a zone 7A winter is not modelled here.",
+    },
+  ];
+
+  for (const step of turns) {
+    const rotated = rotateGraphPlan(graph, step.deg);
+    if (!rotated.ok) {
+      refusals.push({ axis: "orientation", reason: `${step.title} was not offered — ${rotated.problem}` });
+      continue;
+    }
+    const candidate = validateBuilderDocument(withGraph(document, rotated.graph));
+    if (!candidate.ok) {
+      refusals.push({
+        axis: "orientation",
+        reason: `${step.title} was not offered — it does not validate as a builder document: ${candidate.problem}`,
+      });
+      continue;
+    }
+    const variantHash = hashBuilderDocument(candidate.document);
+    if (variantHash === basis.designHash) {
+      refusals.push({
+        axis: "orientation",
+        reason: `${step.title} was not offered — it produced the design you already have.`,
+      });
+      continue;
+    }
+    let budget;
+    try {
+      budget = price(candidate.document);
+    } catch (error) {
+      refusals.push({
+        axis: "orientation",
+        reason: `${step.title} was not offered — it could not be costed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      });
+      continue;
+    }
+    const nextGraph =
+      candidate.document.geometry.kind === "building-graph"
+        ? candidate.document.geometry.graph
+        : null;
+    if (!nextGraph) {
+      refusals.push({
+        axis: "orientation",
+        reason: `${step.title} was not offered — the candidate left planar graph geometry.`,
+      });
+      continue;
+    }
+    const nextSummary = summarizeBuildingGraph(nextGraph);
+    const ratio = modelledGraphGlazingRatio(nextGraph);
+    const glazing = glazingDisclosure(ratio);
+    const notes: string[] = [NOT_MODELLED_ENERGY];
+    const unmoved =
+      budget.total.low === basisBudget.total.low &&
+      budget.total.mid === basisBudget.total.mid &&
+      budget.total.high === basisBudget.total.high;
+    if (unmoved) notes.push(COST_MODEL_UNMOVED);
+    variations.push({
+      id: step.id,
+      title: step.title,
+      axis: "orientation",
+      document: candidate.document,
+      designHash: variantHash,
+      areaSqFt: nextSummary.totalFloorAreaSqFt,
+      glazedAreaSqFt: nextSummary.glazedAreaSqFt,
+      glazingRatio: ratio,
+      overCeiling: glazing.over,
+      glazingSentence: glazing.sentence,
+      deltas: [{ sentence: step.sentence }],
+      cost: {
+        currency: "CAD",
+        total: budget.total,
+        midDeltaCad: budget.total.mid - basisBudget.total.mid,
+        budgetHash: budget.budgetHash,
+        blindSpots: notes,
+      },
+    });
+  }
+
+  if (graph.storeys.length === 1) {
+    const source = graph.storeys[0];
+    const duplicated = duplicateGraphStorey(graph, source.id, {
+      id: graph.storeys.some((item) => item.id === "storey-2") ? "storey-variation-2" : "storey-2",
+      name: "Storey 2",
+      elevationFt: source.elevationFt + source.heightFt,
+      heightFt: source.heightFt,
+    });
+    if (!duplicated.ok) {
+      refusals.push({
+        axis: "storeys",
+        reason: `Second storey was not offered — ${duplicated.problem}`,
+      });
+    } else {
+      const candidate = validateBuilderDocument(withGraph(document, duplicated.graph));
+      if (!candidate.ok) {
+        refusals.push({
+          axis: "storeys",
+          reason: `Second storey was not offered — it does not validate as a builder document: ${candidate.problem}`,
+        });
+      } else {
+        const variantHash = hashBuilderDocument(candidate.document);
+        let budget = null as ReturnType<typeof createProjectBudget> | null;
+        if (variantHash === basis.designHash) {
+          refusals.push({
+            axis: "storeys",
+            reason: "Second storey was not offered — it produced the design you already have.",
+          });
+        } else {
+          try {
+            budget = price(candidate.document);
+          } catch (error) {
+            refusals.push({
+              axis: "storeys",
+              reason: `Second storey was not offered — it could not be costed: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+            });
+          }
+        }
+        const nextGraph =
+          candidate.document.geometry.kind === "building-graph"
+            ? candidate.document.geometry.graph
+            : null;
+        if (budget && nextGraph && variantHash !== basis.designHash) {
+          const nextSummary = summarizeBuildingGraph(nextGraph);
+          const ratio = modelledGraphGlazingRatio(nextGraph);
+          const glazing = glazingDisclosure(ratio);
+          variations.push({
+            id: "storeys-two",
+            title: "Second storey",
+            axis: "storeys",
+            document: candidate.document,
+            designHash: variantHash,
+            areaSqFt: nextSummary.totalFloorAreaSqFt,
+            glazedAreaSqFt: nextSummary.glazedAreaSqFt,
+            glazingRatio: ratio,
+            overCeiling: glazing.over,
+            glazingSentence: glazing.sentence,
+            deltas: [
+              {
+                sentence: `${source.name}: one storey → two, on the same ground. Floor area ${areaText(summary.totalFloorAreaSqFt)} → ${areaText(nextSummary.totalFloorAreaSqFt)} with no more footprint.`,
+              },
+            ],
+            cost: {
+              currency: "CAD",
+              total: budget.total,
+              midDeltaCad: budget.total.mid - basisBudget.total.mid,
+              budgetHash: budget.budgetHash,
+              blindSpots: budget.total.mid === basisBudget.total.mid ? [COST_MODEL_UNMOVED] : [],
+            },
+          });
+        } else if (budget && !nextGraph) {
+          refusals.push({
+            axis: "storeys",
+            reason: "Second storey was not offered — the candidate left planar graph geometry.",
+          });
+        }
+      }
+    }
+  } else {
+    refusals.push({
+      axis: "storeys",
+      reason:
+        "This graph already has more than one storey. Removing one would need a storey-delete " +
+        "mutator this strip does not call yet.",
+    });
+  }
+
+  const currentRoof = graph.storeys[0]?.roofZones[0]?.form ?? "gable";
+  const otherRoofs = GRAPH_ROOF_ORDER.filter((form) => form !== currentRoof).slice(0, 2);
+  for (const form of otherRoofs) {
+    const source = graph.storeys[0];
+    if (!source) break;
+    const roofed = setGraphRoofForm(graph, source.id, form);
+    if (!roofed.ok) {
+      refusals.push({
+        axis: "roof",
+        reason: `${form} roof was not offered — ${roofed.problem}`,
+      });
+      continue;
+    }
+    const candidate = validateBuilderDocument(withGraph(document, roofed.graph));
+    if (!candidate.ok) {
+      refusals.push({
+        axis: "roof",
+        reason: `${form} roof was not offered — it does not validate as a builder document: ${candidate.problem}`,
+      });
+      continue;
+    }
+    const variantHash = hashBuilderDocument(candidate.document);
+    if (variantHash === basis.designHash) {
+      refusals.push({
+        axis: "roof",
+        reason: `${form} roof was not offered — it produced the design you already have.`,
+      });
+      continue;
+    }
+    let budget;
+    try {
+      budget = price(candidate.document);
+    } catch (error) {
+      refusals.push({
+        axis: "roof",
+        reason: `${form} roof was not offered — it could not be costed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      });
+      continue;
+    }
+    const nextGraph =
+      candidate.document.geometry.kind === "building-graph" ? candidate.document.geometry.graph : null;
+    if (!nextGraph) {
+      refusals.push({
+        axis: "roof",
+        reason: `${form} roof was not offered — the candidate left planar graph geometry.`,
+      });
+      continue;
+    }
+    const nextSummary = summarizeBuildingGraph(nextGraph);
+    const ratio = modelledGraphGlazingRatio(nextGraph);
+    const glazing = glazingDisclosure(ratio);
+    const notes: string[] = [ROOF_FORM_UNPRICED];
+    const unmoved =
+      budget.total.low === basisBudget.total.low &&
+      budget.total.mid === basisBudget.total.mid &&
+      budget.total.high === basisBudget.total.high;
+    if (unmoved) notes.push(COST_MODEL_UNMOVED);
+    const title = `${form.charAt(0).toUpperCase()}${form.slice(1)} roof`;
+    variations.push({
+      id: `roof-${form}`,
+      title,
+      axis: "roof",
+      document: candidate.document,
+      designHash: variantHash,
+      areaSqFt: nextSummary.totalFloorAreaSqFt,
+      glazedAreaSqFt: nextSummary.glazedAreaSqFt,
+      glazingRatio: ratio,
+      overCeiling: glazing.over,
+      glazingSentence: glazing.sentence,
+      deltas: [
+        {
+          sentence: `${source.name}: ${currentRoof} → ${form} — ${GRAPH_ROOF_NOTES[form]}.`,
+        },
+      ],
+      cost: {
+        currency: "CAD",
+        total: budget.total,
+        midDeltaCad: budget.total.mid - basisBudget.total.mid,
+        budgetHash: budget.budgetHash,
+        blindSpots: notes,
+      },
+    });
+  }
+
+  const stretches: Array<{ id: string; title: string; kx: number; kz: number; sentence: string }> = [
+    {
+      id: "proportion-long",
+      title: "Longer, shallower",
+      kx: 1.25,
+      kz: 0.8,
+      sentence:
+        "The plan was stretched 25% east-west and shortened 20% north-south about its own centre, so the floor area stays put. More perimeter, more envelope.",
+    },
+    {
+      id: "proportion-compact",
+      title: "Squarer, deeper",
+      kx: 0.8,
+      kz: 1.25,
+      sentence:
+        "The plan was shortened 20% east-west and stretched 25% north-south about its own centre, so the floor area stays put. Less perimeter — the cheapest shape to heat in zone 7A.",
+    },
+  ];
+
+  for (const step of stretches) {
+    const stretched = stretchGraphPlan(graph, step.kx, step.kz);
+    if (!stretched.ok) {
+      refusals.push({ axis: "proportion", reason: `${step.title} was not offered — ${stretched.problem}` });
+      continue;
+    }
+    const candidate = validateBuilderDocument(withGraph(document, stretched.graph));
+    if (!candidate.ok) {
+      refusals.push({
+        axis: "proportion",
+        reason: `${step.title} was not offered — it does not validate as a builder document: ${candidate.problem}`,
+      });
+      continue;
+    }
+    const variantHash = hashBuilderDocument(candidate.document);
+    if (variantHash === basis.designHash) {
+      refusals.push({
+        axis: "proportion",
+        reason: `${step.title} was not offered — it produced the design you already have.`,
+      });
+      continue;
+    }
+    let budget;
+    try {
+      budget = price(candidate.document);
+    } catch (error) {
+      refusals.push({
+        axis: "proportion",
+        reason: `${step.title} was not offered — it could not be costed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      });
+      continue;
+    }
+    const nextGraph =
+      candidate.document.geometry.kind === "building-graph" ? candidate.document.geometry.graph : null;
+    if (!nextGraph) {
+      refusals.push({
+        axis: "proportion",
+        reason: `${step.title} was not offered — the candidate left planar graph geometry.`,
+      });
+      continue;
+    }
+    const nextSummary = summarizeBuildingGraph(nextGraph);
+    const ratio = modelledGraphGlazingRatio(nextGraph);
+    const glazing = glazingDisclosure(ratio);
+    variations.push({
+      id: step.id,
+      title: step.title,
+      axis: "proportion",
+      document: candidate.document,
+      designHash: variantHash,
+      areaSqFt: nextSummary.totalFloorAreaSqFt,
+      glazedAreaSqFt: nextSummary.glazedAreaSqFt,
+      glazingRatio: ratio,
+      overCeiling: glazing.over,
+      glazingSentence: glazing.sentence,
+      deltas: [{ sentence: step.sentence }],
+      cost: {
+        currency: "CAD",
+        total: budget.total,
+        midDeltaCad: budget.total.mid - basisBudget.total.mid,
+        budgetHash: budget.budgetHash,
+        blindSpots: budget.total.mid === basisBudget.total.mid ? [COST_MODEL_UNMOVED] : [],
+      },
+    });
+  }
+
+  return { engine: VARIATION_ENGINE, basis, variations, refusals, unavailable: null };
+}
+
 /**
  * The variation set for a document. Pure, deterministic, and complete: every
  * axis that produced nothing is in `refusals` with its reason.
@@ -706,24 +1256,12 @@ export function variationSet(input: VariationInput): VariationSet {
   }
   const document = checked.document;
 
-  /* Planar-graph documents carry a FROZEN recovery spec — `document.ts`
-     refuses to reconcile it and the read-out refuses to run the glazing ratio
-     on it. Varying it would produce numbers about a home that is no longer on
-     screen, which is exactly the class of confident wrong answer this product
-     exists not to give. */
-  if (document.geometry.kind === "building-graph") {
-    return {
-      engine: VARIATION_ENGINE,
-      basis: null,
-      variations: [],
-      refusals: [],
-      unavailable:
-        "This project uses planar graph geometry. Variations move volume dimensions, roof form and openings on the legacy spec, which a graph document keeps only as a frozen recovery copy — varying it would describe a home that is no longer on screen.",
-    };
-  }
-
   const price = (candidate: BuilderDocument) =>
     createProjectBudget({ document: candidate, scenario, region, municipality, budgetCapCad });
+
+  if (document.geometry.kind === "building-graph") {
+    return variationSetFromGraph(document, price);
+  }
 
   let basisBudget;
   try {
@@ -852,7 +1390,15 @@ export function variationAnnouncement(variation: DesignVariation): string {
 }
 
 export type ApplyVariationResult =
-  | { ok: true; spec: HomeSpec; label: string; announcement: string }
+  | {
+      ok: true;
+      spec: HomeSpec;
+      /** Present when the variant is planar graph geometry. The recovery spec
+       *  is left unchanged; the editor must take this through `editGraph`. */
+      graph?: BuildingGraph;
+      label: string;
+      announcement: string;
+    }
   | { ok: false; problem: string };
 
 /**
@@ -870,9 +1416,14 @@ export function applyVariation(
 ): ApplyVariationResult {
   const variation = set.variations.find((candidate) => candidate.id === id);
   if (!variation) return { ok: false, problem: `No variation ${JSON.stringify(id)} is on offer.` };
+  const graph =
+    variation.document.geometry.kind === "building-graph"
+      ? variation.document.geometry.graph
+      : undefined;
   return {
     ok: true,
     spec: variation.document.spec,
+    ...(graph ? { graph } : {}),
     label: variationApplyLabel(variation.id, sequence),
     announcement: variationAnnouncement(variation),
   };

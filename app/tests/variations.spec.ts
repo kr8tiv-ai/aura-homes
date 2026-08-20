@@ -20,6 +20,7 @@ import {
   defaultProjectBudgetScenario,
 } from "@/lib/builder/projectBudget";
 import { glazedAreaSqFt, totalFloorAreaSqFt, type HomeSpec } from "@/lib/builder/spec";
+import { modelledGraphGlazingRatio } from "@/lib/builder/graphGeometry";
 import { modelledGlazingRatio } from "@/lib/builder/toPlan";
 import {
   AXIS_LABELS,
@@ -696,26 +697,51 @@ test("an axis that cannot produce a legal design is named, not dropped", () => {
   expect(SET.variations.some((v) => v.axis === "storeys")).toBe(true);
 });
 
-test("a planar-graph project is refused as a whole, with the reason on screen", async ({
+test("a planar-graph project offers graph glazing and names the axes that still write spec", async ({
   page,
 }) => {
   const converted = convertBuilderDocumentToGraph(DOC, 0.5);
   expect(converted.ok).toBe(true);
   if (!converted.ok) return;
+  expect(converted.document.geometry.kind).toBe("building-graph");
+  if (converted.document.geometry.kind !== "building-graph") return;
 
   const set: VariationSet = variationSet({ document: converted.document });
-  expect(set.variations).toEqual([]);
-  expect(set.basis).toBeNull();
-  expect(set.unavailable).toContain("planar graph geometry");
+  expect(set.unavailable).toBeNull();
+  expect(set.basis).not.toBeNull();
+  expect(set.variations.some((variation) => variation.axis === "glazing")).toBe(true);
+  expect(set.variations.some((variation) => variation.axis === "orientation")).toBe(true);
+  expect(set.variations.some((variation) => variation.id === "storeys-two")).toBe(true);
+  expect(set.variations.some((variation) => variation.axis === "roof")).toBe(true);
+  expect(set.variations.some((variation) => variation.axis === "proportion")).toBe(true);
+  expect(set.variations.length).toBeGreaterThan(5);
+  expect(set.variations.some((variation) => variation.id === "proportion-long")).toBe(true);
+  const compact = set.refusals.find((entry) => entry.axis === "proportion");
+  expect(compact?.reason).toContain("does not fit wall");
+
+  const less = set.variations.find((variation) => variation.id === "glazing-less");
+  expect(less, "less glass was not offered on the graph").toBeDefined();
+  if (!less) return;
+  expect(less.document.geometry.kind).toBe("building-graph");
+  if (less.document.geometry.kind !== "building-graph") return;
+  expect(modelledGraphGlazingRatio(less.document.geometry.graph)).toBeLessThan(
+    modelledGraphGlazingRatio(converted.document.geometry.graph),
+  );
+  expect(less.document.spec).toEqual(converted.document.spec);
+
+  const applied = applyVariation(set, less.id, 1);
+  expect(applied.ok).toBe(true);
+  if (!applied.ok) return;
+  expect(applied.graph).toBeDefined();
+  if (!applied.graph) return;
+  expect(modelledGraphGlazingRatio(applied.graph)).toBe(less.glazingRatio);
+  expect(glazedAreaSqFt(applied.spec)).toBe(glazedAreaSqFt(converted.document.spec));
 
   await mount(page, markupFor(converted.document));
   const strip = page.locator(".variation-strip");
   await expect(strip).toBeVisible();
-  await expect(strip).toHaveAttribute("data-variation-count", "0");
-  expect(await page.locator(".variation-card").count()).toBe(0);
-  const unavailable = page.locator(".variation-unavailable");
-  await expect(unavailable).toBeVisible();
-  expect(await unavailable.innerText()).toContain("planar graph geometry");
+  await expect(strip).toHaveAttribute("data-variation-count", String(set.variations.length));
+  expect(await page.locator(".variation-card").count()).toBe(set.variations.length);
 });
 
 /* ═══════════════════════ 7 · IT FITS ON A PHONE ═══════════════════════ */

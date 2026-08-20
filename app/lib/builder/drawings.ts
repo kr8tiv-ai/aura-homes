@@ -54,9 +54,15 @@
    this repo's own port of its Python design service.
    =========================================================================== */
 
+import type { BuildingGraph } from "@/lib/builder/buildingGraph";
 import type { HomeSpec } from "@/lib/builder/spec";
-import { resolveLegacyGeometryExportSource, type BuilderExportSource } from "./exportSource";
+import {
+  resolveBuilderExportSource,
+  resolveLegacyGeometryExportSource,
+  type BuilderExportSource,
+} from "./exportSource";
 
+import { buildHomeModelFromGraph } from "./drawings/graphModel";
 import { buildHomeModel, type HomeModel } from "./drawings/model";
 import {
   buildSheets,
@@ -115,9 +121,32 @@ export type {
  * Total: it never throws for a bad spec. A model with no volumes returns eight
  * sheets that say so.
  */
+function graphFromSource(source: BuilderExportSource): BuildingGraph | null {
+  if (
+    source &&
+    typeof source === "object" &&
+    "geometry" in source &&
+    source.geometry &&
+    typeof source.geometry === "object" &&
+    "kind" in source.geometry &&
+    source.geometry.kind === "building-graph" &&
+    "graph" in source.geometry
+  ) {
+    return source.geometry.graph;
+  }
+  return null;
+}
+
 export function drawingSet(input: DrawingSourceInput): DrawingSetResult {
   if ("document" in input) {
     const { document, ...facts } = input;
+    const graph = graphFromSource(document);
+    if (graph) {
+      /* EX03: draw the graph. Do not substitute the frozen recovery spec. */
+      const { spec } = resolveBuilderExportSource(document);
+      const model = buildHomeModelFromGraph(graph, spec);
+      return buildSheets({ ...facts, spec }, model);
+    }
     const { spec } = resolveLegacyGeometryExportSource(document);
     const model = buildHomeModel(spec);
     return buildSheets({ ...facts, spec }, model);
@@ -148,6 +177,14 @@ export const drawingSetForDocument = (
 ): DrawingSetResult => drawingSet({ document, dateISO });
 
 /** The drawing model on its own, for a caller that wants the numbers without
- *  the ink — the ridge heights, the pile grid, the opening schedule. */
-export const drawingModel = (source: BuilderExportSource): HomeModel =>
-  buildHomeModel(resolveLegacyGeometryExportSource(source).spec);
+ *  the ink — the ridge heights, the pile grid, the opening schedule. Same
+ *  source the sheets and the DXF/IFC writers use: the graph when that is
+ *  what is on screen, never the frozen recovery rectangle. */
+export const drawingModel = (source: BuilderExportSource): HomeModel => {
+  const graph = graphFromSource(source);
+  if (graph) {
+    const { spec } = resolveBuilderExportSource(source);
+    return buildHomeModelFromGraph(graph, spec);
+  }
+  return buildHomeModel(resolveLegacyGeometryExportSource(source).spec);
+};

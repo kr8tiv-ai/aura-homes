@@ -60,6 +60,8 @@
    =========================================================================== */
 
 import type { PlacedRoom } from "@/lib/designApi";
+import type { BuildingGraph, GraphRoomFace, GraphStorey } from "@/lib/builder/buildingGraph";
+import type { BuilderDocument } from "@/lib/builder/document";
 import type { HomeSpec } from "@/lib/builder/spec";
 import { planFromSpec } from "@/lib/builder/toPlan";
 
@@ -471,6 +473,91 @@ export function comfortRooms(spec: HomeSpec): ComfortRoomSet {
   return { rooms, envelopeFt: [plan.width, plan.height], blockedReason: null };
 }
 
+/**
+ * EX03 / B16. Named graph rooms, without asking the plan engine to solve a
+ * rectangle from the frozen recovery spec. Each room's plate is the
+ * axis-aligned box of its boundary vertices, in the same top-left / +y-south
+ * frame `comfortPlates` already converts. That box is not the room polygon.
+ */
+export function comfortRoomsFromGraph(graph: BuildingGraph): ComfortRoomSet {
+  const xs = graph.storeys.flatMap((storey) => storey.vertices.map((vertex) => vertex.xFt));
+  const zs = graph.storeys.flatMap((storey) => storey.vertices.map((vertex) => vertex.zFt));
+  if (xs.length === 0 || zs.length === 0) {
+    return {
+      rooms: [],
+      envelopeFt: [0, 0],
+      blockedReason:
+        "This planar graph has no vertices, so there is no room to set a comfort target on.",
+    };
+  }
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minZ = Math.min(...zs);
+  const maxZ = Math.max(...zs);
+  const seen = new Map<string, number>();
+  const rooms: ComfortRoom[] = [];
+  for (const storey of graph.storeys) {
+    for (const face of storey.rooms) {
+      const box = roomBox(storey, face);
+      if (!box) continue;
+      const base = slug(face.name);
+      const n = (seen.get(base) ?? 0) + 1;
+      seen.set(base, n);
+      rooms.push({
+        id: n === 1 ? base : `${base}-${n}`,
+        name: face.name,
+        use: useOfRoom({ name: face.name, wet: false, x: 0, y: 0, w: 0, h: 0, windows: 0 }),
+        areaSqFt: face.areaSqft,
+        windows: windowsOnFace(storey, face),
+        x: box.minX - minX,
+        y: box.minZ - minZ,
+        w: box.maxX - box.minX,
+        h: box.maxZ - box.minZ,
+      });
+    }
+  }
+  if (rooms.length === 0) {
+    return {
+      rooms: [],
+      envelopeFt: [maxX - minX, maxZ - minZ],
+      blockedReason:
+        "This planar graph has no named rooms yet, so there is nothing to set a comfort target on.",
+    };
+  }
+  return { rooms, envelopeFt: [maxX - minX, maxZ - minZ], blockedReason: null };
+}
+
+function roomBox(
+  storey: GraphStorey,
+  face: GraphRoomFace,
+): { minX: number; maxX: number; minZ: number; maxZ: number } | null {
+  const vertices = new Map(storey.vertices.map((vertex) => [vertex.id, vertex]));
+  const walls = new Map(storey.walls.map((wall) => [wall.id, wall]));
+  const xs: number[] = [];
+  const zs: number[] = [];
+  for (const edge of face.boundary) {
+    const wall = walls.get(edge.wallId);
+    if (!wall) continue;
+    const start = vertices.get(wall.startVertexId);
+    const end = vertices.get(wall.endVertexId);
+    if (!start || !end) continue;
+    xs.push(start.xFt, end.xFt);
+    zs.push(start.zFt, end.zFt);
+  }
+  if (xs.length === 0) return null;
+  return { minX: Math.min(...xs), maxX: Math.max(...xs), minZ: Math.min(...zs), maxZ: Math.max(...zs) };
+}
+
+function windowsOnFace(storey: GraphStorey, face: GraphRoomFace): number {
+  const ids = new Set(face.boundary.map((edge) => edge.wallId));
+  return storey.walls
+    .filter((wall) => ids.has(wall.id))
+    .reduce(
+      (sum, wall) => sum + wall.openings.filter((opening) => opening.kind !== "door").length,
+      0,
+    );
+}
+
 /** The target in force for a room: the owner's, or the default for its use. */
 export function targetFor(settings: ComfortSettings, room: ComfortRoom): ComfortTarget {
   return settings.targets[room.id] ?? DEFAULT_TARGETS[room.use];
@@ -650,13 +737,8 @@ function kpi(season: Season, rooms: readonly RoomComfort[]): ComfortKpi {
  * of exponentials. Callers that only need it sometimes should gate the memo
  * rather than pay it on every keystroke; `BuilderApp` does exactly that.
  */
-export function comfortReport(
-  spec: HomeSpec,
-  settings: ComfortSettings = DEFAULT_SETTINGS,
-): ComfortReport {
-  const set = comfortRooms(spec);
+function reportFromRooms(set: ComfortRoomSet, settings: ComfortSettings): ComfortReport {
   const c = settings.conditions;
-
   const rooms: RoomComfort[] = set.rooms.map((room) => {
     const target = targetFor(settings, room);
     const modelled = room.use !== "sleeping";
@@ -670,7 +752,6 @@ export function comfortReport(
       summer: evaluate("summer", c.summerIndoorC, c.summerRhPct, target, modelled),
     };
   });
-
   return {
     available: rooms.length > 0,
     blockedReason: set.blockedReason,
@@ -680,6 +761,25 @@ export function comfortReport(
     winter: kpi("winter", rooms),
     summer: kpi("summer", rooms),
   };
+}
+
+export function comfortReport(
+  spec: HomeSpec,
+  settings: ComfortSettings = DEFAULT_SETTINGS,
+): ComfortReport {
+  return reportFromRooms(comfortRooms(spec), settings);
+}
+
+/** EX03. Same evaluation, but rooms come from the graph when that is the
+ *  design on screen. The plan engine is not asked to invent a rectangle. */
+export function comfortReportForDocument(
+  document: BuilderDocument,
+  settings: ComfortSettings = DEFAULT_SETTINGS,
+): ComfortReport {
+  if (document.geometry.kind === "building-graph") {
+    return reportFromRooms(comfortRoomsFromGraph(document.geometry.graph), settings);
+  }
+  return comfortReport(document.spec, settings);
 }
 
 /** The result for one season, without a caller having to branch on it. */

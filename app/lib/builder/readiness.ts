@@ -73,8 +73,14 @@ const WHERE_GRAPH_BOUNDARY =
  * (`GraphPending`); the readiness reading and the live strip refuse it here,
  * through one predicate so they cannot come apart.
  */
-export function parcelCheckApplies(document: BuilderDocument): boolean {
-  return document.geometry.kind !== "building-graph";
+export function parcelCheckApplies(
+  document: BuilderDocument,
+  check: SpecParcelCheck | null = null,
+): boolean {
+  if (document.geometry.kind !== "building-graph") return true;
+  /* A spec-derived check describes the frozen recovery copy. A graph-derived
+     check (EX03) describes the design on screen. */
+  return check?.measuredFrom === "building-graph";
 }
 
 /** Which screen closes a blocking parcel finding. Setbacks that eat the lot
@@ -88,7 +94,7 @@ const PARCEL_WHERE: Partial<Record<ParcelTopic, string>> = {
 export function readDesignReadiness(input: ReadinessInput): Readiness {
   const gaps: ReadinessGap[] = [];
 
-  if (!parcelCheckApplies(input.document)) {
+  if (!parcelCheckApplies(input.document, input.parcelCheck)) {
     gaps.push({
       id: "graph-parcel-check",
       need: "The setback and buildable-envelope check still reads the legacy recovery spec, so it has not been run against this planar-graph design.",

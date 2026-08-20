@@ -9,6 +9,7 @@ import { checkOpening } from "@/components/builder/openingEdit";
 import {
   COPILOT_ENGINE,
   applyPreparedAction,
+  copilotQuietDemo,
   defaultCoPilotBasis,
   previewPreparedAction,
   readCoPilot,
@@ -16,7 +17,9 @@ import {
   type CoPilotReport,
   type CoPilotSuggestion,
 } from "@/lib/builder/copilot";
+import { PLAN_TEMPLATES } from "@/lib/builder/planCatalog";
 import {
+  builderDocumentFromLegacySpec,
   convertBuilderDocumentToGraph,
   defaultBuilderDocument,
   validateBuilderDocument,
@@ -28,7 +31,9 @@ import {
 } from "@/lib/builder/projectBudget";
 import { NOT_MODELLED } from "@/lib/builder/scenarios";
 import { glazedAreaSqFt, totalFloorAreaSqFt, type HomeSpec } from "@/lib/builder/spec";
+import { modelledGraphGlazingRatio, summarizeBuildingGraph } from "@/lib/builder/graphGeometry";
 import {
+  checkMeasuredFootprintAgainstParcel,
   checkSpecAgainstParcel,
   modelledGlazingRatio,
   storeysOf,
@@ -769,11 +774,104 @@ test("an opening off its wall gets a refit, and the refit is verified by checkOp
    7. THE REFUSALS — what was looked at and not offered
    ═══════════════════════════════════════════════════════════════════════ */
 
-test("a planar-graph project gets a refusal, not advice about a frozen copy", () => {
+test("a planar-graph project is read from the graph, not refused as a frozen copy", () => {
   const report = readCoPilot({ document: graphFixture(), parcelCheck: null });
-  expect(report.suggestions).toEqual([]);
-  expect(report.unavailable).not.toBeNull();
-  expect(report.unavailable).toContain("frozen recovery copy");
+  expect(report.unavailable).toBeNull();
+  expect(report.suggestions.some((card) => card.kind === "footprint-over-buildable-envelope")).toBe(
+    false,
+  );
+  expect(report.suggestions.some((card) => card.kind === "opening-off-its-wall")).toBe(false);
+  expect(report.refusals.some((entry) => entry.id === "footprint-over-buildable-envelope")).toBe(
+    true,
+  );
+  expect(report.refusals.find((entry) => entry.id === "footprint-over-buildable-envelope")?.reason)
+    .toContain("graph-measured parcel check");
+  expect(report.refusals.find((entry) => entry.id === "opening-off-its-wall")?.reason).toContain(
+    "setGraphOpening",
+  );
+});
+
+test("a graph that does not fit its lot gets a stretch card that writes the graph", () => {
+  const bare = withSpec(DOC, {
+    ...DOC.spec,
+    volumes: DOC.spec.volumes.map((volume) => ({ ...volume, openings: [] })),
+  });
+  const converted = convertBuilderDocumentToGraph(bare, 0.5);
+  expect(converted.ok).toBe(true);
+  if (!converted.ok) return;
+  const document = converted.document;
+  expect(document.geometry.kind).toBe("building-graph");
+  if (document.geometry.kind !== "building-graph") return;
+  const summary = summarizeBuildingGraph(document.geometry.graph);
+  const parcelCheck = checkMeasuredFootprintAgainstParcel(
+    document.spec,
+    TIGHT_LOT,
+    {
+      widthFt: summary.bounds.widthFt,
+      depthFt: summary.bounds.depthFt,
+      floorAreaSqFt: summary.totalFloorAreaSqFt,
+      storeys: 1,
+    },
+    "building-graph",
+  );
+  expect(parcelCheck.report?.fits).toBe(false);
+
+  const report = readCoPilot({ document, parcelCheck });
+  const card = report.suggestions.find((entry) => entry.kind === "footprint-over-buildable-envelope");
+  if (!card) {
+    const refusal = report.refusals.find((entry) => entry.id === "footprint-over-buildable-envelope");
+    expect(refusal, "the advisor neither offered a stretch nor named why").toBeDefined();
+    expect(refusal?.reason).toMatch(/stretch|does not fit wall|Opening/i);
+    expect(refusal?.reason).not.toContain("applyPhrase");
+    return;
+  }
+  expect(card.action.payload.via).toBe("graph-stretch");
+
+  const applied = applyPreparedAction(document, card.action, {
+    confirmedId: card.id,
+    confirmedText: card.action.confirmText,
+  });
+  expect(applied.ok, applied.ok ? "" : applied.problem).toBe(true);
+  if (!applied.ok) return;
+  expect(applied.graph).toBeDefined();
+  if (!applied.graph) return;
+  const after = summarizeBuildingGraph(applied.graph);
+  expect(after.bounds.widthFt * after.bounds.depthFt).toBeLessThan(
+    summary.bounds.widthFt * summary.bounds.depthFt + 1,
+  );
+});
+
+test("a glassy graph project gets a less-glass card that writes the graph", () => {
+  const converted = convertBuilderDocumentToGraph(GLASSY, 0.5);
+  expect(converted.ok, "the glassy fixture itself failed to convert").toBe(true);
+  if (!converted.ok) return;
+  const document = converted.document;
+  expect(document.geometry.kind).toBe("building-graph");
+  if (document.geometry.kind !== "building-graph") return;
+
+  const beforeRatio = modelledGraphGlazingRatio(document.geometry.graph);
+  expect(beforeRatio).toBeGreaterThan(FDWR_MAX);
+
+  const report = readCoPilot({ document, parcelCheck: null });
+  expect(report.unavailable).toBeNull();
+  const card = report.suggestions.find((entry) => entry.kind === "glazing-over-prescriptive");
+  expect(card, "the graph advisor did not offer less glass").toBeDefined();
+  if (!card) return;
+  expect(card.action.payload).toEqual({ via: "scenario-move", move: "less-glass" });
+  expect(card.evidence.some((item) => item.source.includes("modelledGraphGlazingRatio"))).toBe(
+    true,
+  );
+
+  const applied = applyPreparedAction(document, card.action, {
+    confirmedId: card.id,
+    confirmedText: card.action.confirmText,
+  });
+  expect(applied.ok, applied.ok ? "" : applied.problem).toBe(true);
+  if (!applied.ok) return;
+  expect(applied.graph, "the apply path wrote the recovery spec instead of the graph").toBeDefined();
+  if (!applied.graph) return;
+  expect(modelledGraphGlazingRatio(applied.graph)).toBeLessThan(beforeRatio);
+  expect(glazedAreaSqFt(applied.spec)).toBe(glazedAreaSqFt(document.spec));
 });
 
 test("a clearance clash is named as something not offered, never as a card", () => {
@@ -801,4 +899,31 @@ test("a design with nothing wrong gets no cards and says what it looked at", () 
   expect(markup).toContain('data-copilot-open="0"');
   expect(markup).toContain("Nothing this build can check has anything to say");
   expect(markup).toContain("Looked at, and not offered");
+});
+
+test("the quiet sidebar names a catalog plan that actually produces a glazing card", () => {
+  /* WAVE13 leftover: an empty first impression is correct for the default
+     home and also unconvincing. The sentence must name a live catalog plan
+     that this advisor would actually card — derived from PLAN_TEMPLATES and
+     readCoPilot, never a hand-typed id that can go stale. */
+  const demo = copilotQuietDemo(PLAN_TEMPLATES);
+  expect(demo, "the library has no plan this advisor would card").not.toBeNull();
+  if (!demo) return;
+
+  const plan = PLAN_TEMPLATES.find((entry) => entry.id === demo.planId);
+  expect(plan, `quiet demo ${demo.planId} is not in PLAN_TEMPLATES`).toBeDefined();
+  expect(demo.ratio).toBeGreaterThan(FDWR_MAX);
+  expect(demo.sentence).toContain(demo.planId);
+  expect(demo.sentence).toContain("plan library");
+
+  const report = readCoPilot({
+    document: builderDocumentFromLegacySpec(plan!.spec),
+    parcelCheck: null,
+  });
+  expect(report.suggestions.some((card) => card.kind === "glazing-over-prescriptive")).toBe(true);
+
+  const { markup } = markupFor(DOC, null, null);
+  expect(markup).toContain(`data-copilot-quiet-demo="${demo.planId}"`);
+  expect(markup).toContain(demo.planId);
+  expect(markup).toContain(demo.title);
 });

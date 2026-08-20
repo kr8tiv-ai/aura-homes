@@ -56,12 +56,36 @@ PF01 remain):
 | Co-pilot | AI01 | The bounded advisor — deterministic, no model call, confirm-before-apply proven in four layers |
 | Polish | MI01 | One motion system, three durations, one curve, reduced-motion at the token layer |
 
-**Open — two nodes (plus founder-only X12–X15):**
+**Open — two nodes (plus founder-only X12–X15), and one new stream:**
 
 | ID | Job | Why it is still open |
 |---|---|---|
 | **PB04** | Re-measure against the PB01 baseline | Needs a quiet machine and the meadow proof. Out of this loop by the 3D freeze. |
 | **PF01** | Lazy-load the heavy 3D and map bundles | Touches three/r3f load paths. Deferred past the freeze unless first-load regresses. |
+| **OR01–OR07** | The OpenRouter stream — see §3a-quater | OR01–OR05 need no server and are buildable now; OR06/OR07 need credits, a ToS answer, and real settlement |
+
+#### A GREEN TEST SUITE IS NOT A GREEN BUILD (found Aug 16)
+
+The nineteen-commit graph wave that closed EX03 was red on
+`npx tsc --noEmit` for its entire length — eight errors across four files —
+while its unit suite passed throughout. Playwright transpiles each spec and
+never typechecks the project, so nothing in the gate could see it. One of the
+casualties was `drawings-graph.spec.ts`, whose commit message says the drawings
+are checked against the graph model and which **had never compiled**: it asked a
+`VolumeModel` for `.id` when a `VolumeModel` *holds* a volume, and a `HomeModel`
+for `.outer` when the outer ring is per volume.
+
+The errors were not all cosmetic. The most interesting was a `GraphRoofForm`
+carrying `"hipped"` being cast into a `RoofForm` union that has no hip — a real
+approximation somebody owed the reader, reduced to a compiler complaint somebody
+silenced with a cast. It now maps explicitly to a gable, the nearest neighbour
+that keeps the ridge, and both consumers say what that costs: a gable end is
+full height where a hip is cut back, so anything reading headroom near an end
+wall reads more room than the model builds.
+
+**The rule:** `tsc --noEmit` belongs in the same gate as the tests, not beside
+it. A suite that runs green over code that does not compile is measuring
+something other than correctness.
 
 **Added since v1.2 was written**, from founder asks rather than from the plan:
 OPEN01 (openings editable three ways), VAR01 (design variations), WALK01 (the
@@ -707,6 +731,107 @@ known-weak anti-padding gate — PL02's replacement is still defeatable through 
 prose field — which makes the author's judgement the control, and that is
 precisely the situation where padding is tempting. Fifteen real designs beat
 thirty permutations, and the node is told to say so if that is what it finds.
+
+---
+
+## 3a-quater. The OpenRouter stream — worked through properly (Aug 16)
+
+*Founder ask: "add OpenRouter to see if there's any possibility that if we get
+an account with them, it'll expand our own abilities… Don't think of regular
+stuff. Think of features that are really gonna impress people that we can charge
+a fifteen percent uplift on. Study the demographic."*
+
+### The unlock nobody noticed: a key does not need a server
+
+The AI-stream above says everything except AI-S1 "needs the VAR02 preconditions
+first — a server, a dated spend decision…". **That is true of an AURA-HELD key
+and false of the person's own.** A static export can hold no secret, but it can
+hold a text field. If somebody pastes their own OpenRouter key, it lives in
+IndexedDB beside their project, and the browser calls OpenRouter directly — no
+server, no secret in the bundle, no spend decision, no liability for somebody
+else's tokens. OpenRouter is CORS-enabled for exactly this browser-side use.
+
+That single observation moves the entire language half of this stream from
+"after a server exists" to **buildable now**, and it is philosophically the same
+product Aura already is: local-first, your data, your account, nothing held on
+your behalf. It also makes the uplift business a later, additive step rather
+than a precondition — Aura-held credits become the convenience tier over a thing
+that already works without them.
+
+| Path | Needs | Ships | Revenue |
+|---|---|---|---|
+| **BYO key** | a text field | now, on the static export | none, and that is fine |
+| **Aura credits** | a server, settlement, ToS check | after the deadline | cost + 15% |
+
+### The demographic, and what it is actually afraid of
+
+Four audiences use this product, and only one of them is a designer.
+
+1. **The owner-builder.** Building once, in their life, with their savings.
+   Cannot read a drawing set. Does not know what a rim joist is. Their real
+   emotion is not *I want a beautiful home* — it is **fear of being taken**, and
+   the fear is rational: they are about to hand a stranger two hundred thousand
+   dollars for work they cannot evaluate.
+2. **The small builder.** Wants a drawing they can price without a call, and
+   quantities they can trust. Values speed and being told the truth about scope.
+3. **The crypto-native holder.** Arrived through $HOMES. Wants the thesis to be
+   real and the receipts to exist. Will forgive a rough edge and will not
+   forgive a claim that turns out to be decoration.
+4. **The judge, this week.** Has twenty minutes and forty projects. Rewards a
+   thing that visibly works over a thing that is described well.
+
+**The insight the feature list should follow from:** for audience 1, the highest
+value a language model can add here is not designing. It is **translation and
+protection** — turning the builder's language into theirs, and telling them when
+a number in a quote disagrees with the model they already have. That is a
+genuine language problem, determinism has nothing to offer for it, and it is the
+thing they are actually frightened of. Every "AI home designer" on the market
+aims at audience 1's stated want. Almost none aims at their real one.
+
+### The nodes
+
+| ID | Feature | Why a model, and what stays deterministic | Path |
+|---|---|---|---|
+| **OR01** | **The quote translator.** Paste a builder's quote, email, or text message. Get it in plain words, line by line, checked against **your own design's numbers** — this quote says R-24 and your wall assembly is R-40; this quote has no line for the HRV your comfort report assumes; this window count is nine and your design has fourteen. | Reading unstructured prose is the model's whole job. Every figure it is checked AGAINST comes from the existing bill of materials and comfort report. The model may not compute a number, only find and quote one. | BYO |
+| **OR02** | **Photo to design.** Point a phone at a house you like. Get an editable, costed Aura model of its massing — footprint proportion, storeys, roof form, glazing rhythm. | The vision model returns **parameters, not geometry**: width, depth, roof form, an opening list. `validateBuilderDocument` and the plan gates then accept or refuse them exactly as they would a typed edit. Nothing it invents survives validation, and a refusal says which rule refused it. | BYO |
+| **OR03** | **Speak the design.** "Move the kitchen to the south wall and add a mudroom by the north door." | The model maps speech onto the **existing phrase grammar** in `phrases.ts` — a closed vocabulary the engine already parses and validates. The model's output is constrained to a language we already refuse badly-formed sentences in, so its worst case is an unparseable phrase, not a wrong building. | BYO |
+| **OR04** | **The permit pack.** Alberta development-permit applications want a written project description, a statement of intent, and a variance rationale. Aura has every number; the municipality wants prose in a shape. | Model writes the prose from figures it is handed. Every figure is quoted from the deterministic record, and the pack is a DRAFT a human signs. | BYO |
+| **OR05** | **Site photo to constraints.** Photograph the lot: slope, trees, access, neighbours, where the sun comes from. | Returns a draft site description; `validateBuilderSite` and `checkSpecAgainstParcel` do what they already do. Feeds LC01a's stated-lot form rather than replacing it — the person confirms every value. | BYO |
+| **OR06** | **Photoreal render, geometry locked.** The deterministic massing rendered in a chosen material and light, with the building's shape held fixed by depth conditioning. | This is VAR02 with its honesty problem solved: the geometry is not a suggestion the model may drift from, it is a constraint the sampler is conditioned on. The render must carry the design hash it was made from, so a picture can always be traced to the building it claims to be. | credits |
+| **OR07** | **Ask three, report the agreement.** For anything consequential, run the same question through three models on the gateway and surface only what they agree on, with disagreement shown rather than hidden. | The gateway's whole advantage is many models behind one call. Disagreement is a *finding*, and this product's entire argument is that it tells you when it does not know. | credits |
+
+### The business, stated with its problems
+
+- **Uplift.** OpenRouter bills per token. Pass the real cost through, add 15%,
+  and — per the existing AI-stream rule — **quote the estimate before the call**
+  rather than reporting it after. A person should never be surprised by a number
+  they did not agree to.
+- **Crypto rails.** OpenRouter accepts crypto top-ups, and $HOMES lives on X
+  Layer. This is the first place in the whole project where the token and the
+  product would genuinely touch rather than sit beside each other. **It is also
+  where the temptation to over-claim will be strongest**, so the rule from H20
+  stands: nothing about routing, settlement, or treasury is described as working
+  until a receipt exists.
+- **Three real problems, named now rather than discovered later.**
+  1. **Reselling API access has ToS implications.** Nobody has read OpenRouter's
+     terms on this. That is a founder-level check before a line of billing code.
+  2. **Aura-held credits mean a server, a spend cap, and abuse handling.** The
+     BYO path has none of these, which is why it goes first.
+  3. **Taking money means refunds, tax, and support.** A 15% margin on somebody
+     else's inference is thin cover for a chargeback.
+
+### What must not happen
+
+The co-pilot's argument today is *"no model call, no API key, nothing leaves
+your browser"*, and that sentence is on screen. **The moment OR01 ships, that
+sentence becomes conditional and must be rewritten wherever it appears** —
+including `AI01`'s own panel copy and `docs/SUBMISSION.md`. A product that
+quietly starts making network calls while its interface still promises it does
+not is the single worst thing this repo could ship, and it would undo the
+credibility every gate in it was built to earn.
+
+And the core stays deterministic. If a model ever picks a wall thickness, the
+money anchor and every gate behind it become decoration.
 
 ---
 

@@ -1263,6 +1263,10 @@ export interface SpecParcelCheck {
   footprintFt: [number, number];
   /** What the siting translation cost. Same vocabulary as the plan notes. */
   notes: HandoffNote[];
+  /** Which geometry the width/depth came from. A spec-derived check does not
+   *  describe a planar-graph design: `document.spec` is the frozen recovery
+   *  copy. EX03. */
+  measuredFrom: "spec" | "building-graph";
 }
 
 /**
@@ -1357,7 +1361,7 @@ export function checkSpecAgainstParcel(
         `The check was not run — an empty footprint "fits" every lot, and reporting that ` +
         `would be the most convincing wrong answer this tool could give.`,
     });
-    return { facts, report: null, footprintFt: [0, 0], notes: sortNotes(notes) };
+    return { facts, report: null, footprintFt: [0, 0], notes: sortNotes(notes), measuredFrom: "spec" };
   }
 
   const solved: [number, number] = envelopeFor(total, storeys);
@@ -1412,5 +1416,37 @@ export function checkSpecAgainstParcel(
     report: analyseParcel(facts, plan, storeys),
     footprintFt: [plan.width, plan.height],
     notes: sortNotes(notes),
+    measuredFrom: "spec",
+  };
+}
+
+/** EX03. Same parcel module as `checkSpecAgainstParcel`, but the rectangle
+ *  and the storey count are handed in rather than derived from `document.spec`.
+ *  That is the only honest fit check after a graph conversion: the spec is a
+ *  frozen recovery copy and graph edits never touch it. */
+export function checkMeasuredFootprintAgainstParcel(
+  spec: HomeSpec,
+  lot: ParcelLot,
+  measured: {
+    widthFt: number;
+    depthFt: number;
+    floorAreaSqFt: number;
+    storeys: 1 | 2;
+  },
+  measuredFrom: "building-graph",
+): SpecParcelCheck {
+  const facts = parcelFactsFromSpec(spec, lot);
+  if (!Number.isFinite(measured.floorAreaSqFt) || measured.floorAreaSqFt <= 0) {
+    return { facts, report: null, footprintFt: [0, 0], notes: [], measuredFrom };
+  }
+  const width = Math.max(measured.widthFt, measured.depthFt);
+  const height = Math.min(measured.widthFt, measured.depthFt);
+  const plan = { width, height };
+  return {
+    facts,
+    report: analyseParcel(facts, plan, measured.storeys),
+    footprintFt: [plan.width, plan.height],
+    notes: [],
+    measuredFrom,
   };
 }

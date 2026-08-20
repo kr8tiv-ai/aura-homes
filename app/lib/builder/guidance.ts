@@ -14,9 +14,11 @@
    A constraint is never reported as satisfied unless this module actually
    compared the design against it. That is not a style preference; it is the
    difference between a tool and a liability. `LiveReadout.tsx` already holds
-   the line for the read-out strip — it prints "Not modelled" for the glazing
-   ratio after a graph conversion, and its footnote says out loud that
-   municipal minimum dwelling size is not checked anywhere in this product.
+   the line for the read-out strip — glazing after a graph conversion is
+   measured from the graph's own walls (`modelledGraphGlazingRatio`); fit and
+   coverage stay un-run because those still read the frozen recovery spec.
+   Its footnote says out loud that municipal minimum dwelling size is not
+   checked anywhere in this product.
    This module makes the same refusals, in the same words, for the guided
    walk. Where nothing can be checked, the honest output is that nothing was
    checked, and the structure below makes the difference machine-readable
