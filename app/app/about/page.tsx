@@ -38,7 +38,14 @@ export default function AboutPage() {
           <p className="aura-label">How the plan is labelled</p>
           <p className="mt-3 text-sm leading-relaxed text-aura-text/75">
             Every capability on this site carries one of three words.{" "}
-            <span className="font-medium text-aura-emerald">Today</span>: working now, on testnet
+            {/* "on testnet where noted" was the whole chain story here, and it
+                stopped being the whole story on August 13: $HOMES is live on X
+                Layer MAINNET 196, while Aura's own escrow and registry are the
+                things that stay on testnet under the recorded hold. On the page
+                whose entire subject is that nothing is mislabelled, omitting
+                the live half is its own kind of mislabelling. */}
+            <span className="font-medium text-aura-emerald">Today</span>: working now — with the
+            $HOMES token live on X Layer mainnet 196, and Aura&rsquo;s own contracts on testnet
             where noted. <span className="font-medium text-aura-teal">Next</span>: planned and
             being designed. <span className="font-medium text-aura-violet">Future</span>: a later
             idea that may change. Nothing labelled Next or Future is live, and no page is allowed

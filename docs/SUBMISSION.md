@@ -195,8 +195,11 @@ hashes. No Aura-authored contract is deployed on mainnet 196, and no production
 payment, escrow, registry, staking, or distribution flow is live.
 
 **Links:** [GitHub](https://github.com/kr8tiv-ai/aura-homes) ·
-[Live app](https://aurahomes.fun) · [X](https://x.com/AuraHomes_fun) · Video:
-(paste after the video ships) ·
+[Live app](https://aurahomes.fun) · [X](https://x.com/AuraHomes_fun) ·
+Video: not yet recorded — see the checklist above. The form was submitted on
+August 14 without one, so the walkthrough will be posted from
+[@AuraHomes_fun](https://x.com/AuraHomes_fun) and linked here rather than
+resubmitted. ·
 [$HOMES on the X Layer explorer](https://web3.okx.com/explorer/x-layer/address/0x642855d557ada1eba8a66014aaff902e6394c0de) ·
 [$HOMES ledger page](https://aurahomes.fun/homes) · Testnet lab:
 [escrow on OKLink](https://www.oklink.com/x-layer-testnet/address/0x4A777bf71d8809244c77A3c2b39ef68793A463b5) ·
