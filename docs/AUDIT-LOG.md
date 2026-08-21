@@ -600,3 +600,207 @@ What remains is one founder-side artifact — the 90-second video — plus one s
 ---
 
 *Next audit: append `## Audit #11 — <date>` below this line. Do not edit prior audits.*
+
+## Audit #11 — 2026-08-21 (scheduled)
+
+**Method:** scheduled fresh-context vision audit. I wrote none of this code. Loaded
+VISION.md, GRAPH-ENGINEERING.md, AI-HANDOFF.md and Audit #10 in that order, then ran the
+anchors before reading any claim about them. Audit #10 declared the next pass due
+**2026-08-18**; this is the first pass since, so the window is `8060ab2..20a8ce0` —
+**38 commits, 71 files.**
+
+**Tree state, and a caveat I am not going to bury.** The repo moved *under this audit*:
+an interactive session committed `20a8ce0` and deployed `eaf1587` while I was mid-pass.
+So: contracts and agent anchors ran at `eaf1587`; app `npm test` and `npm run build` were
+**re-run at `20a8ce0`** after the commit landed and are reported from that run. `20a8ce0`
+touches only `app/app/about/page.tsx` and `docs/SUBMISSION.md`, so contracts and agent were
+not invalidated. Working tree at write time: clean except my own one-line comment fix
+(below) and untracked `test-results/`. `origin/main` and HEAD are the same commit
+(`0 0`). Every commit in the window is authored `Matt-Aurora-Ventures <lucidbloks@gmail.com>`.
+
+**Anchors — ALL GREEN.**
+
+| Anchor | Result |
+|---|---|
+| contracts `npx hardhat test` | **25 passing (7 s)**, exit 0. Includes the faucet-token pin and *"hard-stops the current contracts before any X Layer mainnet deployment"* |
+| agent `npm run demo` | exit 0. **LOW $199,100 / MID $301,280 / HIGH $443,900** ex-land. Read back the same pass from `data/alberta/cost-model.json` `totalsExLand`: `{"low":199100,"mid":301280,"high":443900}`. **Reconciles to the dollar.** Lakeside Estates REJECT intact (1,076 vs 800 sqft, district-not-county wording); 2 constraint notes; 5 milestones, holdback $30,128 |
+| app `npm run build` | exit 0, 22 routes prerendered static |
+| app `npm test` | **667/667 passed (25.5 s)** at `20a8ce0` — matches the figure SUBMISSION.md publishes. Up from 637 at Audit #10 |
+| Live site | `/`, `/build`, `/homes`, `/land`, `/robots.txt`, `/sitemap.xml` all **200**. `/build` HTML names release `eaf1587e0cac6b893dd634e7e3440dc307ce73d1` |
+| Live money | `/budget` prints **199,100 · 301,280 · 443,900** — the cost model's own numbers, not a retyped copy |
+| Live token | `/homes` carries `0x642855d557ada1eba8a66014aaff902e6394c0de`, byte-identical to `app/lib/homes/token.ts:20` |
+
+Not run, and I am saying so rather than implying coverage: `npm run test:ui` (132 tests in
+21 files — I confirmed the count by listing, not by running), `scripts/meadow-proof.mjs`
+(needs a quiet machine and a real GPU), and `generate-meadow-atlas.mjs --verify`.
+
+### Audit #10's seven findings, re-verified rather than trusted
+
+| # | Item | Status this pass |
+|---|---|---|
+| 1 | 3D canvas committed per snapped pointermove; Escape emitted a restore edit | **CLOSED in behaviour.** `GraphCanvasEditor.tsx:108–116` previews into `previewRef` only; `:122–143` commits one `onEdit(candidate, …)` in `end()`; `:134` returns before that on cancel; `:149` routes Escape to `end(true)`. One drag is one edit and Escape emits nothing. *But the pin that guards it is five source greps and it forced dead code into the shipped bundle* — finding **4** |
+| 2 | The hash gate tests a writer the product never calls | **PARTIAL.** `GraphCanvasEditor.tsx:16` now imports from `graphEdit.ts` — but only `GRAPH_VERTEX_SNAP_FT`. `applyGraphVertexEdit` / `WallExtrude` / `RoomRename` / `WallThickness` are still imported by nothing except `graph-canvas.spec.ts` and `graph-measure.spec.ts`, and `graph-canvas.spec.ts:107–108` still hashes them against themselves |
+| 3 | PR01 executed past its `doNotTouch` | **UNEXERCISED** — historical to the previous window, not re-litigated |
+| 4 | PL04 mounted 87 plans, left the catalog floor at 72 | **CLOSED, verified two ways.** `plan-catalog.spec.ts:31` is `toBeGreaterThanOrEqual(87)` and ran green in 667/667; live `/roadmap` prints "87-plan" three times. Fixed at `124c837`, whose own message says the gate shipped through the hole it was closing |
+| 5 | AWG mandate gone from `materials.ts`, alive in the file it defers to | **CLOSED — fifth audit, finally.** `design-api/app/eco.py:12` and `:89` both say *recommended*; `VISION.md:16` says *recommended*; `FEASIBILITY.md` no longer matches the retired phrasing. And it is now pinned in both directions: `release-truth.spec.ts:82–100` bans four spellings of the mandate across the doctrine files **and** requires `AWG RECOMMENDED` in `materials.ts` and `AWG recommended` in `eco.py` |
+| 6 | `meadow-proof.json` stale | **STILL OPEN, and it has stopped being a counting problem** — finding **3** |
+| 7 | FD1's record described a defect it no longer has | **RECORD CLOSED, code item still open and correctly deferred.** `FD1-shared-scene-geometry.json` moved `ready` → `verified-with-open-finding` and its `openFinding` names the exact remaining item (the `Scene.tsx:1705–1714` skirt joist and four post literals) and why it was not closed: *"that is a 3D-freeze write."* That is the right answer, recorded in the right place |
+
+Audit #9 finding 2 also moved: manifests shipped as `ready` with no evidence are down from
+seven to **three** — `NW01`, `PB02-PB04`, and `X12` (the video).
+
+### Findings
+
+1. **[MEDIUM] The 3D-freeze anchor fired on a copy edit, which is how an anchor stops being an anchor.**
+   The pathspec Audit #10 used — `app/components/story app/lib/three app/public/models app/workers/meadow.worker.ts` —
+   is **not empty** across `8060ab2...HEAD`. It returns `app/components/story/StoryChrome.tsx`
+   (+26/−1, commit `9837675`): a "Choose a path to enter" hint on the gate, and the proof strip
+   split from *"X Layer testnet"* into the mainnet-token / testnet-contracts pair, with the
+   address sourced from `lib/homes/token.ts` rather than pasted. That is DOM copy and it is a
+   *good* change. No scene, shader, model, worker, or atlas file moved. But the anchor as
+   written cannot tell a shader edit from a copy edit, so the next auditor either reports a
+   false RED or — much worse, and this is the actual risk — learns that this anchor is one you
+   wave through. An anchor that cries wolf is a retired anchor.
+   **Fix:** narrow the freeze pathspec to `app/components/story/Scene*.tsx app/lib/three app/public/models app/workers/meadow.worker.ts app/scripts/generate-meadow-atlas.mjs`
+   and record the narrowed spec in the audit brief so it is the same query every pass.
+
+2. **[MEDIUM] The live sitemap hands crawlers three pages the same build tells them not to index.**
+   `/concierge/`, `/labs/xlayer-proof/`, and `/operator/registry/` are all in the live
+   `sitemap.xml` (21 urls). I fetched all three: they return `<meta name="robots" content="noindex">`,
+   `noindex`, and `noindex, nofollow` respectively — matching `page.tsx:6`, `:13`, and `:5`.
+   `/concierge/` is additionally a bare `redirect("/dashboard")`. `build-seo-artifacts.mjs:35`
+   excludes exactly one route, `/404/`, from a hand-kept `NOT_INDEXED` set, while its own header
+   says a sitemap "is a list of pages worth indexing". The bidirectional gate that commit
+   `eaf1587` was rightly proud of pins *ships ⟺ listed*; it says nothing about *indexable*, so a
+   fourth noindex route drifts in silently.
+   **Fix:** derive the exclusion from the export itself — a route whose `out/**/index.html`
+   contains `name="robots"` with `noindex` is not sitemap material — and add the mutation proof
+   to `seo-artifacts.spec.ts`: mark a page noindex, and the sitemap must drop it.
+
+3. **[MEDIUM, was LOW twice] The hardware scene proof no longer describes the shipped scene, and SUBMISSION.md cites a different commit than the artifact does.**
+   Audits #9 and #10 tracked this as a staleness count (5 commits, then 41). At HEAD it is **78** —
+   and the count has stopped being the point. `git diff --name-only fb6439c...HEAD` over the scene
+   surface returns `Scene.tsx`, `SceneDetail.tsx`, `lib/three/meadow/field.ts`, `geometry.ts`,
+   `viewerTools.ts`, `scripts/generate-meadow-atlas.mjs`, and **all six `.glb` models**. The proven
+   scene and the shipped scene are not the same scene, so the artifact no longer supports the claim
+   it is cited for. Separately: `docs/SUBMISSION.md` records the proof as *"Passed at `3e00c66`"*
+   while `app/shots/r03-meadow/meadow-proof.json:4` records `fb6439cdb73a846e19a0008284f530b3ac8918d0`
+   — and `3e00c66` is **ten commits earlier** than `fb6439c`, so the document names a commit the
+   artifact does not.
+   **Fix, pick one and do it before the deadline:** re-run `scripts/meadow-proof.mjs` on the quiet
+   machine and restamp, or change the SUBMISSION row to name `fb6439c` and say plainly that the
+   scene has moved since it was proven. The second takes two minutes and is honest; leaving a
+   verification table citing a commit that appears nowhere in the artifact is the one thing this
+   project has told judges it does not do.
+
+4. **[LOW-MEDIUM] The fix for Audit #10 finding 1 put dead code in production to satisfy a source-grep assertion.**
+   `GraphCanvasEditor.tsx:111–115` reads `const intent = "preview"; if (intent === "preview") { … }` —
+   a branch that cannot be false, shipped in the bundle. It is there because `graph-canvas.spec.ts:350`
+   asserts `expect(editor).toMatch(/intent === "preview"/)`. Audit #10 asked for `past.length` pinned
+   before begin, after move, after Escape, and after a completed drag; what shipped is five greps over
+   the file's source text, one of which is satisfied only by keeping a no-op literal alive. The greps
+   ban the two *exact* old call shapes, so a regression written any other way — a commit helper invoked
+   from `solve` — passes all five and the headline gate never notices.
+   **Fix:** delete the `intent` constant and the grep that requires it; drive `GraphCanvasEditor`'s
+   `onEdit` from the spec and assert history length at the four points the manifest named.
+
+5. **[LOW, FIXED THIS PASS] `playwright.ui.config.ts` sized its webServer timeout "at 72 plans."**
+   The library is 87. Same stale-count class as Audit #10 finding 4, in the file that decides whether
+   a healthy export build gets killed mid-generation. **Corrected in this pass** to 87 with a note
+   pointing at `124c837`; `npx playwright test --config=playwright.ui.config.ts --list` re-run after
+   the edit — **132 tests in 21 files**, config parses, which also independently confirms the `test:ui`
+   figure SUBMISSION.md publishes. This is the only file I wrote to.
+
+**On the two fixes I found and deliberately did not make.** Findings 2 and 3 are one-line edits
+and I could have made both. I did not, because an interactive session committed and deployed into
+this tree *during* this audit, and GRAPH-ENGINEERING rule 5 is explicit that two writers on one
+file is a hidden edge to isolate or sequence, not a thing to race. Uncommitted edits of mine sitting
+in a tree somebody else is about to `git add` is exactly that race, twenty hours before a deadline.
+Both fixes are specified above precisely enough to apply in a minute.
+
+### What I could not break, stated plainly
+
+- **Money.** The demo triplet and `totalsExLand` agree to the dollar, and the live `/budget` page
+  prints the same three figures. Three independent surfaces, one number.
+- **The token claim.** `token.ts:20` and the live `/homes` HTML carry the same address, and the
+  contracts suite still hard-stops a mainnet deploy of the escrow and registry.
+- **The AWG correction is now genuinely pinned**, not merely fixed. I tried the obvious drift —
+  the Python file `materials.ts` calls the source of truth — and `release-truth.spec.ts:100` requires
+  the positive wording *in `eco.py` itself*. Reverting the Python alone now fails the build. That is
+  the difference between a wording pass and a gate, and it is the reason this finding died.
+- **The unwired-spec attack failed, and failed well.** 82 spec files sit in `app/tests`; 60 are in
+  `npm test`, 21 in `playwright.ui.config.ts`. The one remainder, `landing-vitals.spec.ts`, is not an
+  orphan — `gate-coverage.spec.ts:44–47` holds a `DELIBERATELY_UNGATED` allowlist whose comment demands
+  a reason "about the FILE, not about it being inconvenient", and the reason given is correct: running a
+  Core Web Vitals measurement against the local export server would report that number as if it described
+  production. A repo that has already built the gate that catches the trick I came to try is a repo
+  that is ahead of its auditor on that axis.
+- **The sitemap gate is real** in the direction it claims. 22 routes exported, 21 listed, `/404/`
+  excluded, and the commit carries three named mutation proofs. Finding 2 is about the axis it does
+  not cover, not about the gate being theatre.
+
+### VISION.md scorecard — 15 requirements, graded on file evidence
+
+| # | Requirement | Grade | Evidence |
+|---|---|---|---|
+| 1 | Ground-to-finish eco-home AI | **PARTIAL** | `/start → /build → /land → /budget → /dashboard` all ship and return 200. ESCROW is a testnet lab; BUILD is evidence workbenches over demonstration records (`/contractors`, `/buy`) |
+| 2 | SIP construction | **DONE** | `cost-model.json:6, 14, 15, 48` — SIP reference home, drywall-over-SIP fire barrier, CCMC listing, and the chase-freeze constraint the demo prints |
+| 3 | Crypto-native funding | **GAP, honestly declared** | `agent/src/mcp/payment.ts:1–15`: settlement is SIMULATED, no wallet contacted, no signature verified. No USDC moves for any real purchase |
+| 4 | LAND first-class | **DONE as pilot; acquisition GAP** | `app/app/land/page.tsx:52–61` — the non-demonstration source is a constant empty array; `:111` demo mode defaults off. The REJECT with its district rule is in the demo output. "USDC in, title out" is unbuilt |
+| 5 | AI is the architect | **DONE within the legal correction** | Framing is review-ready package throughout (AI-HANDOFF correction honoured); the copilot is bounded and deterministic (`AI01-bounded-copilot.json` verified) |
+| 6 | Off-grid, AWG recommended | **DONE** | Line items in `cost-model.json`; wording consistent across four files and pinned by `release-truth.spec.ts:82–100` |
+| 6b | No-concrete foundations | **DONE in the model** | `cost-model.json:32, 48` — screw piles, foundations outside the Part 9 prescriptive tables |
+| 7 | Lifestyle layer | **DONE** | `cost-model.json:20` `hotTubDeck` $8,000 / $14,000 / $22,000 with a sourced basis |
+| 8 | One-click, card-first, Visa | **GAP, declared on the page** | `XLayerProofLab.tsx:300–303` "card checkout is not live yet"; `story/copy.ts:156` "Stripe path planned" |
+| 9 | Alberta pilot | **DONE** | `data/alberta/*`, `data/land/edmonton-*`, `suppliers.json` |
+| 10 | Radically open | **DONE** | MIT `LICENSE`, `NOTICE.md`, `THIRD_PARTY_NOTICES.md`, `CREDITS.md`, this log published with its findings open, and the new `robots.txt` explicitly welcomes AI crawlers |
+| 11 | Ridiculously affordable usage fee | **GAP** | No fee exists anywhere. `AuraBuildEscrow.sol` has no fee field; the $0.01 metering in `payment.ts` is demo-tier and off by default. The revenue mechanism the vision names is unbuilt — worth a line in the roadmap rather than silence |
+| 12 | KR8TIV brand, light ground | **DONE** | Light ground canonical, `assets/`, BRAND.md v3, gated by `css-tokens.spec.ts` + `visual-system-ui.spec.ts` |
+| 13 | Hackathon vehicle | **PARTIAL — one gate open, see the clock** | four of five critical-path items closed |
+| 14 | Built to be continued | **DONE** | AI-HANDOFF corrections ledger, GRAPH-ENGINEERING doctrine, 56 execution manifests carrying status and evidence, this log |
+| 15 | The app runs on AI | **IN-REPO-AS-PLAN** | `agent/src/brain/*` is ~1,590 lines of real memory / digest / slips code that runs locally — and the shipped app's `/concierge` is `redirect("/dashboard")` (`page.tsx:10`). A repo-wide grep for `sendEmail|nodemailer|resend` returns **documentation only**. The persistent per-journey brain that emails updates is not in the product |
+
+### Hackathon clock
+
+**Deadline Aug 21, 2026 23:59 UTC. At the time of this pass: 19 h 51 m remaining.**
+
+| Critical path | State |
+|---|---|
+| Testnet deploy of contracts | **DONE** — escrow + registry on 1952, links in SUBMISSION.md |
+| Hosted web demo | **DONE** — aurahomes.fun live, release `eaf1587` |
+| Google Form | **DONE** — submitted Aug 14 (founder-reported), and `20a8ce0` fixed the document's self-contradiction by stating plainly it went in without a video |
+| X account | **Account live** (@AuraHomes_fun). "Post every 1–2 days" is still unchecked in SUBMISSION.md and is not verifiable from this repo |
+| **90-second video** | **NOT STARTED. This is the only open build gate.** `X12-video.json` is still `status: "ready"` with no evidence block, and `perf/video/` — its own declared writeSet — **does not exist**. Capture has not begun, and the manifest's rejection gates put final approval, voice, and upload on the founder |
+
+**On track?** Four of five, yes. The video, no — and it is the item with the least slack and the
+most founder dependency. If it cannot be voiced and uploaded, the honest fallback is already written
+into SUBMISSION.md at `20a8ce0`: post the walkthrough from the project account and link it, rather
+than resubmit. Deciding that now is better than discovering it at hour nineteen. Second-order: the
+`/about` mislabelling fix in `20a8ce0` is committed but **not deployed** — I fetched the live page and
+it still reads "Today: working now, on testnet where noted", the exact sentence the commit calls its
+own kind of mislabelling, on the page whose subject is that nothing here is mislabelled. One deploy
+closes it.
+
+**Verdict — state of the project in three lines.** Every anchor is green and three of them are green
+on more than one surface: the money reconciles across the demo, the model, and the live page, the
+contracts still refuse a mainnet deploy, and the test count the submission publishes is the count that
+actually ran. The audit loop is working — AWG died in its fifth pass because someone finally built a
+gate instead of doing a wording pass, the plan-count floor moved with the library, and FD1's record now
+names its own open item — but two of this pass's four findings are the *guards* drifting rather than the
+product: a freeze anchor that now fires on copy, and a headline gate answered with source greps that
+required dead code to shipped in order to pass. With under twenty hours left the risk is not a money
+drift or a 3D thaw; it is the last commit of the hackathon sitting undeployed, and a 90-second video
+that no one has started filming.
+
+**Next audit due: after the Aug 21 deadline — first pass should re-scope this loop per the standing
+instruction (see below).**
+
+*Note for the founder, per this task's standing brief: the hackathon deadline falls within hours of
+this entry. From Aug 22 onward this scheduled audit should be **re-scoped, not retired** — the anchors,
+the AWG-class wording pins, and the promised-vs-built scorecard keep earning their cost, but the
+"days remaining / critical path" section becomes dead weight and should be replaced with a Phase 1
+milestone check per ROADMAP.md.*
+
+---
+
+*Next audit: append `## Audit #12 — <date>` below this line. Do not edit prior audits.*

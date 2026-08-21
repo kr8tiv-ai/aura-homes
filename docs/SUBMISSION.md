@@ -282,7 +282,7 @@ At the current release checkpoint:
 | `npx tsc --noEmit` (app) | Passes |
 | `npm test` (app) — deterministic app + contract-truth specs | 667 passed |
 | `npm run test:ui` (app) — Playwright against a fresh static export | 132 passed |
-| `node scripts/meadow-proof.mjs` — hardware scene proof, real GPU | Passed at `3e00c66` on desktop and mobile tiers; needs a quiet machine and a real GPU, so it is dated rather than re-run per commit |
+| `node scripts/meadow-proof.mjs` — hardware scene proof, real GPU | Passed on desktop and mobile tiers at **`fb6439c`** (2026-08-14), the commit recorded in [`app/shots/r03-meadow/meadow-proof.json`](../app/shots/r03-meadow/meadow-proof.json). It needs a quiet machine and a real GPU, so it is dated rather than re-run per commit — **and the scene has moved 12 files since, so this proves the scene as it was that day, not as it ships today.** |
 | `npm run demo` (agent) — the money anchor | Reconciles to the dollar: ex-land $199,100 / $301,280 / $443,900 |
 | `npm test` (contracts) | 25 passing |
 

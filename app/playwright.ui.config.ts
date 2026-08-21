@@ -17,9 +17,11 @@ export default defineConfig({
     command: "node scripts/build-and-serve-export.mjs out 4331",
     url: "http://127.0.0.1:4331/build",
     reuseExistingServer: false,
-    /* The export build precedes serving; at 72 plans + the roadmap page it
+    /* The export build precedes serving; at 87 plans + the roadmap page it
        runs ~4 minutes cold on the reference machine, so the old 240s ceiling
-       was killing healthy builds mid-generation. */
+       was killing healthy builds mid-generation. (Count corrected from 72 in
+       Audit #11 — PL04 added fifteen glass plans and left this comment behind,
+       the same stale-count class the catalog floor was fixed for at 124c837.) */
     timeout: 480_000,
   },
 });

@@ -22,7 +22,13 @@ const publicRoot = path.join(appRoot, "public");
 const exportRoot = path.join(appRoot, "out");
 
 const HOST = "https://aurahomes.fun";
-const NOT_INDEXED = new Set(["/404/"]);
+
+/* A page's own robots meta, as a crawler reads it. The first version of this
+   feature excluded a hand-kept set of one route, and Audit #11 found three
+   noindex pages in the shipped sitemap the next morning — the build was handing
+   crawlers pages the same build told them to ignore. The rule is derived from
+   the export now, and this pattern is the whole rule. */
+const DECLARES_NOINDEX = /<meta[^>]+name=["']robots["'][^>]*content=["'][^"']*\bnoindex\b/i;
 
 const robotsPath = path.join(publicRoot, "robots.txt");
 const sitemapPath = path.join(publicRoot, "sitemap.xml");
@@ -89,20 +95,24 @@ test("the sitemap lists every page that ships, and nothing that does not", () =>
     return;
   }
 
-  const shipped: string[] = [];
+  const shipped: { route: string; noindex: boolean }[] = [];
   const walk = (dir: string) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) walk(full);
       else if (entry.name === "index.html") {
         const rel = path.relative(exportRoot, dir).split(path.sep).filter(Boolean).join("/");
-        shipped.push(rel ? `/${rel}/` : "/");
+        shipped.push({
+          route: rel ? `/${rel}/` : "/",
+          noindex: DECLARES_NOINDEX.test(readFileSync(full, "utf8")),
+        });
       }
     }
   };
   walk(exportRoot);
 
-  const indexable = shipped.filter((route) => !NOT_INDEXED.has(route)).sort();
+  const indexable = shipped.filter((page) => !page.noindex).map((page) => page.route).sort();
+  const noindexed = shipped.filter((page) => page.noindex).map((page) => page.route).sort();
 
   expect(
     indexable.filter((route) => !listed.includes(route)),
@@ -112,6 +122,26 @@ test("the sitemap lists every page that ships, and nothing that does not", () =>
     listed.filter((route) => !indexable.includes(route)),
     "the sitemap lists urls that do not ship — that is a 404 handed to a crawler",
   ).toEqual([]);
+
+  /* THE THIRD DIRECTION, and the one this feature shipped without. A page can
+     exist, be listed, and still not belong: /concierge/, /labs/xlayer-proof/
+     and /operator/registry/ all declare noindex in their own HTML and all three
+     were in the first sitemap we published. Listing a page the same build tells
+     a crawler to ignore is not a small inconsistency — it is the build
+     disagreeing with itself, in public, in a file whose only reader is a
+     machine that will believe one of the two. */
+  expect(
+    noindexed.filter((route) => listed.includes(route)),
+    "the sitemap lists pages whose own HTML says noindex — the build is telling a crawler two different things",
+  ).toEqual([]);
+
+  /* And the detector has to be discriminating, or the assertion above passes by
+     finding nothing. This build genuinely has noindex routes; if it ever has
+     none, that is a change worth noticing rather than passing silently. */
+  expect(
+    noindexed.length,
+    "no exported page declares noindex, so the check above proved nothing. If that is a real change, update this expectation deliberately.",
+  ).toBeGreaterThan(0);
 });
 
 test("the sitemap's lastmod is a real date, not a placeholder", () => {
