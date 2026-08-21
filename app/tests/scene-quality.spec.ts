@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
 import { expect, test } from "playwright/test";
 import {
   degradeBuilderSceneQuality,
@@ -166,4 +168,72 @@ test("builder reduced-motion and runtime fallback never restart a render loop", 
 
 test("border light stars travel at one quarter of the approved original speed", () => {
   expect(CARD_TRACER_SPEED_PX_PER_SECOND).toBe(10.5);
+});
+
+
+/* ---------------------------------------------------------------------------
+   THE 3D FREEZE, AND WHY ITS PATHSPEC NEEDED NARROWING.
+
+   The freeze anchor every audit runs is a git pathspec over the scene surface,
+   and `app/components/story` is one of its entries. Audit #11 found it firing
+   RED on `StoryChrome.tsx` — a "Choose a path to enter" hint and a chain-status
+   strip. DOM copy. No shader, model, worker or atlas moved.
+
+   That is worse than a nuisance. An anchor that cannot tell a shader edit from
+   a copy edit teaches the next auditor to wave it through, and a waved-through
+   anchor is a retired one.
+
+   Audit #11 prescribed narrowing to `Scene*.tsx`. That is TOO narrow, and this
+   test is the reason to say so out loud: `flora.ts`, `Loader.tsx`,
+   `StillScene.tsx`, `Story.tsx` and `StoryCanvas.tsx` all reach for three.js
+   too, and a freeze that stopped watching them would miss the very edits it
+   exists to catch.
+
+   The correct cut is the other direction — keep the whole directory and EXCLUDE
+   the two files that carry no 3D at all:
+
+     git diff --name-only <range> -- \
+       app/components/story app/lib/three app/public/models \
+       app/public/textures/meadow* app/workers/meadow.worker.ts \
+       app/scripts/generate-meadow-atlas.mjs \
+       ':(exclude)app/components/story/copy.ts' \
+       ':(exclude)app/components/story/StoryChrome.tsx'
+
+   That exclusion is only safe while those two files stay copy-only, and nothing
+   stops somebody importing three.js into StoryChrome tomorrow. So this gate
+   holds them to it: the moment either file reaches for the scene, the exclusion
+   becomes a hole and this goes red instead of the freeze going quiet.
+   --------------------------------------------------------------------------- */
+test("the files the 3D freeze excludes carry no 3D", () => {
+  const storyDir = path.join(path.resolve(__dirname, ".."), "components", "story");
+
+  /* The exact list the freeze pathspec excludes. Kept here rather than imported
+     so that changing one without the other is visible in a diff. */
+  const EXCLUDED = ["copy.ts", "StoryChrome.tsx"];
+
+  /* What "carries 3D" means, spelled out: a three.js import, an r3f hook, or a
+     renderer type. Deliberately broad — a false positive here costs a comment,
+     a false negative costs the freeze. */
+  const REACHES_FOR_THE_SCENE =
+    /(from\s+["']three|@react-three\/|useFrame|useThree|ShaderMaterial|BufferGeometry|WebGLRenderer|PerspectiveCamera)/;
+
+  const breaches: string[] = [];
+  for (const name of EXCLUDED) {
+    const full = path.join(storyDir, name);
+    expect(existsSync(full), `${name} is on the freeze exclusion list but does not exist`).toBe(true);
+    const source = readFileSync(full, "utf8");
+    if (REACHES_FOR_THE_SCENE.test(source)) breaches.push(name);
+  }
+
+  expect(
+    breaches,
+    "these files are EXCLUDED from the 3D-freeze pathspec because they were copy-only, and they no longer are. Either take them off the exclusion list or take the 3D out of them - as it stands the freeze has a hole in it.",
+  ).toEqual([]);
+
+  /* And the detector has to discriminate, or the loop above proves nothing:
+     Scene.tsx is the file the freeze exists for. */
+  expect(
+    REACHES_FOR_THE_SCENE.test(readFileSync(path.join(storyDir, "Scene.tsx"), "utf8")),
+    "the 3D detector does not fire on Scene.tsx, so it would not fire on anything",
+  ).toBe(true);
 });

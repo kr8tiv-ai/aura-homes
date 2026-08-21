@@ -169,10 +169,29 @@ Expected: `d0fc2f6048f6d4799e6c8ea4b4367d1ccb957eb2`. If it has moved, rebase th
 **Step 2: Confirm the 3D freeze one last time**
 
 ```powershell
-git diff --name-only origin/main...HEAD -- app/components/story app/lib/three app/public/models app/workers/meadow.worker.ts
+git diff --name-only origin/main...HEAD -- app/components/story app/lib/three app/public/models app/public/textures/meadow* app/workers/meadow.worker.ts app/scripts/generate-meadow-atlas.mjs ":(exclude)app/components/story/copy.ts" ":(exclude)app/components/story/StoryChrome.tsx"
 ```
 
 Expected: empty.
+
+**The two exclusions, and why they are exclusions rather than a narrowing.**
+Audit #11 caught this anchor firing RED on `StoryChrome.tsx` — a gate hint and a
+chain-status strip, pure DOM copy, with no shader, model, worker or atlas
+touched. An anchor that cannot tell a copy edit from a shader edit teaches the
+next auditor to wave it through, and a waved-through anchor is a retired one.
+
+Audit #11 prescribed narrowing to `Scene*.tsx`. **Do not do that.** It is too
+narrow and would stop watching real scene code: `flora.ts`, `Loader.tsx`,
+`StillScene.tsx`, `Story.tsx` and `StoryCanvas.tsx` all reach for three.js. The
+correct cut runs the other way — keep the whole directory and exclude the only
+two files in it that carry no 3D at all.
+
+That exclusion is safe **only while those two stay copy-only**, and nothing stops
+somebody importing three.js into `StoryChrome.tsx` tomorrow. So it is gated
+rather than trusted: `scene-quality.spec.ts` fails the build the moment either
+file reaches for the scene. Proven by injecting `useFrame` into
+`StoryChrome.tsx` and watching the gate name it — *"the freeze has a hole in
+it"*.
 
 **Step 3: Fast-forward `main` and push**
 

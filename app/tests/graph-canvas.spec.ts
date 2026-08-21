@@ -3,10 +3,12 @@ import path from "node:path";
 import { expect, test } from "playwright/test";
 
 import {
+  addGraphOpening,
   addPartitionEdge,
   extrudeGraphWall,
   moveGraphVertex,
   renameGraphRoom,
+  setGraphOpening,
   setGraphWallThickness,
   singleStoreyGraphFromPolygon,
 } from "@/lib/builder/buildingGraph";
@@ -20,6 +22,7 @@ import {
   GRAPH_VERTEX_SNAP_FT,
   applyGraphVertexEdit,
   applyGraphWallExtrude,
+  applyGraphOpeningEdit,
   applyGraphRoomRename,
   applyGraphWallThickness,
 } from "@/lib/builder/graphEdit";
@@ -80,6 +83,24 @@ function documentFromMutatedGraph(
   return checked.document;
 }
 
+/* WHAT THIS TEST DOES AND DOES NOT PROVE, said plainly because it read as more
+   than it is for three audits running.
+
+   PR01's contract is "a drag and an equivalent typed edit produce the same
+   graph and the same hash". This compares `applyGraphVertexEdit` against
+   `moveGraphVertex` — and `applyGraphVertexEdit` is a document wrapper AROUND
+   `moveGraphVertex`, so the two sides are one function and itself through a
+   single indirection. It genuinely proves the wrapper does not corrupt the
+   document on its way past validation, which is worth having and is not what
+   the title suggests.
+
+   It does NOT prove the product's drag equals the product's typed edit, because
+   the product's drag path is `GraphCanvasEditor.tsx`, which this file never
+   loads. That component calls `moveGraphVertex` directly at the same snap, so
+   the property very likely holds — and "very likely" is precisely the phrase a
+   gate exists to replace.
+
+   The last test in this file is the part that stops it drifting further. */
 test("a vertex move and the equivalent typed edit hash identically", () => {
   const start = documentFromSquare();
   const point: [number, number] = [8, 0];
@@ -350,4 +371,117 @@ test("a 3D drag commits once on release and Escape emits no restore edit", () =>
   expect(editor).toMatch(/intent === "preview"/);
   expect(editor).toMatch(/cancelled/);
   expect(editor).toContain("onEdit(candidate");
+});
+
+/* ---------------------------------------------------------------------------
+   THE RULE THREE AUDITS KEPT CIRCLING, finally written as a gate.
+
+   `graphEdit.ts` exports five document writers and the product calls NONE of
+   them. It edits a graph through the mutators in `buildingGraph.ts`, straight
+   from `GraphPlanEditor.tsx` and `GraphCanvasEditor.tsx`.
+
+   The first version of this gate concluded they were dead code and demanded
+   deletion. That was wrong, and reading the file properly is what corrected it:
+   four of the five are a TYPED REFERENCE IMPLEMENTATION, and the tests above
+   compare each against the mutator the product actually calls — a typed extrude
+   against `extrudeGraphWall`, a typed rename against `renameGraphRoom`. That
+   is PR01's determinism contract expressed the only way this codebase can
+   express it, and it is worth keeping.
+
+   So the rule is not "must be called". It is: **a writer must either be reached
+   by the product, or be cross-checked against the mutator that is.** A writer
+   that is neither is the thing everyone thought all five were — an export that
+   looks like coverage, passes green, and proves nothing.
+
+   `applyGraphOpeningEdit` was exactly that until the test below it. It had no
+   caller and no test at all; the only mention of its name outside its own
+   definition was a comment claiming it was tested.
+   --------------------------------------------------------------------------- */
+test("every writer graphEdit.ts exports is reached by the product or checked against it", () => {
+  const appRoot = path.resolve(__dirname, "..");
+  const graphEditPath = path.join(appRoot, "lib", "builder", "graphEdit.ts");
+  const source = readFileSync(graphEditPath, "utf8");
+
+  /* Exported FUNCTIONS. Constants like GRAPH_VERTEX_SNAP_FT are values a
+     component may legitimately read without calling anything. */
+  const writers: string[] = [];
+  const declaration = /export function (\w+)/g;
+  for (let hit = declaration.exec(source); hit !== null; hit = declaration.exec(source)) {
+    writers.push(hit[1]);
+  }
+  expect(writers.length, "no exported writers found — this gate is asserting nothing").toBeGreaterThan(3);
+
+  const selfText = readFileSync(__filename, "utf8");
+  /* Comments do not count as coverage — that is precisely the mistake this gate
+     exists to catch, and an earlier draft of this very comment would have made
+     an orphan look checked. */
+  const executable = selfText.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+
+  const orphans = writers.filter((writer) => !new RegExp(`\\b${writer}\\b`).test(executable));
+
+  expect(
+    orphans,
+    "these writers are exported but neither reached by the product nor checked against the mutator the product uses, so nothing they do is proven. Cross-check them here, wire them into the product, or delete them — do not leave them looking like coverage.",
+  ).toEqual([]);
+});
+
+/* The cross-check `applyGraphOpeningEdit` never had. Same shape as its four
+   siblings: the typed wrapper and the mutator `GraphPlanEditor` calls must
+   produce the same document and the same hash. */
+test("a typed graph opening edit hashes the same as the mutator the editor calls", () => {
+  /* `setGraphOpening` EDITS an opening; it does not create one. The first draft
+     of this test skipped that, both paths refused with "Opening … does not
+     exist", and an `expect(typed.ok).toBe(ui.ok)` happily passed on
+     false === false — then returned before comparing a single hash.
+
+     It was caught by its own mutation proof: drifting the wrapper a foot from
+     the mutator changed nothing, because the assertion it was supposed to break
+     never ran. A comparison that both sides can decline is not a comparison,
+     and the four sibling tests above get this right by ASSERTING ok rather than
+     matching one ok against the other. */
+  const seeded = documentFromSquare();
+  const storey0 = graphOf(seeded).storeys[0];
+  const wall = storey0.walls.find((item) => item.kind === "external");
+  expect(wall, "the square has no external wall to place an opening on").toBeTruthy();
+  if (!wall) return;
+
+  const placed = addGraphOpening(graphOf(seeded), storey0.id, wall.id, {
+    id: "opening-crosscheck",
+    kind: "window",
+    offsetFt: 2,
+    widthFt: 3,
+    sillFt: 2.5,
+    heightFt: 4,
+  });
+  expect(placed.ok, "could not seed an opening to edit").toBe(true);
+  if (!placed.ok) return;
+  const start = documentFromMutatedGraph(seeded, placed.graph);
+
+  /* Now MOVE it, which is what both paths are for. */
+  const ask = {
+    storeyId: storey0.id,
+    wallId: wall.id,
+    openingId: "opening-crosscheck",
+    offsetFt: 4,
+    widthFt: 3,
+    sillFt: 2.5,
+    heightFt: 4,
+  };
+
+  const typed = applyGraphOpeningEdit(start, ask);
+  expect(typed.ok, "the typed wrapper refused a legal opening edit").toBe(true);
+  if (!typed.ok) return;
+
+  const ui = setGraphOpening(graphOf(start), ask.storeyId, ask.wallId, ask.openingId, {
+    offsetFt: ask.offsetFt,
+    widthFt: ask.widthFt,
+    sillFt: ask.sillFt,
+    heightFt: ask.heightFt,
+  });
+  expect(ui.ok, "the editor's own mutator refused an edit the wrapper accepted").toBe(true);
+  if (!ui.ok) return;
+
+  expect(hashBuilderDocument(typed.document)).toBe(
+    hashBuilderDocument(documentFromMutatedGraph(start, ui.graph)),
+  );
 });
