@@ -1,0 +1,82 @@
+{
+  "graphVersion": "aura-graph/v2.0@680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8",
+  "node": "UX03",
+  "lane": "guided-studio",
+  "stage": "selection-driven-inspector",
+  "job": "Project the existing 2D tool and selection state into an explicit contextual inspector without creating a second editor model or a second mutation path.",
+  "inputs": [
+    {
+      "name": "UX02-verified-canvas-first-shell",
+      "version": "1",
+      "hash": "git:e7a4859b96a5c4815bfc80cce478000bd9087c9c"
+    },
+    {
+      "name": "guided-studio-interaction-design",
+      "version": "2026-08-24",
+      "hash": "git:f7616886f9f8a171c847ef5eb49e932246ff989b"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "contextual-inspector-state-contract",
+      "acceptanceSchema": "GuidedStudioInspectorStateV1",
+      "path": "app/lib/builder/guidedStudio.ts"
+    },
+    {
+      "name": "selection-driven-contextual-inspector",
+      "acceptanceSchema": "ContextualInspectorA11yV1",
+      "path": "app/components/builder/ContextualInspector.tsx"
+    },
+    {
+      "name": "contextual-inspector-evidence",
+      "acceptanceSchema": "Playwright-and-deterministic-proof",
+      "path": "app/tests/builder-plans-first.spec.ts"
+    }
+  ],
+  "depends": ["UX02:verified"],
+  "reject": [
+    "UX02 is not independently verified",
+    "the inspector stores project, geometry, history, persistence, or canonical selection state",
+    "pointer, keyboard, exact-value, or accepted-AI input gains a separate mutator, validator, history label, hash, or persistence path",
+    "invalid exact input is discarded, silently clamped, or detached from the violated constraint",
+    "empty, active-tool, single-selection, or invalid-input state is ambiguous to assistive technology",
+    "the existing 2D canvas or first-edit controls move below the 1280 by 720 first viewport",
+    "a public-site, 3D, renderer, animation, engine, scene, model, texture, shader, camera, lighting, motion, or quality-tier path changes"
+  ],
+  "writeSet": [
+    "docs/plans/execution/v2/UX03-contextual-inspector.json",
+    "app/components/builder/BuilderApp.tsx",
+    "app/components/builder/ContextualInspector.tsx",
+    "app/components/builder/GraphPlanEditor.tsx",
+    "app/lib/builder/guidedStudio.ts",
+    "app/tests/builder-plans-first.spec.ts",
+    "app/tests/gate-coverage.spec.ts",
+    "README.md",
+    "docs/SUBMISSION.md"
+  ],
+  "freezeClass": "none",
+  "owner": "primary-agent",
+  "verifier": "independent-fresh-context",
+  "sideEffects": "local",
+  "externalGates": [],
+  "verification": [
+    "npm run typecheck",
+    "npm test",
+    "npm run test:ui",
+    "npx playwright test tests/builder-plans-first.spec.ts --config=playwright.r0.config.ts",
+    "npm run test:graph-v2",
+    "browser evidence: empty, active-tool, single-selection, and invalid-input inspector states are named and keyboard-readable",
+    "browser evidence: 1280x720 canvas and first-edit controls remain visible at scrollY=0",
+    "git diff --name-only <UX03-base>...HEAD"
+  ],
+  "repair": {
+    "maxLoops": 1,
+    "boundary": "UX03 writeSet only"
+  },
+  "evidence": {
+    "startedFrom": "e7a4859b96a5c4815bfc80cce478000bd9087c9c",
+    "dependencyGate": "UX02 verified",
+    "protectedPathChanges": 0
+  },
+  "status": "ready"
+}
