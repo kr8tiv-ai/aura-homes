@@ -1,0 +1,81 @@
+{
+  "graphVersion": "aura-graph/v2.0@680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8",
+  "node": "G03",
+  "lane": "governance",
+  "stage": "source-evidence",
+  "job": "Run source-bound product, type, contract, agent, manifest, claim, and freeze checks; emit receipts that bind a passing source commit to any later deployment without changing protected branch settings.",
+  "inputs": [
+    {
+      "name": "G01-verified",
+      "version": "2.0",
+      "hash": "git:b81553a"
+    },
+    {
+      "name": "UX02-red-full-ui-receipt",
+      "version": "2026-08-25",
+      "hash": "git:edfa2b44054d4c5faf959be5ce58446d0068ff5e"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "source-ci-workflow",
+      "acceptanceSchema": "GitHub-Actions-source-commit-gates",
+      "path": ".github/workflows/source-ci.yml"
+    },
+    {
+      "name": "source-and-deploy-evidence-receipts",
+      "acceptanceSchema": "AuraSourceEvidenceReceiptV1",
+      "path": "app/scripts/source-evidence-receipt.mjs"
+    },
+    {
+      "name": "freeze-safe-landing-timeout-proof",
+      "acceptanceSchema": "Playwright-virtual-time-proof",
+      "path": "app/tests/landing-film.spec.ts"
+    }
+  ],
+  "depends": ["G01:verified"],
+  "reject": [
+    "G01 is not independently verified",
+    "a source receipt can be emitted before every declared source check passes",
+    "a deployment receipt accepts a deployment commit different from its source commit",
+    "the landing timeout proof weakens or removes the timeout fallback assertion",
+    "the harness modifies a protected landing, story, media, renderer, animation, or engine path",
+    "the workflow deploys, changes branch protection, or requires a live provider secret"
+  ],
+  "writeSet": [
+    "docs/plans/execution/v2/G03-source-ci-evidence-receipts.json",
+    ".github/workflows/source-ci.yml",
+    "docs/plans/execution/schema/aura-source-evidence-receipt.schema.json",
+    "app/package.json",
+    "app/scripts/source-evidence-receipt.mjs",
+    "app/scripts/source-evidence-receipt.test.mjs",
+    "app/tests/landing-film.spec.ts"
+  ],
+  "freezeClass": "none",
+  "owner": "primary-agent",
+  "verifier": "independent-fresh-context",
+  "sideEffects": "local",
+  "externalGates": [],
+  "verification": [
+    "node --test scripts/source-evidence-receipt.test.mjs",
+    "npx playwright test tests/landing-film.spec.ts --config=playwright.r0.config.ts --grep 'stalled film'",
+    "npm run typecheck",
+    "npm test",
+    "npm run test:ui",
+    "npm run test:graph-v2",
+    "contracts: npm test",
+    "agent: npm run build and npm run demo",
+    "git diff --name-only <G03-base>...HEAD"
+  ],
+  "repair": {
+    "maxLoops": 1,
+    "boundary": "G03 writeSet only"
+  },
+  "evidence": {
+    "startedFrom": "edfa2b44054d4c5faf959be5ce58446d0068ff5e",
+    "dependencyGate": "G01 verified",
+    "diagnosis": "The prior landing-film test globally clamped all browser timers at or above four seconds, destabilizing the unchanged Next.js runtime and causing a client-side exception before the film timeout could be observed.",
+    "protectedPathChanges": 0
+  },
+  "status": "active"
+}
