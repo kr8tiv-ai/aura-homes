@@ -75,10 +75,24 @@
   },
   "evidence": {
     "startedFrom": "edfa2b44054d4c5faf959be5ce58446d0068ff5e",
+    "candidateCommit": "5288f330f0171ff13e94bf98466447c36fbd80a0",
     "dependencyGate": "G01 verified",
     "diagnosis": "The prior landing-film test globally clamped all browser timers at or above four seconds, destabilizing the unchanged Next.js runtime and causing a client-side exception before the film timeout could be observed.",
     "repairLoop": "1/1 — stabilize the served-build harnesses without changing frozen behavior: observe distinct loader times and transient visible Ready state across WebGL main-thread stalls, and require the existing canvas to mount before sending walkthrough keyboard input; keep all ticking, Ready, fade, phase, quality, camera-write, and immutability assertions.",
-    "protectedPathChanges": 0
+    "writeSetReceipt": "9 declared paths; 9 candidate paths; zero delta for edfa2b44054d4c5faf959be5ce58446d0068ff5e...5288f330f0171ff13e94bf98466447c36fbd80a0",
+    "sourceReceiptTests": "7/7 passed",
+    "typecheck": "passed",
+    "deterministicAppTests": "674 passed; 1 intentional served-only skip; 1.1m",
+    "fullUiTests": "135/135 passed; 16.0m",
+    "landingFilmTests": "7/7 passed",
+    "loaderStressTests": "3/3 passed; 4.0m",
+    "walkthroughStressTests": "3/3 passed; 41.6s",
+    "graphAuthorityAndFreezeTests": "14/14 passed; authority receipt passed; errors []",
+    "contractTests": "25/25 passed",
+    "agentChecks": "build passed; offline demo passed; Alberta LOW/MID/HIGH CAD 199100/301280/443900; 5 milestones; holdback CAD 30128; no provider call",
+    "workflowReceipt": "YAML parsed; seven jobs; GitHub actions are immutable-SHA pinned; workflow contains no deploy command or branch-protection mutation",
+    "protectedPathChanges": 0,
+    "githubSync": "blocked: current GitHub OAuth credential lacks workflow scope required to push .github/workflows/source-ci.yml"
   },
-  "status": "active"
+  "status": "verification-pending"
 }
