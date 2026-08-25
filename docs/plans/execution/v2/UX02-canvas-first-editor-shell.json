@@ -58,10 +58,10 @@
   "sideEffects": "local",
   "externalGates": [],
   "verification": [
-    "npx playwright test tests/builder-plans-first.spec.ts tests/builder-mobile.spec.ts",
     "npm run typecheck",
     "npm test",
     "npm run test:ui",
+    "npx playwright test tests/builder-plans-first.spec.ts tests/builder-mobile.spec.ts --config=playwright.r0.config.ts",
     "npm run test:graph-v2",
     "browser evidence: 1280x720 canvas and first-edit controls visible at scrollY=0",
     "browser evidence: 390x844 no page-level horizontal overflow",
@@ -104,13 +104,15 @@
       "verdict": "pass"
     },
     "gateReceipts": {
-      "focusedServed": "15 passed",
-      "deterministic": "674 passed, 1 intentionally skipped served-only proof; 675 declared",
+      "focusedServed": "15/15 passed in 1.6m against the fresh export produced by the preceding full UI gate",
+      "deterministic": "674 passed, 1 intentionally skipped served-only proof; 675 declared at a1d2acae8545a7adfa2f8a2d893761805f4175f9",
       "typecheck": "pass",
-      "graphV2": "14 passed; authority pass; candidate guard 12 paths and zero errors",
-      "servedUi": "131 of 135 passed in the complete rebuilt export run; focused rebuilt rerun closed graph export, 3D loader, and builder compatibility, leaving only the frozen landing-film timeout case"
+      "graphV2": "14 passed; authority pass; candidate guard 12 paths and zero errors; G03 verified at 9b27911a45e420345a2b6dcb1394cc6e433e00a2",
+      "servedUi": "135/135 passed in the complete rebuilt export run at a1d2acae8545a7adfa2f8a2d893761805f4175f9; 16.7m"
     },
-    "verificationBlocker": "npm run test:ui remains red only at tests/landing-film.spec.ts:140. The unchanged founder-frozen landing film never sets data-film-fallback=timeout in this environment. UX02 changes zero landing, story, video, rendering, animation, engine, model, texture, shader, camera, lighting, motion, or quality-tier paths; the freeze forbids repairing that baseline inside this node.",
+    "verificationBlockerResolution": "Verified lateral governance node G03 corrected only freeze-safe test harness and source-evidence paths. The full 135-test UI gate is green, including the unchanged landing timeout, loader, and walkthrough behavior; G03 touches no UX02 production write and zero protected paths.",
+    "verificationCommandCorrection": "The original focused command omitted a served config and could not resolve relative URLs. The ordered gate now builds and fully tests the export first, then serves that exact output with playwright.r0.config.ts so all 15 focused specs, including builder-plans-first, execute.",
+    "postCandidateIsolation": "Between UX02 candidate daf24487d1340977376565a31cc4f18b4cda27af and this evidence refresh, the only changed UX02 write-set path is this manifest; all G03 paths are disjoint.",
     "repair": "The verified guard fixture appended the build page because the proposed UX02 manifest did not own it. Activation added that required page path, so the fixture now asserts ownership directly instead of creating a duplicate entry; all rejection probes remain unchanged. The full deterministic gate then proved its published counter stale: UX01 added four contract tests and UX02 added one deterministic plus one served UI test, while two earlier Guided Studio UI checks also post-dated the pin. The counter, README, and submission receipts now derive to the observed 675 deterministic and 135 served declarations.",
     "protectedPathChanges": 0
   },
