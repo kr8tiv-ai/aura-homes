@@ -1,12 +1,20 @@
-# Ready-to-run node scaffolds
+# Historical v1.x node scaffolds
 
-Each JSON file in this directory is one bounded job, written so that a
-capable-but-smaller model (or a human) can execute it **without reading the
-whole conversation history**. The graph authority is
-[`../../2026-08-14-aura-full-system-graph-v1.2.md`](../../2026-08-14-aura-full-system-graph-v1.2.md);
-founder decisions live in [`../../registry/decisions.json`](../../registry/decisions.json).
+The files in this directory are historical Graph v1.x evidence. None is a
+ready Graph v2 job merely because its old `status` says `ready`, `active`, or
+`verified`.
 
-## How to execute a node (the whole protocol)
+Current authority is pinned by
+[`../../registry/current-graph.json`](../../registry/current-graph.json) to
+[`../../2026-08-22-aura-full-system-graph-v2.0.md`](../../2026-08-22-aura-full-system-graph-v2.0.md)
+and its exact founder approval. New executable manifests live in `../v2/` and
+must validate against `../schema/aura-execution-node.schema.json`.
+
+The recurring graph auditors are cancelled. Run the point-in-time gate with
+`npm run test:graph-v2` from `app/` before a v2 node starts and again before it
+enters verification.
+
+## Historical execution protocol
 
 1. **Read the node's JSON.** `instructions` is the ordered work list;
    `writeSet` is the ONLY set of paths you may modify; `rejectionGates` are

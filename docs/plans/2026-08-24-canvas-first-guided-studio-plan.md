@@ -2,7 +2,7 @@
 
 **Goal:** Put Aura's editable 2D cabin canvas and first-edit controls first, then connect image-to-plan proposals, exact editing, evidence, comparison, accessibility, and usability gates without changing any frozen 3D behavior.
 
-**Authority:** Aura Full-System Operating Graph v2.0, proposal `f7616886f9f8a171c847ef5eb49e932246ff989b`, Git-blob SHA-256 `9EDBA48895B426A2C68760C8AE564978DE9B290CD2B4050D96F049496DA109AC`, founder approval `24218b7`.
+**Authority:** Aura Full-System Operating Graph v2.0, proposal `f7616886f9f8a171c847ef5eb49e932246ff989b`, canonical Git-blob SHA-256 `680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8`, corrected founder approval `1fdcbae`.
 
 **Architecture:** Keep `BuilderDocument` / `BuildingGraph`, the existing reducer/history, project persistence, and `Plan2D` as canonical. Introduce a functional shell around current 2D controls. Selection, numeric entry, keyboard movement, pointer movement, AI preview, and undo remain adapters over the same deterministic mutations. Secondary evidence becomes progressively disclosed but never changes claim state.
 

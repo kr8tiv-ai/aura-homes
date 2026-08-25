@@ -1,0 +1,29 @@
+{
+  "schema": "AuraCurrentGraphV1",
+  "status": "approved",
+  "graph": {
+    "version": "2.0",
+    "path": "docs/plans/2026-08-22-aura-full-system-graph-v2.0.md",
+    "proposalCommit": "f7616886f9f8a171c847ef5eb49e932246ff989b",
+    "gitBlobSha256": "680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8",
+    "gitObjectSha256": "48A7E075406A0E9C8EE24C11C9C411EC10C0F219D0CCF84D9129FA83D79D49C7"
+  },
+  "approval": {
+    "path": "docs/plans/approvals/2026-08-24-aura-full-system-graph-v2.0.md",
+    "commit": "1fdcbae76a926cdcb2c9ab7abf6e1f55808aa7a4",
+    "date": "2026-08-24",
+    "founder": "Matt",
+    "instruction": "go with 1 and then add the ux nodes and begin work and approve everything"
+  },
+  "supersedes": [
+    "aura-graph/v1.1",
+    "aura-graph/v1.2-proposed",
+    "docs/plans/2026-08-15-remaining-graph-tree.md"
+  ],
+  "auditAutomation": "cancelled",
+  "freeze": {
+    "threeD": "hard",
+    "publicSiteVisuals": "hard",
+    "approvedException": "Canvas-first functional 2D builder workspace only"
+  }
+}

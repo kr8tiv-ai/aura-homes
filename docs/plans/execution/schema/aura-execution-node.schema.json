@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aurahomes.fun/schemas/aura-execution-node-v2.json",
+  "title": "Aura ExecutionNode v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "graphVersion",
+    "node",
+    "lane",
+    "stage",
+    "job",
+    "inputs",
+    "outputs",
+    "depends",
+    "reject",
+    "writeSet",
+    "freezeClass",
+    "owner",
+    "verifier",
+    "sideEffects",
+    "externalGates",
+    "verification",
+    "repair",
+    "evidence",
+    "status"
+  ],
+  "properties": {
+    "graphVersion": { "type": "string", "pattern": "^aura-graph/v2\\.0@[A-F0-9]{64}$" },
+    "node": { "type": "string", "pattern": "^(G|IP|UX|ED|OR|AI|LO|CM|HM|DV|Q)[0-9]{2}$" },
+    "lane": { "type": "string", "minLength": 1 },
+    "stage": { "type": "string", "minLength": 1 },
+    "job": { "type": "string", "minLength": 12 },
+    "inputs": { "type": "array", "items": { "$ref": "#/$defs/input" } },
+    "outputs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/output" } },
+    "depends": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+    "reject": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 8 } },
+    "writeSet": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+    "freezeClass": { "enum": ["none", "copy-only"] },
+    "owner": { "type": "string", "minLength": 1 },
+    "verifier": { "type": "string", "minLength": 1 },
+    "sideEffects": { "enum": ["none", "local", "remote-read", "remote-write", "money", "legal-value"] },
+    "externalGates": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "verification": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "repair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maxLoops", "boundary"],
+      "properties": {
+        "maxLoops": { "type": "integer", "minimum": 0, "maximum": 1 },
+        "boundary": { "type": "string", "minLength": 1 }
+      }
+    },
+    "evidence": { "type": ["object", "null"] },
+    "status": {
+      "enum": [
+        "proposed",
+        "ready",
+        "active",
+        "verification-pending",
+        "verified",
+        "integration-pending",
+        "shipped",
+        "blocked",
+        "quarantined",
+        "retired",
+        "superseded"
+      ]
+    }
+  },
+  "$defs": {
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "hash"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "hash": { "type": "string", "minLength": 1 }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "acceptanceSchema", "path"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "acceptanceSchema": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

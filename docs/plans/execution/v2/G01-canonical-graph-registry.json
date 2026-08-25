@@ -1,5 +1,5 @@
 {
-  "graphVersion": "aura-graph/v2.0@9EDBA48895B426A2C68760C8AE564978DE9B290CD2B4050D96F049496DA109AC",
+  "graphVersion": "aura-graph/v2.0@680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8",
   "node": "G01",
   "lane": "governance",
   "stage": "governed-start",
@@ -8,12 +8,12 @@
     {
       "name": "approved-graph",
       "version": "2.0",
-      "hash": "9EDBA48895B426A2C68760C8AE564978DE9B290CD2B4050D96F049496DA109AC"
+      "hash": "680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8"
     },
     {
       "name": "founder-approval",
       "version": "2026-08-24",
-      "hash": "git:24218b7"
+      "hash": "git:1fdcbae"
     }
   ],
   "outputs": [
@@ -33,7 +33,7 @@
       "path": "app/scripts/prove-graph-v2.mjs"
     }
   ],
-  "depends": ["G00", "approval:24218b7"],
+  "depends": ["G00", "approval:1fdcbae"],
   "reject": [
     "approved graph commit or Git-blob SHA-256 does not match the approval record",
     "registry points to an unapproved or mutable graph",
@@ -60,7 +60,7 @@
     "node app/scripts/prove-graph-v2.mjs",
     "node --test scripts/prove-graph-v2.test.mjs",
     "npm run typecheck",
-    "git diff --name-only 24218b7...HEAD"
+    "git diff --name-only 1fdcbae...HEAD"
   ],
   "repair": {
     "maxLoops": 1,
