@@ -80,11 +80,27 @@
     "writeOwnership": "No ready, active, or verification-pending manifest owns any G04 path; blocked HM01, IP02, and UX03 do not carry write ownership.",
     "existingSurfaceAudit": "FounderDecisionRegistryV1 contains nine historical records but omits the approved Graph v2 FD20-01 through FD20-20 decisions, has no exact scope or authority-source contract, and encodes supersession in mutable free text.",
     "readyManifestCommit": "1760d3c60c3d8aba944dc8157b325547f39e7c6a",
+    "activationCommit": "03b0ed4dc397507aa9546b4d97a25c9f46fe2bc5",
+    "candidateCommit": "80d336b0eb300fe9fe7446c6ed6ba5d123ec0e66",
+    "authorityBoundary": "The exact approved Graph v2 artifact is the immutable seed. The prior V1 registry remains reopenable by stored-blob and Git-object SHA at b054226, and appended change records remain recorded-pending-graph until a separately approved successor graph changes authority.",
+    "writeSetCheck": {
+      "declared": 6,
+      "changed": 6,
+      "delta": 0,
+      "candidateGuardErrors": []
+    },
+    "gateReceipts": {
+      "decisionLedger": "7/7 passed; CLI authority seed pass; zero appended changes; errors []",
+      "typecheck": "passed at candidate 80d336b0eb300fe9fe7446c6ed6ba5d123ec0e66",
+      "graphV2": "21/21 passed across seven decision-ledger proofs and fourteen graph/freeze proofs; Graph v2 authority pass",
+      "hostileRuntime": "revoked proxies, accessors, unknown keys, duplicate scope, malformed dates, invalid authority source shapes, broken hashes, broken chains, duplicate ids, and forward supersession all fail closed with bounded errors",
+      "repositorySources": "CLI requires every future source commit to be an ancestor, founder-authored, reopenable at its declared repository approval path, and to contain exact decision/founder/state/body markers"
+    },
     "protectedPathChanges": 0,
     "repairLoop": {
       "used": 0,
       "maximum": 1
     }
   },
-  "status": "active"
+  "status": "verification-pending"
 }
