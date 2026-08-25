@@ -74,7 +74,8 @@
     "repairLoop": "1/1 — canonical approval path and parsed approval body",
     "manifestReconciliation": "exact 5/5 candidate paths; removed 3 paths committed before candidate base",
     "priorIndependentFinding": "write-set equality corrected after 5cbb015",
-    "workerVerdict": "candidate-ready-for-independent-reverification"
+    "independentReverification": "pass at b81553a; 5/5 paths, 6/6 tests, typecheck exit 0, zero protected paths",
+    "verifierVerdict": "pass"
   },
-  "status": "verification-pending"
+  "status": "verified"
 }
