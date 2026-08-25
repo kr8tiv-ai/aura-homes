@@ -105,7 +105,8 @@
       "servedUi": "136/136 passed against a freshly rebuilt production export in 17.3m",
       "focusedServed": "1/1 passed in 21.3s against the export produced by the complete 136-test UI gate"
     },
+    "independentVerdict": "PASS at closure eed3481b94b25e3dd2a48abad2630cb9713d61b8; exact 9/9 candidate boundary; closure changed only this manifest; full UI 136/136; fresh deterministic 677 passed plus 2 intentional served-only skips; focused served 1/1; typecheck and Graph v2 14/14; zero frozen-path violations",
     "protectedPathChanges": 0
   },
-  "status": "verification-pending"
+  "status": "verified"
 }
