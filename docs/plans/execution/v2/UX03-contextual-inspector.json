@@ -100,8 +100,9 @@
       "graphV2": "14/14 passed; authority pass; zero manifest errors at 278d0e90d976fc7818d43b23fcf6587706eab60f"
     },
     "repair": "The first served proof assumed the default project already owned planar graph geometry and timed out waiting for graph-wall controls. The single permitted repair now enters Pro, invokes the product's explicit undoable Convert to planar editing action, returns to Guided Rooms, and performs the selection and refusal proof without injecting fixture state or changing production code.",
-    "independentVerdict": "pending",
+    "independentVerdict": "FAIL at closure c312b780d777a6aefe84d3a48e729e06d2103f63: a wall selection from Guided Rooms remained projected after Guided Shell hid the 2D plan surface",
+    "repairLoop": "1 of 1: suppress hidden plan-tool/selection/invalid projection and prove Rooms-to-Shell transitions",
     "protectedPathChanges": 0
   },
-  "status": "verification-pending"
+  "status": "active"
 }
