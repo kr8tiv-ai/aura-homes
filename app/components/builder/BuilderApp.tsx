@@ -1252,7 +1252,15 @@ export default function BuilderApp() {
   const activeGuidedStep = GUIDED_STEPS[guidedIndex];
 
   const contextualInspector = useMemo(() => {
-    if (graphMode && graphInspectorState) return graphInspectorState;
+    /* GraphPlanEditor stays mounted inside a hidden plan container so its
+       selection and rejected raw input survive a view change. Project that
+       state only while the plan is actually an active surface: Pro displays
+       it beside the model, while Guided displays it only in 2D and never on
+       the read-only drawing route. Hidden plan state is preserved, not shown
+       as though its tool were active on Shell, Site, Materials, or Review. */
+    const graphPlanSurfaceActive =
+      editorMode === "pro" || (mode === "2d" && workspace !== "drawings");
+    if (graphMode && graphPlanSurfaceActive && graphInspectorState) return graphInspectorState;
 
     let selection: StudioInspectorSelection | null = null;
     if (selectedOpeningId && openingVolumeId) {
@@ -1328,6 +1336,7 @@ export default function BuilderApp() {
     fixtures.items,
     graphInspectorState,
     graphMode,
+    mode,
     openingVolumeId,
     selectedFixtureId,
     selectedOpeningId,

@@ -262,10 +262,8 @@ test("a guided 2D task exposes the canvas and first-edit tools in the first 1280
   await expect(rendererCanvas).toBeAttached({ timeout: 90_000 });
   await rendererCanvas.evaluate((element) => element.setAttribute("data-ux02-renderer-identity", "preserved"));
 
-  await page
-    .getByRole("navigation", { name: "Guided design steps" })
-    .getByRole("button", { name: "Rooms", exact: true })
-    .click();
+  const steps = page.getByRole("navigation", { name: "Guided design steps" });
+  await steps.getByRole("button", { name: "Rooms", exact: true }).click();
   await page.evaluate(() => window.scrollTo(0, 0));
 
   await expect(page.getByRole("region", { name: "Project controls" })).toBeVisible();
@@ -314,10 +312,8 @@ test("the served contextual inspector exposes tool, selection, and invalid state
   await page.getByRole("button", { name: "Convert to planar editing" }).click();
   await expect(page.getByRole("heading", { name: "Planar building graph" })).toBeVisible();
   await page.getByRole("button", { name: "Guided", exact: true }).click();
-  await page
-    .getByRole("navigation", { name: "Guided design steps" })
-    .getByRole("button", { name: "Rooms", exact: true })
-    .click();
+  const steps = page.getByRole("navigation", { name: "Guided design steps" });
+  await steps.getByRole("button", { name: "Rooms", exact: true }).click();
 
   const root = page.locator("[data-active-design-hash]");
   const before = await root.getAttribute("data-active-design-hash");
@@ -330,11 +326,25 @@ test("the served contextual inspector exposes tool, selection, and invalid state
   await expect(inspector).toHaveAttribute("data-inspector-state", "selection");
   await expect(inspector).toContainText("Type an exact value");
 
+  await steps.getByRole("button", { name: "Shell", exact: true }).click();
+  await expect(inspector).toHaveAttribute("data-inspector-state", "tool");
+  await expect(inspector).not.toHaveAttribute("data-selection-kind", /.+/);
+  await expect(inspector).toContainText("Shell tools");
+  await steps.getByRole("button", { name: "Rooms", exact: true }).click();
+  await expect(inspector).toHaveAttribute("data-inspector-state", "selection");
+
   const length = page.getByLabel(/Wall .* · length \(feet\)/).first();
   await length.fill("-1");
   await length.press("Enter");
   await expect(inspector).toHaveAttribute("data-inspector-state", "invalid");
   await expect(inspector).toContainText("-1");
   await expect(inspector).toContainText(/must be longer than zero feet/i);
+
+  await steps.getByRole("button", { name: "Shell", exact: true }).click();
+  await expect(inspector).toHaveAttribute("data-inspector-state", "tool");
+  await expect(inspector).not.toContainText(/must be longer than zero feet/i);
+  await steps.getByRole("button", { name: "Rooms", exact: true }).click();
+  await expect(inspector).toHaveAttribute("data-inspector-state", "invalid");
+  await expect(inspector).toContainText("-1");
   await expect(root).toHaveAttribute("data-active-design-hash", before ?? "");
 });
