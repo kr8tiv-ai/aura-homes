@@ -75,6 +75,38 @@ test("deployment receipts bind the deployed revision to the checked source revis
   );
 });
 
+test("runtime validation rejects fields from the other receipt variant", () => {
+  const sourceReceipt = buildSourceReceipt({ sourceCommit, generatedAt, runUrl, checks: passingChecks });
+  const deploymentReceipt = buildDeploymentReceipt({
+    sourceCommit,
+    deploymentCommit: sourceCommit,
+    generatedAt,
+    runUrl,
+    deploymentUrl: "https://aurahomes.fun/",
+    environment: "github-pages",
+    status: "success",
+  });
+
+  assert.match(
+    validateReceipt({
+      ...sourceReceipt,
+      deployment: { ...deploymentReceipt.deployment, commit: "b".repeat(40) },
+    })[0],
+    /unexpected receipt fields: deployment/,
+  );
+  assert.match(
+    validateReceipt({ ...deploymentReceipt, checks: passingChecks })[0],
+    /unexpected receipt fields: checks/,
+  );
+  assert.match(
+    validateReceipt({
+      ...deploymentReceipt,
+      deployment: { ...deploymentReceipt.deployment, evidence: "unbound" },
+    })[0],
+    /unexpected deployment fields: evidence/,
+  );
+});
+
 test("receipts reject mutable commit labels and non-HTTPS evidence links", () => {
   assert.throws(
     () => buildSourceReceipt({

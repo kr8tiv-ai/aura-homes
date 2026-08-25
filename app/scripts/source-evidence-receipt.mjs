@@ -13,6 +13,33 @@ export const REQUIRED_SOURCE_CHECKS = Object.freeze([
 ]);
 
 const COMMIT = /^[0-9a-f]{40}$/;
+const SOURCE_RECEIPT_KEYS = Object.freeze([
+  "schema",
+  "receiptType",
+  "sourceCommit",
+  "generatedAt",
+  "runUrl",
+  "checks",
+]);
+const DEPLOYMENT_RECEIPT_KEYS = Object.freeze([
+  "schema",
+  "receiptType",
+  "sourceCommit",
+  "generatedAt",
+  "runUrl",
+  "deployment",
+]);
+const DEPLOYMENT_KEYS = Object.freeze(["commit", "url", "environment", "status"]);
+
+function requireExactKeys(value, expected, label) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`${label} must be an object`);
+  }
+  const unexpected = Object.keys(value).filter((key) => !expected.includes(key));
+  if (unexpected.length) throw new Error(`unexpected ${label} fields: ${unexpected.join(", ")}`);
+  const missing = expected.filter((key) => !Object.hasOwn(value, key));
+  if (missing.length) throw new Error(`missing ${label} fields: ${missing.join(", ")}`);
+}
 
 function requireCommit(value, label) {
   const normalized = String(value ?? "").toLowerCase();
@@ -103,8 +130,13 @@ export function validateReceipt(receipt) {
       throw new Error("receipt must be an object");
     }
     if (receipt.schema !== "AuraSourceEvidenceReceiptV1") throw new Error("unsupported receipt schema");
-    if (receipt.receiptType === "source-ci") buildSourceReceipt(receipt);
+    if (receipt.receiptType === "source-ci") {
+      requireExactKeys(receipt, SOURCE_RECEIPT_KEYS, "receipt");
+      buildSourceReceipt(receipt);
+    }
     else if (receipt.receiptType === "deployment") {
+      requireExactKeys(receipt, DEPLOYMENT_RECEIPT_KEYS, "receipt");
+      requireExactKeys(receipt.deployment, DEPLOYMENT_KEYS, "deployment");
       buildDeploymentReceipt({
         sourceCommit: receipt.sourceCommit,
         deploymentCommit: receipt.deployment?.commit,
