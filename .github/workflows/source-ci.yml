@@ -1,0 +1,189 @@
+name: Source CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  deployment_status:
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: source-ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  source-app:
+    if: github.event_name != 'deployment_status'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+        working-directory: app
+      - name: Type check exact source
+        run: npm run typecheck
+        working-directory: app
+      - name: Deterministic app tests
+        run: npm test
+        working-directory: app
+
+  source-ui:
+    if: github.event_name != 'deployment_status'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+        working-directory: app
+      - name: Install checked browser runtime
+        run: npx playwright install --with-deps chromium
+        working-directory: app
+      - name: Production-export UI tests
+        run: npm run test:ui
+        working-directory: app
+
+  source-contracts:
+    if: github.event_name != 'deployment_status'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: contracts/package-lock.json
+      - run: npm ci
+        working-directory: contracts
+      - name: Contract tests without deployment
+        run: npm test
+        working-directory: contracts
+
+  source-agent:
+    if: github.event_name != 'deployment_status'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: agent/package-lock.json
+      - run: npm ci
+        working-directory: agent
+      - name: Agent build
+        run: npm run build
+        working-directory: agent
+      - name: Deterministic agent demo
+        run: npm run demo
+        working-directory: agent
+
+  source-governance:
+    if: github.event_name != 'deployment_status'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+        working-directory: app
+      - name: Receipt contract tests
+        run: npm run test:source-evidence
+        working-directory: app
+      - name: Manifest, claim, and freeze gates
+        run: npm run test:graph-v2
+        working-directory: app
+
+  source-receipt:
+    if: >-
+      github.event_name != 'deployment_status' &&
+      needs.source-app.result == 'success' &&
+      needs.source-ui.result == 'success' &&
+      needs.source-contracts.result == 'success' &&
+      needs.source-agent.result == 'success' &&
+      needs.source-governance.result == 'success'
+    needs: [source-app, source-ui, source-contracts, source-agent, source-governance]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.sha }}
+      - name: Emit source-bound receipt
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SOURCE_COMMIT: ${{ github.sha }}
+        run: >-
+          node app/scripts/source-evidence-receipt.mjs source
+          --source "$SOURCE_COMMIT"
+          --run-url "$RUN_URL"
+          --output ".evidence/source-ci-$SOURCE_COMMIT.json"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: source-ci-receipt-${{ github.sha }}
+          path: .evidence/source-ci-${{ github.sha }}.json
+          if-no-files-found: error
+          retention-days: 90
+
+  deployment-receipt:
+    if: >-
+      github.event_name == 'deployment_status' &&
+      github.event.deployment_status.state == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.deployment.sha }}
+      - name: Require a successful source CI run for the deployed commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_COMMIT: ${{ github.event.deployment.sha }}
+        shell: bash
+        run: |
+          count="$(gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/source-ci.yml/runs" \
+            -f head_sha="$SOURCE_COMMIT" -f status=success --jq '.total_count')"
+          test "$count" -gt 0
+      - name: Emit source-to-deployment receipt
+        env:
+          DEPLOYMENT_ENVIRONMENT: ${{ github.event.deployment.environment }}
+          DEPLOYMENT_URL: ${{ github.event.deployment_status.environment_url || github.event.deployment_status.target_url }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SOURCE_COMMIT: ${{ github.event.deployment.sha }}
+        run: >-
+          node app/scripts/source-evidence-receipt.mjs deploy
+          --source "$SOURCE_COMMIT"
+          --deployment "$SOURCE_COMMIT"
+          --run-url "$RUN_URL"
+          --url "$DEPLOYMENT_URL"
+          --environment "$DEPLOYMENT_ENVIRONMENT"
+          --status success
+          --output ".evidence/deployment-$SOURCE_COMMIT.json"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: deployment-receipt-${{ github.event.deployment.sha }}
+          path: .evidence/deployment-${{ github.event.deployment.sha }}.json
+          if-no-files-found: error
+          retention-days: 365

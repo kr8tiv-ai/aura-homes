@@ -138,12 +138,8 @@ test("a failed film leaves the poster and immediate keyboard entry intact", asyn
 });
 
 test("a stalled film times out to the composed poster without stranding the gate", async ({ page }) => {
+  await page.clock.install();
   await page.addInitScript(() => {
-    const nativeSetTimeout = window.setTimeout.bind(window);
-    window.setTimeout = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) => {
-      const clamped = typeof timeout === "number" && timeout >= 4_000 ? 50 : timeout;
-      return nativeSetTimeout(handler, clamped, ...args);
-    }) as typeof window.setTimeout;
     HTMLMediaElement.prototype.load = () => undefined;
     HTMLMediaElement.prototype.play = () => new Promise(() => undefined);
   });
@@ -155,6 +151,8 @@ test("a stalled film times out to the composed poster without stranding the gate
   await page.goto("/");
 
   const gate = page.getByRole("dialog", { name: "Choose an Aura Homes journey" });
+  await expect(gate).toHaveAttribute("data-film-state", "loading");
+  await page.clock.fastForward(6_001);
   await expect(gate).toHaveAttribute("data-film-fallback", "timeout");
   await expect(page.locator("img.story-gate-poster")).toBeVisible();
   await expect(gate.getByRole("button", { name: /Build an eco home/ })).toBeEnabled();

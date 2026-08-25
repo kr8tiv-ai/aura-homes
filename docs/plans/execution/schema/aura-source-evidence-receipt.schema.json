@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aurahomes.fun/schemas/aura-source-evidence-receipt-v1.json",
+  "title": "Aura Source Evidence Receipt v1",
+  "oneOf": [
+    { "$ref": "#/$defs/sourceReceipt" },
+    { "$ref": "#/$defs/deploymentReceipt" }
+  ],
+  "$defs": {
+    "commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "httpsUrl": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://"
+    },
+    "base": {
+      "type": "object",
+      "required": ["schema", "receiptType", "sourceCommit", "generatedAt", "runUrl"],
+      "properties": {
+        "schema": { "const": "AuraSourceEvidenceReceiptV1" },
+        "receiptType": { "enum": ["source-ci", "deployment"] },
+        "sourceCommit": { "$ref": "#/$defs/commit" },
+        "generatedAt": { "type": "string", "format": "date-time" },
+        "runUrl": { "$ref": "#/$defs/httpsUrl" }
+      }
+    },
+    "sourceReceipt": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schema", "receiptType", "sourceCommit", "generatedAt", "runUrl", "checks"],
+          "properties": {
+            "schema": { "const": "AuraSourceEvidenceReceiptV1" },
+            "receiptType": { "const": "source-ci" },
+            "sourceCommit": { "$ref": "#/$defs/commit" },
+            "generatedAt": { "type": "string", "format": "date-time" },
+            "runUrl": { "$ref": "#/$defs/httpsUrl" },
+            "checks": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["app", "type", "contract", "agent", "manifest", "claim", "freeze"],
+              "properties": {
+                "app": { "const": "pass" },
+                "type": { "const": "pass" },
+                "contract": { "const": "pass" },
+                "agent": { "const": "pass" },
+                "manifest": { "const": "pass" },
+                "claim": { "const": "pass" },
+                "freeze": { "const": "pass" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "deploymentReceipt": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schema", "receiptType", "sourceCommit", "generatedAt", "runUrl", "deployment"],
+          "properties": {
+            "schema": { "const": "AuraSourceEvidenceReceiptV1" },
+            "receiptType": { "const": "deployment" },
+            "sourceCommit": { "$ref": "#/$defs/commit" },
+            "generatedAt": { "type": "string", "format": "date-time" },
+            "runUrl": { "$ref": "#/$defs/httpsUrl" },
+            "deployment": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["commit", "url", "environment", "status"],
+              "properties": {
+                "commit": { "$ref": "#/$defs/commit" },
+                "url": { "$ref": "#/$defs/httpsUrl" },
+                "environment": { "type": "string", "minLength": 1 },
+                "status": { "const": "success" }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
