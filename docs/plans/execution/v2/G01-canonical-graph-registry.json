@@ -48,7 +48,7 @@
     "docs/plans/registry/current-graph.json",
     "docs/plans/execution/schema/aura-execution-node.schema.json",
     "app/scripts/prove-graph-v2.mjs",
-    "app/tests/graph-v2-governance.spec.ts",
+    "app/scripts/prove-graph-v2.test.mjs",
     "app/package.json"
   ],
   "freezeClass": "none",
@@ -58,7 +58,7 @@
   "externalGates": [],
   "verification": [
     "node app/scripts/prove-graph-v2.mjs",
-    "npx playwright test tests/graph-v2-governance.spec.ts",
+    "node --test scripts/prove-graph-v2.test.mjs",
     "npm run typecheck",
     "git diff --name-only 24218b7...HEAD"
   ],
@@ -67,5 +67,5 @@
     "boundary": "G01 writeSet only"
   },
   "evidence": null,
-  "status": "ready"
+  "status": "active"
 }
