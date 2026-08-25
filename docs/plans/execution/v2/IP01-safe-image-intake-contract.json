@@ -1,0 +1,79 @@
+{
+  "graphVersion": "aura-graph/v2.0@680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8",
+  "node": "IP01",
+  "lane": "image-to-plan",
+  "stage": "safe-intake",
+  "job": "Create a provider-free image-intake boundary that rejects unsafe, unconsented, unsupported, malformed, oversized, pixel-excessive, or timed-out input before any model task can receive it.",
+  "inputs": [
+    {
+      "name": "G02-verified-freeze-and-write-set-gates",
+      "version": "1",
+      "hash": "git:0d0738cfecf7e7e15142debaf6e94db250acdadb"
+    },
+    {
+      "name": "approved-image-to-plan-contract",
+      "version": "2.0",
+      "hash": "git:f7616886f9f8a171c847ef5eb49e932246ff989b"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "safe-image-intake-boundary",
+      "acceptanceSchema": "AuraImageIntakeV1",
+      "path": "app/lib/ai/imageIntake.ts"
+    },
+    {
+      "name": "adversarial-intake-proof",
+      "acceptanceSchema": "Playwright-deterministic-contract-proof",
+      "path": "app/tests/image-intake.spec.ts"
+    }
+  ],
+  "depends": ["G02:verified"],
+  "reject": [
+    "G02 is not independently verified",
+    "declared MIME type is trusted without matching the encoded signature",
+    "unsupported, malformed, empty, oversized, or unconsented input reaches the decoder or any provider boundary",
+    "decoded width, height, pixel count, or EXIF orientation is absent, invalid, or silently guessed",
+    "a decode can run without a bounded timeout and abort signal",
+    "rights or inspiration acknowledgement is implicit rather than explicit",
+    "raw-image retention is hidden, ambiguous, or defaults to permanent storage",
+    "the contract calls a network, model, provider, wallet, payment, or persistence service",
+    "a website 3D, rendering, animation, engine, scene, public visual, model, texture, shader, camera, lighting, motion, or quality-tier path changes"
+  ],
+  "writeSet": [
+    "docs/plans/execution/v2/IP01-safe-image-intake-contract.json",
+    "app/lib/ai/imageIntake.ts",
+    "app/tests/image-intake.spec.ts",
+    "app/package.json",
+    "app/tests/gate-coverage.spec.ts",
+    "README.md",
+    "docs/SUBMISSION.md"
+  ],
+  "freezeClass": "none",
+  "owner": "primary-agent",
+  "verifier": "independent-fresh-context",
+  "sideEffects": "none",
+  "externalGates": [],
+  "verification": [
+    "npm run typecheck",
+    "npx playwright test tests/image-intake.spec.ts",
+    "npm test",
+    "npm run test:graph-v2",
+    "fixture: reject consent, rights, retention, signature, size, pixel, orientation, and timeout failures",
+    "fixture: prove preflight rejection invokes no decoder and the contract exposes no provider callback",
+    "fixture: prove EXIF orientations 5 through 8 normalize display width and height without rewriting input bytes",
+    "git diff --name-only <IP01-base>...HEAD"
+  ],
+  "repair": {
+    "maxLoops": 1,
+    "boundary": "IP01 writeSet only"
+  },
+  "evidence": {
+    "startedFrom": "63357dae646b6a839a96a8baaf5d51cbc8113a2f",
+    "dependencyGate": "G02 verified at 0d0738cfecf7e7e15142debaf6e94db250acdadb",
+    "writeOwnership": "No active manifest owns an overlapping path; UX03 is blocked and UX05 is verified.",
+    "existingSurfaceAudit": "No cabin-image intake exists. Current file inputs are project JSON import, contributed-model import, and quote evidence only.",
+    "protectedPathChanges": 0
+  },
+  "status": "ready"
+}
