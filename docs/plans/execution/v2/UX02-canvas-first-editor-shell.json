@@ -1,0 +1,70 @@
+{
+  "graphVersion": "aura-graph/v2.0@680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8",
+  "node": "UX02",
+  "lane": "guided-studio",
+  "stage": "canvas-first-foundation",
+  "job": "Reorganize the existing functional 2D builder into a canvas-first shell that exposes the plan and first-edit controls without page scrolling at 1280 by 720.",
+  "inputs": [
+    {
+      "name": "UX01-contract",
+      "version": "1",
+      "hash": "pending:UX01"
+    },
+    {
+      "name": "existing-builder-document-and-history",
+      "version": "2026-08-21",
+      "hash": "git:710d5a858c689668dd8961d85b3d75ee96dbc38a"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "canvas-first-builder-shell",
+      "acceptanceSchema": "BuilderShellLandmarksV1",
+      "path": "app/components/builder/BuilderApp.tsx"
+    },
+    {
+      "name": "first-canvas-viewport-evidence",
+      "acceptanceSchema": "Playwright-viewport-evidence",
+      "path": "app/tests/builder-plans-first.spec.ts"
+    }
+  ],
+  "depends": ["UX01:verified"],
+  "reject": [
+    "UX01 is not independently verified",
+    "the 2D canvas or first-edit controls remain below the fold at 1280 by 720",
+    "the existing renderer is remounted, hidden with display none, moved to a different lifecycle, or otherwise behaviorally changed",
+    "the project reducer, history, persistence, canonical hash, or Plan2D ownership changes",
+    "a selector outside the bounded builder workspace changes",
+    "the public-site visual system is restyled",
+    "phone layout gains page-level horizontal overflow"
+  ],
+  "writeSet": [
+    "docs/plans/execution/v2/UX02-canvas-first-editor-shell.json",
+    "app/components/builder/BuilderApp.tsx",
+    "app/components/builder/GuidedStudioShell.tsx",
+    "app/app/globals.css",
+    "app/tests/builder-plans-first.spec.ts",
+    "app/tests/builder-mobile.spec.ts"
+  ],
+  "freezeClass": "none",
+  "owner": "unassigned",
+  "verifier": "independent-fresh-context",
+  "sideEffects": "local",
+  "externalGates": [],
+  "verification": [
+    "npx playwright test tests/builder-plans-first.spec.ts tests/builder-mobile.spec.ts",
+    "npm run typecheck",
+    "npm test",
+    "npm run test:ui",
+    "npm run test:graph-v2",
+    "browser evidence: 1280x720 canvas and first-edit controls visible at scrollY=0",
+    "browser evidence: 390x844 no page-level horizontal overflow",
+    "git diff --name-only <UX02-base>...HEAD"
+  ],
+  "repair": {
+    "maxLoops": 1,
+    "boundary": "UX02 writeSet only"
+  },
+  "evidence": null,
+  "status": "proposed"
+}

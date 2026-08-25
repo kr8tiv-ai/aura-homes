@@ -1,0 +1,65 @@
+{
+  "graphVersion": "aura-graph/v2.0@680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8",
+  "node": "G02",
+  "lane": "governance",
+  "stage": "governed-start",
+  "job": "Encode and enforce protected 3D, public-site visual, manifest write-set, and narrow Canvas-first 2D exception gates.",
+  "inputs": [
+    {
+      "name": "G01-candidate",
+      "version": "90003dd",
+      "hash": "git:90003dd54a5cae29c4004b641872e22d2568fd89"
+    },
+    {
+      "name": "frozen-main-baseline",
+      "version": "2026-08-21",
+      "hash": "git:710d5a858c689668dd8961d85b3d75ee96dbc38a"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "protected-path-registry",
+      "acceptanceSchema": "AuraProtectedPathsV1",
+      "path": "docs/plans/registry/protected-paths.json"
+    },
+    {
+      "name": "freeze-and-write-set-gate",
+      "acceptanceSchema": "AuraGraphV2GateReceiptV1",
+      "path": "app/scripts/prove-graph-v2.mjs"
+    }
+  ],
+  "depends": ["G01:verified"],
+  "reject": [
+    "G01 does not have an independent passing evidence receipt",
+    "a protected renderer, scene, model, texture, worker, shader, camera, lighting, motion, quality, or geometry-adapter path is permitted",
+    "a public-site/global visual change is treated as a Canvas-first exception",
+    "a builder CSS exception changes selectors outside the bounded builder workspace",
+    "candidate paths fall outside the active manifest writeSet",
+    "path normalization, parent traversal, case folding, or glob overlap can bypass the gate",
+    "the dirty quarantined aura-graph-v1-1 worktree is used as input"
+  ],
+  "writeSet": [
+    "docs/plans/execution/v2/G02-freeze-write-set-gates.json",
+    "docs/plans/registry/protected-paths.json",
+    "app/scripts/prove-graph-v2.mjs",
+    "app/scripts/prove-graph-v2.test.mjs"
+  ],
+  "freezeClass": "none",
+  "owner": "unassigned",
+  "verifier": "independent-fresh-context",
+  "sideEffects": "local",
+  "externalGates": [],
+  "verification": [
+    "npm run test:graph-v2",
+    "fixture: reject every hard-protected path",
+    "fixture: reject global CSS outside bounded builder selectors",
+    "fixture: reject parent traversal, case variants, and overlapping write sets",
+    "git diff --name-only <G02-base>...HEAD"
+  ],
+  "repair": {
+    "maxLoops": 1,
+    "boundary": "G02 writeSet only"
+  },
+  "evidence": null,
+  "status": "proposed"
+}

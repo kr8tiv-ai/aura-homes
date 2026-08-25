@@ -1,0 +1,63 @@
+{
+  "graphVersion": "aura-graph/v2.0@680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8",
+  "node": "UX01",
+  "lane": "guided-studio",
+  "stage": "canvas-first-foundation",
+  "job": "Make the approved Guided Studio interaction, device, selection, evidence, recovery, and freeze contracts executable without changing production layout.",
+  "inputs": [
+    {
+      "name": "approved-guided-studio-design",
+      "version": "2026-08-24",
+      "hash": "git:f7616886f9f8a171c847ef5eb49e932246ff989b"
+    },
+    {
+      "name": "current-builder-baseline",
+      "version": "2026-08-21",
+      "hash": "git:710d5a858c689668dd8961d85b3d75ee96dbc38a"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "guided-studio-state-contract",
+      "acceptanceSchema": "GuidedStudioContractV1",
+      "path": "app/lib/builder/guidedStudio.ts"
+    },
+    {
+      "name": "interaction-contract-evidence",
+      "acceptanceSchema": "Playwright-unit-evidence",
+      "path": "app/tests/builder-plans-first.spec.ts"
+    }
+  ],
+  "depends": ["G02:verified"],
+  "reject": [
+    "G02 is not independently verified",
+    "the contract creates a second project, geometry, history, selection, or persistence model",
+    "phone scope claims full CAD parity",
+    "a blocking warning can disappear when evidence is collapsed",
+    "pointer, keyboard, and exact-value operations are allowed to diverge",
+    "any production component, CSS, or frozen 3D path is modified"
+  ],
+  "writeSet": [
+    "docs/plans/execution/v2/UX01-guided-studio-contract.json",
+    "app/lib/builder/guidedStudio.ts",
+    "app/tests/builder-plans-first.spec.ts",
+    "app/tests/builder-mobile.spec.ts"
+  ],
+  "freezeClass": "none",
+  "owner": "unassigned",
+  "verifier": "independent-fresh-context",
+  "sideEffects": "local",
+  "externalGates": [],
+  "verification": [
+    "npx playwright test tests/builder-plans-first.spec.ts tests/builder-mobile.spec.ts",
+    "npm run typecheck",
+    "npm run test:graph-v2",
+    "git diff --name-only <UX01-base>...HEAD"
+  ],
+  "repair": {
+    "maxLoops": 1,
+    "boundary": "UX01 writeSet only"
+  },
+  "evidence": null,
+  "status": "proposed"
+}
