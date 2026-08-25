@@ -8,7 +8,7 @@
     {
       "name": "UX01-contract",
       "version": "1",
-      "hash": "pending:UX01"
+      "hash": "git:f3224d13cc899ddff5963b401344a0f3ffc5315a"
     },
     {
       "name": "existing-builder-document-and-history",
@@ -40,6 +40,7 @@
   ],
   "writeSet": [
     "docs/plans/execution/v2/UX02-canvas-first-editor-shell.json",
+    "app/app/build/page.tsx",
     "app/components/builder/BuilderApp.tsx",
     "app/components/builder/GuidedStudioShell.tsx",
     "app/app/globals.css",
@@ -47,7 +48,7 @@
     "app/tests/builder-mobile.spec.ts"
   ],
   "freezeClass": "none",
-  "owner": "unassigned",
+  "owner": "primary-agent",
   "verifier": "independent-fresh-context",
   "sideEffects": "local",
   "externalGates": [],
@@ -65,6 +66,17 @@
     "maxLoops": 1,
     "boundary": "UX02 writeSet only"
   },
-  "evidence": null,
-  "status": "proposed"
+  "evidence": {
+    "startedFrom": "f3224d13cc899ddff5963b401344a0f3ffc5315a",
+    "dependencyGate": "UX01 verified",
+    "baseline1280x720": {
+      "scrollY": 0,
+      "guidedShellBottomPx": 840.703125,
+      "stageTopPx": 864.703125,
+      "editablePlanTopPx": 1504.8125,
+      "verdict": "fail"
+    },
+    "protectedPathChanges": 0
+  },
+  "status": "active"
 }
