@@ -83,8 +83,9 @@
   "evidence": {
     "startedFrom": "a5b40d9565bf067eafb21ceed286e74fa268453d",
     "dependencyGate": "UX02 verified at e7a4859b96a5c4815bfc80cce478000bd9087c9c",
+    "readyManifestCommit": "077352c3dca010a3f7a6521c05a049139f6bc16a",
     "writeOwnership": "UX03 is blocked, not active; no active manifest owns an overlapping path",
     "protectedPathChanges": 0
   },
-  "status": "ready"
+  "status": "active"
 }
