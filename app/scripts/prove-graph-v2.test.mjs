@@ -12,7 +12,9 @@ import {
   pinnedApprovalSource,
   validateApprovalRecordSource,
   validateBuilderCssChanges,
+  validateBuilderPageChanges,
   validateCandidatePaths,
+  validateCopyOnlyChanges,
   validateExecutionNode,
   validateProtectedPathRegistry,
   validateWriteSet,
@@ -221,6 +223,8 @@ test("new story files, landing media, and unapproved public-site surfaces fail c
     "app/public/audio/forest-ambience-loop.mp3",
     "app/app/about/page.tsx",
     "app/components/SiteShell.tsx",
+    "app/components/motion-features.ts",
+    "app/components/story/StoryChrome.tsx",
   ];
 
   for (const candidate of probes) {
@@ -231,6 +235,68 @@ test("new story files, landing media, and unapproved public-site surfaces fail c
     );
     assert.match(errors.join("\n"), /hard-protected|public-visual protected|no approved exception/, candidate);
   }
+});
+
+test("copy-only proof allows copy fields and rejects routing, structure, and executable changes", async () => {
+  const registry = await loadProtectedPaths(repoRoot);
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  const baseline = `export const CARD = { title: "Old words", href: "/start", side: "left" } as const;`;
+  const copyChange = `export const CARD = { title: "Better words", href: "/start", side: "left" } as const;`;
+  const routeChange = `export const CARD = { title: "Old words", href: "/buy", side: "left" } as const;`;
+  const behaviorChange = `export const CARD = { title: "Old words", href: "/start", side: "right" } as const;`;
+  const copyManifest = {
+    ...manifest,
+    node: "G01",
+    freezeClass: "copy-only",
+    writeSet: ["app/components/story/copy.ts"],
+  };
+
+  assert.deepEqual(validateCopyOnlyChanges(baseline, copyChange, "app/components/story/copy.ts"), []);
+  assert.match(validateCopyOnlyChanges(baseline, routeChange, "app/components/story/copy.ts").join("\n"), /routing|non-copy/);
+  assert.match(validateCopyOnlyChanges(baseline, behaviorChange, "app/components/story/copy.ts").join("\n"), /executable|non-copy/);
+  assert.match(
+    validateCandidatePaths(
+      ["app/components/story/copy.ts"],
+      copyManifest,
+      registry,
+      { contentGates: { "app/components/story/copy.ts": "copy-only" } },
+    ).join("\n"),
+    /requires baseline and candidate source/,
+  );
+  assert.deepEqual(
+    validateCandidatePaths(["app/components/story/copy.ts"], copyManifest, registry, {
+      contentSources: {
+        "app/components/story/copy.ts": { baseline, candidate: copyChange },
+      },
+    }),
+    [],
+  );
+});
+
+test("the build-route exception requires inspected source and cannot import motion or 3D", async () => {
+  const registry = await loadProtectedPaths(repoRoot);
+  const manifest = JSON.parse(
+    await readFile(path.join(repoRoot, "docs/plans/execution/v2/UX02-canvas-first-editor-shell.json"), "utf8"),
+  );
+  const pageManifest = { ...manifest, writeSet: [...manifest.writeSet, "app/app/build/page.tsx"] };
+  const baseline = `import BuilderApp from "@/components/builder/BuilderApp"; export default function Page(){ return <main className="shell"><BuilderApp /></main>; }`;
+  const safe = `import BuilderApp from "@/components/builder/BuilderApp"; export default function Page(){ return <main className="shell builder-page--compact"><BuilderApp /></main>; }`;
+  const unsafe = `import BuilderApp from "@/components/builder/BuilderApp"; import { motion } from "motion/react"; export default function Page(){ return <main className="shell builder-page--compact"><BuilderApp /></main>; }`;
+
+  assert.deepEqual(validateBuilderPageChanges(baseline, safe), []);
+  assert.match(validateBuilderPageChanges(baseline, unsafe).join("\n"), /cannot import motion/);
+  assert.match(
+    validateCandidatePaths(["app/app/build/page.tsx"], pageManifest, registry, {
+      contentGates: { "app/app/build/page.tsx": "builder-page-functional-only" },
+    }).join("\n"),
+    /requires baseline and candidate source/,
+  );
+  assert.deepEqual(
+    validateCandidatePaths(["app/app/build/page.tsx"], pageManifest, registry, {
+      contentSources: { "app/app/build/page.tsx": { baseline, candidate: safe } },
+    }),
+    [],
+  );
 });
 
 test("the Canvas-first CSS exception changes only builder-scoped selectors", () => {

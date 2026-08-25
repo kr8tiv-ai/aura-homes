@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
+import ts from "typescript";
 
 export const APPROVED_GRAPH = Object.freeze({
   version: "2.0",
@@ -287,6 +288,28 @@ export const validateCandidatePaths = (candidatePaths, manifest, registry, optio
             ),
           );
         }
+      } else if (exception.contentGate === "copy-only") {
+        const sources = options.contentSources?.[candidate] ?? options.contentSources?.[lower];
+        if (!sources || typeof sources.baseline !== "string" || typeof sources.candidate !== "string") {
+          errors.push(`${candidate} requires baseline and candidate source for content gate copy-only`);
+        } else {
+          errors.push(
+            ...validateCopyOnlyChanges(sources.baseline, sources.candidate, candidate).map(
+              (error) => `${candidate}: ${error}`,
+            ),
+          );
+        }
+      } else if (exception.contentGate === "builder-page-functional-only") {
+        const sources = options.contentSources?.[candidate] ?? options.contentSources?.[lower];
+        if (!sources || typeof sources.baseline !== "string" || typeof sources.candidate !== "string") {
+          errors.push(`${candidate} requires baseline and candidate source for content gate builder-page-functional-only`);
+        } else {
+          errors.push(
+            ...validateBuilderPageChanges(sources.baseline, sources.candidate).map(
+              (error) => `${candidate}: ${error}`,
+            ),
+          );
+        }
       } else if (contentGates.get(lower) !== exception.contentGate) {
         errors.push(`${candidate} requires content gate ${exception.contentGate}`);
       }
@@ -367,6 +390,129 @@ export const validateBuilderCssChanges = (baselineSource, candidateSource) => {
     if (!builderScopedSelector(selector)) {
       errors.push(`CSS selector ${selector} is outside the bounded builder workspace`);
     }
+  }
+  return errors;
+};
+
+const COPY_VALUE_FIELDS = new Set([
+  "n",
+  "k",
+  "v",
+  "label",
+  "heading",
+  "body",
+  "sub",
+  "cue",
+  "tagline",
+  "season",
+  "text",
+  "title",
+  "desc",
+]);
+
+const propertyName = (node) => {
+  if (ts.isIdentifier(node)) return node.text;
+  if (ts.isStringLiteral(node) || ts.isNumericLiteral(node)) return node.text;
+  return null;
+};
+
+const copyScrub = (source, filePath) => {
+  const sourceFile = ts.createSourceFile(
+    filePath,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    filePath.endsWith("x") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+  );
+  const parseErrors = sourceFile.parseDiagnostics ?? [];
+  if (parseErrors.length > 0) {
+    return { scrubbed: null, errors: parseErrors.map((diagnostic) => `copy source parse error ${diagnostic.code}`) };
+  }
+  const ranges = [];
+  const visit = (node) => {
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+      const parent = node.parent;
+      const directField = ts.isPropertyAssignment(parent) ? propertyName(parent.name) : null;
+      const arrayField =
+        ts.isArrayLiteralExpression(parent) && ts.isPropertyAssignment(parent.parent)
+          ? propertyName(parent.parent.name)
+          : null;
+      if (COPY_VALUE_FIELDS.has(directField) || arrayField === "titleLines") {
+        ranges.push([node.getStart(sourceFile), node.getEnd()]);
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  let scrubbed = source;
+  for (const [start, end] of ranges.sort((a, b) => b[0] - a[0])) {
+    scrubbed = `${scrubbed.slice(0, start)}"<COPY>"${scrubbed.slice(end)}`;
+  }
+  return { scrubbed, errors: [] };
+};
+
+export const validateCopyOnlyChanges = (baselineSource, candidateSource, filePath) => {
+  if (filePath.toLowerCase() !== "app/components/story/copy.ts") {
+    return [`${filePath} is not an approved copy-only module`];
+  }
+  const baseline = copyScrub(baselineSource, filePath);
+  const candidate = copyScrub(candidateSource, filePath);
+  const errors = [...baseline.errors, ...candidate.errors];
+  if (errors.length === 0 && baseline.scrubbed !== candidate.scrubbed) {
+    errors.push("copy-only change altered imports, executable tokens, object structure, routing, or non-copy fields");
+  }
+  return errors;
+};
+
+const sourceFacts = (source, fileName) => {
+  const sourceFile = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const imports = [];
+  const classes = [];
+  let builderApps = 0;
+  let inlineStyles = 0;
+  let handlers = 0;
+  const visit = (node) => {
+    if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
+      imports.push(node.moduleSpecifier.text);
+    }
+    if (ts.isJsxSelfClosingElement(node) || ts.isJsxOpeningElement(node)) {
+      const tag = node.tagName.getText(sourceFile);
+      if (tag === "BuilderApp") builderApps += 1;
+      for (const attribute of node.attributes.properties) {
+        if (!ts.isJsxAttribute(attribute)) continue;
+        const name = attribute.name.getText(sourceFile);
+        if (name === "style") inlineStyles += 1;
+        if (/^on[A-Z]/.test(name)) handlers += 1;
+        if (name === "className" && attribute.initializer && ts.isStringLiteral(attribute.initializer)) {
+          classes.push(...attribute.initializer.text.split(/\s+/).filter(Boolean));
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return { imports, classes, builderApps, inlineStyles, handlers };
+};
+
+export const validateBuilderPageChanges = (baselineSource, candidateSource) => {
+  const before = sourceFacts(baselineSource, "build-page-baseline.tsx");
+  const after = sourceFacts(candidateSource, "build-page-candidate.tsx");
+  const errors = [];
+  const forbiddenImport = /(react-three|(?:^|\/)three(?:\/|$)|(?:^|\/)story(?:\/|$)|motion|Viewport|PlanModelPreview|Walkthrough|OpeningHandles|SurfacePicker)/i;
+  if (after.imports.some((entry) => forbiddenImport.test(entry))) {
+    errors.push("builder page cannot import motion, story, renderer, or protected 3D modules");
+  }
+  if (before.builderApps !== 1 || after.builderApps !== 1) {
+    errors.push("builder page must retain exactly one BuilderApp mount");
+  }
+  if (after.inlineStyles > before.inlineStyles) errors.push("builder page cannot add inline visual styles");
+  if (after.handlers > before.handlers) errors.push("builder page cannot add route-level event handlers");
+  const beforeClasses = new Set(before.classes);
+  const unsafeNewClasses = after.classes.filter(
+    (entry) => !beforeClasses.has(entry) && !/^builder-page(?:-|__|$)/.test(entry),
+  );
+  if (unsafeNewClasses.length > 0) {
+    errors.push(`builder page added non-builder visual classes: ${[...new Set(unsafeNewClasses)].join(", ")}`);
   }
   return errors;
 };

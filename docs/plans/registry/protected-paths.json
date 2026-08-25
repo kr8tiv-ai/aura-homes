@@ -13,8 +13,7 @@
       "app/public/video/"
     ],
     "exemptExact": [
-      "app/components/story/copy.ts",
-      "app/components/story/StoryChrome.tsx"
+      "app/components/story/copy.ts"
     ],
     "exact": [
       "app/components/story/flora.ts",
@@ -32,7 +31,8 @@
       "app/components/builder/PlanModelPreview.tsx",
       "app/components/builder/Walkthrough.tsx",
       "app/components/builder/OpeningHandles.tsx",
-      "app/components/builder/SurfacePicker.tsx"
+      "app/components/builder/SurfacePicker.tsx",
+      "app/components/motion-features.ts"
     ]
   },
   "publicVisualProtected": {
@@ -70,13 +70,6 @@
     {
       "id": "STORY_COPY_ONLY",
       "path": "app/components/story/copy.ts",
-      "nodes": [],
-      "freezeClass": "copy-only",
-      "contentGate": "copy-only"
-    },
-    {
-      "id": "STORY_CHROME_COPY_ONLY",
-      "path": "app/components/story/StoryChrome.tsx",
       "nodes": [],
       "freezeClass": "copy-only",
       "contentGate": "copy-only"
