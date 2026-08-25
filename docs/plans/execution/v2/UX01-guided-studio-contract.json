@@ -14,6 +14,11 @@
       "name": "current-builder-baseline",
       "version": "2026-08-21",
       "hash": "git:710d5a858c689668dd8961d85b3d75ee96dbc38a"
+    },
+    {
+      "name": "verified-freeze-gate",
+      "version": "0d0738c",
+      "hash": "git:0d0738cfecf7e7e15142debaf6e94db250acdadb"
     }
   ],
   "outputs": [
@@ -44,7 +49,7 @@
     "app/tests/builder-mobile.spec.ts"
   ],
   "freezeClass": "none",
-  "owner": "unassigned",
+  "owner": "primary-agent",
   "verifier": "independent-fresh-context",
   "sideEffects": "local",
   "externalGates": [],
@@ -58,6 +63,11 @@
     "maxLoops": 1,
     "boundary": "UX01 writeSet only"
   },
-  "evidence": null,
-  "status": "proposed"
+  "evidence": {
+    "startedFrom": "0d0738cfecf7e7e15142debaf6e94db250acdadb",
+    "dependencyGate": "G02 verified",
+    "productionLayoutChanges": 0,
+    "protectedPathChanges": 0
+  },
+  "status": "active"
 }
