@@ -1499,6 +1499,19 @@ main p {
   justify-content: flex-end;
   gap: 0.35rem;
 }
+.builder-readonly-badge {
+  min-height: 2.1rem;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgb(var(--tone-emerald) / 0.5);
+  border-radius: 999px;
+  padding-inline: 0.75rem;
+  font-family: var(--st-mono-font);
+  font-size: 0.56rem;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--st-emerald-deep);
+}
 .builder-project-bar .builder-shell-button,
 .builder-project-bar .builder-mode-toggle__button { min-height: 2.1rem; }
 .builder-project-bar .builder-mode-toggle { padding: 0.15rem; }

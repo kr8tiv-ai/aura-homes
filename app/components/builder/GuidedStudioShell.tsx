@@ -65,15 +65,21 @@ export default function GuidedStudioShell({
         </div>
 
         <div className="builder-project-bar__actions" aria-label="Project history and commands">
-          <button className="builder-shell-button" type="button" onClick={onUndo} disabled={!canUndo}>
-            Undo
-          </button>
-          <button className="builder-shell-button" type="button" onClick={onRedo} disabled={!canRedo}>
-            Redo
-          </button>
-          <button className="builder-shell-button" type="button" onClick={onCommands}>
-            Commands
-          </button>
+          {planRouteOpen ? (
+            <span className="builder-readonly-badge" role="status">Read-only drawings</span>
+          ) : (
+            <>
+              <button className="builder-shell-button" type="button" onClick={onUndo} disabled={!canUndo}>
+                Undo
+              </button>
+              <button className="builder-shell-button" type="button" onClick={onRedo} disabled={!canRedo}>
+                Redo
+              </button>
+              <button className="builder-shell-button" type="button" onClick={onCommands}>
+                Commands
+              </button>
+            </>
+          )}
           <div role="group" aria-label="Editor mode" className="builder-mode-toggle">
             {(["guided", "pro"] as const).map((mode) => (
               <button
@@ -109,7 +115,7 @@ export default function GuidedStudioShell({
             ))}
           </nav>
 
-          <div className="builder-task-summary">
+          <div className="builder-task-summary" data-plan-route={planRouteOpen ? "open" : "closed"}>
             <div className="builder-task-summary__copy" role="status">
               <span>{activeStep.label}</span>
               <p>{activeStep.hint}</p>
@@ -133,7 +139,7 @@ export default function GuidedStudioShell({
                 type="button"
                 onClick={planRouteOpen ? onCloseDrawings : onOpenDrawings}
               >
-                {planRouteOpen ? `Back to ${activeStep.label}` : "Drawings · A3"}
+                {planRouteOpen ? `Back to ${activeStep.label}` : "Open the drawings"}
               </button>
             </div>
           </div>

@@ -174,7 +174,10 @@ test("invalid exact input remains editable and names the violated constraint", (
 test("a guided 2D task exposes the canvas and first-edit tools in the first 1280 by 720 viewport", async ({
   page,
 }, testInfo) => {
-  test.skip(!testInfo.project.use.baseURL, "served UX02 viewport proof runs with the manifest's local base URL");
+  test.skip(
+    !process.env.PLAYWRIGHT_TEST_BASE_URL && !testInfo.project.use.baseURL,
+    "served UX02 viewport proof runs with the manifest's local base URL",
+  );
   test.setTimeout(180_000);
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto("/build?mode=guided");
