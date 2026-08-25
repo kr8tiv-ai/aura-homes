@@ -1,0 +1,77 @@
+{
+  "schema": "AuraProtectedPathsV1",
+  "freezeId": "F-3D-VISUAL-2026-08-22",
+  "baselineCommit": "710d5a858c689668dd8961d85b3d75ee96dbc38a",
+  "hardProtected": {
+    "prefixes": [
+      "app/lib/three/",
+      "app/public/models/",
+      "app/public/textures/meadow"
+    ],
+    "exact": [
+      "app/components/story/flora.ts",
+      "app/components/story/Loader.tsx",
+      "app/components/story/Scene.tsx",
+      "app/components/story/SceneDetail.tsx",
+      "app/components/story/SceneHandoff.tsx",
+      "app/components/story/StillScene.tsx",
+      "app/components/story/Story.tsx",
+      "app/components/story/StoryCanvas.tsx",
+      "app/workers/meadow.worker.ts",
+      "app/scripts/generate-meadow-atlas.mjs",
+      "app/scripts/meadow-proof.mjs",
+      "app/components/builder/Viewport.tsx",
+      "app/components/builder/PlanModelPreview.tsx",
+      "app/components/builder/Walkthrough.tsx",
+      "app/components/builder/OpeningHandles.tsx",
+      "app/components/builder/SurfacePicker.tsx"
+    ]
+  },
+  "publicVisualProtected": {
+    "exact": [
+      "app/app/globals.css",
+      "app/app/page.tsx",
+      "app/app/build/page.tsx",
+      "app/components/story/copy.ts",
+      "app/components/story/StoryChrome.tsx"
+    ],
+    "prefixes": []
+  },
+  "exceptions": [
+    {
+      "id": "CANVAS_FIRST_BUILDER_CSS",
+      "path": "app/app/globals.css",
+      "nodes": ["UX02", "UX03", "UX04", "UX05", "UX06", "UX07", "UX08", "UX09", "UX10"],
+      "contentGate": "builder-css-only"
+    },
+    {
+      "id": "CANVAS_FIRST_BUILD_ROUTE",
+      "path": "app/app/build/page.tsx",
+      "nodes": ["UX02"],
+      "contentGate": "builder-page-functional-only"
+    },
+    {
+      "id": "STORY_COPY_ONLY",
+      "path": "app/components/story/copy.ts",
+      "nodes": [],
+      "freezeClass": "copy-only",
+      "contentGate": "copy-only"
+    },
+    {
+      "id": "STORY_CHROME_COPY_ONLY",
+      "path": "app/components/story/StoryChrome.tsx",
+      "nodes": [],
+      "freezeClass": "copy-only",
+      "contentGate": "copy-only"
+    }
+  ],
+  "builderCssSelectorPrefixes": [
+    ".builder-",
+    ".guided-",
+    ".is-builder",
+    "[data-builder"
+  ],
+  "quarantinedInputs": [
+    "C:/Users/lucid/Desktop/Kin/aura-graph-v1-1"
+  ]
+}

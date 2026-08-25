@@ -6,10 +6,16 @@ import test from "node:test";
 import {
   APPROVED_GRAPH,
   gitBlobSha256,
+  loadProtectedPaths,
   loadRegistry,
+  normalizeRepoPath,
   pinnedApprovalSource,
   validateApprovalRecordSource,
+  validateBuilderCssChanges,
+  validateCandidatePaths,
   validateExecutionNode,
+  validateProtectedPathRegistry,
+  validateWriteSet,
   verifyApprovedGraph,
 } from "./prove-graph-v2.mjs";
 
@@ -95,4 +101,118 @@ test("missing execution fields and overlapping writes are rejected", async () =>
 
   assert.match(missing.errors.join("\n"), /owner/);
   assert.match(duplicate.errors.join("\n"), /duplicate writeSet/);
+});
+
+test("repository paths fail closed on traversal, absolute paths, globs, and case aliases", () => {
+  assert.equal(normalizeRepoPath("app\\components\\builder\\BuilderApp.tsx"), "app/components/builder/BuilderApp.tsx");
+  assert.throws(() => normalizeRepoPath("../app/components/builder/BuilderApp.tsx"), /traverse/);
+  assert.throws(() => normalizeRepoPath("C:\\repo\\file.ts"), /absolute/);
+  assert.match(validateWriteSet(["app/**"]).join("\n"), /glob syntax/);
+  assert.match(
+    validateWriteSet(["app/components/builder", "app/components/builder/BuilderApp.tsx"]).join("\n"),
+    /overlap/i,
+  );
+  assert.match(
+    validateWriteSet(["app/Foo.ts", "app/foo.ts"]).join("\n"),
+    /case alias/i,
+  );
+});
+
+test("the protected-path registry is complete enough to be a deterministic contract", async () => {
+  const registry = await loadProtectedPaths(repoRoot);
+  assert.deepEqual(validateProtectedPathRegistry(registry), []);
+  assert.match(
+    validateProtectedPathRegistry({ ...registry, baselineCommit: "short" }).join("\n"),
+    /full Git commit/,
+  );
+  assert.match(
+    validateProtectedPathRegistry({
+      ...registry,
+      exceptions: [
+        ...registry.exceptions,
+        {
+          id: "ILLEGAL_HARD_FREEZE_EXCEPTION",
+          path: "app/components/builder/Viewport.tsx",
+          nodes: ["UX02"],
+          contentGate: "pretend-safe",
+        },
+      ],
+    }).join("\n"),
+    /cannot weaken a hard-protected path/,
+  );
+});
+
+test("every hard 3D and rendering surface is rejected, including case and slash variants", async () => {
+  const registry = await loadProtectedPaths(repoRoot);
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  const hardProtected = [
+    ...registry.hardProtected.exact,
+    ...registry.hardProtected.prefixes.map((prefix) => `${prefix}__freeze_probe__`),
+    "APP\\LIB\\THREE\\sceneQuality.ts",
+  ];
+
+  for (const candidate of hardProtected) {
+    const errors = validateCandidatePaths(
+      [candidate],
+      { ...manifest, writeSet: [candidate] },
+      registry,
+    );
+    assert.match(errors.join("\n"), /hard-protected/, candidate);
+  }
+});
+
+test("candidate edits must equal an owned manifest path and CSS needs a verified builder-only diff", async () => {
+  const registry = await loadProtectedPaths(repoRoot);
+  const manifest = JSON.parse(
+    await readFile(path.join(repoRoot, "docs/plans/execution/v2/UX02-canvas-first-editor-shell.json"), "utf8"),
+  );
+
+  assert.match(
+    validateCandidatePaths(["app/components/builder/NotOwned.tsx"], manifest, registry).join("\n"),
+    /outside manifest writeSet/,
+  );
+  assert.match(
+    validateCandidatePaths(["app/app/globals.css"], manifest, registry).join("\n"),
+    /requires content gate builder-css-only/,
+  );
+  assert.deepEqual(
+    validateCandidatePaths(["app/app/globals.css"], manifest, registry, {
+      contentGates: { "app/app/globals.css": "builder-css-only" },
+    }),
+    [],
+  );
+  assert.match(
+    validateCandidatePaths(
+      ["app/app/globals.css"],
+      { ...manifest, node: "UX01" },
+      registry,
+      { contentGates: { "app/app/globals.css": "builder-css-only" } },
+    ).join("\n"),
+    /no approved exception/,
+  );
+});
+
+test("the Canvas-first CSS exception changes only builder-scoped selectors", () => {
+  const baseline = `
+    :root { --ink: #151512; }
+    body { margin: 0; }
+    .builder-stage { display: grid; }
+    @media (max-width: 48rem) { .builder-stage { display: block; } }
+  `;
+  const allowed = `
+    :root { --ink: #151512; }
+    body { margin: 0; }
+    .builder-stage { display: flex; }
+    .guided-step-nav { overflow-x: auto; }
+    @media (max-width: 48rem) { .builder-stage { display: grid; } }
+  `;
+  const globalRestyle = allowed.replace("body { margin: 0; }", "body { margin: 1rem; }");
+  const mixedSelector = allowed.replace(
+    ".guided-step-nav { overflow-x: auto; }",
+    ".guided-step-nav, body { overflow-x: auto; }",
+  );
+
+  assert.deepEqual(validateBuilderCssChanges(baseline, allowed), []);
+  assert.match(validateBuilderCssChanges(baseline, globalRestyle).join("\n"), /body/);
+  assert.match(validateBuilderCssChanges(baseline, mixedSelector).join("\n"), /body/);
 });

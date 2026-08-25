@@ -83,6 +83,268 @@ export const loadRegistry = async (repoRoot) =>
     await readFile(path.join(repoRoot, "docs", "plans", "registry", "current-graph.json"), "utf8"),
   );
 
+export const loadProtectedPaths = async (repoRoot) =>
+  JSON.parse(
+    await readFile(path.join(repoRoot, "docs", "plans", "registry", "protected-paths.json"), "utf8"),
+  );
+
+const GLOB_PATTERN = /[*?\[\]{}!]/;
+
+export const normalizeRepoPath = (value) => {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error("repository path must be a non-empty string");
+  }
+  const slashed = value.trim().replaceAll("\\", "/");
+  if (/^[A-Za-z]:\//.test(slashed) || slashed.startsWith("/")) {
+    throw new Error(`repository path cannot be absolute: ${value}`);
+  }
+  if (GLOB_PATTERN.test(slashed)) {
+    throw new Error(`repository path cannot use glob syntax: ${value}`);
+  }
+  const segments = slashed.split("/").filter((segment) => segment !== "" && segment !== ".");
+  if (segments.includes("..")) {
+    throw new Error(`repository path cannot traverse parents: ${value}`);
+  }
+  if (segments.length === 0) throw new Error("repository path cannot resolve to the repository root");
+  return segments.join("/");
+};
+
+export const validateWriteSet = (values) => {
+  const errors = [];
+  if (!Array.isArray(values) || values.length === 0) return ["writeSet must be a non-empty array"];
+  const normalized = [];
+  for (const value of values) {
+    try {
+      normalized.push({ original: value, path: normalizeRepoPath(value) });
+    } catch (error) {
+      errors.push(error.message);
+    }
+  }
+
+  for (let left = 0; left < normalized.length; left += 1) {
+    for (let right = left + 1; right < normalized.length; right += 1) {
+      const a = normalized[left];
+      const b = normalized[right];
+      const lowerA = a.path.toLowerCase();
+      const lowerB = b.path.toLowerCase();
+      if (lowerA === lowerB) {
+        const label = a.path === b.path ? "duplicate" : "case alias";
+        errors.push(`${label} writeSet entries: ${a.original}, ${b.original}`);
+      } else if (lowerA.startsWith(`${lowerB}/`) || lowerB.startsWith(`${lowerA}/`)) {
+        errors.push(`overlapping writeSet entries: ${a.original}, ${b.original}`);
+      }
+    }
+  }
+  return errors;
+};
+
+const pathMatches = (candidate, policy) => {
+  const lower = candidate.toLowerCase();
+  return (
+    (policy.exact ?? []).some((entry) => lower === normalizeRepoPath(entry).toLowerCase()) ||
+    (policy.prefixes ?? []).some((entry) => lower.startsWith(normalizeRepoPath(entry).toLowerCase()))
+  );
+};
+
+export const validateProtectedPathRegistry = (registry) => {
+  const errors = [];
+  if (registry?.schema !== "AuraProtectedPathsV1") errors.push("protected-path schema must be AuraProtectedPathsV1");
+  if (typeof registry?.freezeId !== "string" || registry.freezeId.length === 0) {
+    errors.push("protected-path registry must name a freezeId");
+  }
+  if (!/^[0-9a-f]{40}$/i.test(registry?.baselineCommit ?? "")) {
+    errors.push("protected-path baselineCommit must be a full Git commit");
+  }
+  for (const groupName of ["hardProtected", "publicVisualProtected"]) {
+    const group = registry?.[groupName];
+    if (!group || !Array.isArray(group.exact) || !Array.isArray(group.prefixes)) {
+      errors.push(`${groupName} must declare exact and prefixes arrays`);
+      continue;
+    }
+    for (const entry of [...group.exact, ...group.prefixes]) {
+      try {
+        normalizeRepoPath(entry);
+      } catch (error) {
+        errors.push(`${groupName}: ${error.message}`);
+      }
+    }
+  }
+  const ids = new Set();
+  for (const exception of registry?.exceptions ?? []) {
+    if (ids.has(exception.id)) errors.push(`duplicate protected-path exception ${exception.id}`);
+    ids.add(exception.id);
+    let candidate;
+    try {
+      candidate = normalizeRepoPath(exception.path);
+    } catch (error) {
+      errors.push(`exception ${exception.id}: ${error.message}`);
+      continue;
+    }
+    if (pathMatches(candidate, registry.hardProtected ?? {})) {
+      errors.push(`exception ${exception.id} cannot weaken a hard-protected path`);
+    }
+    if (!pathMatches(candidate, registry.publicVisualProtected ?? {})) {
+      errors.push(`exception ${exception.id} must target a public-visual protected path`);
+    }
+    if (typeof exception.contentGate !== "string" || exception.contentGate.length === 0) {
+      errors.push(`exception ${exception.id} must require a contentGate`);
+    }
+  }
+  return errors;
+};
+
+const approvedException = (candidate, manifest, registry) =>
+  (registry.exceptions ?? []).find((exception) => {
+    if (normalizeRepoPath(exception.path).toLowerCase() !== candidate.toLowerCase()) return false;
+    if (exception.freezeClass && exception.freezeClass === manifest.freezeClass) return true;
+    return (exception.nodes ?? []).includes(manifest.node);
+  });
+
+export const validateManifestPathPolicy = (manifest, registry) => {
+  const errors = [...validateWriteSet(manifest.writeSet)];
+  for (const rawPath of manifest.writeSet ?? []) {
+    let candidate;
+    try {
+      candidate = normalizeRepoPath(rawPath);
+    } catch {
+      continue;
+    }
+    if (pathMatches(candidate, registry.hardProtected ?? {})) {
+      errors.push(`${candidate} is hard-protected by ${registry.freezeId}`);
+      continue;
+    }
+    if (
+      pathMatches(candidate, registry.publicVisualProtected ?? {}) &&
+      !approvedException(candidate, manifest, registry)
+    ) {
+      errors.push(`${candidate} is public-visual protected and has no approved exception for ${manifest.node}`);
+    }
+  }
+  return errors;
+};
+
+export const validateCandidatePaths = (candidatePaths, manifest, registry, options = {}) => {
+  const errors = [...validateWriteSet(candidatePaths), ...validateManifestPathPolicy(manifest, registry)];
+  const owned = new Set(
+    (manifest.writeSet ?? []).flatMap((entry) => {
+      try {
+        return [normalizeRepoPath(entry).toLowerCase()];
+      } catch {
+        return [];
+      }
+    }),
+  );
+  const contentGates = new Map(
+    Object.entries(options.contentGates ?? {}).flatMap(([entry, gate]) => {
+      try {
+        return [[normalizeRepoPath(entry).toLowerCase(), gate]];
+      } catch {
+        return [];
+      }
+    }),
+  );
+
+  for (const rawPath of candidatePaths ?? []) {
+    let candidate;
+    try {
+      candidate = normalizeRepoPath(rawPath);
+    } catch {
+      continue;
+    }
+    const lower = candidate.toLowerCase();
+    if (!owned.has(lower)) errors.push(`${candidate} is outside manifest writeSet for ${manifest.node}`);
+    if (pathMatches(candidate, registry.hardProtected ?? {})) {
+      errors.push(`${candidate} is hard-protected by ${registry.freezeId}`);
+      continue;
+    }
+    if (pathMatches(candidate, registry.publicVisualProtected ?? {})) {
+      const exception = approvedException(candidate, manifest, registry);
+      if (!exception) {
+        errors.push(`${candidate} has no approved exception for ${manifest.node}`);
+      } else if (contentGates.get(lower) !== exception.contentGate) {
+        errors.push(`${candidate} requires content gate ${exception.contentGate}`);
+      }
+    }
+  }
+  return [...new Set(errors)];
+};
+
+const cssRules = (source) => {
+  const rules = [];
+  const clean = source.replace(/\/\*[\s\S]*?\*\//g, "");
+  const walk = (body, context = []) => {
+    let cursor = 0;
+    while (cursor < body.length) {
+      while (cursor < body.length && /\s/.test(body[cursor])) cursor += 1;
+      if (cursor >= body.length) break;
+      const open = body.indexOf("{", cursor);
+      const semicolon = body.indexOf(";", cursor);
+      if (open === -1 || (semicolon !== -1 && semicolon < open)) {
+        cursor = semicolon === -1 ? body.length : semicolon + 1;
+        continue;
+      }
+      const prelude = body.slice(cursor, open).trim().replace(/\s+/g, " ");
+      let depth = 1;
+      let quote = null;
+      let close = open + 1;
+      for (; close < body.length && depth > 0; close += 1) {
+        const character = body[close];
+        if (quote) {
+          if (character === "\\") close += 1;
+          else if (character === quote) quote = null;
+          continue;
+        }
+        if (character === '"' || character === "'") quote = character;
+        else if (character === "{") depth += 1;
+        else if (character === "}") depth -= 1;
+      }
+      const block = body.slice(open + 1, Math.max(open + 1, close - 1));
+      if (/^@(media|supports|layer|container)\b/i.test(prelude)) {
+        walk(block, [...context, prelude]);
+      } else {
+        rules.push({
+          selector: prelude,
+          context: context.join(" > "),
+          body: block.trim().replace(/\s+/g, " "),
+        });
+      }
+      cursor = close;
+    }
+  };
+  walk(clean);
+  const counts = new Map();
+  return new Map(
+    rules.map((rule) => {
+      const base = `${rule.context}|${rule.selector}`;
+      const occurrence = counts.get(base) ?? 0;
+      counts.set(base, occurrence + 1);
+      return [`${base}#${occurrence}`, rule];
+    }),
+  );
+};
+
+const builderScopedSelector = (selector) =>
+  selector
+    .split(",")
+    .map((part) => part.trim())
+    .every((part) => /^(?:\.builder-|\.guided-|\.is-builder\b|\[data-builder)/.test(part));
+
+export const validateBuilderCssChanges = (baselineSource, candidateSource) => {
+  const baseline = cssRules(baselineSource);
+  const candidate = cssRules(candidateSource);
+  const errors = [];
+  for (const key of new Set([...baseline.keys(), ...candidate.keys()])) {
+    const before = baseline.get(key);
+    const after = candidate.get(key);
+    if (before?.body === after?.body) continue;
+    const selector = after?.selector ?? before?.selector ?? "unknown";
+    if (!builderScopedSelector(selector)) {
+      errors.push(`CSS selector ${selector} is outside the bounded builder workspace`);
+    }
+  }
+  return errors;
+};
+
 const graphNodeIds = async (repoRoot) => {
   const source = gitBlob(repoRoot, APPROVED_GRAPH.proposalCommit, APPROVED_GRAPH.path).toString("utf8");
   const ids = new Set();
@@ -195,15 +457,7 @@ export const validateExecutionNode = async (manifest, repoRoot) => {
   if (!Array.isArray(manifest.reject) || manifest.reject.length === 0) {
     errors.push("reject must be a non-empty array");
   }
-  if (!Array.isArray(manifest.writeSet) || manifest.writeSet.length === 0) {
-    errors.push("writeSet must be a non-empty array");
-  } else {
-    const repeated = [...new Set(duplicates(manifest.writeSet))];
-    if (repeated.length > 0) errors.push(`duplicate writeSet entries: ${repeated.join(", ")}`);
-    if (manifest.writeSet.some((entry) => path.isAbsolute(entry) || entry.includes(".."))) {
-      errors.push("writeSet entries must be repository-relative and cannot traverse parents");
-    }
-  }
+  errors.push(...validateWriteSet(manifest.writeSet));
   if (!["none", "copy-only"].includes(manifest.freezeClass)) {
     errors.push("freezeClass must be none or copy-only");
   }
@@ -231,16 +485,19 @@ const main = async () => {
   const appRoot = path.resolve(import.meta.dirname, "..");
   const repoRoot = path.resolve(appRoot, "..");
   const authority = await verifyApprovedGraph(repoRoot);
+  const protectedPaths = await loadProtectedPaths(repoRoot);
   const manifestDir = path.join(repoRoot, "docs", "plans", "execution", "v2");
   const files = (await readdir(manifestDir)).filter((name) => name.endsWith(".json")).sort();
   const manifests = [];
-  const errors = [...authority.errors];
+  const errors = [...authority.errors, ...validateProtectedPathRegistry(protectedPaths)];
 
   for (const file of files) {
     const manifest = JSON.parse(await readFile(path.join(manifestDir, file), "utf8"));
     const result = await validateExecutionNode(manifest, repoRoot);
-    manifests.push({ file, node: manifest.node, status: manifest.status, errors: result.errors });
-    errors.push(...result.errors.map((error) => `${file}: ${error}`));
+    const policyErrors = validateManifestPathPolicy(manifest, protectedPaths);
+    const manifestErrors = [...new Set([...result.errors, ...policyErrors])];
+    manifests.push({ file, node: manifest.node, status: manifest.status, errors: manifestErrors });
+    errors.push(...manifestErrors.map((error) => `${file}: ${error}`));
   }
 
   const report = {
