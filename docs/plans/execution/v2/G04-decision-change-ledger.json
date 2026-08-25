@@ -1,0 +1,89 @@
+{
+  "graphVersion": "aura-graph/v2.0@680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8",
+  "node": "G04",
+  "lane": "governance",
+  "stage": "decision-change-ledger",
+  "job": "Replace the stale founder-decision registry with an append-only, source-bound, scope-explicit, supersession-aware ledger whose approved Graph v2 seed is immutable and whose validator fails closed on malformed, unreviewed, or silently rewritten authority.",
+  "inputs": [
+    {
+      "name": "G01-verified-canonical-graph-registry",
+      "version": "b81553a",
+      "hash": "git:b81553a"
+    },
+    {
+      "name": "approved-graph-v2-founder-decisions",
+      "version": "2.0",
+      "hash": "git:f7616886f9f8a171c847ef5eb49e932246ff989b"
+    },
+    {
+      "name": "legacy-founder-decision-registry",
+      "version": "FounderDecisionRegistryV1",
+      "hash": "path:docs/plans/registry/decisions.json"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "founder-decision-ledger",
+      "acceptanceSchema": "FounderDecisionRegistryV2",
+      "path": "docs/plans/registry/decisions.json"
+    },
+    {
+      "name": "decision-ledger-validator",
+      "acceptanceSchema": "Fail-closed append-and-supersession proof",
+      "path": "app/scripts/founder-decision-ledger.mjs"
+    }
+  ],
+  "depends": ["G01:verified"],
+  "reject": [
+    "G01 is not independently verified",
+    "an existing approved or inherited decision can be removed, reordered, or rewritten",
+    "a decision lacks a real date, explicit scope, authority class, and reopenable source reference",
+    "a conversational summary, agent inference, plan row, or unapproved proposal is treated as founder authority",
+    "a superseded decision is overwritten instead of preserved and linked from a later entry",
+    "a supersession target is missing, forward-referenced, duplicated, or cyclic",
+    "unknown keys, accessors, hostile reflection, malformed runtime input, or non-canonical values pass or leak private exceptions",
+    "the ledger edits the approved Graph v2 artifact or approval record in place",
+    "the implementation performs a network, provider, payment, deployment, persistence, or other external action",
+    "a website visual, 3D, rendering, animation, engine, scene, model, texture, shader, camera, lighting, motion, or quality-tier path changes"
+  ],
+  "writeSet": [
+    "docs/plans/execution/v2/G04-decision-change-ledger.json",
+    "docs/plans/registry/decisions.json",
+    "docs/plans/registry/founder-decision.schema.json",
+    "app/scripts/founder-decision-ledger.mjs",
+    "app/scripts/founder-decision-ledger.test.mjs",
+    "app/package.json"
+  ],
+  "freezeClass": "none",
+  "owner": "primary-agent",
+  "verifier": "independent-fresh-context",
+  "sideEffects": "local",
+  "externalGates": [],
+  "verification": [
+    "node --test scripts/founder-decision-ledger.test.mjs",
+    "node scripts/founder-decision-ledger.mjs",
+    "npm run typecheck",
+    "npm run test:graph-v2",
+    "fixture: the approved Graph v2 founder-decision seed is byte-for-byte pinned by canonical entry hashes",
+    "fixture: later decisions append and supersede by backward identifier without mutating prior entries",
+    "fixture: missing scope/source/authority/date, unknown keys, invalid dates, duplicates, forward references, and cycles fail closed",
+    "fixture: getters, revoked proxies, and malformed shapes return bounded errors without invoking hidden values",
+    "git diff --name-only <G04-base>...HEAD"
+  ],
+  "repair": {
+    "maxLoops": 1,
+    "boundary": "G04 writeSet only"
+  },
+  "evidence": {
+    "startedFrom": "b05422675821984ca3625e4e6ff7c8e8ff5a32e2",
+    "dependencyGate": "G01 independently verified; Graph v2 authority gate 14/14 and repository clean at preflight",
+    "writeOwnership": "No ready, active, or verification-pending manifest owns any G04 path; blocked HM01, IP02, and UX03 do not carry write ownership.",
+    "existingSurfaceAudit": "FounderDecisionRegistryV1 contains nine historical records but omits the approved Graph v2 FD20-01 through FD20-20 decisions, has no exact scope or authority-source contract, and encodes supersession in mutable free text.",
+    "protectedPathChanges": 0,
+    "repairLoop": {
+      "used": 0,
+      "maximum": 1
+    }
+  },
+  "status": "ready"
+}
