@@ -59,7 +59,7 @@ export default function BuildPage() {
               fixtures, comfort targets, exports, and quote handoff.
             </p>
             <p className="mt-3 text-xs leading-relaxed text-aura-text/50">
-              Design intent only—not structural, energy, manufacturing, or permit compliance. A
+              Early design intent—not structural, energy, manufacturing, or permit compliance. A
               licensed professional completes the build set. Prefer a guided start? Use the{" "}
               <Link href="/design" className="text-aura-teal underline-offset-4 hover:underline">
                 questionnaire
@@ -71,6 +71,7 @@ export default function BuildPage() {
       </header>
 
       <div className="builder-page__workspace mt-6">
+        <h2 className="sr-only">Shape the home. Keep every decision.</h2>
         <BuilderApp />
       </div>
     </div>

@@ -22,6 +22,7 @@ interface GuidedStudioShellProps {
   onUndo: () => void;
   onRedo: () => void;
   onCommands: () => void;
+  onContinuePro: () => void;
   onOpenDrawings: () => void;
   onCloseDrawings: () => void;
 }
@@ -48,6 +49,7 @@ export default function GuidedStudioShell({
   onUndo,
   onRedo,
   onCommands,
+  onContinuePro,
   onOpenDrawings,
   onCloseDrawings,
 }: GuidedStudioShellProps) {
@@ -69,13 +71,13 @@ export default function GuidedStudioShell({
             <span className="builder-readonly-badge" role="status">Read-only drawings</span>
           ) : (
             <>
-              <button className="builder-shell-button" type="button" onClick={onUndo} disabled={!canUndo}>
+              <button aria-label="Undo last project change" className="builder-shell-button" type="button" onClick={onUndo} disabled={!canUndo}>
                 Undo
               </button>
-              <button className="builder-shell-button" type="button" onClick={onRedo} disabled={!canRedo}>
+              <button aria-label="Redo last project change" className="builder-shell-button" type="button" onClick={onRedo} disabled={!canRedo}>
                 Redo
               </button>
-              <button className="builder-shell-button" type="button" onClick={onCommands}>
+              <button aria-label="Open palette" className="builder-shell-button" type="button" onClick={onCommands}>
                 Commands
               </button>
             </>
@@ -115,7 +117,7 @@ export default function GuidedStudioShell({
             ))}
           </nav>
 
-          <div className="builder-task-summary" data-plan-route={planRouteOpen ? "open" : "closed"}>
+          <div className="builder-task-summary guided-step-flow" data-plan-route={planRouteOpen ? "open" : "closed"}>
             <div className="builder-task-summary__copy" role="status">
               <span>{activeStep.label}</span>
               <p>{activeStep.hint}</p>
@@ -129,11 +131,18 @@ export default function GuidedStudioShell({
               >
                 Back
               </button>
+              <span className="guided-step-flow__count">
+                Step {activeStepIndex + 1} of {steps.length}
+              </span>
               {nextStep ? (
                 <button className="builder-shell-button builder-shell-button--loud" type="button" onClick={() => onStep(nextStep.id)}>
                   Next · {nextStep.label}
                 </button>
-              ) : null}
+              ) : (
+                <button className="builder-shell-button builder-shell-button--loud" type="button" onClick={onContinuePro}>
+                  Continue in Pro
+                </button>
+              )}
               <button
                 className="builder-shell-button"
                 type="button"

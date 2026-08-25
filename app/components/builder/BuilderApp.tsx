@@ -1419,6 +1419,10 @@ export default function BuilderApp() {
         onUndo={() => dispatch({ type: "undo" })}
         onRedo={() => dispatch({ type: "redo" })}
         onCommands={() => setCommandsOpen(true)}
+        onContinuePro={() => {
+          setEditorMode("pro");
+          setWorkspace("export");
+        }}
         onOpenDrawings={openPlanRoute}
         onCloseDrawings={leavePlanRoute}
       />
