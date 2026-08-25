@@ -97,7 +97,15 @@
       "repairCommit": "5f3b77ddbb64e34a5cbf873437cbac928646dcac",
       "resolution": "The shared JSON boundary now inspects own keys and data descriptors without invoking accessors, rejects custom prototypes, Symbols, hidden fields, sparse or decorated arrays, and sanitizes reflection failures before any typed value is read."
     },
+    "independentVerdict": {
+      "result": "FAIL",
+      "reviewedCandidate": "5f3b77ddbb64e34a5cbf873437cbac928646dcac",
+      "passingEvidence": "Authority, IP01 dependency, exact 7/7 write set, manifest-only closure, candidate guard, freeze guard, typecheck, graph-v2, deterministic suite, focused 16/16 contract suite, no side effects, and all previously named adversarial probes passed.",
+      "blocker": "Array.isArray executes outside the sanitized reflection boundary in strictObject and arrayOf. A revoked root Proxy or revoked array Proxy therefore escapes a raw TypeError instead of failing as a sanitized DesignIntentError.",
+      "requiredCorrection": "With fresh owner authority for another repair, move Array.isArray behind the sanitized boundary (or wrap it equivalently), add revoked-root and revoked-array fixtures, and rerun every declared gate.",
+      "repairAuthority": "blocked: the manifest permits one repair loop and 1/1 has been used"
+    },
     "protectedPathChanges": 0
   },
-  "status": "verification-pending"
+  "status": "blocked"
 }
