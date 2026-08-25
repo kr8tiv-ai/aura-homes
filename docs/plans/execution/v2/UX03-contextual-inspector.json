@@ -78,7 +78,7 @@
     "dependencyGate": "UX02 verified",
     "readyManifestCommit": "189c3110e2ca8beff050f4cda5b3e76c2cadf161",
     "activeManifestCommit": "f56c958b313a061fffd4600f18504e0c1a04f5e7",
-    "candidate": "278d0e90d976fc7818d43b23fcf6587706eab60f",
+    "candidate": "cff9d6c45f2089c25b1d1846ce029403373f25c6",
     "writeSetCheck": {
       "declared": 9,
       "changed": 9,
@@ -86,23 +86,23 @@
       "candidateGuardErrors": []
     },
     "browserEvidence": {
-      "toolState": "Guided Rooms names the active Shape tool and its next actions",
+      "toolState": "Guided Rooms names the active Shape tool; Guided Shell suppresses preserved plan selection or invalid state and names the active Shell tools instead",
       "selectionState": "a real graph wall exposes identity, length, thickness, placement, and the canonical exact-value action",
-      "invalidState": "raw -1 remains editable beside the violated positive-length constraint",
+      "invalidState": "raw -1 remains editable beside the violated positive-length constraint, is hidden while Shell is active, and is restored when Rooms becomes active again",
       "documentIdentity": "the active design hash is unchanged by selection and the refused exact value",
       "firstViewport1280x720": "editable plan and first-edit tools visible at scrollY=0"
     },
     "gateReceipts": {
-      "typecheck": "pass at 278d0e90d976fc7818d43b23fcf6587706eab60f",
-      "deterministic": "677 passed, 2 intentionally skipped served-only proofs; 679 declared at 278d0e90d976fc7818d43b23fcf6587706eab60f",
-      "servedUi": "135/135 passed in 16.9m against production candidate f0f551f00680e97f545b1ca0eb31a199dc0d215e; the sole later candidate change is the focused test harness, which playwright.ui.config.ts does not select and which changes no production source",
-      "focusedServed": "11/11 passed in 46.3s at 278d0e90d976fc7818d43b23fcf6587706eab60f against the fresh export produced by the preceding full UI gate",
-      "graphV2": "14/14 passed; authority pass; zero manifest errors at 278d0e90d976fc7818d43b23fcf6587706eab60f"
+      "typecheck": "pass at cff9d6c45f2089c25b1d1846ce029403373f25c6",
+      "deterministic": "677 passed, 2 intentionally skipped served-only proofs; 679 declared at cff9d6c45f2089c25b1d1846ce029403373f25c6",
+      "servedUi": "135/135 passed in 18.8m against the rebuilt production export at cff9d6c45f2089c25b1d1846ce029403373f25c6",
+      "focusedServed": "11/11 passed in 40.6s at cff9d6c45f2089c25b1d1846ce029403373f25c6 against the fresh export produced by the preceding full UI gate; the served regression covers selection and invalid state across Rooms-to-Shell-to-Rooms transitions",
+      "graphV2": "14/14 passed; authority pass; zero manifest errors at cff9d6c45f2089c25b1d1846ce029403373f25c6"
     },
-    "repair": "The first served proof assumed the default project already owned planar graph geometry and timed out waiting for graph-wall controls. The single permitted repair now enters Pro, invokes the product's explicit undoable Convert to planar editing action, returns to Guided Rooms, and performs the selection and refusal proof without injecting fixture state or changing production code.",
+    "repair": "The independent review proved that the mounted-but-hidden GraphPlanEditor kept projecting a Rooms wall selection after Guided Shell became active. The single permitted repair preserves that plan state but projects it only while the graph plan surface is active; Shell shows its own tool state. The served regression covers both stale selection and stale invalid input, then proves both states restore when Rooms becomes active again.",
     "independentVerdict": "FAIL at closure c312b780d777a6aefe84d3a48e729e06d2103f63: a wall selection from Guided Rooms remained projected after Guided Shell hid the 2D plan surface",
-    "repairLoop": "1 of 1: suppress hidden plan-tool/selection/invalid projection and prove Rooms-to-Shell transitions",
+    "repairLoop": "1 of 1 completed at cff9d6c45f2089c25b1d1846ce029403373f25c6; pending independent re-verification",
     "protectedPathChanges": 0
   },
-  "status": "active"
+  "status": "verification-pending"
 }
