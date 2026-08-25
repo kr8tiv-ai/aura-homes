@@ -66,8 +66,14 @@
   "evidence": {
     "startedFrom": "0d0738cfecf7e7e15142debaf6e94db250acdadb",
     "dependencyGate": "G02 verified",
+    "candidateCommit": "2a30e8cfe900921406309189aa614802b763931a",
+    "candidateWriteSet": "4/4 exact; zero delta",
+    "focusedContractTests": "6/6 pass",
+    "servedBrowserTests": "13/13 pass at http://127.0.0.1:3011",
+    "graphGate": "14/14 pass; authority pass; zero errors",
+    "typecheck": "pass",
     "productionLayoutChanges": 0,
     "protectedPathChanges": 0
   },
-  "status": "active"
+  "status": "verification-pending"
 }
