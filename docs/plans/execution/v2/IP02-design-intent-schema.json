@@ -76,7 +76,20 @@
     "readyManifestCommit": "c0bcc5cc7735a06b1b53d80f6765e5c9f4854566",
     "writeOwnership": "No active manifest owns an overlapping path; UX03 is blocked and all other instantiated nodes are verified.",
     "existingSurfaceAudit": "No DesignIntent type or runtime schema exists; existing project, building-graph, discovery, confidence, and assumption contracts remain downstream consumers rather than a parallel geometry input.",
+    "candidateCommit": "c7f477c6e794c8e20e08a798a2db96707f7f47ef",
+    "writeSetCheck": {
+      "declared": 7,
+      "changed": 7,
+      "delta": 0,
+      "candidateGuardErrors": []
+    },
+    "gateReceipts": {
+      "typecheck": "pass at candidate c7f477c6e794c8e20e08a798a2db96707f7f47ef",
+      "focusedDesignIntent": "13/13 passed in 4.7s",
+      "deterministic": "706 declared; 704 passed and 2 intentional served-only skips in 1.3m",
+      "graphV2": "14/14 passed; authority pass; candidate guard inspected 7 paths with zero errors"
+    },
     "protectedPathChanges": 0
   },
-  "status": "active"
+  "status": "verification-pending"
 }
