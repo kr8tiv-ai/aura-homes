@@ -4,9 +4,17 @@
   "baselineCommit": "710d5a858c689668dd8961d85b3d75ee96dbc38a",
   "hardProtected": {
     "prefixes": [
+      "app/components/story/",
       "app/lib/three/",
       "app/public/models/",
-      "app/public/textures/meadow"
+      "app/public/textures/meadow",
+      "app/public/audio/",
+      "app/public/story/",
+      "app/public/video/"
+    ],
+    "exemptExact": [
+      "app/components/story/copy.ts",
+      "app/components/story/StoryChrome.tsx"
     ],
     "exact": [
       "app/components/story/flora.ts",
@@ -32,10 +40,19 @@
       "app/app/globals.css",
       "app/app/page.tsx",
       "app/app/build/page.tsx",
+      "app/components/CardFX.tsx",
+      "app/components/LegacyRedirect.tsx",
+      "app/components/Reveal.tsx",
+      "app/components/RevealWords.tsx",
+      "app/components/SiteShell.tsx",
+      "app/components/SocialShareLinks.tsx",
+      "app/components/ThemeToggle.tsx",
       "app/components/story/copy.ts",
       "app/components/story/StoryChrome.tsx"
     ],
-    "prefixes": []
+    "prefixes": [
+      "app/app/"
+    ]
   },
   "exceptions": [
     {

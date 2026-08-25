@@ -166,30 +166,71 @@ test("candidate edits must equal an owned manifest path and CSS needs a verified
   const manifest = JSON.parse(
     await readFile(path.join(repoRoot, "docs/plans/execution/v2/UX02-canvas-first-editor-shell.json"), "utf8"),
   );
+  const baselineCss = ".builder-stage { display: grid; } body { margin: 0; }";
+  const safeCss = ".builder-stage { display: flex; } body { margin: 0; }";
+  const unsafeCss = ".builder-stage { display: flex; } body { margin: 1rem; }";
 
   assert.match(
     validateCandidatePaths(["app/components/builder/NotOwned.tsx"], manifest, registry).join("\n"),
     /outside manifest writeSet/,
   );
   assert.match(
-    validateCandidatePaths(["app/app/globals.css"], manifest, registry).join("\n"),
-    /requires content gate builder-css-only/,
+    validateCandidatePaths(["app/app/globals.css"], manifest, registry, {
+      contentGates: { "app/app/globals.css": "builder-css-only" },
+    }).join("\n"),
+    /requires baseline and candidate CSS/,
   );
   assert.deepEqual(
     validateCandidatePaths(["app/app/globals.css"], manifest, registry, {
-      contentGates: { "app/app/globals.css": "builder-css-only" },
+      contentSources: {
+        "app/app/globals.css": { baseline: baselineCss, candidate: safeCss },
+      },
     }),
     [],
+  );
+  assert.match(
+    validateCandidatePaths(["app/app/globals.css"], manifest, registry, {
+      contentSources: {
+        "app/app/globals.css": { baseline: baselineCss, candidate: unsafeCss },
+      },
+    }).join("\n"),
+    /body/,
   );
   assert.match(
     validateCandidatePaths(
       ["app/app/globals.css"],
       { ...manifest, node: "UX01" },
       registry,
-      { contentGates: { "app/app/globals.css": "builder-css-only" } },
+      {
+        contentSources: {
+          "app/app/globals.css": { baseline: baselineCss, candidate: safeCss },
+        },
+      },
     ).join("\n"),
     /no approved exception/,
   );
+});
+
+test("new story files, landing media, and unapproved public-site surfaces fail closed", async () => {
+  const registry = await loadProtectedPaths(repoRoot);
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  const probes = [
+    "app/components/story/NewScene.tsx",
+    "app/public/video/enter.mp4",
+    "app/public/story/aura-landing-still-v2.jpg",
+    "app/public/audio/forest-ambience-loop.mp3",
+    "app/app/about/page.tsx",
+    "app/components/SiteShell.tsx",
+  ];
+
+  for (const candidate of probes) {
+    const errors = validateCandidatePaths(
+      [candidate],
+      { ...manifest, writeSet: [candidate] },
+      registry,
+    );
+    assert.match(errors.join("\n"), /hard-protected|public-visual protected|no approved exception/, candidate);
+  }
 });
 
 test("the Canvas-first CSS exception changes only builder-scoped selectors", () => {

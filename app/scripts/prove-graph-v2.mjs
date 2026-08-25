@@ -146,6 +146,14 @@ const pathMatches = (candidate, policy) => {
   );
 };
 
+const pathMatchesHardFreeze = (candidate, registry) => {
+  if (!pathMatches(candidate, registry.hardProtected ?? {})) return false;
+  const lower = candidate.toLowerCase();
+  return !(registry.hardProtected?.exemptExact ?? []).some(
+    (entry) => normalizeRepoPath(entry).toLowerCase() === lower,
+  );
+};
+
 export const validateProtectedPathRegistry = (registry) => {
   const errors = [];
   if (registry?.schema !== "AuraProtectedPathsV1") errors.push("protected-path schema must be AuraProtectedPathsV1");
@@ -168,6 +176,13 @@ export const validateProtectedPathRegistry = (registry) => {
         errors.push(`${groupName}: ${error.message}`);
       }
     }
+    for (const entry of group.exemptExact ?? []) {
+      try {
+        normalizeRepoPath(entry);
+      } catch (error) {
+        errors.push(`${groupName} exemption: ${error.message}`);
+      }
+    }
   }
   const ids = new Set();
   for (const exception of registry?.exceptions ?? []) {
@@ -180,7 +195,7 @@ export const validateProtectedPathRegistry = (registry) => {
       errors.push(`exception ${exception.id}: ${error.message}`);
       continue;
     }
-    if (pathMatches(candidate, registry.hardProtected ?? {})) {
+    if (pathMatchesHardFreeze(candidate, registry)) {
       errors.push(`exception ${exception.id} cannot weaken a hard-protected path`);
     }
     if (!pathMatches(candidate, registry.publicVisualProtected ?? {})) {
@@ -209,7 +224,7 @@ export const validateManifestPathPolicy = (manifest, registry) => {
     } catch {
       continue;
     }
-    if (pathMatches(candidate, registry.hardProtected ?? {})) {
+    if (pathMatchesHardFreeze(candidate, registry)) {
       errors.push(`${candidate} is hard-protected by ${registry.freezeId}`);
       continue;
     }
@@ -253,7 +268,7 @@ export const validateCandidatePaths = (candidatePaths, manifest, registry, optio
     }
     const lower = candidate.toLowerCase();
     if (!owned.has(lower)) errors.push(`${candidate} is outside manifest writeSet for ${manifest.node}`);
-    if (pathMatches(candidate, registry.hardProtected ?? {})) {
+    if (pathMatchesHardFreeze(candidate, registry)) {
       errors.push(`${candidate} is hard-protected by ${registry.freezeId}`);
       continue;
     }
@@ -261,6 +276,17 @@ export const validateCandidatePaths = (candidatePaths, manifest, registry, optio
       const exception = approvedException(candidate, manifest, registry);
       if (!exception) {
         errors.push(`${candidate} has no approved exception for ${manifest.node}`);
+      } else if (exception.contentGate === "builder-css-only") {
+        const sources = options.contentSources?.[candidate] ?? options.contentSources?.[lower];
+        if (!sources || typeof sources.baseline !== "string" || typeof sources.candidate !== "string") {
+          errors.push(`${candidate} requires baseline and candidate CSS for content gate builder-css-only`);
+        } else {
+          errors.push(
+            ...validateBuilderCssChanges(sources.baseline, sources.candidate).map(
+              (error) => `${candidate}: ${error}`,
+            ),
+          );
+        }
       } else if (contentGates.get(lower) !== exception.contentGate) {
         errors.push(`${candidate} requires content gate ${exception.contentGate}`);
       }
