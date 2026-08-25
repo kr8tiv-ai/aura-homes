@@ -200,7 +200,7 @@ test("the counter agrees with what the runners actually declare", () => {
      pinned against numbers OBSERVED from the runners themselves:
        npm test        -> 679 declared, after the contextual inspector joined
                           the Guided Studio deterministic gate
-       npm run test:ui -> 135 declared, after the Guided Studio phone shell
+       npm run test:ui -> 136 declared, after the progressive evidence drawer
                           joined the served-build gate
                           against a fresh static export, after the stated-lot
                           journey and explicit City-register surface joined
@@ -210,7 +210,7 @@ test("the counter agrees with what the runners actually declare", () => {
      point. A counter nobody ever checked against the thing it counts is how
      the README got its numbers wrong in the first place. */
   expect(UNIT_TESTS).toBe(679);
-  expect(UI_TESTS).toBe(135);
+  expect(UI_TESTS).toBe(136);
 
   const readme = read(repoRoot, "README.md");
   const submission = read(repoRoot, "docs", "SUBMISSION.md");

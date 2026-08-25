@@ -238,6 +238,7 @@ import VariationStrip from "./VariationStrip";
 import ScenarioCompare from "./ScenarioCompare";
 import GraphPlanEditor from "./GraphPlanEditor";
 import ContextualInspector from "./ContextualInspector";
+import EvidenceDrawer from "./EvidenceDrawer";
 import GuidanceNote from "./GuidanceNote";
 import GuidedStudioShell from "./GuidedStudioShell";
 import HandoffPanel from "./HandoffPanel";
@@ -1927,7 +1928,9 @@ export default function BuilderApp() {
               `siteCheck` computed above, and one readiness reading that names what
               is still missing. It recomputes from the document, so it moves while
               you work rather than on a submit. */}
-          <LiveReadout document={state.doc} parcelCheck={siteCheck} />
+          {editorMode === "pro" ? (
+            <LiveReadout document={state.doc} parcelCheck={siteCheck} />
+          ) : null}
 
           {/* AI01 — the co-pilot, beside the read-out that raised most of what
               it talks about. Off in the plan route for the same reason the undo
@@ -1935,7 +1938,7 @@ export default function BuilderApp() {
               panel offering to change the design on it would not be. Graph
               glazing writes through `editGraph`; phrase resize and opening
               refit still refuse in the module's own words. */}
-          {planRoute ? null : (
+          {editorMode === "pro" && !planRoute ? (
             <CoPilot
               document={state.doc}
               parcelCheck={siteCheck}
@@ -1946,7 +1949,7 @@ export default function BuilderApp() {
               scenario={auraProject?.budgetBasis?.scenario}
               budgetCapCad={auraProject?.requirements.budgetCad.max ?? null}
             />
-          )}
+          ) : null}
 
           {/* Only in 3D: the panel's own copy says "click any surface in the view
               above", and in plan mode there is no such view to click. Every
@@ -2347,22 +2350,46 @@ export default function BuilderApp() {
       </div>
 
       {editorMode === "guided" ? (
-        <aside className="builder-evidence-region" aria-label="Project evidence">
-          <details>
-            <summary>
-              <span>Evidence and constraints</span>
-              <small>Design intent · professional review still required</small>
-            </summary>
-            <div className="builder-evidence-region__content">
+        <EvidenceDrawer
+          document={state.doc}
+          parcelCheck={siteCheck}
+          region={auraProject?.requirements.location.region ?? "Alberta"}
+          municipality={auraProject?.requirements.location.municipality ?? ""}
+          scenario={auraProject?.budgetBasis?.scenario}
+          budgetCapCad={auraProject?.requirements.budgetCad.max ?? null}
+          drawingState={!drawn ? "not-generated" : stale ? "stale" : "current"}
+          technicalWarnings={home.warnings}
+          activeTaskLabel={activeGuidedStep.label}
+          renderCostConstraints={() => (
+            <LiveReadout document={state.doc} parcelCheck={siteCheck} />
+          )}
+          renderTaskEvidence={() => (
+            <>
               {GUIDED_STEP_TOPICS[activeGuidedStep.id]?.map((topic) => (
                 <GuidanceNote key={topic} topic={topic} document={state.doc} />
               ))}
               {GUIDED_STEP_TOPICS[activeGuidedStep.id] ? null : (
                 <p>No additional sourced guidance is attached to this task yet.</p>
               )}
-            </div>
-          </details>
-        </aside>
+            </>
+          )}
+          renderCoPilot={() =>
+            planRoute ? (
+              <p>Co-pilot evidence is unavailable while the read-only drawing route is open.</p>
+            ) : (
+              <CoPilot
+                document={state.doc}
+                parcelCheck={siteCheck}
+                onApply={edit}
+                onApplyGraph={editGraph}
+                region={auraProject?.requirements.location.region ?? "Alberta"}
+                municipality={auraProject?.requirements.location.municipality ?? ""}
+                scenario={auraProject?.budgetBasis?.scenario}
+                budgetCapCad={auraProject?.requirements.budgetCad.max ?? null}
+              />
+            )
+          }
+        />
       ) : null}
 
       {commandsOpen ? (

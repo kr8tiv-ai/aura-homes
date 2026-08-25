@@ -1892,28 +1892,120 @@ main p {
   border: 1px solid rgb(var(--tone-ink) / var(--hair-alpha));
   border-radius: 0.85rem;
   background: rgb(var(--tone-raised));
+  overflow: clip;
 }
-.builder-evidence-region summary {
-  min-height: 3rem;
+.builder-evidence-region__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.65rem 0.9rem;
-  cursor: pointer;
+  padding: 0.9rem;
 }
-.builder-evidence-region summary span {
-  font-family: var(--st-mono-font);
-  font-size: 0.6rem;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
+.builder-evidence-region__head > div {
+  min-width: 0;
+  display: grid;
+  gap: 0.2rem;
+}
+.builder-evidence-region__head strong {
+  color: var(--st-ink);
+  font-size: 0.92rem;
+  line-height: 1.2;
+}
+.builder-evidence-region__head small {
+  color: var(--st-faint);
+  font-size: 0.66rem;
+  line-height: 1.4;
+}
+.builder-evidence-region__summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding: 0 0.9rem 0.75rem;
+}
+.builder-evidence-region__summary span {
+  border: 1px solid rgb(var(--tone-ink) / var(--hair-soft-alpha));
+  border-radius: 999px;
+  padding: 0.25rem 0.5rem;
   color: var(--st-ink-dim);
+  font-family: var(--st-mono-font);
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
-.builder-evidence-region summary small { color: var(--st-faint); font-size: 0.66rem; }
+.builder-evidence-region__summary span[data-alert="true"] {
+  border-color: rgb(var(--tone-violet) / 0.58);
+  color: rgb(var(--tone-violet));
+}
+.builder-evidence-region__nav {
+  display: flex;
+  gap: 0.35rem;
+  overflow-x: auto;
+  padding: 0 0.9rem 0.9rem;
+  scrollbar-width: thin;
+}
+.builder-evidence-region__nav button {
+  min-height: 2.25rem;
+  flex: 0 0 auto;
+  border: 1px solid rgb(var(--tone-ink) / var(--hair-soft-alpha));
+  border-radius: 999px;
+  padding: 0.4rem 0.65rem;
+  color: var(--st-ink-dim);
+  font-family: var(--st-mono-font);
+  font-size: 0.58rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.builder-evidence-region__nav button:hover,
+.builder-evidence-region__nav button:focus-visible {
+  border-color: rgb(var(--tone-emerald) / 0.62);
+  color: rgb(var(--tone-emerald));
+}
 .builder-evidence-region__content {
   display: grid;
   gap: 0.75rem;
-  padding: 0 0.9rem 0.9rem;
+  border-top: 1px solid rgb(var(--tone-ink) / var(--hair-soft-alpha));
+  padding: 0.9rem;
+}
+.builder-evidence-section {
+  display: grid;
+  gap: 0.65rem;
+  border: 1px solid rgb(var(--tone-ink) / var(--hair-soft-alpha));
+  border-radius: 0.7rem;
+  padding: 0.85rem;
+}
+.builder-evidence-section:focus {
+  outline: 2px solid rgb(var(--tone-emerald));
+  outline-offset: 2px;
+}
+.builder-evidence-section > p,
+.builder-evidence-section li,
+.builder-evidence-section dd {
+  color: var(--st-ink-dim);
+  font-size: 0.72rem;
+  line-height: 1.55;
+}
+.builder-evidence-section ul {
+  display: grid;
+  gap: 0.45rem;
+  padding-left: 1rem;
+  list-style: disc;
+}
+.builder-evidence-section dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.55rem;
+}
+.builder-evidence-section dl > div {
+  border: 1px solid rgb(var(--tone-ink) / var(--hair-soft-alpha));
+  border-radius: 0.55rem;
+  padding: 0.55rem;
+}
+.builder-evidence-section dt {
+  color: var(--st-faint);
+  font-family: var(--st-mono-font);
+  font-size: 0.56rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 .builder-evidence-region__content > p { color: var(--st-faint); font-size: 0.72rem; }
 
@@ -1929,7 +2021,8 @@ main p {
   .builder-task-summary { align-items: stretch; flex-direction: column; }
   .builder-task-summary__copy p { white-space: normal; }
   .builder-task-summary__actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .builder-evidence-region summary { align-items: flex-start; flex-direction: column; gap: 0.25rem; }
+  .builder-evidence-region__head { align-items: stretch; flex-direction: column; }
+  .builder-evidence-region__head .builder-shell-button { width: 100%; }
 }
 
 @media (min-width: 64rem) {
