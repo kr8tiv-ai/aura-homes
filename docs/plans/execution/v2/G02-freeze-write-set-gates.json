@@ -6,9 +6,9 @@
   "job": "Encode and enforce protected 3D, public-site visual, manifest write-set, and narrow Canvas-first 2D exception gates.",
   "inputs": [
     {
-      "name": "G01-candidate",
-      "version": "90003dd",
-      "hash": "git:90003dd54a5cae29c4004b641872e22d2568fd89"
+      "name": "G01-verified",
+      "version": "804e7c0",
+      "hash": "git:804e7c01f4a284ecb46992be3f6ad099687ee3ca"
     },
     {
       "name": "frozen-main-baseline",
@@ -45,7 +45,7 @@
     "app/scripts/prove-graph-v2.test.mjs"
   ],
   "freezeClass": "none",
-  "owner": "unassigned",
+  "owner": "primary-agent",
   "verifier": "independent-fresh-context",
   "sideEffects": "local",
   "externalGates": [],
@@ -60,6 +60,10 @@
     "maxLoops": 1,
     "boundary": "G02 writeSet only"
   },
-  "evidence": null,
-  "status": "proposed"
+  "evidence": {
+    "startedFrom": "804e7c01f4a284ecb46992be3f6ad099687ee3ca",
+    "dependencyGate": "G01 verified",
+    "protectedPathChanges": 0
+  },
+  "status": "active"
 }
