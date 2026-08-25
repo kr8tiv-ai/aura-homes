@@ -7,6 +7,8 @@ import {
   APPROVED_GRAPH,
   gitBlobSha256,
   loadRegistry,
+  pinnedApprovalSource,
+  validateApprovalRecordSource,
   validateExecutionNode,
   verifyApprovedGraph,
 } from "./prove-graph-v2.mjs";
@@ -42,6 +44,21 @@ test("the committed Git blob matches the approval record", async () => {
     await gitBlobSha256(repoRoot, APPROVED_GRAPH.proposalCommit, APPROVED_GRAPH.path),
     APPROVED_GRAPH.gitBlobSha256,
   );
+});
+
+test("the pinned approval body names the exact proposal and stored blob hash", async () => {
+  const source = await pinnedApprovalSource(repoRoot);
+  assert.deepEqual(validateApprovalRecordSource(source), []);
+
+  const wrongCommit = validateApprovalRecordSource(
+    source.replace(APPROVED_GRAPH.proposalCommit, "0".repeat(40)),
+  );
+  const wrongHash = validateApprovalRecordSource(
+    source.replace(APPROVED_GRAPH.gitBlobSha256, "F".repeat(64)),
+  );
+
+  assert.match(wrongCommit.join("\n"), /Proposed graph commit/);
+  assert.match(wrongHash.join("\n"), /canonical Git-blob SHA-256/);
 });
 
 test("the active G01 manifest satisfies the v2 execution contract", async () => {

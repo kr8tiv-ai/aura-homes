@@ -10,8 +10,9 @@ export const APPROVED_GRAPH = Object.freeze({
   proposalCommit: "f7616886f9f8a171c847ef5eb49e932246ff989b",
   gitBlobSha256: "680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8",
   gitObjectSha256: "48A7E075406A0E9C8EE24C11C9C411EC10C0F219D0CCF84D9129FA83D79D49C7",
-  approvalPath: "docs/plans/approvals/2026-08-24-aura-full-system-graph-v2.0.md",
-  approvalCommit: "1fdcbae76a926cdcb2c9ab7abf6e1f55808aa7a4",
+  approvalPath: "docs/plans/approvals/2026-08-22-aura-full-system-graph-v2.0.md",
+  approvalCommit: "e031a83b8d9dcd428ffaab46d83b39370f2962a0",
+  founderInstruction: "go with 1 and then add the ux nodes and begin work and approve everything",
 });
 
 export const GRAPH_VERSION = `aura-graph/v${APPROVED_GRAPH.version}@${APPROVED_GRAPH.gitBlobSha256}`;
@@ -90,6 +91,38 @@ const graphNodeIds = async (repoRoot) => {
   return ids;
 };
 
+const tableValue = (source, field) => {
+  const row = source
+    .split(/\r?\n/)
+    .find((line) => line.startsWith(`| ${field} |`));
+  if (!row) return null;
+  return row.split("|")[2]?.trim().replace(/^`|`$/g, "") ?? null;
+};
+
+export const validateApprovalRecordSource = (source) => {
+  const errors = [];
+  const required = {
+    "Graph version": APPROVED_GRAPH.version,
+    "Approval state": "APPROVED",
+    "Founder instruction": APPROVED_GRAPH.founderInstruction,
+    "Proposed graph path": APPROVED_GRAPH.path,
+    "Proposed graph commit": APPROVED_GRAPH.proposalCommit,
+    "Proposed graph canonical Git-blob SHA-256": APPROVED_GRAPH.gitBlobSha256,
+    "Proposed graph Git-object SHA-256": APPROVED_GRAPH.gitObjectSha256,
+  };
+
+  for (const [field, expected] of Object.entries(required)) {
+    const actual = tableValue(source, field);
+    if (actual !== expected) {
+      errors.push(`approval ${field} must equal ${expected}; received ${actual ?? "missing"}`);
+    }
+  }
+  return errors;
+};
+
+export const pinnedApprovalSource = async (repoRoot) =>
+  gitBlob(repoRoot, APPROVED_GRAPH.approvalCommit, APPROVED_GRAPH.approvalPath).toString("utf8");
+
 export const verifyApprovedGraph = async (repoRoot) => {
   const errors = [];
   const actualGitBlobSha256 = await gitBlobSha256(
@@ -110,7 +143,8 @@ export const verifyApprovedGraph = async (repoRoot) => {
   }
 
   try {
-    runGit(repoRoot, ["cat-file", "-e", `${APPROVED_GRAPH.approvalCommit}:${APPROVED_GRAPH.approvalPath}`]);
+    const approvalSource = await pinnedApprovalSource(repoRoot);
+    errors.push(...validateApprovalRecordSource(approvalSource));
   } catch {
     errors.push("founder approval record is absent from its pinned commit");
   }

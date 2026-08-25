@@ -9,8 +9,8 @@
     "gitObjectSha256": "48A7E075406A0E9C8EE24C11C9C411EC10C0F219D0CCF84D9129FA83D79D49C7"
   },
   "approval": {
-    "path": "docs/plans/approvals/2026-08-24-aura-full-system-graph-v2.0.md",
-    "commit": "1fdcbae76a926cdcb2c9ab7abf6e1f55808aa7a4",
+    "path": "docs/plans/approvals/2026-08-22-aura-full-system-graph-v2.0.md",
+    "commit": "e031a83b8d9dcd428ffaab46d83b39370f2962a0",
     "date": "2026-08-24",
     "founder": "Matt",
     "instruction": "go with 1 and then add the ux nodes and begin work and approve everything"

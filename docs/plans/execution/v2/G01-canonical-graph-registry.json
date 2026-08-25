@@ -13,7 +13,7 @@
     {
       "name": "founder-approval",
       "version": "2026-08-24",
-      "hash": "git:1fdcbae"
+      "hash": "git:e031a83"
     }
   ],
   "outputs": [
@@ -33,7 +33,7 @@
       "path": "app/scripts/prove-graph-v2.mjs"
     }
   ],
-  "depends": ["G00", "approval:1fdcbae"],
+  "depends": ["G00", "approval:e031a83"],
   "reject": [
     "approved graph commit or Git-blob SHA-256 does not match the approval record",
     "registry points to an unapproved or mutable graph",
@@ -60,21 +60,12 @@
     "node app/scripts/prove-graph-v2.mjs",
     "node --test scripts/prove-graph-v2.test.mjs",
     "npm run typecheck",
-    "git diff --name-only 1fdcbae...HEAD"
+    "git diff --name-only e031a83...HEAD"
   ],
   "repair": {
     "maxLoops": 1,
     "boundary": "G01 writeSet only"
   },
-  "evidence": {
-    "candidateCommit": "90003dd54a5cae29c4004b641872e22d2568fd89",
-    "recordedAt": "2026-08-24",
-    "authorityGate": "pass",
-    "focusedTests": "5/5",
-    "typecheck": "pass",
-    "jsonContracts": "pass",
-    "protectedPathChanges": 0,
-    "workerVerdict": "candidate-ready-for-independent-verification"
-  },
-  "status": "verification-pending"
+  "evidence": null,
+  "status": "active"
 }
