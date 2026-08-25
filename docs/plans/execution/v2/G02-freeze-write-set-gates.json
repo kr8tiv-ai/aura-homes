@@ -63,13 +63,13 @@
   "evidence": {
     "startedFrom": "804e7c01f4a284ecb46992be3f6ad099687ee3ca",
     "dependencyGate": "G01 verified",
-    "candidateCommit": "d25f67722e749700d73156c5ed78bff370e51e79",
-    "focusedTests": "12/12",
+    "candidateCommit": "44ec1da7dbe40fac4fa6b92788f9aa8009c01958",
+    "focusedTests": "14/14",
     "typecheck": "pass",
     "writeSet": "4/4 exact candidate paths from 804e7c0",
     "protectedPathChanges": 0,
     "repairLoop": "1/1 — closed new-story, landing-media, public-surface, and CSS label-only bypasses",
-    "priorIndependentFinding": "closed in d25f677",
+    "priorIndependentFinding": "motion loader and label-only copy exemptions closed in 44ec1da; all prior probes retained",
     "workerVerdict": "candidate-ready-for-independent-verification"
   },
   "status": "verification-pending"
