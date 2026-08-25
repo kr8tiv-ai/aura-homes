@@ -95,7 +95,8 @@
       "repairCommit": "96d2bf94640974f006321b9200801e07994c676c",
       "resolution": "One captured byte reference is bounded and copied synchronously before signature validation; only the snapshot reaches decode and the receipt; decoder, timeout, and cancellation failures expose sanitized boundary errors without raw causes."
     },
+    "independentVerdict": "PASS at repaired closure 7a5f6b4c7b74076b59f372984450a9af5bf19184; authority and G02 verified; lineage 63357da to 96d2bf9 to 7a5f6b4; exact 7/7 write set; closure changed only this manifest; freeze guard clean; byte replacement and in-place mutation preserve the validated snapshot; decoder errors expose no cause or private detail; focused 14/14, Graph v2 14/14, and typecheck pass; no network, provider, persistence, wallet, payment, public visual, or 3D change",
     "protectedPathChanges": 0
   },
-  "status": "verification-pending"
+  "status": "verified"
 }
