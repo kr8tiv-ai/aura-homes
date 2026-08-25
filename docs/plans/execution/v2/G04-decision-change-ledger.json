@@ -81,7 +81,16 @@
     "existingSurfaceAudit": "FounderDecisionRegistryV1 contains nine historical records but omits the approved Graph v2 FD20-01 through FD20-20 decisions, has no exact scope or authority-source contract, and encodes supersession in mutable free text.",
     "readyManifestCommit": "1760d3c60c3d8aba944dc8157b325547f39e7c6a",
     "activationCommit": "03b0ed4dc397507aa9546b4d97a25c9f46fe2bc5",
-    "candidateCommit": "80d336b0eb300fe9fe7446c6ed6ba5d123ec0e66",
+    "initialVerification": {
+      "verdict": "fail",
+      "closureCommit": "f3b464e3d8de8f48a5591beea12138cea273a2c1",
+      "blockers": [
+        "a fully recomputed chain could rewrite an earlier decision because self-consistent hashes did not prove an append-only transition from the prior committed ledger",
+        "founder source records did not bind scope, dates, supersession, or the canonical substantive payload and accepted permissive substring author identities",
+        "two later records could supersede the same target, syntactically valid nonexistent graph nodes were accepted, and decision chronology was not bound to the source commit"
+      ]
+    },
+    "candidateCommit": "da27335fb39d23d64bfe65494770d48000ea97f4",
     "authorityBoundary": "The exact approved Graph v2 artifact is the immutable seed. The prior V1 registry remains reopenable by stored-blob and Git-object SHA at b054226, and appended change records remain recorded-pending-graph until a separately approved successor graph changes authority.",
     "writeSetCheck": {
       "declared": 6,
@@ -90,16 +99,19 @@
       "candidateGuardErrors": []
     },
     "gateReceipts": {
-      "decisionLedger": "7/7 passed; CLI authority seed pass; zero appended changes; errors []",
-      "typecheck": "passed at candidate 80d336b0eb300fe9fe7446c6ed6ba5d123ec0e66",
-      "graphV2": "21/21 passed across seven decision-ledger proofs and fourteen graph/freeze proofs; Graph v2 authority pass",
-      "hostileRuntime": "revoked proxies, accessors, unknown keys, duplicate scope, malformed dates, invalid authority source shapes, broken hashes, broken chains, duplicate ids, and forward supersession all fail closed with bounded errors",
-      "repositorySources": "CLI requires every future source commit to be an ancestor, founder-authored, reopenable at its declared repository approval path, and to contain exact decision/founder/state/body markers"
+      "decisionLedger": "10/10 passed; CLI authority seed and committed-history transition pass; zero appended changes; errors []",
+      "typecheck": "passed at repaired candidate da27335fb39d23d64bfe65494770d48000ea97f4",
+      "graphV2": "24/24 passed across ten decision-ledger proofs and fourteen graph/freeze proofs; Graph v2 authority pass",
+      "hostileRuntime": "revoked proxies, accessors, unknown keys, duplicate scope, malformed dates, invalid authority source shapes, broken hashes, broken chains, duplicate ids, forward supersession, recomputed history rewrites, duplicate global supersession, and invented graph nodes all fail closed with bounded errors",
+      "repositorySources": "CLI requires every future source commit to be an ancestor, exactly Matt-Aurora-Ventures <lucidbloks@gmail.com>, reopenable at its declared repository approval path, chronologically compatible, and to contain exact decision/founder/state/body/canonical-payload-digest markers",
+      "transitionProof": "the repository gate reopens the prior committed registry; a V1-to-V2 migration must match the pinned historical stored/object hashes and start with zero changes, while every V2-to-V2 transition requires the prior canonical change list as an exact prefix"
     },
     "protectedPathChanges": 0,
     "repairLoop": {
-      "used": 0,
-      "maximum": 1
+      "used": 1,
+      "maximum": 1,
+      "initialClosureCommit": "f3b464e3d8de8f48a5591beea12138cea273a2c1",
+      "repairCommit": "da27335fb39d23d64bfe65494770d48000ea97f4"
     }
   },
   "status": "verification-pending"
