@@ -4,6 +4,8 @@
 
 **Proposed:** August 22, 2026
 
+**UX direction incorporated:** August 24, 2026 — Canvas-first Guided Studio
+
 **Source snapshot:** `kr8tiv-ai/aura-homes@710d5a858c689668dd8961d85b3d75ee96dbc38a`
 
 **Prepared on:** `codex/aura-graph-v2`
@@ -77,6 +79,7 @@ These decisions are the product's current intent. A later founder decision may a
 | **FD20-17** | Work may move sideways or backward when blocked; it may not skip dependencies. | Gates are lane-local unless the output is genuinely shared. A payment blocker cannot halt useful editor work. |
 | **FD20-18** | Earlier direction: run a Sol Ultra graph auditor every 20 minutes. **Superseded on August 22, 2026.** | Historical only; it grants no current authority and creates no scheduled work. |
 | **FD20-19** | Turn off and cancel graph auditors. | No recurring graph-audit automation or background audit agent. Use manifest preflight, independent verification, CI, and release checks at explicit work boundaries. |
+| **FD20-20** | Approve option 1, the Canvas-first Guided Studio, and add its UX nodes. | The 2D builder may receive the bounded functional-layout change in `docs/plans/2026-08-24-canvas-first-guided-studio-design.md`. It must reuse Aura's existing visual language, keep phone scope to review/measure/comment/light correction, and leave every 3D/rendering/animation/engine surface unchanged. |
 
 ### Conservative authority default
 
@@ -147,9 +150,9 @@ No node may modify, replace, optimize, reformat, regenerate, or indirectly chang
 - `app/public/textures/meadow*` and other scene assets;
 - `app/workers/meadow.worker.ts`;
 - scene/renderer modules such as `Scene*`, `StoryCanvas*`, `Viewport*`, shaders, cameras, lighting, loaders, or 3D geometry adapters;
-- the current website visual system, global CSS, page composition, typography, spacing, colors, or layout.
+- the public website visual system, global CSS, page composition, typography, spacing, colors, or layout, except for the explicitly approved 2D builder workspace change in §11.1.
 
-Copy-only wording changes are permitted when they cannot affect rendering or animation. A new functional control inside the 2D/project workspace may reuse existing components and styles, but may not redesign the site or modify global visual rules. Any ambiguity fails closed and moves the work to a planning/test/data node.
+Copy-only wording changes are permitted when they cannot affect rendering or animation. The Canvas-first Guided Studio may reorganize functional controls inside the 2D/project workspace using existing components and styles. It may not restyle the public site, modify global visual rules, or change the mounted 3D renderer's behavior or lifecycle. Any ambiguity fails closed and moves the work to a planning/test/data node.
 
 ### 6.2 Freeze gate
 
@@ -260,6 +263,22 @@ flowchart LR
   ED01 --> ED02["ED02 useful plan/export bundle"]
   ED02 --> ED03["ED03 technical-status and review labels"]
 
+  G02 --> UX01["UX01 guided-studio contract"]
+  UX01 --> UX02["UX02 canvas-first editor shell"]
+  UX02 --> UX03["UX03 contextual inspector"]
+  UX03 --> UX04["UX04 command + measurement bar"]
+  UX02 --> UX05["UX05 progressive evidence drawer"]
+  IP06 --> UX06["UX06 image-to-plan entry"]
+  UX02 --> UX06
+  UX03 --> UX07["UX07 scheme comparison"]
+  UX02 --> UX08["UX08 accessible device contract"]
+  UX04 --> UX08
+  UX05 --> UX08
+  UX06 --> UX09["UX09 editor performance evidence"]
+  UX08 --> UX09
+  UX07 --> UX10["UX10 usability release evaluation"]
+  UX09 --> UX10
+
   IP07 --> AI01["AI01 inspectable project memory"]
   OR02 --> AI02["AI02 provider-neutral model router"]
   AI01 --> AI03["AI03 proposal-only project copilot"]
@@ -287,6 +306,7 @@ flowchart LR
   LO03 --> DV03["DV03 Costa Rica community proof"]
 
   IP08 --> Q01["Q01 first-magic release gate"]
+  UX10 --> Q01
   ED03 --> Q02["Q02 useful-package release gate"]
   AI04 --> Q03["Q03 hosted-brain release gate"]
   G03 --> Q01
@@ -297,11 +317,12 @@ flowchart LR
 Priority is read from the product outcome, not diagram position:
 
 1. governance/freeze truth needed to work safely;
-2. picture-to-editable-plan thin slice;
-3. hosted OpenRouter controls and project brain;
-4. useful editable/exported package and Alberta handoff;
-5. transparent cost recovery and neutral checkout;
-6. HOMES/community transparency and developer proof lanes.
+2. canvas-first 2D editor shell and accessible first-edit path;
+3. picture-to-editable-plan thin slice;
+4. hosted OpenRouter controls and project brain;
+5. useful editable/exported package and Alberta handoff;
+6. transparent cost recovery and neutral checkout;
+7. HOMES/community transparency and developer proof lanes.
 
 ---
 
@@ -375,6 +396,27 @@ This lane extends the existing product instead of replacing it.
 | **ED05** | Professional handoff workspace | ED03 | Reviewer identity, scope, date, evidence, comments, and signed state are distinct from AI and founder states. | proposed |
 
 `ED02` does not mean that every export is construction-ready. Unsupported consumers must refuse rather than fall back to stale or approximate geometry while presenting it as current.
+
+---
+
+## 11.1 Canvas-first Guided Studio lane (`UX`)
+
+This lane implements the founder-approved option 1 inside the existing 2D builder. It changes functional hierarchy, not Aura's public-site visual identity, and it cannot modify or indirectly alter the frozen 3D renderer.
+
+| Node | Outcome | Depends | Acceptance and rejection gates | Initial state |
+|---|---|---|---|---|
+| **UX01** | Canonical Guided Studio interaction contract | G02 | Approved desktop/tablet and phone scopes, information architecture, shared mutation semantics, evidence behavior, error/recovery states, and protected-path exclusions are test-addressable. Reject a second project model or a generic restyle. | proposed |
+| **UX02** | Canvas-first editor shell | UX01 | At 1280 × 720, the 2D canvas and first-edit controls for a 2D task are visible without page scrolling. Project bar, task rail, canvas, inspector region, and evidence region reuse existing components. Reject any 3D lifecycle or public-site change. | proposed |
+| **UX03** | Selection-driven contextual inspector | UX02 | Empty, tool, single-selection, and invalid-input states are explicit. Pointer, keyboard, and exact-value operations use the same deterministic mutator, validation, history, hash, and persistence path. | proposed |
+| **UX04** | Command and measurement bar | UX03 | Active-tool-aware exact units, command discovery, cancel, undo/redo description, invalid-value feedback, and keyboard operation work without guessed or autonomous mutation. ED04 language commands may consume this surface later but do not block deterministic controls. | proposed |
+| **UX05** | Progressive evidence drawer | UX02 | Cost, constraints, provenance, technical status, co-pilot evidence, and export readiness can collapse without losing a blocking summary or changing claim state. Secondary modules load only when activated. | proposed |
+| **UX06** | Guided image-to-plan entry | UX02, IP06 | Drop/select flow exposes consent, transmission, retention, cost, progress, assumptions, before/after preview, accept, reject, retry, manual start, and zero-write cancel. | proposed |
+| **UX07** | Versioned scheme comparison | UX03 | Saved candidates compare canonical hashes and measurable program/area/cost/constraint/export attributes. Reject unqualified “best,” stale geometry, or unversioned comparison. | proposed |
+| **UX08** | Accessible desktop/tablet/phone contract | UX02, UX04, UX05 | WCAG 2.2 focus, keyboard, non-drag alternatives, target sizing, non-color status, and no page-level phone overflow pass. Phone claims review, measurement, comments, and bounded light correction—not full CAD parity. | proposed |
+| **UX09** | Editor responsiveness and loading evidence | UX06, UX08 | Canvas and primary tools load before secondary modules; no request waterfall; edit acknowledgement targets under 100 ms and visible status under 400 ms on the baseline device; stale derived work cannot overwrite a newer project; zero frozen-path changes. | proposed |
+| **UX10** | Task-based Guided Studio evaluation | UX07, UX09, IP08 | New-user corpus measures first-canvas visibility, first measured edit, undo/recovery, evidence discovery, proposal handling, save/reopen/export, errors, mobile review, and protected-path integrity. Fixed thresholds cannot be lowered after seeing results. | proposed |
+
+`docs/plans/2026-08-24-canvas-first-guided-studio-design.md` is the interaction design for this lane. Its authorization is confined to the 2D builder workspace.
 
 ---
 
@@ -484,12 +526,13 @@ Milestones summarize outcomes; they do not override node dependencies or freeze 
 | **Q01** | Picture to Editable Cabin | §10 thresholds, independent evidence, source CI, live-provider privacy/spend receipts, and zero protected-path changes. | proposed |
 | **Q02** | Useful cabin package | Current project hash survives save/reopen/export; supported exports round-trip; unsupported consumers refuse; status/claim/a11y/freeze gates pass. | proposed |
 | **Q03** | Hosted Aura brain | Task evaluations, project-memory inspect/delete/export, model fallback, provider-cost ledger, privacy/abuse/spend controls, and zero unconfirmed writes pass. | proposed |
+| **Q04** | Canvas-first Guided Studio | UX01–UX10 evidence shows an immediately reachable canvas, deterministic measured editing, accessible evidence/recovery, supported device behavior, and zero frozen-path changes. | proposed |
 
 | Milestone | User-visible outcome | Required nodes | Release gate |
 |---|---|---|---|
 | **M0 — Governed start** | One authoritative graph and safe execution protocol | G00–G05 | Exact approval, manifests, freeze guard, evidence receipt |
-| **M1 — First magic** | A picture/sketch becomes an editable, saved cabin plan | IP01–IP08, OR01–OR03, ED01 | Q01 thresholds and GB1/GB2/GB5 |
-| **M2 — Useful package** | The person can make changes and export an honestly labeled package | ED02–ED05, LO01 | Q02, professional-status truth, GB4/GB5 |
+| **M1 — First magic** | A picture/sketch becomes an editable, saved cabin plan in an approachable canvas-first workspace | UX01–UX06, UX08–UX10, IP01–IP08, OR01–OR03, ED01 | Q01/Q04 thresholds and GB1/GB2/GB5 |
+| **M2 — Useful package** | The person can compare, change, and export an honestly labeled package | UX07, ED02–ED05, LO01 | Q02/Q04, professional-status truth, GB4/GB5 |
 | **M3 — Persistent Aura brain** | The project remembers approved facts and OpenRouter proposes useful next steps | OR01–OR04, AI01–AI05 | Q03, privacy/spend/evaluation gates |
 | **M4 — Alberta handoff** | A Canadian pilot project can move from concept toward sourced professional work | LO02, DV01 | Site/professional gates; no automatic permit/construction claim |
 | **M5 — Transparent cost recovery** | Model-service cost and 15% fee are visible; sandbox checkout works | CM01–CM03 | GB3 and simulated-state claim audit |
@@ -565,6 +608,10 @@ The core scoreboard is about useful software:
 | Privacy | Trust is part of the product | 100% consent; raw image deleted by default after inference |
 | Claim truth | Concepts must not masquerade as professional work | Zero unsupported permit/engineering/construction/investment claims |
 | Freeze integrity | Preserve the site the founder likes | Zero protected-path or visual-design changes |
+| First-canvas visibility | People should edit before reading the system | Canvas and first-edit controls visible without page scroll at 1280 × 720 |
+| Exact edit response | Direct manipulation must feel immediate | Mutation acknowledgement under 100 ms and status under 400 ms on the baseline device |
+| Accessible control parity | Dragging cannot be the only path | Every primary edit has keyboard or explicit-value operation; WCAG 2.2 interaction gates pass |
+| Evidence discovery | Progressive disclosure must preserve truth | 100% of blocking warnings remain summarized and discoverable while collapsed |
 
 Later targets require real user evidence and are changed through the decision ledger, not by lowering a failing test after the fact.
 
@@ -576,15 +623,17 @@ Approval does not make every row ready. It unlocks the following manifest sequen
 
 1. **G01/G02:** commit the graph registry, manifest schema, protected-path policy, and graph/freeze validators.
 2. **G03:** add source CI/evidence receipts without changing deployment or branch settings.
-3. **IP01/IP02:** specify image intake and `DesignIntent` contracts with adversarial fixtures.
-4. **IP03:** implement the provider-neutral adapter and deterministic fake.
-5. **IP04/IP05:** compile only to existing project contracts and validate.
-6. **IP06/IP07:** integrate preview/commit/persistence through existing component patterns, without visual redesign or 3D changes.
-7. **IP08/Q01:** run the fixed evaluation set and a fresh independent release check.
-8. **OR01/OR02:** build hosted OpenRouter controls locally; stop at the activation gate until secrets, budget, privacy, terms, and founder live-call approval exist.
-9. Proceed laterally through ED/AI/LO/HM work while CM04/CM05/HM03/HM04/DV02/DV03 wait on their true external gates.
+3. **UX01/UX02:** lock the Guided Studio interaction contract, add a canvas-first 2D shell, and prove the first canvas is reachable without scrolling; do not modify the mounted 3D path.
+4. **UX03/UX04/UX05/UX08:** add deterministic contextual controls, exact measurement/command entry, progressive evidence, and accessibility/device gates.
+5. **IP01/IP02:** specify image intake and `DesignIntent` contracts with adversarial fixtures.
+6. **IP03:** implement the provider-neutral adapter and deterministic fake.
+7. **IP04/IP05:** compile only to existing project contracts and validate.
+8. **IP06/IP07/UX06:** integrate preview/commit/persistence through the Guided Studio, without autonomous mutation or 3D changes.
+9. **IP08/UX09/UX10/Q01/Q04:** run the fixed evaluation and usability sets plus a fresh independent release check.
+10. **OR01/OR02:** build hosted OpenRouter controls locally; stop at the activation gate until secrets, budget, privacy, terms, and founder live-call approval exist.
+11. Proceed laterally through ED/AI/LO/HM work while CM04/CM05/HM03/HM04/DV02/DV03 wait on their true external gates.
 
-The first executable implementation manifest must be committed only after G00. The safest first vertical slice is `IP01 → IP08`, not payments, settlement, HOMES economics, or new rendering.
+The first executable implementation manifest must be committed only after G00. The safest first sequence is `G01/G02 → UX01/UX02`, followed laterally by `IP01 → IP08`. Payments, settlement, HOMES economics, and new rendering are not first work.
 
 ---
 
