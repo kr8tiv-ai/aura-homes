@@ -44,12 +44,9 @@
   "writeSet": [
     "docs/plans/2026-08-24-canvas-first-guided-studio-plan.md",
     "docs/plans/execution/v2/G01-canonical-graph-registry.json",
-    "docs/plans/execution/next/README.md",
     "docs/plans/registry/current-graph.json",
-    "docs/plans/execution/schema/aura-execution-node.schema.json",
     "app/scripts/prove-graph-v2.mjs",
-    "app/scripts/prove-graph-v2.test.mjs",
-    "app/package.json"
+    "app/scripts/prove-graph-v2.test.mjs"
   ],
   "freezeClass": "none",
   "owner": "primary-agent",
@@ -75,7 +72,8 @@
     "jsonContracts": "pass",
     "protectedPathChanges": 0,
     "repairLoop": "1/1 — canonical approval path and parsed approval body",
-    "priorIndependentFinding": "closed in 1655245",
+    "manifestReconciliation": "exact 5/5 candidate paths; removed 3 paths committed before candidate base",
+    "priorIndependentFinding": "write-set equality corrected after 5cbb015",
     "workerVerdict": "candidate-ready-for-independent-reverification"
   },
   "status": "verification-pending"
