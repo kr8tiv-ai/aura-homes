@@ -71,9 +71,10 @@
   "evidence": {
     "startedFrom": "63357dae646b6a839a96a8baaf5d51cbc8113a2f",
     "dependencyGate": "G02 verified at 0d0738cfecf7e7e15142debaf6e94db250acdadb",
+    "readyManifestCommit": "0cb20f905f75180768dace5057fae328167bf394",
     "writeOwnership": "No active manifest owns an overlapping path; UX03 is blocked and UX05 is verified.",
     "existingSurfaceAudit": "No cabin-image intake exists. Current file inputs are project JSON import, contributed-model import, and quote evidence only.",
     "protectedPathChanges": 0
   },
-  "status": "ready"
+  "status": "active"
 }
