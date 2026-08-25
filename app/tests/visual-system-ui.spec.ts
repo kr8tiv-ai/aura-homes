@@ -77,8 +77,28 @@ test("the entrance gate owns focus until a journey is chosen, then restores it t
 
 test("the 3D loading readout is prominent, centred, staged, and alive through the whole handoff", async ({ page }, testInfo) => {
   test.setTimeout(120_000);
+  await page.addInitScript(() => {
+    const state = window as typeof window & {
+      __auraLoaderTimes?: string[];
+      __auraReadyWasVisible?: boolean;
+    };
+    state.__auraLoaderTimes = [];
+    state.__auraReadyWasVisible = false;
+    const observer = new MutationObserver(() => {
+      const loader = document.querySelector<HTMLElement>(".aura-loader");
+      const label = loader?.querySelector<HTMLElement>(".aura-loader-label");
+      const time = loader?.querySelector<HTMLElement>(".aura-loader-time")?.textContent?.trim();
+      if (time && !state.__auraLoaderTimes?.includes(time)) state.__auraLoaderTimes?.push(time);
+      if (!loader || label?.textContent?.trim() !== "Ready") return;
+      const style = window.getComputedStyle(loader);
+      if (loader.classList.contains("is-on") && style.display !== "none" && style.visibility !== "hidden") {
+        state.__auraReadyWasVisible = true;
+      }
+    });
+    observer.observe(document, { childList: true, subtree: true, characterData: true, attributes: true });
+  });
   await page.route("**/*.glb", async (route) => {
-    await new Promise((resolveDelay) => setTimeout(resolveDelay, 1_800));
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 5_000));
     await route.continue();
   });
   await page.goto("/");
@@ -105,8 +125,12 @@ test("the 3D loading readout is prominent, centred, staged, and alive through th
   await expect(loader.locator(".aura-loader-label")).toHaveText(/^(Preparing scene|Canvas|Core|Landscape|Meadow|Ready)$/);
   await expect(loader.locator(".aura-loader-pct")).toHaveText(/^Stage [1-5] of 5$/);
   await expect(loader.locator(".aura-loader-time")).toHaveText(/^\d+\.\ds$/);
-  const t1 = await loader.locator(".aura-loader-time").textContent();
-  await expect(loader.locator(".aura-loader-time")).not.toHaveText(t1 ?? "", { timeout: 2_000 });
+  await expect.poll(
+    () => page.evaluate(() => new Set(
+      (window as typeof window & { __auraLoaderTimes?: string[] }).__auraLoaderTimes ?? [],
+    ).size),
+    { timeout: 2_000 },
+  ).toBeGreaterThan(1);
   await page.screenshot({ path: testInfo.outputPath("centred-scene-loader.png") });
   await expect(page.locator(".story-static-scene")).toHaveClass(/is-hidden/, { timeout: 15_000 });
   /* The founder's regression: the widget used to vanish the moment the core
@@ -120,7 +144,12 @@ test("the 3D loading readout is prominent, centred, staged, and alive through th
      opening tier. The status card must finish its honest Ready hold and fade
      before that promotion is even authorized, otherwise the construction
      task can starve the fade timer and strand the card over a ready scene. */
-  await expect(loader.getByText("Ready", { exact: true })).toBeVisible({ timeout: 60_000 });
+  await expect.poll(
+    () => page.evaluate(() => Boolean(
+      (window as typeof window & { __auraReadyWasVisible?: boolean }).__auraReadyWasVisible,
+    )),
+    { timeout: 60_000 },
+  ).toBe(true);
   await expect(loader).toHaveCount(0, { timeout: 3_000 });
   await expect(scene).toHaveAttribute("data-scene-quality", "balanced");
 });

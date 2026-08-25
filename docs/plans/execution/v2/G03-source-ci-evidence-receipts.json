@@ -49,7 +49,8 @@
     "app/package.json",
     "app/scripts/source-evidence-receipt.mjs",
     "app/scripts/source-evidence-receipt.test.mjs",
-    "app/tests/landing-film.spec.ts"
+    "app/tests/landing-film.spec.ts",
+    "app/tests/visual-system-ui.spec.ts"
   ],
   "freezeClass": "none",
   "owner": "primary-agent",
@@ -75,6 +76,7 @@
     "startedFrom": "edfa2b44054d4c5faf959be5ce58446d0068ff5e",
     "dependencyGate": "G01 verified",
     "diagnosis": "The prior landing-film test globally clamped all browser timers at or above four seconds, destabilizing the unchanged Next.js runtime and causing a client-side exception before the film timeout could be observed.",
+    "repairLoop": "1/1 — hold the mocked GLB response beyond the loader observation window and use a MutationObserver to record distinct elapsed values plus the transient visible Ready state so WebGL main-thread blocking cannot make Playwright miss either state; keep the required ticking, Ready, fade, phase, and quality assertions.",
     "protectedPathChanges": 0
   },
   "status": "active"
