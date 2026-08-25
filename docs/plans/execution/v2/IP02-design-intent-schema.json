@@ -1,0 +1,81 @@
+{
+  "graphVersion": "aura-graph/v2.0@680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8",
+  "node": "IP02",
+  "lane": "image-to-plan",
+  "stage": "typed-design-intent",
+  "job": "Define a versioned, provider-neutral DesignIntent contract that carries cabin program and provenance as bounded typed facts, assumptions, confidence, and unresolved fields while refusing unknown keys and all model-authored geometry.",
+  "inputs": [
+    {
+      "name": "IP01-verified-safe-image-intake",
+      "version": "1",
+      "hash": "git:ec0e24f5f123ad95c2781d02d284412a699ff2c7"
+    },
+    {
+      "name": "approved-design-intent-contract",
+      "version": "2.0",
+      "hash": "git:f7616886f9f8a171c847ef5eb49e932246ff989b"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "strict-design-intent-contract",
+      "acceptanceSchema": "AuraDesignIntentV1",
+      "path": "app/lib/ai/designIntent.ts"
+    },
+    {
+      "name": "adversarial-design-intent-proof",
+      "acceptanceSchema": "Playwright-deterministic-contract-proof",
+      "path": "app/tests/design-intent.spec.ts"
+    }
+  ],
+  "depends": ["IP01:verified"],
+  "reject": [
+    "IP01 is not independently verified",
+    "the root or any nested object accepts, strips, or ignores an unknown key",
+    "coordinates, vertices, edges, walls, polygons, transforms, or other free-form geometry can enter DesignIntent",
+    "requested use, approximate footprint, storeys, rooms, roof, openings, materials, climate, or siting has no bounded typed representation",
+    "assumptions, unresolved fields, confidence, or source provenance is absent, implicit, unbounded, duplicated, or silently invented",
+    "invalid enum values, non-finite numbers, unsafe integers, empty identifiers, or out-of-range quantities pass validation",
+    "parsing mutates input, returns an input alias, or produces non-deterministic output",
+    "the contract calls a network, model, provider, wallet, payment, persistence, project-mutation, or geometry service",
+    "a website 3D, rendering, animation, engine, scene, public visual, model, texture, shader, camera, lighting, motion, or quality-tier path changes"
+  ],
+  "writeSet": [
+    "docs/plans/execution/v2/IP02-design-intent-schema.json",
+    "app/lib/ai/designIntent.ts",
+    "app/tests/design-intent.spec.ts",
+    "app/package.json",
+    "app/tests/gate-coverage.spec.ts",
+    "README.md",
+    "docs/SUBMISSION.md"
+  ],
+  "freezeClass": "none",
+  "owner": "primary-agent",
+  "verifier": "independent-fresh-context",
+  "sideEffects": "none",
+  "externalGates": [],
+  "verification": [
+    "npm run typecheck",
+    "npx playwright test tests/design-intent.spec.ts",
+    "npm test",
+    "npm run test:graph-v2",
+    "fixture: every accepted field survives a parse-and-clone round trip",
+    "fixture: unknown keys fail at the root and every nested object rather than being stripped",
+    "fixture: geometry-shaped root and nested keys are named and refused",
+    "fixture: malformed, non-finite, unsafe, duplicate, empty, excessive, and out-of-range values fail closed",
+    "fixture: parser output is detached, frozen, deterministic, and contains no input alias",
+    "git diff --name-only <IP02-base>...HEAD"
+  ],
+  "repair": {
+    "maxLoops": 1,
+    "boundary": "IP02 writeSet only"
+  },
+  "evidence": {
+    "startedFrom": "ec0e24f5f123ad95c2781d02d284412a699ff2c7",
+    "dependencyGate": "IP01 independently verified at ec0e24f5f123ad95c2781d02d284412a699ff2c7",
+    "writeOwnership": "No active manifest owns an overlapping path; UX03 is blocked and all other instantiated nodes are verified.",
+    "existingSurfaceAudit": "No DesignIntent type or runtime schema exists; existing project, building-graph, discovery, confidence, and assumption contracts remain downstream consumers rather than a parallel geometry input.",
+    "protectedPathChanges": 0
+  },
+  "status": "ready"
+}
