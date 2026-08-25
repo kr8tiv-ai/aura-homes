@@ -1,0 +1,88 @@
+{
+  "graphVersion": "aura-graph/v2.0@680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8",
+  "node": "HM01",
+  "lane": "homes-community",
+  "stage": "truth-registry",
+  "job": "Create a deterministic HOMES truth registry that separates verified on-chain facts, source-reported venue rules, explicit unknowns, and not-established legal or fund claims without turning any token fact into an ownership, return, or house-funding promise.",
+  "inputs": [
+    {
+      "name": "G02-verified-freeze-and-write-set-gates",
+      "version": "d4b91f8",
+      "hash": "git:d4b91f89616d69d8e60845d9fc237e4b50a72b36"
+    },
+    {
+      "name": "approved-homes-truth-contract",
+      "version": "2.0",
+      "hash": "git:f7616886f9f8a171c847ef5eb49e932246ff989b"
+    },
+    {
+      "name": "checked-in-homes-mint-receipt",
+      "version": "HomesMintVerificationV1",
+      "hash": "path:data/homes/mint-verification.json"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "homes-truth-registry",
+      "acceptanceSchema": "HomesTruthRegistryV1",
+      "path": "app/lib/homes/truthRegistry.ts"
+    },
+    {
+      "name": "adversarial-homes-truth-proof",
+      "acceptanceSchema": "Playwright-deterministic-contract-proof",
+      "path": "app/tests/homes-truth-registry.spec.ts"
+    }
+  ],
+  "depends": ["G02:verified"],
+  "reject": [
+    "G02 is not independently verified",
+    "a verified on-chain fact lacks a dated block receipt or disagrees with the checked-in mint artifact",
+    "a venue rule is presented as an Aura-controlled contract fact rather than a dated third-party source report",
+    "a source identifier is duplicated, unresolved, malformed, or not attached to every asserted fact",
+    "an unknown or not-established fact carries a value that could be mistaken for evidence",
+    "trust, treasury, staking, fee claims, property fund, properties, distributions, ownership, equity, yield, return, or house-funding status is inferred from token existence",
+    "the live X Layer mainnet token is conflated with the separate X Layer testnet settlement lab",
+    "a mutable or aliased registry can drift after validation",
+    "the registry performs a runtime network, provider, wallet, payment, transfer, claim, or persistence action",
+    "a website 3D, rendering, animation, engine, scene, public visual, model, texture, shader, camera, lighting, motion, or quality-tier path changes"
+  ],
+  "writeSet": [
+    "docs/plans/execution/v2/HM01-homes-truth-registry.json",
+    "app/lib/homes/truthRegistry.ts",
+    "app/tests/homes-truth-registry.spec.ts",
+    "app/package.json",
+    "app/tests/gate-coverage.spec.ts",
+    "README.md",
+    "docs/SUBMISSION.md"
+  ],
+  "freezeClass": "none",
+  "owner": "primary-agent",
+  "verifier": "independent-fresh-context",
+  "sideEffects": "none",
+  "externalGates": [],
+  "verification": [
+    "npm run typecheck",
+    "npx playwright test tests/homes-truth-registry.spec.ts",
+    "npm test",
+    "npm run test:graph-v2",
+    "fixture: every asserted fact resolves only to its declared source identifiers",
+    "fixture: verified facts require a chain receipt with block and timestamp while source-reported facts remain attributed to the venue or network publisher",
+    "fixture: explicit unknown and not-established claims carry no asserted value",
+    "fixture: required legal, fund, treasury, staking, claim, property, and distribution boundaries cannot be omitted or promoted",
+    "fixture: the canonical registry is detached, deeply frozen, deterministic, and has no runtime side effect",
+    "git diff --name-only <HM01-base>...HEAD"
+  ],
+  "repair": {
+    "maxLoops": 1,
+    "boundary": "HM01 writeSet only"
+  },
+  "evidence": {
+    "startedFrom": "619cd0454116b88d96219dbd9c74c7c12a3c090b",
+    "dependencyGate": "G02 independently verified; Graph v2 gate 14/14 and authority pass at HM01 start",
+    "writeOwnership": "No active manifest owns an overlapping path; IP02 and UX03 are blocked and every other instantiated node is verified.",
+    "existingSurfaceAudit": "token.ts is the canonical live token identity module, the mint artifact is a dated on-chain read, fund.ts mixes live zero-state with future design rules, and no typed registry currently distinguishes verified, source-reported, unknown, and not-established truth classes.",
+    "sourceReview": "On 2026-08-25 the official X Layer network documentation still identified mainnet chain 196 and rpc.xlayer.tech; XLaunch documentation still described the 1% pool fee, 60/40 quote-side split, locked-liquidity mechanics, and stock-wrapper risks. Token-specific identity and supply remain pinned to the checked-in on-chain mint receipt rather than scraped market copy.",
+    "protectedPathChanges": 0
+  },
+  "status": "ready"
+}
