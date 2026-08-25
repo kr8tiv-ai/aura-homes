@@ -85,7 +85,27 @@
     "dependencyGate": "UX02 verified at e7a4859b96a5c4815bfc80cce478000bd9087c9c",
     "readyManifestCommit": "077352c3dca010a3f7a6521c05a049139f6bc16a",
     "writeOwnership": "UX03 is blocked, not active; no active manifest owns an overlapping path",
+    "candidateCommit": "98b8ca7d0c2ef9821f6eca464e3c5dfe9462448f",
+    "writeSetCheck": {
+      "declared": 9,
+      "changed": 9,
+      "delta": 0,
+      "candidateGuardErrors": []
+    },
+    "browserEvidence": {
+      "collapsedTruth": "The collapsed shell retained design-intent, the same non-zero blocker count, cost status, geometry basis, and drawing freshness as the expanded drawer.",
+      "deferredModules": "Live cost and constraint read-out plus Design co-pilot were absent from the DOM before activation and visible only after the drawer opened.",
+      "focusedSections": "Blockers, project provenance, technical status, and export readiness controls opened and focused their named regions.",
+      "documentIntegrity": "Opening, navigating, and collapsing the drawer left data-active-design-hash unchanged."
+    },
+    "gateReceipts": {
+      "typecheck": "pass at candidate 98b8ca7d0c2ef9821f6eca464e3c5dfe9462448f",
+      "deterministic": "679 declared; 677 passed and 2 intentional served-only skips in 1.1m",
+      "graphV2": "14/14 passed; authority pass; candidate guard inspected 9 paths with zero errors",
+      "servedUi": "136/136 passed against a freshly rebuilt production export in 17.3m",
+      "focusedServed": "1/1 passed in 21.3s against the export produced by the complete 136-test UI gate"
+    },
     "protectedPathChanges": 0
   },
-  "status": "active"
+  "status": "verification-pending"
 }
