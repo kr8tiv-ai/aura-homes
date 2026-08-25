@@ -14,6 +14,7 @@ import {
 import {
   HOMES_TRUTH_REGISTRY,
   type HomesTruthRegistry,
+  validateHomesMintArtifactParity,
   validateHomesTruthRegistry,
 } from "@/lib/homes/truthRegistry";
 
@@ -294,5 +295,89 @@ test("each claim keeps its reviewed source assignment", () => {
   (address.sourceIds as string[]).push("xlayer-network-docs");
   expect(validateHomesTruthRegistry(borrowedPublisher)).toContain(
     "token.address source ids do not match the pinned registry",
+  );
+});
+
+test("every rendered source and legal boundary field stays pinned to the reviewed catalog", () => {
+  const renamedSource = mutableRegistry();
+  renamedSource.sources.find((source) => source.id === "xlaunch-docs")!.title =
+    "Guaranteed HOMES returns";
+  expect(validateHomesTruthRegistry(renamedSource)).toContain(
+    "source xlaunch-docs title does not match the pinned registry",
+  );
+
+  const promotedLimitation = mutableRegistry();
+  promotedLimitation.claims.find((entry) => entry.id === "holder.returnRights")!.limitation =
+    "Token holders own cabins and receive a guaranteed 15% return.";
+  expect(validateHomesTruthRegistry(promotedLimitation)).toContain(
+    "holder.returnRights limitation does not match the pinned registry",
+  );
+
+  const inventedEvidence = mutableRegistry();
+  inventedEvidence.claims.find((entry) => entry.id === "fund.houseFunding")!.missingEvidence =
+    "All approvals are complete and the fund is live.";
+  expect(validateHomesTruthRegistry(inventedEvidence)).toContain(
+    "fund.houseFunding missingEvidence does not match the pinned registry",
+  );
+});
+
+test("source dates and block semantics fail closed against the registry chronology", () => {
+  const impossible = mutableRegistry();
+  impossible.sources.find((source) => source.id === "xlaunch-docs")!.checkedAtISO = "2026-02-31";
+  expect(validateHomesTruthRegistry(impossible)).toContain(
+    "source xlaunch-docs has an invalid checkedAtISO",
+  );
+
+  const future = mutableRegistry();
+  future.sources.find((source) => source.id === "xlaunch-docs")!.checkedAtISO = "9999-12-31";
+  expect(validateHomesTruthRegistry(future)).toContain(
+    "source xlaunch-docs is dated after registry asOfISO",
+  );
+
+  const forgedDocumentationBlock = mutableRegistry();
+  forgedDocumentationBlock.sources.find((source) => source.id === "xlaunch-docs")!.blockNumber = 1;
+  expect(validateHomesTruthRegistry(forgedDocumentationBlock)).toContain(
+    "source xlaunch-docs must not carry an on-chain block number",
+  );
+
+  const chronology = mutableRegistry();
+  chronology.asOfISO = "2026-08-19";
+  expect(validateHomesTruthRegistry(chronology)).toContain(
+    "source homes-mint-rpc is dated after registry asOfISO",
+  );
+});
+
+test("the checked-in mint artifact must remain the exact reviewed X Layer mainnet receipt", () => {
+  expect(validateHomesMintArtifactParity(mintVerification)).toEqual([]);
+
+  const testnet = structuredClone(mintVerification) as typeof mintVerification;
+  testnet.chainId = 1952;
+  testnet.rpc = "https://testrpc.xlayer.tech";
+  testnet.token.address = `0x${"b".repeat(40)}`;
+  testnet.block = 1;
+  testnet.verifiedAt = "9999-12-31T00:00:00.000Z";
+  expect(validateHomesMintArtifactParity(testnet)).toEqual(expect.arrayContaining([
+    `mint artifact chainId must equal ${HOMES_TOKEN_CHAIN_ID}`,
+    "mint artifact rpc must equal https://rpc.xlayer.tech",
+    `mint artifact token.address must equal ${HOMES_TOKEN_ADDRESS}`,
+    `mint artifact block must equal ${mintVerification.block}`,
+    `mint artifact verifiedAt must equal ${mintVerification.verifiedAt}`,
+  ]));
+});
+
+test("malformed runtime registry shapes return bounded errors instead of throwing", () => {
+  expect(() => validateHomesTruthRegistry({})).not.toThrow();
+  expect(validateHomesTruthRegistry({})).toEqual(expect.arrayContaining([
+    "registry.sources must be an array",
+    "registry.claims must be an array",
+  ]));
+
+  const missingSourceIds = mutableRegistry() as unknown as {
+    claims: Array<Record<string, unknown>>;
+  };
+  delete missingSourceIds.claims[0].sourceIds;
+  expect(() => validateHomesTruthRegistry(missingSourceIds)).not.toThrow();
+  expect(validateHomesTruthRegistry(missingSourceIds)).toContain(
+    "network.name sourceIds must be an array",
   );
 });

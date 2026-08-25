@@ -13,6 +13,97 @@ import {
 } from "./token";
 
 export const HOMES_TRUTH_REGISTRY_VERSION = "homes-truth-registry/v1" as const;
+const HOMES_TRUTH_REGISTRY_AS_OF = "2026-08-25" as const;
+const HOMES_MAINNET_RPC = "https://rpc.xlayer.tech" as const;
+const EXPECTED_MINT_BLOCK = 68_444_752;
+const EXPECTED_MINT_VERIFIED_AT = "2026-08-20T08:16:30.242Z" as const;
+
+type UnknownRecord = Record<string, unknown>;
+
+function isRecord(value: unknown): value is UnknownRecord {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function strictIsoMillis(value: unknown): number | null {
+  if (typeof value !== "string") return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{3}))?Z)?$/.exec(value);
+  if (match === null) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4] ?? 0);
+  const minute = Number(match[5] ?? 0);
+  const second = Number(match[6] ?? 0);
+  const millisecond = Number(match[7] ?? 0);
+  const milliseconds = Date.UTC(year, month - 1, day, hour, minute, second, millisecond);
+  const parsed = new Date(milliseconds);
+  if (
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() !== month - 1 ||
+    parsed.getUTCDate() !== day ||
+    parsed.getUTCHours() !== hour ||
+    parsed.getUTCMinutes() !== minute ||
+    parsed.getUTCSeconds() !== second ||
+    parsed.getUTCMilliseconds() !== millisecond
+  ) {
+    return null;
+  }
+  return milliseconds;
+}
+
+export function validateHomesMintArtifactParity(artifact: unknown): string[] {
+  const errors: string[] = [];
+  if (!isRecord(artifact)) return ["mint artifact must be an object"];
+
+  if (artifact.schema !== "HomesMintVerificationV1") {
+    errors.push("mint artifact schema must equal HomesMintVerificationV1");
+  }
+  if (artifact.chainId !== HOMES_TOKEN_CHAIN_ID) {
+    errors.push(`mint artifact chainId must equal ${HOMES_TOKEN_CHAIN_ID}`);
+  }
+  if (artifact.rpc !== HOMES_MAINNET_RPC) {
+    errors.push(`mint artifact rpc must equal ${HOMES_MAINNET_RPC}`);
+  }
+  if (artifact.block !== EXPECTED_MINT_BLOCK) {
+    errors.push(`mint artifact block must equal ${EXPECTED_MINT_BLOCK}`);
+  }
+  if (artifact.verifiedAt !== EXPECTED_MINT_VERIFIED_AT) {
+    errors.push(`mint artifact verifiedAt must equal ${EXPECTED_MINT_VERIFIED_AT}`);
+  }
+  if (strictIsoMillis(artifact.verifiedAt) === null) {
+    errors.push("mint artifact verifiedAt must be a real UTC timestamp");
+  }
+
+  const token = isRecord(artifact.token) ? artifact.token : null;
+  if (token === null) {
+    errors.push("mint artifact token must be an object");
+  } else {
+    if (token.address !== HOMES_TOKEN_ADDRESS) {
+      errors.push(`mint artifact token.address must equal ${HOMES_TOKEN_ADDRESS}`);
+    }
+    if (token.name !== "Aura Homes") errors.push("mint artifact token.name must equal Aura Homes");
+    if (token.symbol !== "HOMES") errors.push("mint artifact token.symbol must equal HOMES");
+    if (token.decimals !== 18) errors.push("mint artifact token.decimals must equal 18");
+  }
+
+  const totalSupply = isRecord(artifact.totalSupply) ? artifact.totalSupply : null;
+  if (totalSupply === null) {
+    errors.push("mint artifact totalSupply must be an object");
+  } else {
+    if (totalSupply.raw !== "1000000000000000000000000000") {
+      errors.push("mint artifact totalSupply.raw must equal the reviewed receipt");
+    }
+    if (totalSupply.tokens !== 1_000_000_000) {
+      errors.push("mint artifact totalSupply.tokens must equal 1000000000");
+    }
+  }
+  return errors;
+}
+
+const mintArtifactErrors = validateHomesMintArtifactParity(mintVerification);
+if (mintArtifactErrors.length > 0) {
+  throw new Error(`Invalid checked-in HOMES mint artifact: ${mintArtifactErrors.join("; ")}`);
+}
 
 const SOURCE_REPORTED_CLAIMS = new Set([
   "network.name",
@@ -163,7 +254,7 @@ const sources: HomesTruthSource[] = [
 ];
 
 const PINNED_SOURCE_CATALOG = new Map(
-  sources.map((source) => [source.id, { kind: source.kind, uri: source.uri }] as const),
+  sources.map((source) => [source.id, { ...source }] as const),
 );
 
 const claims: HomesTruthClaim[] = [
@@ -417,8 +508,8 @@ const claims: HomesTruthClaim[] = [
   },
 ];
 
-const PINNED_CLAIM_SOURCE_IDS = new Map(
-  claims.map((fact) => [fact.id, [...fact.sourceIds]] as const),
+const PINNED_CLAIM_CATALOG = new Map(
+  claims.map((fact) => [fact.id, { ...fact, sourceIds: [...fact.sourceIds] }] as const),
 );
 
 function deepFreeze<T>(value: T): T {
@@ -429,36 +520,61 @@ function deepFreeze<T>(value: T): T {
 
 const canonicalRegistry: HomesTruthRegistry = {
   schema: HOMES_TRUTH_REGISTRY_VERSION,
-  asOfISO: "2026-08-25",
+  asOfISO: HOMES_TRUTH_REGISTRY_AS_OF,
   sources: sources.map((source) => ({ ...source })),
   claims: claims.map((fact) => ({ ...fact, sourceIds: [...fact.sourceIds] })),
 };
 
-export function validateHomesTruthRegistry(registry: HomesTruthRegistry): string[] {
+export function validateHomesTruthRegistry(registry: unknown): string[] {
   const errors: string[] = [];
+  if (!isRecord(registry)) {
+    return [
+      "registry must be an object",
+      "registry.sources must be an array",
+      "registry.claims must be an array",
+    ];
+  }
+
   const sourceIds = new Set<string>();
   const sourcesById = new Map<string, HomesTruthSource>();
 
   if (registry.schema !== HOMES_TRUTH_REGISTRY_VERSION) {
-    errors.push(`invalid registry schema: ${registry.schema}`);
+    errors.push(`invalid registry schema: ${String(registry.schema)}`);
   }
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(registry.asOfISO) || Number.isNaN(Date.parse(registry.asOfISO))) {
+  const asOfMillis = strictIsoMillis(registry.asOfISO);
+  if (typeof registry.asOfISO !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(registry.asOfISO) || asOfMillis === null) {
     errors.push("registry has an invalid asOfISO");
   }
+  if (registry.asOfISO !== HOMES_TRUTH_REGISTRY_AS_OF) {
+    errors.push(`registry asOfISO must equal ${HOMES_TRUTH_REGISTRY_AS_OF}`);
+  }
 
-  for (const source of registry.sources) {
-    if (sourceIds.has(source.id)) errors.push(`duplicate source id: ${source.id}`);
-    sourceIds.add(source.id);
-    sourcesById.set(source.id, source);
-    if (!/^[a-z][a-z0-9-]{2,63}$/.test(source.id)) {
-      errors.push(`invalid source id: ${source.id}`);
+  const registrySources = Array.isArray(registry.sources) ? registry.sources : [];
+  const registryClaims = Array.isArray(registry.claims) ? registry.claims : [];
+  if (!Array.isArray(registry.sources)) errors.push("registry.sources must be an array");
+  if (!Array.isArray(registry.claims)) errors.push("registry.claims must be an array");
+
+  for (let index = 0; index < registrySources.length; index += 1) {
+    const source = registrySources[index];
+    if (!isRecord(source)) {
+      errors.push(`source at index ${index} must be an object`);
+      continue;
     }
-    const validRemoteUri = /^https:\/\/[^\s]+$/.test(source.uri);
-    const validRepoUri = /^repo:(?!.*(?:^|\/)\.\.(?:\/|$))[A-Za-z0-9._\-/#]+$/.test(source.uri);
-    if (!validRemoteUri && !validRepoUri) errors.push(`source ${source.id} has an invalid uri`);
-    const pinnedSource = PINNED_SOURCE_CATALOG.get(source.id);
+    const sourceId = typeof source.id === "string" ? source.id : `source[${index}]`;
+    if (typeof source.id !== "string" || !/^[a-z][a-z0-9-]{2,63}$/.test(source.id)) {
+      errors.push(`invalid source id: ${sourceId}`);
+    } else {
+      if (sourceIds.has(source.id)) errors.push(`duplicate source id: ${source.id}`);
+      sourceIds.add(source.id);
+      sourcesById.set(source.id, source as unknown as HomesTruthSource);
+    }
+
+    const validRemoteUri = typeof source.uri === "string" && /^https:\/\/[^\s]+$/.test(source.uri);
+    const validRepoUri = typeof source.uri === "string" && /^repo:(?!.*(?:^|\/)\.\.(?:\/|$))[A-Za-z0-9._\-/#]+$/.test(source.uri);
+    if (!validRemoteUri && !validRepoUri) errors.push(`source ${sourceId} has an invalid uri`);
+    const pinnedSource = typeof source.id === "string" ? PINNED_SOURCE_CATALOG.get(source.id) : undefined;
     if (pinnedSource === undefined) {
-      errors.push(`unexpected source id: ${source.id}`);
+      errors.push(`unexpected source id: ${sourceId}`);
     } else {
       if (source.kind !== pinnedSource.kind) {
         errors.push(`source ${source.id} kind does not match its pinned source`);
@@ -466,12 +582,29 @@ export function validateHomesTruthRegistry(registry: HomesTruthRegistry): string
       if (source.uri !== pinnedSource.uri) {
         errors.push(`source ${source.id} uri does not match its pinned source`);
       }
+      if (source.title !== pinnedSource.title) {
+        errors.push(`source ${source.id} title does not match the pinned registry`);
+      }
+      if (source.checkedAtISO !== pinnedSource.checkedAtISO) {
+        errors.push(`source ${source.id} checkedAtISO does not match the pinned registry`);
+      }
+      if (source.blockNumber !== pinnedSource.blockNumber) {
+        errors.push(`source ${source.id} blockNumber does not match the pinned registry`);
+      }
     }
-    if (
-      !/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z)?$/.test(source.checkedAtISO) ||
-      Number.isNaN(Date.parse(source.checkedAtISO))
-    ) {
-      errors.push(`source ${source.id} has an invalid checkedAtISO`);
+
+    const checkedAtMillis = strictIsoMillis(source.checkedAtISO);
+    if (checkedAtMillis === null) {
+      errors.push(`source ${sourceId} has an invalid checkedAtISO`);
+    } else if (asOfMillis !== null && checkedAtMillis > asOfMillis + 86_399_999) {
+      errors.push(`source ${sourceId} is dated after registry asOfISO`);
+    }
+    if (source.kind === "onchain-rpc") {
+      if (!Number.isSafeInteger(source.blockNumber) || Number(source.blockNumber) <= 0) {
+        errors.push(`source ${sourceId} onchain-rpc must carry a positive safe block number`);
+      }
+    } else if (source.blockNumber !== null) {
+      errors.push(`source ${sourceId} must not carry an on-chain block number`);
     }
     if (source.id === "homes-mint-rpc") {
       if (source.blockNumber !== mintVerification.block) {
@@ -488,83 +621,120 @@ export function validateHomesTruthRegistry(registry: HomesTruthRegistry): string
   }
 
   const claimIds = new Set<string>();
-  for (const fact of registry.claims) {
-    if (claimIds.has(fact.id)) errors.push(`duplicate claim id: ${fact.id}`);
-    claimIds.add(fact.id);
-    if (!REQUIRED_CLAIMS.has(fact.id)) errors.push(`unexpected claim id: ${fact.id}`);
-    for (const sourceId of fact.sourceIds) {
-      if (!sourceIds.has(sourceId)) errors.push(`${fact.id} references unknown source: ${sourceId}`);
+  for (let index = 0; index < registryClaims.length; index += 1) {
+    const fact = registryClaims[index];
+    if (!isRecord(fact)) {
+      errors.push(`claim at index ${index} must be an object`);
+      continue;
     }
-    const pinnedSourceIds = PINNED_CLAIM_SOURCE_IDS.get(fact.id);
+    const factId = typeof fact.id === "string" ? fact.id : `claim[${index}]`;
+    const factStatus = typeof fact.status === "string" ? fact.status : "invalid-status";
+    if (typeof fact.id !== "string") {
+      errors.push(`invalid claim id: ${factId}`);
+    } else {
+      if (claimIds.has(fact.id)) errors.push(`duplicate claim id: ${fact.id}`);
+      claimIds.add(fact.id);
+      if (!REQUIRED_CLAIMS.has(fact.id)) errors.push(`unexpected claim id: ${fact.id}`);
+    }
+    const factSourceIds = Array.isArray(fact.sourceIds)
+      ? fact.sourceIds.filter((sourceId): sourceId is string => typeof sourceId === "string")
+      : [];
+    if (!Array.isArray(fact.sourceIds)) {
+      errors.push(`${factId} sourceIds must be an array`);
+    } else if (factSourceIds.length !== fact.sourceIds.length) {
+      errors.push(`${factId} sourceIds must contain only strings`);
+    }
+    for (const sourceId of factSourceIds) {
+      if (!sourceIds.has(sourceId)) errors.push(`${factId} references unknown source: ${sourceId}`);
+    }
+    const pinnedClaim = typeof fact.id === "string" ? PINNED_CLAIM_CATALOG.get(fact.id) : undefined;
+    const pinnedSourceIds = pinnedClaim?.sourceIds;
     if (
       pinnedSourceIds !== undefined &&
-      (fact.sourceIds.length !== pinnedSourceIds.length ||
-        fact.sourceIds.some((sourceId, index) => sourceId !== pinnedSourceIds[index]))
+      (factSourceIds.length !== pinnedSourceIds.length ||
+        factSourceIds.some((sourceId, sourceIndex) => sourceId !== pinnedSourceIds[sourceIndex]))
     ) {
-      errors.push(`${fact.id} source ids do not match the pinned registry`);
+      errors.push(`${factId} source ids do not match the pinned registry`);
     }
-    if (SOURCE_REPORTED_CLAIMS.has(fact.id) && fact.status !== "source-reported") {
-      errors.push(`${fact.id} must remain source-reported`);
+    if (pinnedClaim !== undefined) {
+      if (fact.status !== pinnedClaim.status) {
+        errors.push(`${factId} status does not match the pinned registry`);
+      }
+      if (!Object.is(fact.value, pinnedClaim.value)) {
+        errors.push(`${factId} value does not match the pinned registry`);
+      }
+      if (fact.limitation !== pinnedClaim.limitation) {
+        errors.push(`${factId} limitation does not match the pinned registry`);
+      }
+      if (fact.missingEvidence !== pinnedClaim.missingEvidence) {
+        errors.push(`${factId} missingEvidence does not match the pinned registry`);
+      }
     }
-    if (VERIFIED_ONCHAIN_CLAIMS.has(fact.id) && fact.status !== "verified-onchain") {
-      errors.push(`${fact.id} must remain verified-onchain`);
+    if (typeof fact.limitation !== "string" || fact.limitation.trim().length === 0) {
+      errors.push(`${factId} limitation must be a non-empty string`);
+    }
+    if (SOURCE_REPORTED_CLAIMS.has(factId) && fact.status !== "source-reported") {
+      errors.push(`${factId} must remain source-reported`);
+    }
+    if (VERIFIED_ONCHAIN_CLAIMS.has(factId) && fact.status !== "verified-onchain") {
+      errors.push(`${factId} must remain verified-onchain`);
     }
     if (
       (fact.status === "verified-onchain" || fact.status === "source-reported") &&
-      fact.sourceIds.length === 0
+      factSourceIds.length === 0
     ) {
-      errors.push(`${fact.id} ${fact.status} must carry at least one source`);
+      errors.push(`${factId} ${factStatus} must carry at least one source`);
     }
     if (
       (fact.status === "verified-onchain" || fact.status === "source-reported") &&
       fact.value === null
     ) {
-      errors.push(`${fact.id} ${fact.status} must carry a value`);
+      errors.push(`${factId} ${factStatus} must carry a value`);
     }
     if (fact.status === "verified-onchain") {
-      const onchainSources = fact.sourceIds
+      const onchainSources = factSourceIds
         .map((sourceId) => sourcesById.get(sourceId))
         .filter((source): source is HomesTruthSource => source?.kind === "onchain-rpc");
       if (onchainSources.length === 0) {
-        errors.push(`${fact.id} verified-onchain has no onchain-rpc source`);
+        errors.push(`${factId} verified-onchain has no onchain-rpc source`);
       }
       for (const source of onchainSources) {
         if (source.blockNumber === null || !Number.isSafeInteger(source.blockNumber) || source.blockNumber <= 0) {
-          errors.push(`${fact.id} verified-onchain source ${source.id} has no block number`);
+          errors.push(`${factId} verified-onchain source ${source.id} has no block number`);
         }
       }
     }
     if (fact.status === "source-reported") {
-      const publisherSources = fact.sourceIds
+      const publisherSources = factSourceIds
         .map((sourceId) => sourcesById.get(sourceId))
         .filter((source): source is HomesTruthSource => source !== undefined && source.kind !== "onchain-rpc");
       if (publisherSources.length === 0) {
-        errors.push(`${fact.id} source-reported has no publisher source`);
+        errors.push(`${factId} source-reported has no publisher source`);
       }
     }
-    const boundaryStatus = UNKNOWN_CLAIMS.has(fact.id)
+    const boundaryStatus = UNKNOWN_CLAIMS.has(factId)
       ? "unknown"
-      : NOT_ESTABLISHED_CLAIMS.has(fact.id)
+      : NOT_ESTABLISHED_CLAIMS.has(factId)
         ? "not-established"
         : null;
     if (boundaryStatus !== null && fact.status !== boundaryStatus) {
-      errors.push(`${fact.id} must remain ${boundaryStatus}`);
+      errors.push(`${factId} must remain ${boundaryStatus}`);
     }
     if ((fact.status === "unknown" || fact.status === "not-established") && fact.value !== null) {
-      errors.push(`${fact.id} ${fact.status} must not carry a value`);
+      errors.push(`${factId} ${factStatus} must not carry a value`);
     }
-    if ((fact.status === "unknown" || fact.status === "not-established") && fact.sourceIds.length > 0) {
-      errors.push(`${fact.id} ${fact.status} must not treat a source as authorization`);
+    if ((fact.status === "unknown" || fact.status === "not-established") && factSourceIds.length > 0) {
+      errors.push(`${factId} ${factStatus} must not treat a source as authorization`);
     }
     if (
       (fact.status === "unknown" || fact.status === "not-established") &&
-      (fact.missingEvidence === null || fact.missingEvidence.trim().length < 20)
+      (typeof fact.missingEvidence !== "string" || fact.missingEvidence.trim().length < 20)
     ) {
-      errors.push(`${fact.id} ${fact.status} must name missing evidence`);
+      errors.push(`${factId} ${factStatus} must name missing evidence`);
     }
-    const pinned = PINNED_VALUES.get(fact.id);
+    const pinned = PINNED_VALUES.get(factId);
     if (pinned !== undefined && !Object.is(fact.value, pinned)) {
-      errors.push(`${fact.id} must equal pinned value ${pinned}`);
+      errors.push(`${factId} must equal pinned value ${pinned}`);
     }
   }
 
