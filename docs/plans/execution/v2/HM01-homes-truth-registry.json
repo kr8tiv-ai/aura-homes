@@ -83,7 +83,17 @@
     "writeOwnership": "No active manifest owns an overlapping path; IP02 and UX03 are blocked and every other instantiated node is verified.",
     "existingSurfaceAudit": "token.ts is the canonical live token identity module, the mint artifact is a dated on-chain read, fund.ts mixes live zero-state with future design rules, and no typed registry currently distinguishes verified, source-reported, unknown, and not-established truth classes.",
     "sourceReview": "On 2026-08-25 the official X Layer network documentation still identified mainnet chain 196 and rpc.xlayer.tech; XLaunch documentation still described the 1% pool fee, 60/40 quote-side split, locked-liquidity mechanics, and stock-wrapper risks. Token-specific identity and supply remain pinned to the checked-in on-chain mint receipt rather than scraped market copy.",
-    "candidateCommit": "cf32b3cdd09a54bcc79d97f54b416b9207bec16b",
+    "initialVerification": {
+      "verdict": "fail",
+      "closureCommit": "26e51d3723468a54cbdeb27d0ec3a3698dd650fc",
+      "blockers": [
+        "reviewed source titles, legal limitations, and missing-evidence copy were not exact-pinned",
+        "calendar-invalid or post-registry source dates and documentation block numbers could pass",
+        "the checked-in mint artifact could change chain, RPC, token identity, block, or timestamp before defining the canonical registry",
+        "malformed registry roots or claim sourceIds could throw raw TypeErrors"
+      ]
+    },
+    "candidateCommit": "53a19fdb3d275b510e68926ce609727a6cb93696",
     "writeSetCheck": {
       "declared": 7,
       "changed": 7,
@@ -91,14 +101,16 @@
       "candidateGuardErrors": []
     },
     "gateReceipts": {
-      "typecheck": "pass at candidate cf32b3cdd09a54bcc79d97f54b416b9207bec16b",
-      "focusedHomesTruthRegistry": "13/13 passed, including legal-promotion, source-redirection, receipt-drift, testnet-conflation, and deep-freeze probes",
-      "deterministic": "722 declared; 720 passed and 2 intentional served-only skips in 1.1m",
+      "typecheck": "pass at repaired candidate 53a19fdb3d275b510e68926ce609727a6cb93696",
+      "focusedHomesTruthRegistry": "17/17 passed, including exact reviewed-copy pins, real-calendar chronology, documentation block semantics, exact mint-artifact parity, bounded malformed-shape handling, and the original legal-promotion, source-redirection, receipt-drift, testnet-conflation, and deep-freeze probes",
+      "deterministic": "726 declared; 724 passed and 2 intentional served-only skips in 1.2m",
       "graphV2": "14/14 passed; authority pass; candidate guard inspected the exact 7 paths with zero errors"
     },
     "repairLoop": {
-      "used": 0,
-      "maximum": 1
+      "used": 1,
+      "maximum": 1,
+      "initialClosureCommit": "26e51d3723468a54cbdeb27d0ec3a3698dd650fc",
+      "repairCommit": "53a19fdb3d275b510e68926ce609727a6cb93696"
     },
     "protectedPathChanges": 0
   },
