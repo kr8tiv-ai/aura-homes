@@ -74,7 +74,7 @@
     "readyManifestCommit": "0cb20f905f75180768dace5057fae328167bf394",
     "writeOwnership": "No active manifest owns an overlapping path; UX03 is blocked and UX05 is verified.",
     "existingSurfaceAudit": "No cabin-image intake exists. Current file inputs are project JSON import, contributed-model import, and quote evidence only.",
-    "candidateCommit": "e9e2c81035d42fc26e4217665a7afd3dae393e43",
+    "candidateCommit": "96d2bf94640974f006321b9200801e07994c676c",
     "writeSetCheck": {
       "declared": 7,
       "changed": 7,
@@ -82,10 +82,18 @@
       "candidateGuardErrors": []
     },
     "gateReceipts": {
-      "typecheck": "pass at candidate e9e2c81035d42fc26e4217665a7afd3dae393e43",
-      "focusedIntake": "12/12 passed in 2.7s",
-      "deterministic": "691 declared; 689 passed and 2 intentional served-only skips in 1.4m",
+      "typecheck": "pass at candidate 96d2bf94640974f006321b9200801e07994c676c",
+      "focusedIntake": "14/14 passed in 5.3s, including caller replacement, in-place mutation, and private decoder-error probes",
+      "deterministic": "693 declared; 691 passed and 2 intentional served-only skips in 1.3m",
       "graphV2": "14/14 passed; authority pass; candidate guard inspected 7 paths with zero errors"
+    },
+    "repairLoop": {
+      "used": 1,
+      "maximum": 1,
+      "initialClosure": "dcad98e8be74ecc1822614726075d78d49b2fbfd",
+      "initialVerdict": "FAIL: mutable caller bytes could change between preflight and decoder copy, and raw decoder details escaped through error.cause",
+      "repairCommit": "96d2bf94640974f006321b9200801e07994c676c",
+      "resolution": "One captured byte reference is bounded and copied synchronously before signature validation; only the snapshot reaches decode and the receipt; decoder, timeout, and cancellation failures expose sanitized boundary errors without raw causes."
     },
     "protectedPathChanges": 0
   },
