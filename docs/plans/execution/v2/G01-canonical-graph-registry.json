@@ -66,6 +66,15 @@
     "maxLoops": 1,
     "boundary": "G01 writeSet only"
   },
-  "evidence": null,
-  "status": "active"
+  "evidence": {
+    "candidateCommit": "90003dd54a5cae29c4004b641872e22d2568fd89",
+    "recordedAt": "2026-08-24",
+    "authorityGate": "pass",
+    "focusedTests": "5/5",
+    "typecheck": "pass",
+    "jsonContracts": "pass",
+    "protectedPathChanges": 0,
+    "workerVerdict": "candidate-ready-for-independent-verification"
+  },
+  "status": "verification-pending"
 }
