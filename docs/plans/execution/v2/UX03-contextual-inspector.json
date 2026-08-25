@@ -76,7 +76,8 @@
   "evidence": {
     "startedFrom": "e7a4859b96a5c4815bfc80cce478000bd9087c9c",
     "dependencyGate": "UX02 verified",
+    "readyManifestCommit": "189c3110e2ca8beff050f4cda5b3e76c2cadf161",
     "protectedPathChanges": 0
   },
-  "status": "ready"
+  "status": "active"
 }
