@@ -1,65 +1,45 @@
 {
-  "schema": "FounderDecisionRegistryV1",
-  "note": "Machine-readable founder decisions. A decision here governs intent until the founder explicitly supersedes it. Anything marked undecided is NOT adopted no matter what any plan document says.",
-  "decisions": [
-    {
-      "id": "D-2026-08-07-awg-standard",
-      "date": "2026-08-07",
-      "decision": "AWG (atmospheric water generation) is standard on every home; data/alberta/cost-model.json totalsRule treats no line as optional.",
-      "standing": "superseded-by:D-2026-08-14-awg-recommended"
-    },
-    {
-      "id": "D-2026-08-14-awg-recommended",
-      "date": "2026-08-14",
-      "decision": "AWG is RECOMMENDED on every home, not mandatory ('I want those for sure. It's not mandatory, but definitely suggested'). The reference configuration keeps AWG, so the anchored ex-land triplet $199,100/$301,280/$443,900 stands unchanged and the money anchor still reconciles; a project may descope AWG and its budget recomputes from its own lines.",
-      "standing": "active",
-      "notes": "Settles graph v1.1 §7's AWG amendment in modified form. The no-concrete half of that amendment (site-evidence-based foundation comparison) remains PROPOSED-UNDECIDED. Follow-up feature node BQ-AWG: expose AWG as a deselectable line in the budget UI."
-    },
-    {
-      "id": "D-2026-08-12-interleave",
-      "date": "2026-08-12",
-      "decision": "Interleave hackathon and product work daily (two tracks), rather than a strict serial pipeline.",
-      "standing": "active"
-    },
-    {
-      "id": "D-2026-08-12-free-tier",
-      "date": "2026-08-12",
-      "decision": "Free-tier data only. No paid deals, no partner outreach.",
-      "standing": "active",
-      "notes": "Defers graph v1.1 L02 (broker/listing feed agreement) and S06/S16 (manufacturer outreach) until explicitly reopened."
-    },
-    {
-      "id": "D-2026-08-12-mainnet-hold",
-      "date": "2026-08-12",
-      "decision": "Do not deploy the current AuraBuildRegistry, a fee router, or any Aura-authored HOMES contract to X Layer mainnet. Hold until the replacement attestation design passes its gates.",
-      "standing": "active",
-      "notes": "docs/MAINNET-DECISION-BRIEF.md. Untouched by the venue token launch below."
-    },
-    {
-      "id": "D-2026-08-13-token-launch",
-      "date": "2026-08-13",
-      "decision": "The founder launched $HOMES through the third-party XLaunch venue on X Layer mainnet 196 (contract 0x642855d557ada1eba8a66014aaff902e6394c0de, pair wSPCXx). The site discloses it as live with receipts and risk labels, plus a how-to-buy guide on the crypto side.",
-      "standing": "fact-recorded",
-      "notes": "Supersedes the 'SPACEX pool blocked until verified' policy line. Does NOT activate any designed HOMES right; H20-class gates still guard staking, trust, treasury, distributions, and Aura-authored contracts. See MAINNET-DECISION-BRIEF addendum."
-    },
-    {
-      "id": "D-2026-08-13-scene-restoration",
-      "date": "2026-08-13",
-      "decision": "Keep the new baked-atlas grass LOOK; restore the wind, the deck/walkway exclusion, and the full-tier effects; keep every copy, page-flow, and editor change from the Aug 13 wave.",
-      "standing": "executed"
-    },
-    {
-      "id": "D-2026-08-14-voice-calibration",
-      "date": "2026-08-14",
-      "decision": "Honest, not over-cautious. 'Don't worry about regs as much, worry about doing things right' / 'we're building defi software so we just need to be honest, not too cautious.' Risk facts are stated ONCE, plainly, near the action they concern - never repeated as defensive hedging across a page. Confident builder voice; the honesty rules (receipts, declared zeros, no present-tense unbuilt claims) are unchanged.",
-      "standing": "active",
-      "notes": "Applies to site copy, README, and collateral. Engineering gates (H20-class, receipts-before-recognition) are quality controls and stay as-is."
-    },
-    {
-      "id": "D-2026-08-12-copy-latitude",
-      "date": "2026-08-12",
-      "decision": "Copy latitude: trim bodies, keep headings verbatim. Larger copy changes are per-line founder approvals.",
-      "standing": "active"
-    }
-  ]
+  "schema": "FounderDecisionRegistryV2",
+  "note": "Graph v2 is the approved decision seed. Later founder changes are appended as scoped, source-bound records and remain non-executable until the graph change protocol produces a separately approved successor.",
+  "authoritySeed": {
+    "graphVersion": "2.0",
+    "graphPath": "docs/plans/2026-08-22-aura-full-system-graph-v2.0.md",
+    "proposalCommit": "f7616886f9f8a171c847ef5eb49e932246ff989b",
+    "storedBlobSha256": "680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8",
+    "objectSha256": "48A7E075406A0E9C8EE24C11C9C411EC10C0F219D0CCF84D9129FA83D79D49C7",
+    "approvalPath": "docs/plans/approvals/2026-08-22-aura-full-system-graph-v2.0.md",
+    "approvalCommit": "e031a83b8d9dcd428ffaab46d83b39370f2962a0",
+    "decisionIds": [
+      "FD20-01",
+      "FD20-02",
+      "FD20-03",
+      "FD20-04",
+      "FD20-05",
+      "FD20-06",
+      "FD20-07",
+      "FD20-08",
+      "FD20-09",
+      "FD20-10",
+      "FD20-11",
+      "FD20-12",
+      "FD20-13",
+      "FD20-14",
+      "FD20-15",
+      "FD20-16",
+      "FD20-17",
+      "FD20-18",
+      "FD20-19",
+      "FD20-20"
+    ]
+  },
+  "historicalRegistry": {
+    "path": "docs/plans/registry/decisions.json",
+    "lastSchema": "FounderDecisionRegistryV1",
+    "pinnedAtCommit": "b05422675821984ca3625e4e6ff7c8e8ff5a32e2",
+    "storedBlobSha256": "3CAED0565847BB2F97A68AD028569312E5653E9807AB5546B421853993770745",
+    "objectSha256": "9137324C4C47D31B22A68369F1BA4531BBE06EA428739D363FA0ADDE8C50EB29",
+    "disposition": "historical-input-only"
+  },
+  "genesisSha256": "4C9A3D6D7E0D2D313AB101F33B59A3FD00B9DA3623A447895589E89D99BCB2A5",
+  "changes": []
 }

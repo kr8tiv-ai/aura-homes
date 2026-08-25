@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aurahomes.fun/schemas/founder-decision-registry-v2.json",
+  "title": "FounderDecisionRegistryV2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "note", "authoritySeed", "historicalRegistry", "genesisSha256", "changes"],
+  "properties": {
+    "schema": { "const": "FounderDecisionRegistryV2" },
+    "note": { "type": "string", "minLength": 40 },
+    "authoritySeed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["graphVersion", "graphPath", "proposalCommit", "storedBlobSha256", "objectSha256", "approvalPath", "approvalCommit", "decisionIds"],
+      "properties": {
+        "graphVersion": { "const": "2.0" },
+        "graphPath": { "type": "string", "pattern": "^docs/plans/[^.].*\\.md$" },
+        "proposalCommit": { "$ref": "#/$defs/gitCommit" },
+        "storedBlobSha256": { "$ref": "#/$defs/sha256" },
+        "objectSha256": { "$ref": "#/$defs/sha256" },
+        "approvalPath": { "type": "string", "pattern": "^docs/plans/approvals/[^/]+\\.md$" },
+        "approvalCommit": { "$ref": "#/$defs/gitCommit" },
+        "decisionIds": {
+          "type": "array",
+          "minItems": 20,
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^FD20-(0[1-9]|1[0-9]|20)$" }
+        }
+      }
+    },
+    "historicalRegistry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "lastSchema", "pinnedAtCommit", "storedBlobSha256", "objectSha256", "disposition"],
+      "properties": {
+        "path": { "const": "docs/plans/registry/decisions.json" },
+        "lastSchema": { "const": "FounderDecisionRegistryV1" },
+        "pinnedAtCommit": { "$ref": "#/$defs/gitCommit" },
+        "storedBlobSha256": { "$ref": "#/$defs/sha256" },
+        "objectSha256": { "$ref": "#/$defs/sha256" },
+        "disposition": { "const": "historical-input-only" }
+      }
+    },
+    "genesisSha256": { "$ref": "#/$defs/sha256" },
+    "changes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/change" }
+    }
+  },
+  "$defs": {
+    "gitCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9A-F]{64}$" },
+    "change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "recordedAtISO", "effectiveDate", "state", "decision", "scope", "authority", "supersedes", "previousEntrySha256", "entrySha256"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^FD-20[0-9]{2}-[0-9]{2}-[0-9]{2}-[a-z0-9-]{3,64}$" },
+        "recordedAtISO": { "type": "string", "format": "date-time" },
+        "effectiveDate": { "type": "string", "format": "date" },
+        "state": { "const": "recorded-pending-graph" },
+        "decision": { "type": "string", "minLength": 20, "maxLength": 2000 },
+        "scope": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["clauses", "nodes"],
+          "properties": {
+            "clauses": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+            "nodes": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[A-Z]{1,3}[0-9]{2}$" } }
+          }
+        },
+        "authority": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["actor", "sourceType", "sourcePath", "sourceCommit"],
+          "properties": {
+            "actor": { "const": "founder" },
+            "sourceType": { "const": "repo-founder-record" },
+            "sourcePath": { "type": "string", "pattern": "^docs/plans/approvals/[A-Za-z0-9._-]+\\.md$" },
+            "sourceCommit": { "$ref": "#/$defs/gitCommit" }
+          }
+        },
+        "supersedes": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "previousEntrySha256": { "$ref": "#/$defs/sha256" },
+        "entrySha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}
