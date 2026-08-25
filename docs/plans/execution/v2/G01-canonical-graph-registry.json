@@ -66,6 +66,17 @@
     "maxLoops": 1,
     "boundary": "G01 writeSet only"
   },
-  "evidence": null,
-  "status": "active"
+  "evidence": {
+    "candidateCommit": "16552455d31190722f80718566c451fd70f5ac9d",
+    "recordedAt": "2026-08-24",
+    "authorityGate": "pass",
+    "focusedTests": "6/6",
+    "typecheck": "pass",
+    "jsonContracts": "pass",
+    "protectedPathChanges": 0,
+    "repairLoop": "1/1 — canonical approval path and parsed approval body",
+    "priorIndependentFinding": "closed in 1655245",
+    "workerVerdict": "candidate-ready-for-independent-reverification"
+  },
+  "status": "verification-pending"
 }
