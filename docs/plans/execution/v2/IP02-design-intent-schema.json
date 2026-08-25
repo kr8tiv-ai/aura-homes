@@ -76,7 +76,7 @@
     "readyManifestCommit": "c0bcc5cc7735a06b1b53d80f6765e5c9f4854566",
     "writeOwnership": "No active manifest owns an overlapping path; UX03 is blocked and all other instantiated nodes are verified.",
     "existingSurfaceAudit": "No DesignIntent type or runtime schema exists; existing project, building-graph, discovery, confidence, and assumption contracts remain downstream consumers rather than a parallel geometry input.",
-    "candidateCommit": "c7f477c6e794c8e20e08a798a2db96707f7f47ef",
+    "candidateCommit": "5f3b77ddbb64e34a5cbf873437cbac928646dcac",
     "writeSetCheck": {
       "declared": 7,
       "changed": 7,
@@ -84,10 +84,18 @@
       "candidateGuardErrors": []
     },
     "gateReceipts": {
-      "typecheck": "pass at candidate c7f477c6e794c8e20e08a798a2db96707f7f47ef",
-      "focusedDesignIntent": "13/13 passed in 4.7s",
-      "deterministic": "706 declared; 704 passed and 2 intentional served-only skips in 1.3m",
+      "typecheck": "pass at candidate 5f3b77ddbb64e34a5cbf873437cbac928646dcac",
+      "focusedDesignIntent": "16/16 passed in 4.9s, including custom-prototype, Symbol, non-enumerable, sparse-array, accessor, and hostile-reflection probes",
+      "deterministic": "709 declared; 707 passed and 2 intentional served-only skips in 1.1m",
       "graphV2": "14/14 passed; authority pass; candidate guard inspected 7 paths with zero errors"
+    },
+    "repairLoop": {
+      "used": 1,
+      "maximum": 1,
+      "initialClosure": "79cd59b3f7734bf08b95c30174e3b0f7007ac525",
+      "initialVerdict": "FAIL: inherited, Symbol, non-enumerable, sparse-array, custom-array, and accessor input could bypass the ordinary enumerable-key boundary; a hostile reflection error leaked raw detail",
+      "repairCommit": "5f3b77ddbb64e34a5cbf873437cbac928646dcac",
+      "resolution": "The shared JSON boundary now inspects own keys and data descriptors without invoking accessors, rejects custom prototypes, Symbols, hidden fields, sparse or decorated arrays, and sanitizes reflection failures before any typed value is read."
     },
     "protectedPathChanges": 0
   },
