@@ -3,6 +3,7 @@ import { expect, test } from "playwright/test";
 import {
   GUIDED_STUDIO_TASKS,
   canonicalEdit,
+  contextualInspectorState,
   evidenceSummary,
   invalidExactInput,
   studioHistoryLabel,
@@ -171,6 +172,81 @@ test("invalid exact input remains editable and names the violated constraint", (
   });
 });
 
+test("the contextual inspector distinguishes empty and active-tool states", () => {
+  const task = GUIDED_STUDIO_TASKS.find((candidate) => candidate.id === "rooms")!;
+  const empty = contextualInspectorState({ task });
+  const tool = contextualInspectorState({
+    task,
+    tool: {
+      label: "Shape tool",
+      guidance: "Select a corner, wall, opening, or room.",
+      actions: ["Select an object", "Use arrow keys for a measured nudge"],
+    },
+  });
+
+  expect(empty).toMatchObject({ state: "empty", heading: "Nothing selected" });
+  expect(empty.description).toBe(task.nextAction);
+  expect(tool).toMatchObject({ state: "tool", heading: "Shape tool" });
+  expect(tool.actions).toEqual(["Select an object", "Use arrow keys for a measured nudge"]);
+});
+
+test("a selected object projects identity, dimensions, placement, and canonical actions", () => {
+  const task = GUIDED_STUDIO_TASKS.find((candidate) => candidate.id === "rooms")!;
+  const state = contextualInspectorState({
+    task,
+    tool: { label: "Shape tool", guidance: "Shape the plan.", actions: [] },
+    selection: {
+      kind: "wall",
+      id: "wall-north",
+      identity: "North wall",
+      dimensions: [
+        { label: "Length", value: "24 ft" },
+        { label: "Thickness", value: "0.5 ft" },
+      ],
+      placement: "Between vertex-1 and vertex-2",
+      actions: ["Drag", "Arrow keys", "Type an exact value"],
+    },
+  });
+
+  expect(state).toMatchObject({
+    state: "selection",
+    heading: "North wall",
+    selectionKind: "wall",
+    selectionId: "wall-north",
+    placement: "Between vertex-1 and vertex-2",
+  });
+  expect(state.dimensions).toEqual([
+    { label: "Length", value: "24 ft" },
+    { label: "Thickness", value: "0.5 ft" },
+  ]);
+  expect(state.actions).toContain("Type an exact value");
+});
+
+test("an invalid exact value outranks selection and preserves the raw value and constraint", () => {
+  const task = GUIDED_STUDIO_TASKS.find((candidate) => candidate.id === "rooms")!;
+  const state = contextualInspectorState({
+    task,
+    tool: { label: "Shape tool", guidance: "Shape the plan.", actions: [] },
+    selection: {
+      kind: "wall",
+      id: "wall-north",
+      identity: "North wall",
+      dimensions: [{ label: "Length", value: "24 ft" }],
+      placement: "Between vertex-1 and vertex-2",
+      actions: ["Type an exact value"],
+    },
+    invalid: invalidExactInput("-1", "Wall wall-north must be longer than zero feet."),
+  });
+
+  expect(state).toMatchObject({
+    state: "invalid",
+    heading: "Check North wall",
+    raw: "-1",
+    constraint: "Wall wall-north must be longer than zero feet.",
+    recoverable: true,
+  });
+});
+
 test("a guided 2D task exposes the canvas and first-edit tools in the first 1280 by 720 viewport", async ({
   page,
 }, testInfo) => {
@@ -217,4 +293,40 @@ test("a guided 2D task exposes the canvas and first-edit tools in the first 1280
   expect(toolsBox!.y + toolsBox!.height).toBeGreaterThan(0);
 
   await expect(rendererCanvas).toHaveAttribute("data-ux02-renderer-identity", "preserved");
+});
+
+test("the served contextual inspector exposes tool, selection, and invalid states without moving the document hash", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    !process.env.PLAYWRIGHT_TEST_BASE_URL && !testInfo.project.use.baseURL,
+    "served UX03 inspector proof runs with the manifest's local base URL",
+  );
+  test.setTimeout(180_000);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto("/build?mode=guided");
+  await expect(page.locator(".builder-viewport canvas").first()).toBeAttached({ timeout: 90_000 });
+
+  const root = page.locator("[data-active-design-hash]");
+  const before = await root.getAttribute("data-active-design-hash");
+  await page
+    .getByRole("navigation", { name: "Guided design steps" })
+    .getByRole("button", { name: "Rooms", exact: true })
+    .click();
+
+  const inspector = page.getByRole("region", { name: "Selection inspector" });
+  await expect(inspector).toHaveAttribute("data-inspector-state", "tool");
+
+  const wall = page.getByRole("button", { name: /^Wall .* feet long, .* feet thick$/ }).first();
+  await wall.click();
+  await expect(inspector).toHaveAttribute("data-inspector-state", "selection");
+  await expect(inspector).toContainText("Type an exact value");
+
+  const length = page.getByLabel(/Wall .* · length \(feet\)/).first();
+  await length.fill("-1");
+  await length.press("Enter");
+  await expect(inspector).toHaveAttribute("data-inspector-state", "invalid");
+  await expect(inspector).toContainText("-1");
+  await expect(inspector).toContainText(/must be longer than zero feet/i);
+  await expect(root).toHaveAttribute("data-active-design-hash", before ?? "");
 });

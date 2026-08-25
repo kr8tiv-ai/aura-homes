@@ -141,6 +141,123 @@ export function invalidExactInput(raw: string, constraint: string): InvalidExact
   return { accepted: false, raw, constraint, recoverable: true };
 }
 
+export interface StudioInspectorTool {
+  label: string;
+  guidance: string;
+  actions: readonly string[];
+}
+
+export interface StudioInspectorDimension {
+  label: string;
+  value: string;
+}
+
+export interface StudioInspectorSelection {
+  kind: StudioSelectionKind | "vertex";
+  id: string;
+  identity: string;
+  dimensions: readonly StudioInspectorDimension[];
+  placement: string;
+  actions: readonly string[];
+}
+
+export interface StudioInspectorInput {
+  task: { label: string; nextAction: string };
+  tool?: StudioInspectorTool | null;
+  selection?: StudioInspectorSelection | null;
+  invalid?: InvalidExactInput | null;
+}
+
+export type StudioInspectorState =
+  | {
+      state: "empty" | "tool";
+      heading: string;
+      description: string;
+      actions: readonly string[];
+      dimensions: readonly [];
+      placement: null;
+    }
+  | {
+      state: "selection";
+      heading: string;
+      description: string;
+      selectionKind: StudioInspectorSelection["kind"];
+      selectionId: string;
+      actions: readonly string[];
+      dimensions: readonly StudioInspectorDimension[];
+      placement: string;
+    }
+  | {
+      state: "invalid";
+      heading: string;
+      description: string;
+      selectionKind: StudioInspectorSelection["kind"] | null;
+      selectionId: string | null;
+      actions: readonly ["Edit the value", "Undo"];
+      dimensions: readonly StudioInspectorDimension[];
+      placement: string | null;
+      raw: string;
+      constraint: string;
+      recoverable: true;
+    };
+
+/**
+ * One read-only projection of the current task, tool, selection and refusal.
+ *
+ * Priority is deliberate: a refusal must stay visible over the selection that
+ * produced it; a selection is more specific than the active tool; and an idle
+ * task still says what to do next. Arrays are copied so no inspector consumer
+ * can mutate the editor's transient state by reference.
+ */
+export function contextualInspectorState(input: StudioInspectorInput): StudioInspectorState {
+  const selection = input.selection ?? null;
+  if (input.invalid) {
+    return {
+      state: "invalid",
+      heading: `Check ${selection?.identity ?? input.tool?.label ?? input.task.label}`,
+      description: "The project was not changed. Correct the value or undo the previous edit.",
+      selectionKind: selection?.kind ?? null,
+      selectionId: selection?.id ?? null,
+      dimensions: selection ? selection.dimensions.map((dimension) => ({ ...dimension })) : [],
+      placement: selection?.placement ?? null,
+      actions: ["Edit the value", "Undo"],
+      raw: input.invalid.raw,
+      constraint: input.invalid.constraint,
+      recoverable: true,
+    };
+  }
+  if (selection) {
+    return {
+      state: "selection",
+      heading: selection.identity,
+      description: `${selection.kind} selected`,
+      selectionKind: selection.kind,
+      selectionId: selection.id,
+      dimensions: selection.dimensions.map((dimension) => ({ ...dimension })),
+      placement: selection.placement,
+      actions: [...selection.actions],
+    };
+  }
+  if (input.tool) {
+    return {
+      state: "tool",
+      heading: input.tool.label,
+      description: input.tool.guidance,
+      actions: [...input.tool.actions],
+      dimensions: [],
+      placement: null,
+    };
+  }
+  return {
+    state: "empty",
+    heading: "Nothing selected",
+    description: input.task.nextAction,
+    actions: [input.task.nextAction],
+    dimensions: [],
+    placement: null,
+  };
+}
+
 export interface FailedProposalRecovery {
   accepted: false;
   preservedProjectHash: string;

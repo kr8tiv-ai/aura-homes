@@ -29,6 +29,12 @@ import {
   type GraphVertex,
   type GraphWallEdge,
 } from "@/lib/builder/buildingGraph";
+import {
+  contextualInspectorState,
+  invalidExactInput,
+  type StudioInspectorSelection,
+  type StudioInspectorState,
+} from "@/lib/builder/guidedStudio";
 import { Button, Segmented } from "./ui";
 
 type Tool = "shape" | "partition";
@@ -148,9 +154,9 @@ type Selection =
  * browser's ordinary editing buffer; the moment the model changes — an arrow
  * key, another field, an undo — or the person commits, the effect below writes
  * the graph's own number back over it. Neither `text` nor `revision` changes
- * while somebody is typing, so this never fights the keyboard, and an entry the
- * mutator refuses snaps back to the number the building actually has instead of
- * leaving a second, wrong truth on screen.
+ * while somebody is typing, so this never fights the keyboard. A refused entry
+ * remains in the field long enough for the contextual inspector to name the
+ * exact raw value and constraint; it never enters the graph or document.
  *
  * Defined at module scope on purpose: a component declared inside the editor
  * would be a new type on every render and would remount — and blur — this input
@@ -162,15 +168,17 @@ function NumberField({
   revision,
   step,
   onCommit,
+  onInvalid,
   note,
 }: {
   label: string;
   value: number;
-  /** Bumped by the editor on every commit attempt, accepted or refused. */
+  /** Bumped when the canonical graph accepts a commit and becomes the display source. */
   revision: number;
   step: number;
   /** Absent means the graph exposes no mutator for this value — see `note`. */
-  onCommit?: (value: number) => void;
+  onCommit?: (value: number, raw: string) => void;
+  onInvalid?: (raw: string, constraint: string) => void;
   note?: string;
 }) {
   const ref = useRef<HTMLInputElement | null>(null);
@@ -186,10 +194,10 @@ function NumberField({
     if (!input || !onCommit) return;
     const parsed = Number(input.value);
     if (input.value.trim() === "" || !Number.isFinite(parsed)) {
-      input.value = text;
+      onInvalid?.(input.value, "Enter a finite number in feet.");
       return;
     }
-    onCommit(parsed);
+    onCommit(parsed, input.value);
   };
 
   return (
@@ -270,9 +278,11 @@ function NameField({
 export default function GraphPlanEditor({
   graph,
   onEdit,
+  onInspectorState,
 }: {
   graph: BuildingGraph;
   onEdit: (graph: BuildingGraph, label: string) => void;
+  onInspectorState?: (state: StudioInspectorState) => void;
 }) {
   const [activeStoreyId, setActiveStoreyId] = useState(graph.storeys[0]?.id ?? "");
   const storey = graph.storeys.find((item) => item.id === activeStoreyId) ?? graph.storeys[0];
@@ -282,6 +292,7 @@ export default function GraphPlanEditor({
   const [preview, setPreview] = useState<BuildingGraph | null>(null);
   const previewRef = useRef<BuildingGraph | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
+  const [exactInvalid, setExactInvalid] = useState<ReturnType<typeof invalidExactInput> | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const [fieldRevision, setFieldRevision] = useState(0);
   const drag = useRef<{
@@ -291,6 +302,7 @@ export default function GraphPlanEditor({
   } | null>(null);
   const stopMouseDrag = useRef<(() => void) | null>(null);
   const svg = useRef<SVGSVGElement | null>(null);
+  const exactAttempt = useRef<{ raw: string; rejected: boolean } | null>(null);
   const shown = preview ?? graph;
   const shownStorey = shown.storeys.find((item) => item.id === storey.id) ?? shown.storeys[0];
   // Keep the pointer transform fixed for the whole gesture. Reframing around
@@ -322,6 +334,90 @@ export default function GraphPlanEditor({
   const selectedRoom =
     selection?.kind === "room" ? (storey.rooms.find((room) => room.id === selection.id) ?? null) : null;
 
+  const inspectorSelection = useMemo<StudioInspectorSelection | null>(() => {
+    if (selectedRoom) {
+      return {
+        kind: "room",
+        id: selectedRoom.id,
+        identity: selectedRoom.name,
+        dimensions: [{ label: "Area", value: `${Math.round(selectedRoom.areaSqft)} sq ft` }],
+        placement: `Room face on ${storey.name}`,
+        actions: ["Type an exact name", "Move its boundary walls"],
+      };
+    }
+    if (selectedVertex) {
+      return {
+        kind: "vertex",
+        id: selectedVertex.id,
+        identity: `Vertex ${selectedVertex.id}`,
+        dimensions: [
+          { label: "X", value: `${feet(selectedVertex.xFt)} ft` },
+          { label: "Z", value: `${feet(selectedVertex.zFt)} ft` },
+        ],
+        placement: `Plan coordinates on ${storey.name}`,
+        actions: ["Drag", "Arrow keys", "Type an exact value"],
+      };
+    }
+    if (selectedOpening && selectedWall) {
+      return {
+        kind: "opening",
+        id: selectedOpening.id,
+        identity: `${openingNoun(selectedOpening)} ${selectedOpening.id}`,
+        dimensions: [
+          { label: "Width", value: `${feet(selectedOpening.widthFt)} ft` },
+          { label: "Height", value: `${feet(selectedOpening.heightFt)} ft` },
+          { label: "Offset", value: `${feet(selectedOpening.offsetFt)} ft` },
+          { label: "Sill", value: `${feet(selectedOpening.sillFt)} ft` },
+        ],
+        placement: `On wall ${selectedWall.id} · ${storey.name}`,
+        actions: ["Select in plan", "Type an exact value"],
+      };
+    }
+    if (selectedWall) {
+      return {
+        kind: "wall",
+        id: selectedWall.id,
+        identity: `${selectedWall.kind === "partition" ? "Partition" : "Wall"} ${selectedWall.id}`,
+        dimensions: [
+          { label: "Length", value: `${feet(wallRunFt(selectedWall, vertexById))} ft` },
+          { label: "Thickness", value: `${feet(selectedWall.thicknessFt)} ft` },
+        ],
+        placement: `Between ${selectedWall.startVertexId} and ${selectedWall.endVertexId} · ${storey.name}`,
+        actions: ["Drag an endpoint", "Arrow keys", "Type an exact value"],
+      };
+    }
+    return null;
+  }, [selectedOpening, selectedRoom, selectedVertex, selectedWall, storey.name, vertexById]);
+
+  const inspectorState = useMemo(
+    () =>
+      contextualInspectorState({
+        task: { label: "Plan editing", nextAction: "Select a vertex, wall, opening, or room." },
+        tool: {
+          label: tool === "shape" ? "Shape tool" : "Partition tool",
+          guidance:
+            tool === "shape"
+              ? "Select a plan object to inspect and edit its measured values."
+              : "Choose two existing wall vertices to place one partition.",
+          actions:
+            tool === "shape"
+              ? ["Select an object", "Use arrow keys for a measured nudge"]
+              : ["Choose endpoint one", "Choose endpoint two", "Add partition"],
+        },
+        selection: inspectorSelection,
+        invalid: exactInvalid,
+      }),
+    [exactInvalid, inspectorSelection, tool],
+  );
+
+  useEffect(() => {
+    onInspectorState?.(inspectorState);
+  }, [inspectorState, onInspectorState]);
+
+  useEffect(() => {
+    setExactInvalid(null);
+  }, [activeStoreyId, selection?.id, selection?.kind, tool]);
+
   /* Every outcome in this editor leaves through one of these two, so the
      violet notice a sighted person reads and the sentence a screen reader
      hears are the same sentence, and neither can be forgotten at a call site. */
@@ -332,6 +428,12 @@ export default function GraphPlanEditor({
   const report = (message: string) => {
     setProblem(null);
     setAnnouncement(message);
+  };
+
+  const rememberExactRejection = (message: string) => {
+    if (!exactAttempt.current) return;
+    exactAttempt.current.rejected = true;
+    setExactInvalid(invalidExactInput(exactAttempt.current.raw, message.replace(/^Move rejected:\s*/, "")));
   };
 
   const toGraphPoint = (clientX: number, clientY: number): GraphPoint => {
@@ -376,6 +478,7 @@ export default function GraphPlanEditor({
   ): BuildingGraph | null => {
     const moved = moveGraphVertex(base, storey.id, vertexId, target, snapFt);
     if (!moved.ok) {
+      rememberExactRejection(`Move rejected: ${moved.problem}`);
       refuse(`Move rejected: ${moved.problem}`);
       return null;
     }
@@ -492,10 +595,19 @@ export default function GraphPlanEditor({
     applyVertexMove(graph, vertexId, target, GRID_SNAP_FT, "commit");
   };
 
-  /** Wraps a field commit so a REFUSED entry still re-syncs the input. */
-  const fieldCommit = (run: (value: number) => void) => (value: number) => {
-    setFieldRevision((revision) => revision + 1);
+  /** Wraps a field commit so accepted values re-sync while refused raw input remains repairable. */
+  const fieldCommit = (run: (value: number) => void) => (value: number, raw: string) => {
+    setExactInvalid(null);
+    exactAttempt.current = { raw, rejected: false };
     run(value);
+    const rejected = exactAttempt.current.rejected;
+    exactAttempt.current = null;
+    if (!rejected) setFieldRevision((revision) => revision + 1);
+  };
+
+  const refuseMalformedExact = (raw: string, constraint: string) => {
+    setExactInvalid(invalidExactInput(raw, constraint));
+    refuse(constraint);
   };
 
   const commitVertexX = (value: number) => {
@@ -514,10 +626,12 @@ export default function GraphPlanEditor({
     if (!start || !end) return;
     const run = Math.hypot(end.xFt - start.xFt, end.zFt - start.zFt);
     if (!(lengthFt > 0)) {
+      rememberExactRejection(`Move rejected: wall ${wall.id} must be longer than zero feet.`);
       refuse(`Move rejected: wall ${wall.id} must be longer than zero feet.`);
       return;
     }
     if (run <= 0) {
+      rememberExactRejection(`Move rejected: wall ${wall.id} has no direction to lengthen along.`);
       refuse(`Move rejected: wall ${wall.id} has no direction to lengthen along.`);
       return;
     }
@@ -579,6 +693,7 @@ export default function GraphPlanEditor({
   ) => {
     const changed = setGraphOpening(graph, storey.id, wall.id, opening.id, box);
     if (!changed.ok) {
+      rememberExactRejection(changed.problem);
       refuse(changed.problem);
       return;
     }
@@ -591,6 +706,7 @@ export default function GraphPlanEditor({
   const commitWallThickness = (wall: GraphWallEdge, thicknessFt: number) => {
     const changed = setGraphWallThickness(graph, storey.id, wall.id, thicknessFt);
     if (!changed.ok) {
+      rememberExactRejection(changed.problem);
       refuse(changed.problem);
       return;
     }
@@ -1103,6 +1219,7 @@ export default function GraphPlanEditor({
                 revision={fieldRevision}
                 step={GRID_SNAP_FT}
                 onCommit={fieldCommit(commitVertexX)}
+                onInvalid={refuseMalformedExact}
               />
               <NumberField
                 label={`Vertex ${selectedVertex.id} · Z (feet)`}
@@ -1110,6 +1227,7 @@ export default function GraphPlanEditor({
                 revision={fieldRevision}
                 step={GRID_SNAP_FT}
                 onCommit={fieldCommit(commitVertexZ)}
+                onInvalid={refuseMalformedExact}
                 note={`Arrow keys move the selected vertex by ${feet(GRID_SNAP_FT)} ft, Shift+arrow by ${feet(COARSE_STEP_FT)} ft. A typed value is used exactly.`}
               />
             </div>
@@ -1128,6 +1246,7 @@ export default function GraphPlanEditor({
                     heightFt: selectedOpening.heightFt,
                   }),
                 )}
+                onInvalid={refuseMalformedExact}
               />
               <NumberField
                 label="Width (feet)"
@@ -1142,6 +1261,7 @@ export default function GraphPlanEditor({
                     heightFt: selectedOpening.heightFt,
                   }),
                 )}
+                onInvalid={refuseMalformedExact}
               />
               <NumberField
                 label="Sill (feet)"
@@ -1156,6 +1276,7 @@ export default function GraphPlanEditor({
                     heightFt: selectedOpening.heightFt,
                   }),
                 )}
+                onInvalid={refuseMalformedExact}
               />
               <NumberField
                 label="Head height (feet)"
@@ -1170,6 +1291,7 @@ export default function GraphPlanEditor({
                     heightFt: value,
                   }),
                 )}
+                onInvalid={refuseMalformedExact}
                 note="A typed value writes this opening through setGraphOpening. A hang-off or overlap is refused and the numbers snap back to the box the wall actually has."
               />
             </div>
@@ -1181,6 +1303,7 @@ export default function GraphPlanEditor({
                 revision={fieldRevision}
                 step={GRID_SNAP_FT}
                 onCommit={fieldCommit((value) => commitWallLength(selectedWall, value))}
+                onInvalid={refuseMalformedExact}
                 note="Length slides this wall's end vertex along its own direction; every other vertex stays put."
               />
               <NumberField
@@ -1189,6 +1312,7 @@ export default function GraphPlanEditor({
                 revision={fieldRevision}
                 step={0.05}
                 onCommit={fieldCommit((value) => commitWallThickness(selectedWall, value))}
+                onInvalid={refuseMalformedExact}
                 note="Thickness is a property of this wall only. Neighbouring walls keep the thickness they already have."
               />
             </div>

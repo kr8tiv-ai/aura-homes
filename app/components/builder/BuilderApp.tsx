@@ -237,6 +237,7 @@ import WalkthroughPanel, { WalkthroughCameraRig } from "./Walkthrough";
 import VariationStrip from "./VariationStrip";
 import ScenarioCompare from "./ScenarioCompare";
 import GraphPlanEditor from "./GraphPlanEditor";
+import ContextualInspector from "./ContextualInspector";
 import GuidanceNote from "./GuidanceNote";
 import GuidedStudioShell from "./GuidedStudioShell";
 import HandoffPanel from "./HandoffPanel";
@@ -252,6 +253,11 @@ import Viewport from "./Viewport";
 import { sunPosition } from "./sun";
 import { Button, Segmented } from "./ui";
 import { useAuraProject } from "@/components/project/ProjectContext";
+import {
+  contextualInspectorState,
+  type StudioInspectorSelection,
+  type StudioInspectorState,
+} from "@/lib/builder/guidedStudio";
 
 /* `exportSemantic.ts` is the ifcJSON writer, its reader, and a live round-trip
    checker. Nobody who never opens the export tab should download one byte of
@@ -754,6 +760,7 @@ export default function BuilderApp() {
   const [selectedOpeningId, setSelectedOpeningId] = useState<string | null>(null);
   const [openingStatus, setOpeningStatus] = useState<OpeningStatus | null>(null);
   const [graphCanvasStatus, setGraphCanvasStatus] = useState<string | null>(null);
+  const [graphInspectorState, setGraphInspectorState] = useState<StudioInspectorState | null>(null);
 
   /* OPENING IDS ARE UNIQUE PER VOLUME, NOT PER DESIGN — two volumes may both
      carry a `door-s`. Selection is therefore stored as the opening id alone
@@ -1243,6 +1250,91 @@ export default function BuilderApp() {
     GUIDED_STEPS.findIndex((step) => step.id === guidedStep),
   );
   const activeGuidedStep = GUIDED_STEPS[guidedIndex];
+
+  const contextualInspector = useMemo(() => {
+    if (graphMode && graphInspectorState) return graphInspectorState;
+
+    let selection: StudioInspectorSelection | null = null;
+    if (selectedOpeningId && openingVolumeId) {
+      const volume = spec.volumes.find((candidate) => candidate.id === openingVolumeId);
+      const opening = volume?.openings.find((candidate) => candidate.id === selectedOpeningId);
+      if (volume && opening) {
+        selection = {
+          kind: "opening",
+          id: opening.id,
+          identity: `${opening.kind === "door" ? "Door" : opening.kind === "glazing-wall" ? "Glazing wall" : "Window"} ${opening.id}`,
+          dimensions: [
+            { label: "Width", value: `${opening.widthFt} ft` },
+            { label: "Height", value: `${opening.heightFt} ft` },
+            { label: "Offset", value: `${opening.offsetFt} ft` },
+            { label: "Sill", value: `${opening.sillFt} ft` },
+          ],
+          placement: `${opening.wall} wall · ${volume.name}`,
+          actions: ["Select in plan", "Select in model", "Type an exact value"],
+        };
+      }
+    } else if (selectedFixtureId) {
+      const fixture = fixtures.items.find((candidate) => candidate.id === selectedFixtureId);
+      if (fixture) {
+        const fixturePlacement =
+          fixture.placement.mount === "floor"
+            ? fixture.placement.host.kind === "deck"
+              ? "Deck"
+              : `Volume ${fixture.placement.host.volumeId}`
+            : fixture.placement.mount === "wall"
+              ? `${fixture.placement.wall} wall · ${fixture.placement.volumeId}`
+              : `Roof plane ${fixture.placement.planeIndex + 1} · ${fixture.placement.volumeId}`;
+        selection = {
+          kind: "fixture",
+          id: fixture.id,
+          identity: fixture.label || `Fixture ${fixture.id}`,
+          dimensions: [],
+          placement: fixturePlacement,
+          actions: ["Adjust measured placement", "Review clearance"],
+        };
+      }
+    } else if (selectedVolumeId && activeVolume) {
+      selection = {
+        kind: "volume",
+        id: activeVolume.id,
+        identity: activeVolume.name,
+        dimensions: [
+          { label: "Width", value: `${activeVolume.widthFt} ft` },
+          { label: "Depth", value: `${activeVolume.depthFt} ft` },
+          { label: "Wall height", value: `${activeVolume.wallHeightFt} ft` },
+        ],
+        placement: "Legacy massing volume",
+        actions: ["Select in plan", "Type an exact value"],
+      };
+    }
+
+    return contextualInspectorState({
+      task: { label: activeGuidedStep.label, nextAction: activeGuidedStep.hint },
+      tool:
+        workspace === "plans" || (editorMode === "guided" && workspace === "drawings")
+          ? null
+          : {
+              label: `${activeGuidedStep.label} tools`,
+              guidance: activeGuidedStep.hint,
+              actions: [activeGuidedStep.hint],
+            },
+      selection,
+    });
+  }, [
+    activeGuidedStep.hint,
+    activeGuidedStep.label,
+    activeVolume,
+    editorMode,
+    fixtures.items,
+    graphInspectorState,
+    graphMode,
+    openingVolumeId,
+    selectedFixtureId,
+    selectedOpeningId,
+    selectedVolumeId,
+    spec.volumes,
+    workspace,
+  ]);
   const commandWorkspaces = WORKSPACES.filter((item) =>
     `${item.label} ${item.hint}`.toLowerCase().includes(commandQuery.trim().toLowerCase()),
   );
@@ -1632,7 +1724,11 @@ export default function BuilderApp() {
             className={`${viewMode === "2d" || simultaneous ? "block" : "hidden"}${editorMode === "guided" ? " guided-studio-plan" : ""}`}
           >
             {graphGeometry ? (
-              <GraphPlanEditor graph={graphGeometry.graph} onEdit={editGraph} />
+              <GraphPlanEditor
+                graph={graphGeometry.graph}
+                onEdit={editGraph}
+                onInspectorState={setGraphInspectorState}
+              />
             ) : (
               <Plan2D
                 spec={spec}
@@ -1742,6 +1838,8 @@ export default function BuilderApp() {
         </div>
 
         <div className="builder-stage__controls" role="complementary" aria-label="Contextual inspector">
+          <ContextualInspector value={contextualInspector} />
+
           <Pane on={workspace === "plans"}>
             <PlanCatalog onChoose={choosePlan} currentName={spec.name} />
             {/* VAR01 — exploring versions of the home you have is the same job
