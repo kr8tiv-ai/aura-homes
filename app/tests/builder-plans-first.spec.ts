@@ -307,12 +307,20 @@ test("the served contextual inspector exposes tool, selection, and invalid state
   await page.goto("/build?mode=guided");
   await expect(page.locator(".builder-viewport canvas").first()).toBeAttached({ timeout: 90_000 });
 
-  const root = page.locator("[data-active-design-hash]");
-  const before = await root.getAttribute("data-active-design-hash");
+  /* The default project is intentionally legacy geometry. Enter the graph
+     editor through the same explicit, undoable conversion a person uses, then
+     return to Guided Rooms; the proof must not inject a graph-only fixture. */
+  await page.getByRole("button", { name: "Pro", exact: true }).click();
+  await page.getByRole("button", { name: "Convert to planar editing" }).click();
+  await expect(page.getByRole("heading", { name: "Planar building graph" })).toBeVisible();
+  await page.getByRole("button", { name: "Guided", exact: true }).click();
   await page
     .getByRole("navigation", { name: "Guided design steps" })
     .getByRole("button", { name: "Rooms", exact: true })
     .click();
+
+  const root = page.locator("[data-active-design-hash]");
+  const before = await root.getAttribute("data-active-design-hash");
 
   const inspector = page.getByRole("region", { name: "Selection inspector" });
   await expect(inspector).toHaveAttribute("data-inspector-state", "tool");
