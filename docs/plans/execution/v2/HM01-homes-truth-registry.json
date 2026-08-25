@@ -112,7 +112,17 @@
       "initialClosureCommit": "26e51d3723468a54cbdeb27d0ec3a3698dd650fc",
       "repairCommit": "53a19fdb3d275b510e68926ce609727a6cb93696"
     },
+    "finalVerification": {
+      "verdict": "fail",
+      "closureCommit": "5b0e16e406581a3d19d181e2a43e64eaf7baf263",
+      "passing": "Authority/G02, linear lineage, exact 7/7 write set, manifest-only closure, zero protected paths, 17/17 focused proofs, 14/14 Graph v2, typecheck, deterministic receipt consistency, and absence of runtime side effects all passed.",
+      "blockers": [
+        "revoked proxies and throwing getters at registry, source, claim, or mint-artifact boundaries can leak raw private exceptions",
+        "unknown root, source, claim, and mint-artifact keys are not rejected, so unreviewed promotional fields can validate"
+      ],
+      "requiredFutureAuthority": "A future explicitly authorized correction must use safe own-data-property extraction/reflection guards and exact allowed-key schemas for every registry and mint-artifact object before HM01 can be re-entered."
+    },
     "protectedPathChanges": 0
   },
-  "status": "verification-pending"
+  "status": "blocked"
 }
