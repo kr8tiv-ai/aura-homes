@@ -92,8 +92,9 @@
     "contractTests": "25/25 passed",
     "agentChecks": "build passed; offline demo passed; Alberta LOW/MID/HIGH CAD 199100/301280/443900; 5 milestones; holdback CAD 30128; no provider call",
     "workflowReceipt": "YAML parsed; seven jobs; GitHub actions are immutable-SHA pinned; workflow contains no deploy command or branch-protection mutation",
+    "independentVerdict": "PASS at closure 5f26d29290f7c85814653475224e8748cb64481a; exact 9/9 write set; manifest-only closure; all three mixed/unknown receipt probes rejected",
     "protectedPathChanges": 0,
     "githubSync": "blocked: current GitHub OAuth credential lacks workflow scope required to push .github/workflows/source-ci.yml"
   },
-  "status": "verification-pending"
+  "status": "verified"
 }
