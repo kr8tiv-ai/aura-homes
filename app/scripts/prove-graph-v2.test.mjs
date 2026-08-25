@@ -278,7 +278,8 @@ test("the build-route exception requires inspected source and cannot import moti
   const manifest = JSON.parse(
     await readFile(path.join(repoRoot, "docs/plans/execution/v2/UX02-canvas-first-editor-shell.json"), "utf8"),
   );
-  const pageManifest = { ...manifest, writeSet: [...manifest.writeSet, "app/app/build/page.tsx"] };
+  assert.ok(manifest.writeSet.includes("app/app/build/page.tsx"), "UX02 must own its guarded build-page change");
+  const pageManifest = manifest;
   const baseline = `import BuilderApp from "@/components/builder/BuilderApp"; export default function Page(){ return <main className="shell"><BuilderApp /></main>; }`;
   const safe = `import BuilderApp from "@/components/builder/BuilderApp"; export default function Page(){ return <main className="shell builder-page--compact"><BuilderApp /></main>; }`;
   const unsafe = `import BuilderApp from "@/components/builder/BuilderApp"; import { motion } from "motion/react"; export default function Page(){ return <main className="shell builder-page--compact"><BuilderApp /></main>; }`;

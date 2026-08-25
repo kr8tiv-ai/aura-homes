@@ -170,3 +170,48 @@ test("invalid exact input remains editable and names the violated constraint", (
     recoverable: true,
   });
 });
+
+test("a guided 2D task exposes the canvas and first-edit tools in the first 1280 by 720 viewport", async ({
+  page,
+}, testInfo) => {
+  test.skip(!testInfo.project.use.baseURL, "served UX02 viewport proof runs with the manifest's local base URL");
+  test.setTimeout(180_000);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto("/build?mode=guided");
+
+  const rendererCanvas = page.locator(".builder-viewport canvas").first();
+  await expect(rendererCanvas).toBeAttached({ timeout: 90_000 });
+  await rendererCanvas.evaluate((element) => element.setAttribute("data-ux02-renderer-identity", "preserved"));
+
+  await page
+    .getByRole("navigation", { name: "Guided design steps" })
+    .getByRole("button", { name: "Rooms", exact: true })
+    .click();
+  await page.evaluate(() => window.scrollTo(0, 0));
+
+  await expect(page.getByRole("region", { name: "Project controls" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Guided design steps" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Primary design canvas" })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "Contextual inspector" })).toBeAttached();
+  await expect(page.getByRole("complementary", { name: "Project evidence" })).toBeAttached();
+
+  const plan = page.getByRole("region", { name: "Primary design canvas" }).locator("svg").first();
+  const tools = page.getByRole("group", { name: "Tool" }).first();
+  await expect(plan).toBeVisible();
+  await expect(tools).toBeVisible();
+
+  const [planBox, toolsBox, scrollY] = await Promise.all([
+    plan.boundingBox(),
+    tools.boundingBox(),
+    page.evaluate(() => window.scrollY),
+  ]);
+  expect(scrollY).toBe(0);
+  expect(planBox, "the editable plan has a rendered box").not.toBeNull();
+  expect(toolsBox, "the first-edit tool group has a rendered box").not.toBeNull();
+  expect(planBox!.y).toBeLessThan(720);
+  expect(planBox!.y + planBox!.height).toBeGreaterThan(0);
+  expect(toolsBox!.y).toBeLessThan(720);
+  expect(toolsBox!.y + toolsBox!.height).toBeGreaterThan(0);
+
+  await expect(rendererCanvas).toHaveAttribute("data-ux02-renderer-identity", "preserved");
+});

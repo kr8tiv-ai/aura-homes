@@ -41,19 +41,19 @@ const BuilderApp = dynamic(() => import("@/components/builder/BuilderApp"), {
 
 export default function BuildPage() {
   return (
-    <div className="py-8 sm:py-10">
-      <header className="grid gap-6 border-b aura-hairline pb-7 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.52fr)] lg:items-end">
+    <div className="builder-page py-8 sm:py-10">
+      <header className="builder-page__intro grid gap-6 border-b aura-hairline pb-7 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.52fr)] lg:items-end">
         <div>
           <Reveal y={8}>
-            <p className="aura-label mb-3">03 · Build</p>
+            <p className="builder-page__eyebrow aura-label mb-3">03 · Build</p>
           </Reveal>
           <RevealWords
-            text="Shape the home. Keep every decision."
-            className="max-w-4xl font-display text-[clamp(2rem,4vw,3.7rem)] font-medium leading-[0.98] tracking-[-0.045em]"
+            text="Design your cabin."
+            className="builder-page__title max-w-4xl font-display text-[clamp(2rem,4vw,3.7rem)] font-medium leading-[0.98] tracking-[-0.045em]"
           />
         </div>
         <Reveal delay={0.1} y={10}>
-          <div>
+          <div className="builder-page__summary">
             <p className="max-w-xl text-sm leading-relaxed text-aura-text/68">
               Work in model or plan. One local project carries the geometry, rooms, finishes,
               fixtures, comfort targets, exports, and quote handoff.
@@ -70,7 +70,7 @@ export default function BuildPage() {
         </Reveal>
       </header>
 
-      <div className="mt-6">
+      <div className="builder-page__workspace mt-6">
         <BuilderApp />
       </div>
     </div>

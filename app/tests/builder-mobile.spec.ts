@@ -74,6 +74,25 @@ test("a failed model proposal preserves the current project and offers useful re
   });
 });
 
+test("the compact Guided Studio shell fits a phone without widening the page", async ({ page }) => {
+  test.setTimeout(180_000);
+  await page.goto("/build?mode=guided");
+  await expect(page.locator(".builder-viewport canvas").first()).toBeAttached({ timeout: 90_000 });
+  await page.evaluate(() => window.scrollTo(0, 0));
+
+  await expect(page.getByRole("region", { name: "Project controls" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Guided design steps" })).toBeVisible();
+
+  for (const selector of ["html", ".builder-page", ".builder-mode-shell", ".builder-project-bar"]) {
+    const box = await page.locator(selector).first().evaluate((element) => ({
+      client: element.clientWidth,
+      scroll: element.scrollWidth,
+    }));
+    expect(box.client, `${selector} is rendered`).toBeGreaterThan(0);
+    expect(box.scroll, `${selector} has no horizontal overflow`).toBe(box.client);
+  }
+});
+
 /** Role-name matching is substring and honours text-transform, and this page
  *  holds a "Plans" step button, a "Plans" workspace tab and a "3D preview"
  *  toggle inside the plan library. Scoped and exact, the same way VW01 does. */

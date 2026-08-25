@@ -44,6 +44,7 @@
     "app/components/builder/BuilderApp.tsx",
     "app/components/builder/GuidedStudioShell.tsx",
     "app/app/globals.css",
+    "app/scripts/prove-graph-v2.test.mjs",
     "app/tests/builder-plans-first.spec.ts",
     "app/tests/builder-mobile.spec.ts"
   ],
@@ -76,6 +77,7 @@
       "editablePlanTopPx": 1504.8125,
       "verdict": "fail"
     },
+    "repair": "The verified guard fixture appended the build page because the proposed UX02 manifest did not own it. Activation added that required page path, so the fixture now asserts ownership directly instead of creating a duplicate entry; all rejection probes remain unchanged.",
     "protectedPathChanges": 0
   },
   "status": "active"

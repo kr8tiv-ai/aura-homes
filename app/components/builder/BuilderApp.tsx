@@ -238,6 +238,7 @@ import VariationStrip from "./VariationStrip";
 import ScenarioCompare from "./ScenarioCompare";
 import GraphPlanEditor from "./GraphPlanEditor";
 import GuidanceNote from "./GuidanceNote";
+import GuidedStudioShell from "./GuidedStudioShell";
 import HandoffPanel from "./HandoffPanel";
 import LiveReadout from "./LiveReadout";
 import Plan2D from "./Plan2D";
@@ -1329,7 +1330,8 @@ export default function BuilderApp() {
 
   return (
     <div
-      className="space-y-6"
+      className="builder-workspace space-y-6"
+      data-editor-mode={editorMode}
       data-active-plan={state.doc.planOrigin?.templateId ?? "custom"}
       data-active-design-hash={documentSignature(state.doc)}
     >
@@ -1390,136 +1392,40 @@ export default function BuilderApp() {
         </section>
       ) : null}
 
-      <section className="builder-mode-shell" aria-labelledby="editor-mode-heading">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p id="editor-mode-heading" className="aura-label text-aura-emerald">Editor mode</p>
-            <p className="mt-2 max-w-xl text-sm leading-relaxed text-aura-text/65">
-              Guided keeps one decision in view. Pro exposes every precision workspace. Both edit
-              the same project document and produce the same canonical design hash.
-            </p>
-          </div>
-          <div role="group" aria-label="Editor mode" className="builder-mode-toggle">
-            {(["guided", "pro"] as const).map((editor) => (
-              <button
-                key={editor}
-                type="button"
-                aria-pressed={editorMode === editor}
-                onClick={() => {
-                  setEditorMode(editor);
-                  if (editor === "pro" && workspace === "plans") setWorkspace("shape");
-                  if (editor === "guided") {
-                    const step = GUIDED_STEPS.find((candidate) => candidate.id === guidedStep);
-                    if (step) {
-                      setWorkspace(step.workspace);
-                      if (step.view) setMode(step.view);
-                    }
-                  }
-                }}
-                className="builder-mode-toggle__button"
-              >
-                {editor === "guided" ? "Guided" : "Pro"}
-              </button>
-            ))}
-          </div>
-        </div>
+      <GuidedStudioShell
+        projectName={spec.name}
+        editorMode={editorMode}
+        steps={GUIDED_STEPS}
+        activeStepId={guidedStep}
+        activeStepIndex={guidedIndex}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        planRouteOpen={planRoute}
+        onEditorMode={(editor) => {
+          setEditorMode(editor);
+          if (editor === "pro" && workspace === "plans") setWorkspace("shape");
+          if (editor === "guided") {
+            const step = GUIDED_STEPS.find((candidate) => candidate.id === guidedStep);
+            if (step) {
+              setWorkspace(step.workspace);
+              if (step.view) setMode(step.view);
+            }
+          }
+        }}
+        onStep={(stepId) => {
+          const step = GUIDED_STEPS.find((candidate) => candidate.id === stepId);
+          if (step) chooseGuidedStep(step);
+        }}
+        onUndo={() => dispatch({ type: "undo" })}
+        onRedo={() => dispatch({ type: "redo" })}
+        onCommands={() => setCommandsOpen(true)}
+        onOpenDrawings={openPlanRoute}
+        onCloseDrawings={leavePlanRoute}
+      />
 
-        {editorMode === "guided" ? (
-          <>
-            <nav aria-label="Guided design steps" className="guided-step-nav">
-              {GUIDED_STEPS.map((step, index) => (
-                <button
-                  key={step.id}
-                  type="button"
-                  aria-pressed={guidedStep === step.id}
-                  data-done={index < guidedIndex || undefined}
-                  onClick={() => chooseGuidedStep(step)}
-                  className="guided-step"
-                >
-                  <span aria-hidden>{index < guidedIndex ? "✓" : String(index + 1).padStart(2, "0")}</span>
-                  {step.label}
-                </button>
-              ))}
-            </nav>
-            <div className="guided-step-note" role="status">
-              <span>{activeGuidedStep.label}</span>
-              <p>{activeGuidedStep.hint}</p>
-            </div>
-            {/* The "why" for whatever this step is actually deciding, sourced
-                or absent. `explain` returns null when this document cannot be
-                traced to a source, and GuidanceNote then renders nothing —
-                saying nothing is the correct output, because a placeholder
-                would be a sentence about Aura where somebody wanted a
-                sentence about their home. */}
-            {GUIDED_STEP_TOPICS[activeGuidedStep.id]?.map((topic) => (
-              <GuidanceNote key={topic} topic={topic} document={state.doc} />
-            ))}
-            {/* One decision in view needs a way to take the NEXT one without
-                hunting the strip above — guided is a walk, so it gets legs.
-                The last step trades Next for graduation: the same document,
-                every precision workspace. */}
-            <div className="guided-step-flow">
-              <Button
-                disabled={guidedIndex <= 0}
-                onClick={() => chooseGuidedStep(GUIDED_STEPS[guidedIndex - 1])}
-              >
-                Back
-              </Button>
-              <span className="guided-step-flow__count">
-                Step {guidedIndex + 1} of {GUIDED_STEPS.length}
-              </span>
-              {guidedIndex < GUIDED_STEPS.length - 1 ? (
-                <Button
-                  tone="loud"
-                  onClick={() => chooseGuidedStep(GUIDED_STEPS[guidedIndex + 1])}
-                >
-                  Next · {GUIDED_STEPS[guidedIndex + 1].label}
-                </Button>
-              ) : (
-                <Button
-                  tone="loud"
-                  title="Same project, every precision workspace"
-                  onClick={() => {
-                    setEditorMode("pro");
-                    setWorkspace("export");
-                  }}
-                >
-                  Continue in Pro
-                </Button>
-              )}
-            </div>
-
-            {/* ------------------------------------------- VW03: the plan route
-
-                Beside the walk rather than inside it. The drawings are not a
-                NINTH DECISION — they are the thing the eight decisions were
-                for, and somebody standing in a field with a phone wants them
-                from wherever the walk happens to be, not after seven Nexts.
-                One control, one tap each way, and the label says which sheet
-                arrives so the promise is checkable before it is pressed. */}
-            <div
-              className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-aura-teal px-4 py-3"
-              data-plan-route={planRoute ? "open" : "closed"}
-            >
-              <p className="max-w-md text-xs leading-relaxed text-aura-text/65">
-                {planRoute
-                  ? "Read-only. Nothing on this screen can change the design — the editors are on the step you came from."
-                  : "Sheet A3 FLOOR PLAN — dimensioned inside and out — plus the other seven sheets and the whole set as one PDF. Read-only, and it fits a phone."}
-              </p>
-              {planRoute ? (
-                <Button onClick={leavePlanRoute} title="Back to the step you were on">
-                  Back to {activeGuidedStep.label}
-                </Button>
-              ) : (
-                <Button tone="loud" onClick={openPlanRoute} title="The dimensioned floor plan and the rest of the set">
-                  Open the drawings
-                </Button>
-              )}
-            </div>
-          </>
-        ) : null}
-      </section>
-
+      {/* Retained temporarily as a source-level parity reference while UX02
+          changes only presentation order. It is removed from layout and the
+          accessibility tree; all live controls above call the same handlers. */}
       {/* ================================================================ THE STAGE
 
           The home, and the step that is changing it, beside each other. Two
@@ -1538,7 +1444,7 @@ export default function BuilderApp() {
           minimum widths total more than a half-width column can give it, so
           squeezing it there would push a scrollbar across the page. */}
       <div className="builder-stage" data-stage={workspace === "plans" ? "browse" : "edit"}>
-        <div className="builder-stage__view">
+        <div className="builder-stage__view" role="region" aria-label="Primary design canvas">
           {/* ------------------------------------------------------- the toggle */}
           <div className="builder-view-switch rounded-2xl px-4 py-3 sm:px-5 sm:py-4">
             <div className="flex flex-wrap items-end justify-between gap-4">
@@ -1718,7 +1624,9 @@ export default function BuilderApp() {
             </p>
           ) : null}
 
-          <div className={viewMode === "2d" || simultaneous ? "block" : "hidden"}>
+          <div
+            className={`${viewMode === "2d" || simultaneous ? "block" : "hidden"}${editorMode === "guided" ? " guided-studio-plan" : ""}`}
+          >
             {graphGeometry ? (
               <GraphPlanEditor graph={graphGeometry.graph} onEdit={editGraph} />
             ) : (
@@ -1829,7 +1737,7 @@ export default function BuilderApp() {
           ) : null}
         </div>
 
-        <div className="builder-stage__controls">
+        <div className="builder-stage__controls" role="complementary" aria-label="Contextual inspector">
           <Pane on={workspace === "plans"}>
             <PlanCatalog onChoose={choosePlan} currentName={spec.name} />
             {/* VAR01 — exploring versions of the home you have is the same job
@@ -2326,6 +2234,25 @@ export default function BuilderApp() {
           </Pane>
         </div>
       </div>
+
+      {editorMode === "guided" ? (
+        <aside className="builder-evidence-region" aria-label="Project evidence">
+          <details>
+            <summary>
+              <span>Evidence and constraints</span>
+              <small>Design intent · professional review still required</small>
+            </summary>
+            <div className="builder-evidence-region__content">
+              {GUIDED_STEP_TOPICS[activeGuidedStep.id]?.map((topic) => (
+                <GuidanceNote key={topic} topic={topic} document={state.doc} />
+              ))}
+              {GUIDED_STEP_TOPICS[activeGuidedStep.id] ? null : (
+                <p>No additional sourced guidance is attached to this task yet.</p>
+              )}
+            </div>
+          </details>
+        </aside>
+      ) : null}
 
       {commandsOpen ? (
         <div className="builder-command-backdrop" onMouseDown={() => setCommandsOpen(false)}>
