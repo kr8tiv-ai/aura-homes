@@ -63,7 +63,12 @@
   "evidence": {
     "startedFrom": "804e7c01f4a284ecb46992be3f6ad099687ee3ca",
     "dependencyGate": "G01 verified",
-    "protectedPathChanges": 0
+    "candidateCommit": "0ac473bd81054bfdf4f945b67d8efc3b94d2017b",
+    "focusedTests": "11/11",
+    "typecheck": "pass",
+    "writeSet": "4/4 exact candidate paths from 804e7c0",
+    "protectedPathChanges": 0,
+    "workerVerdict": "candidate-ready-for-independent-verification"
   },
-  "status": "active"
+  "status": "verification-pending"
 }
