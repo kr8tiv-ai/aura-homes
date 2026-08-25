@@ -997,7 +997,9 @@ test.describe("in a served build", () => {
     test.setTimeout(240_000);
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/build?mode=guided");
+    const canvas = page.locator(".builder-viewport canvas");
     const walk = page.locator("[data-walkthrough]");
+    await expect(canvas).toBeAttached({ timeout: 90_000 });
     await expect(walk).toBeVisible();
 
     await expect(walk.locator(".walk-play")).toBeHidden();
