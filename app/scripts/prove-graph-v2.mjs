@@ -472,14 +472,21 @@ const sourceFacts = (source, fileName) => {
   let builderApps = 0;
   let inlineStyles = 0;
   let handlers = 0;
+  let dynamicLoaders = 0;
   const visit = (node) => {
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
       imports.push(node.moduleSpecifier.text);
     }
-    if (ts.isCallExpression(node) && node.arguments.length > 0 && ts.isStringLiteral(node.arguments[0])) {
+    if (ts.isCallExpression(node)) {
       const dynamicImport = node.expression.kind === ts.SyntaxKind.ImportKeyword;
       const commonJsRequire = ts.isIdentifier(node.expression) && node.expression.text === "require";
-      if (dynamicImport || commonJsRequire) imports.push(node.arguments[0].text);
+      if (dynamicImport || commonJsRequire) {
+        dynamicLoaders += 1;
+        const argument = node.arguments[0];
+        if (argument && (ts.isStringLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument))) {
+          imports.push(argument.text);
+        }
+      }
     }
     if (ts.isJsxSelfClosingElement(node) || ts.isJsxOpeningElement(node)) {
       const tag = node.tagName.getText(sourceFile);
@@ -498,7 +505,7 @@ const sourceFacts = (source, fileName) => {
     ts.forEachChild(node, visit);
   };
   visit(sourceFile);
-  return { imports, classes, jsxTags, builderApps, inlineStyles, handlers };
+  return { imports, classes, jsxTags, builderApps, inlineStyles, handlers, dynamicLoaders };
 };
 
 export const validateBuilderPageChanges = (baselineSource, candidateSource) => {
@@ -509,9 +516,12 @@ export const validateBuilderPageChanges = (baselineSource, candidateSource) => {
   if (after.imports.some((entry) => forbiddenImport.test(entry))) {
     errors.push("builder page cannot import motion, story, renderer, or protected 3D modules");
   }
+  if (after.dynamicLoaders > before.dynamicLoaders) {
+    errors.push("builder page cannot add dynamic import or require loaders");
+  }
   if (
     after.jsxTags.some((tag) =>
-      /^(?:motion\.|Viewport$|PlanModelPreview$|Walkthrough$|OpeningHandles$|SurfacePicker$)/.test(tag),
+      /\.|^(?:Viewport$|PlanModelPreview$|Walkthrough$|OpeningHandles$|SurfacePicker$)/.test(tag),
     )
   ) {
     errors.push("builder page cannot render motion or protected 3D component tags");
