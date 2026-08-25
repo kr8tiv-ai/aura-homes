@@ -27,6 +27,24 @@ export const EXPECTED_HISTORICAL_REGISTRY = Object.freeze({
   disposition: "historical-input-only",
 });
 
+export const EXPECTED_FOUNDER_AUTHOR = "Matt-Aurora-Ventures <lucidbloks@gmail.com>";
+
+export const APPROVED_GRAPH_NODE_IDS = Object.freeze([
+  "AI01", "AI02", "AI03", "AI04", "AI05",
+  "CM01", "CM02", "CM03", "CM04", "CM05",
+  "DV01", "DV02", "DV03", "DV04",
+  "ED01", "ED02", "ED03", "ED04", "ED05",
+  "G00", "G01", "G02", "G03", "G04", "G05",
+  "HM01", "HM02", "HM03", "HM04", "HM05",
+  "IP01", "IP02", "IP03", "IP04", "IP05", "IP06", "IP07", "IP08", "IP09",
+  "LO01", "LO02", "LO03", "LO04",
+  "OR01", "OR02", "OR03", "OR04",
+  "Q01", "Q02", "Q03", "Q04",
+  "UX01", "UX02", "UX03", "UX04", "UX05", "UX06", "UX07", "UX08", "UX09", "UX10",
+]);
+
+const approvedGraphNodeIds = new Set(APPROVED_GRAPH_NODE_IDS);
+
 const canonicalize = (value) => {
   if (Array.isArray(value)) return value.map(canonicalize);
   if (value !== null && typeof value === "object") {
@@ -164,6 +182,30 @@ export const hashFounderDecisionChange = (change) => {
   return sha256(JSON.stringify(canonicalize(body)));
 };
 
+export const hashFounderDecisionSourcePayload = (change) => {
+  const errors = [];
+  const safeChange = inspectJsonValue(change, "decision change", errors);
+  if (errors.length > 0 || safeChange === null || typeof safeChange !== "object" || Array.isArray(safeChange) ||
+      safeChange.authority === null || typeof safeChange.authority !== "object" || Array.isArray(safeChange.authority)) {
+    throw new Error("cannot hash an unsafe decision source payload");
+  }
+  const payload = {
+    id: safeChange.id,
+    recordedAtISO: safeChange.recordedAtISO,
+    effectiveDate: safeChange.effectiveDate,
+    state: safeChange.state,
+    decision: safeChange.decision,
+    scope: safeChange.scope,
+    authority: {
+      actor: safeChange.authority.actor,
+      sourceType: safeChange.authority.sourceType,
+      sourcePath: safeChange.authority.sourcePath,
+    },
+    supersedes: safeChange.supersedes,
+  };
+  return sha256(JSON.stringify(canonicalize(payload)));
+};
+
 const duplicateValues = (values) => values.filter((value, index) => values.indexOf(value) !== index);
 
 export const validateFounderDecisionLedger = (candidate) => {
@@ -196,6 +238,7 @@ export const validateFounderDecisionLedger = (candidate) => {
   }
 
   const knownIds = new Set(EXPECTED_AUTHORITY_SEED.decisionIds);
+  const supersededTargets = new Set();
   let previousHash = FOUNDER_DECISION_GENESIS_SHA256;
   for (let index = 0; index < ledger.changes.length; index += 1) {
     const change = ledger.changes[index];
@@ -238,6 +281,11 @@ export const validateFounderDecisionLedger = (candidate) => {
       if (nodes.some((node) => typeof node !== "string" || !/^[A-Z]{1,3}\d{2}$/.test(node))) {
         errors.push(`${label}.scope.nodes must contain graph node ids`);
       }
+      for (const node of nodes) {
+        if (typeof node === "string" && /^[A-Z]{1,3}\d{2}$/.test(node) && !approvedGraphNodeIds.has(node)) {
+          errors.push(`${label}.scope.nodes contains unknown approved graph node ${node}`);
+        }
+      }
       if (duplicateValues(nodes).length > 0) {
         errors.push(`${label}.scope.nodes must not contain duplicates`);
       }
@@ -267,8 +315,11 @@ export const validateFounderDecisionLedger = (candidate) => {
           errors.push(`${label} supersedes unknown or forward decision ${targetLabel}`);
         } else if (seenTargets.has(target)) {
           errors.push(`${label} repeats supersession target ${target}`);
+        } else if (supersededTargets.has(target)) {
+          errors.push(`${label} supersession target ${target} was already claimed`);
         }
         seenTargets.add(target);
+        if (typeof target === "string" && knownIds.has(target)) supersededTargets.add(target);
       }
     }
     if (change.previousEntrySha256 !== previousHash) {
@@ -283,6 +334,76 @@ export const validateFounderDecisionLedger = (candidate) => {
     if (change.entrySha256 !== actualHash) errors.push(`${label}.entrySha256 does not match its canonical body`);
     if (typeof change.id === "string") knownIds.add(change.id);
     if (typeof change.entrySha256 === "string") previousHash = change.entrySha256;
+  }
+  return [...new Set(errors)];
+};
+
+export const validateFounderDecisionTransition = (previousCandidate, nextCandidate) => {
+  const errors = [];
+  const previousErrors = validateFounderDecisionLedger(previousCandidate);
+  const nextErrors = validateFounderDecisionLedger(nextCandidate);
+  if (previousErrors.length > 0) errors.push(...previousErrors.map((error) => `previous ledger: ${error}`));
+  if (nextErrors.length > 0) errors.push(...nextErrors.map((error) => `next ledger: ${error}`));
+  if (errors.length > 0) return [...new Set(errors)];
+
+  const previous = inspectJsonValue(previousCandidate, "previous ledger", errors);
+  const next = inspectJsonValue(nextCandidate, "next ledger", errors);
+  if (errors.length > 0 || !Array.isArray(previous?.changes) || !Array.isArray(next?.changes)) {
+    return [...new Set(errors.length > 0 ? errors : ["ledger transition cannot be inspected safely"] )];
+  }
+  if (next.changes.length < previous.changes.length) {
+    errors.push("ledger transition cannot remove prior decisions");
+  }
+  const sharedLength = Math.min(previous.changes.length, next.changes.length);
+  for (let index = 0; index < sharedLength; index += 1) {
+    const previousBytes = JSON.stringify(canonicalize(previous.changes[index]));
+    const nextBytes = JSON.stringify(canonicalize(next.changes[index]));
+    if (previousBytes !== nextBytes) {
+      errors.push(`ledger transition previous decision history is not an exact prefix at index ${index}`);
+    }
+  }
+  return [...new Set(errors)];
+};
+
+export const validateFounderDecisionSourceRecord = (changeCandidate, source, author, sourceCommitISO) => {
+  const errors = [];
+  const change = inspectJsonValue(changeCandidate, "decision change", errors);
+  if (errors.length > 0 || change === null || typeof change !== "object" || Array.isArray(change)) {
+    return [...new Set(errors.length > 0 ? errors : ["decision change cannot be inspected safely"])];
+  }
+  if (author !== EXPECTED_FOUNDER_AUTHOR) {
+    errors.push("authority source commit is not founder-authored by the exact approved identity");
+  }
+  if (typeof source !== "string") errors.push("authority source is not text");
+
+  const sourceCommitMillis = typeof sourceCommitISO === "string" &&
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/.test(sourceCommitISO)
+    ? Date.parse(sourceCommitISO)
+    : Number.NaN;
+  if (!Number.isFinite(sourceCommitMillis)) {
+    errors.push("authority source commit has no valid chronology");
+  }
+  const recordedMillis = strictDateMillis(change.recordedAtISO, true);
+  if (recordedMillis !== null && Number.isFinite(sourceCommitMillis) && recordedMillis > sourceCommitMillis) {
+    errors.push("decision recordedAtISO follows its source commit chronology");
+  }
+
+  let payloadDigest = null;
+  try {
+    payloadDigest = hashFounderDecisionSourcePayload(change);
+  } catch {
+    errors.push("authority source payload digest could not be recomputed safely");
+  }
+  if (typeof source === "string") {
+    for (const marker of [
+      `Decision-ID: ${change.id}`,
+      "Founder: Matt",
+      "State: RECORDED-PENDING-GRAPH",
+      `Decision: ${change.decision}`,
+      `Change-SHA256: ${payloadDigest}`,
+    ]) {
+      if (!source.includes(marker)) errors.push(`authority source is missing exact marker ${marker}`);
+    }
   }
   return [...new Set(errors)];
 };
@@ -314,6 +435,7 @@ export const validateFounderDecisionSources = (candidate, repoRootInput) => {
     }
     let source;
     let author;
+    let sourceCommitISO;
     try {
       execFileSync("git", ["merge-base", "--is-ancestor", commit, "HEAD"], { cwd: repoRoot, stdio: "ignore" });
       source = execFileSync("git", ["cat-file", "blob", `${commit}:${sourcePath}`], {
@@ -326,21 +448,82 @@ export const validateFounderDecisionSources = (candidate, repoRootInput) => {
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"],
       }).trim();
+      sourceCommitISO = execFileSync("git", ["show", "-s", "--format=%aI", commit], {
+        cwd: repoRoot,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      }).trim();
     } catch {
       errors.push(`${label} authority source does not reopen at its claimed commit`);
       continue;
     }
-    if (!/(?:Matt|Matt-Aurora-Ventures|lucidbloks@gmail\.com)/i.test(author)) {
-      errors.push(`${label} authority source commit is not founder-authored`);
+    errors.push(...validateFounderDecisionSourceRecord(change, source, author, sourceCommitISO)
+      .map((error) => `${label} ${error}`));
+  }
+  return [...new Set(errors)];
+};
+
+const gitBlobObjectSha256 = (bytes) => sha256(Buffer.concat([
+  Buffer.from(`blob ${bytes.length}\0`, "utf8"),
+  bytes,
+]));
+
+export const validateFounderDecisionRepositoryTransition = (candidate, repoRootInput) => {
+  const errors = [];
+  const repoRoot = repoRootInput instanceof URL
+    ? fileURLToPath(repoRootInput)
+    : path.resolve(String(repoRootInput));
+  const registryPath = EXPECTED_HISTORICAL_REGISTRY.path;
+  let latestCommit;
+  let latestBytes;
+  let previousBytes;
+  let historicalBytes;
+  try {
+    latestCommit = execFileSync("git", ["log", "-1", "--format=%H", "--", registryPath], {
+      cwd: repoRoot, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+    latestBytes = execFileSync("git", ["cat-file", "blob", `${latestCommit}:${registryPath}`], {
+      cwd: repoRoot, stdio: ["ignore", "pipe", "pipe"],
+    });
+    const previousCommit = execFileSync("git", ["log", "-1", "--format=%H", `${latestCommit}^`, "--", registryPath], {
+      cwd: repoRoot, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+    previousBytes = execFileSync("git", ["cat-file", "blob", `${previousCommit}:${registryPath}`], {
+      cwd: repoRoot, stdio: ["ignore", "pipe", "pipe"],
+    });
+    historicalBytes = execFileSync("git", ["cat-file", "blob", `${EXPECTED_HISTORICAL_REGISTRY.pinnedAtCommit}:${registryPath}`], {
+      cwd: repoRoot, stdio: ["ignore", "pipe", "pipe"],
+    });
+  } catch {
+    return ["repository decision history cannot be reopened"];
+  }
+
+  if (sha256(historicalBytes) !== EXPECTED_HISTORICAL_REGISTRY.storedBlobSha256 ||
+      gitBlobObjectSha256(historicalBytes) !== EXPECTED_HISTORICAL_REGISTRY.objectSha256) {
+    errors.push("pinned historical decision registry does not match its stored and object hashes");
+  }
+
+  let latest;
+  let previous;
+  try {
+    latest = JSON.parse(latestBytes.toString("utf8"));
+    previous = JSON.parse(previousBytes.toString("utf8"));
+  } catch {
+    return [...new Set([...errors, "repository decision history is not valid JSON"])];
+  }
+
+  const candidateErrors = validateFounderDecisionLedger(candidate);
+  if (candidateErrors.length > 0) return [...new Set([...errors, ...candidateErrors])];
+  const candidateMatchesLatest = equalCanonical(candidate, latest);
+  const transitionBase = candidateMatchesLatest ? previous : latest;
+  if (transitionBase?.schema === "FounderDecisionRegistryV1") {
+    if (!equalCanonical(previous, JSON.parse(historicalBytes.toString("utf8"))) || candidate.changes.length !== 0) {
+      errors.push("Graph v2 ledger migration must start from the pinned V1 registry with zero appended changes");
     }
-    for (const marker of [
-      `Decision-ID: ${change.id}`,
-      "Founder: Matt",
-      "State: RECORDED-PENDING-GRAPH",
-      `Decision: ${change.decision}`,
-    ]) {
-      if (!source.includes(marker)) errors.push(`${label} authority source is missing exact marker ${marker}`);
-    }
+  } else if (transitionBase?.schema === "FounderDecisionRegistryV2") {
+    errors.push(...validateFounderDecisionTransition(transitionBase, candidate));
+  } else {
+    errors.push("repository decision history has no recognized transition base");
   }
   return [...new Set(errors)];
 };
@@ -352,6 +535,7 @@ const main = async () => {
   const errors = [
     ...validateFounderDecisionLedger(ledger),
     ...validateFounderDecisionSources(ledger, repoRoot),
+    ...validateFounderDecisionRepositoryTransition(ledger, repoRoot),
   ];
   process.stdout.write(`${JSON.stringify({
     schema: "FounderDecisionLedgerGateReceiptV1",

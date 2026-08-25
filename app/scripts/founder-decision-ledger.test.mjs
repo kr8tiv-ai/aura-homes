@@ -3,8 +3,11 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   hashFounderDecisionChange,
+  hashFounderDecisionSourcePayload,
+  validateFounderDecisionSourceRecord,
   validateFounderDecisionSources,
   validateFounderDecisionLedger,
+  validateFounderDecisionTransition,
 } from "./founder-decision-ledger.mjs";
 
 const registryUrl = new URL("../../docs/plans/registry/decisions.json", import.meta.url);
@@ -174,4 +177,100 @@ test("hostile reflection returns bounded errors and never invokes hidden values"
   assert.doesNotThrow(() => validateFounderDecisionLedger(throwingRoot));
   assert.doesNotMatch(validateFounderDecisionLedger(throwingRoot).join("\n"), /PRIVATE_ROOT_VALUE/);
   assert.match(validateFounderDecisionLedger(throwingRoot).join("\n"), /accessor properties are not allowed/);
+});
+
+test("a ledger transition is append-only even when an attacker recomputes the entire chain", () => {
+  const previous = ledger();
+  const first = validChange(previous);
+  previous.changes.push(first);
+
+  const appended = structuredClone(previous);
+  const second = validChange(appended, {
+    id: "FD-2026-08-26-second",
+    recordedAtISO: "2026-08-26T12:00:00.000Z",
+    effectiveDate: "2026-08-26",
+    previousEntrySha256: appended.changes[0].entrySha256,
+  });
+  appended.changes.push(second);
+  assert.deepEqual(validateFounderDecisionTransition(previous, appended), []);
+
+  const rewritten = structuredClone(appended);
+  rewritten.changes[0].scope = { clauses: ["§18.3"], nodes: ["G04"] };
+  rewritten.changes[0].entrySha256 = hashFounderDecisionChange(rewritten.changes[0]);
+  rewritten.changes[1].previousEntrySha256 = rewritten.changes[0].entrySha256;
+  rewritten.changes[1].entrySha256 = hashFounderDecisionChange(rewritten.changes[1]);
+  assert.deepEqual(validateFounderDecisionLedger(rewritten), []);
+  assert.match(
+    validateFounderDecisionTransition(previous, rewritten).join("\n"),
+    /previous decision history is not an exact prefix/,
+  );
+
+  const removed = structuredClone(previous);
+  removed.changes = [];
+  assert.match(validateFounderDecisionTransition(previous, removed).join("\n"), /cannot remove prior decisions/);
+});
+
+test("founder source records bind the full substantive payload, exact identity, and chronology", () => {
+  const current = ledger();
+  const change = validChange(current);
+  const digest = hashFounderDecisionSourcePayload(change);
+  const source = [
+    `Decision-ID: ${change.id}`,
+    "Founder: Matt",
+    "State: RECORDED-PENDING-GRAPH",
+    `Decision: ${change.decision}`,
+    `Change-SHA256: ${digest}`,
+  ].join("\n");
+
+  assert.deepEqual(validateFounderDecisionSourceRecord(
+    change,
+    source,
+    "Matt-Aurora-Ventures <lucidbloks@gmail.com>",
+    "2026-08-25T12:05:00-06:00",
+  ), []);
+  assert.match(validateFounderDecisionSourceRecord(
+    change,
+    source.replace(digest, "0".repeat(64)),
+    "Matt-Aurora-Ventures <lucidbloks@gmail.com>",
+    "2026-08-25T12:05:00-06:00",
+  ).join("\n"), /missing exact marker Change-SHA256/);
+  assert.match(validateFounderDecisionSourceRecord(
+    change,
+    source,
+    "NotMatt <lucidbloks@gmail.com>",
+    "2026-08-25T12:05:00-06:00",
+  ).join("\n"), /not founder-authored/);
+
+  const future = validChange(current, { recordedAtISO: "2099-08-25T12:00:00.000Z" });
+  const futureSource = source
+    .replace(change.id, future.id)
+    .replace(change.decision, future.decision)
+    .replace(digest, hashFounderDecisionSourcePayload(future));
+  assert.match(validateFounderDecisionSourceRecord(
+    future,
+    futureSource,
+    "Matt-Aurora-Ventures <lucidbloks@gmail.com>",
+    "2026-08-25T12:05:00-06:00",
+  ).join("\n"), /recordedAtISO follows its source commit/);
+});
+
+test("scope nodes must exist and supersession targets are globally single-use", () => {
+  const invalidScope = ledger();
+  invalidScope.changes.push(validChange(invalidScope, {
+    scope: { clauses: [], nodes: ["ZZZ99"] },
+  }));
+  assert.match(validateFounderDecisionLedger(invalidScope).join("\n"), /unknown approved graph node ZZZ99/);
+
+  const current = ledger();
+  const first = validChange(current, { supersedes: ["FD20-01"] });
+  const second = validChange(current, {
+    id: "FD-2026-08-26-second",
+    recordedAtISO: "2026-08-26T12:00:00.000Z",
+    effectiveDate: "2026-08-26",
+    previousEntrySha256: first.entrySha256,
+    supersedes: ["FD20-01"],
+  });
+  second.entrySha256 = hashFounderDecisionChange(second);
+  current.changes.push(first, second);
+  assert.match(validateFounderDecisionLedger(current).join("\n"), /supersession target FD20-01 was already claimed/);
 });
