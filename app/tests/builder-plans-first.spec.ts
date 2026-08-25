@@ -1,5 +1,14 @@
 import { expect, test } from "playwright/test";
 
+import {
+  GUIDED_STUDIO_TASKS,
+  canonicalEdit,
+  evidenceSummary,
+  invalidExactInput,
+  studioHistoryLabel,
+  type StudioEditIntent,
+} from "@/lib/builder/guidedStudio";
+
 /* WHY THIS FILE EXISTS.
 
    The founder opened his own builder and asked why he could not see the plan
@@ -107,4 +116,57 @@ test("every other step keeps the model first, so the rule is scoped and not glob
   expect(
     `edit stage: model above controls — ${seen.view!.bottom <= seen.controls!.top + 1}`,
   ).toBe("edit stage: model above controls — true");
+});
+
+test("the Guided Studio task contract keeps one short, stable path around the canvas", () => {
+  expect(GUIDED_STUDIO_TASKS.map((task) => task.id)).toEqual([
+    "plans",
+    "shell",
+    "rooms",
+    "openings",
+    "site",
+    "performance",
+    "materials",
+    "review",
+  ]);
+  expect(GUIDED_STUDIO_TASKS.every((task) => task.label.length > 0 && task.nextAction.length > 0)).toBe(true);
+});
+
+test("pointer, keyboard, exact value, and accepted AI resolve to one canonical edit and history label", () => {
+  const base = {
+    target: { kind: "wall" as const, id: "wall-north" },
+    operation: "set" as const,
+    field: "lengthFt",
+    value: 24,
+  };
+  const inputs: StudioEditIntent["input"][] = ["pointer", "keyboard", "exact", "ai-accepted"];
+  const edits = inputs.map((input) => ({ ...base, input }) satisfies StudioEditIntent);
+
+  expect(edits.map(canonicalEdit)).toEqual(Array(4).fill(canonicalEdit(edits[0])));
+  expect(edits.map(studioHistoryLabel)).toEqual(Array(4).fill("Set wall lengthFt"));
+});
+
+test("collapsing evidence cannot hide blockers or promote the project claim", () => {
+  const evidence = [
+    { id: "permit", severity: "blocking" as const, label: "Local permit review is still required" },
+    { id: "cost", severity: "warning" as const, label: "Supplier quote is older than 30 days" },
+    { id: "source", severity: "info" as const, label: "Plan source recorded" },
+  ];
+  const open = evidenceSummary(evidence, "design-intent", true);
+  const collapsed = evidenceSummary(evidence, "design-intent", false);
+
+  expect(collapsed.claimState).toBe(open.claimState);
+  expect(collapsed.blockingCount).toBe(1);
+  expect(collapsed.visibleBlockingIds).toEqual(["permit"]);
+  expect(collapsed.canAdvanceClaim).toBe(false);
+  expect(collapsed.compactText).toContain("1 blocker");
+});
+
+test("invalid exact input remains editable and names the violated constraint", () => {
+  expect(invalidExactInput("2'-3\"", "Wall length must be at least 6 ft")).toEqual({
+    accepted: false,
+    raw: "2'-3\"",
+    constraint: "Wall length must be at least 6 ft",
+    recoverable: true,
+  });
 });

@@ -2,6 +2,11 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test, type Locator, type Page } from "playwright/test";
 
+import {
+  deviceCapabilities,
+  failedProposalRecovery,
+} from "@/lib/builder/guidedStudio";
+
 /* ===========================================================================
    VW03 — THE PLAN A PERSON CAN REACH, ON THE DEVICE THEY HAVE ON SITE.
 
@@ -47,6 +52,27 @@ import { expect, test, type Locator, type Page } from "playwright/test";
 test.use({ viewport: { width: 390, height: 844 } });
 
 const PHONE = { width: 390, height: 844 } as const;
+
+test("the phone contract reviews the canonical plan without pretending to be full CAD", () => {
+  const phone = deviceCapabilities("phone");
+  const desktop = deviceCapabilities("desktop");
+
+  expect(phone.artifact).toBe("canonical-plan");
+  expect(phone.actions).toEqual(["review", "measure", "comment", "light-correction"]);
+  expect(phone.actions).not.toContain("structural-edit");
+  expect(phone.fullCadParity).toBe(false);
+  expect(desktop.fullCadParity).toBe(true);
+  expect(desktop.artifact).toBe(phone.artifact);
+});
+
+test("a failed model proposal preserves the current project and offers useful recovery", () => {
+  expect(failedProposalRecovery("sha256:current-project", "The image did not contain a readable plan")).toEqual({
+    accepted: false,
+    preservedProjectHash: "sha256:current-project",
+    message: "The image did not contain a readable plan",
+    actions: ["retry", "manual-start"],
+  });
+});
 
 /** Role-name matching is substring and honours text-transform, and this page
  *  holds a "Plans" step button, a "Plans" workspace tab and a "3D preview"
