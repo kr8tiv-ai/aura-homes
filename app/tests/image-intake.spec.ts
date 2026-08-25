@@ -144,6 +144,42 @@ test("accepted input returns a versioned, explicit, provider-free receipt withou
   expect("model" in prepared).toBe(false);
 });
 
+test("intake snapshots bytes before preflight so caller replacement cannot change what is decoded", async () => {
+  const candidate = input();
+  let decodedBytes: number[] = [];
+  let decodedMime: string | null = null;
+  const pending = prepareImageIntake(candidate, DECISION, {
+    decode: async ({ bytes, mimeType }) => {
+      decodedBytes = Array.from(bytes);
+      decodedMime = mimeType;
+      return { width: 2400, height: 1600, orientation: 1 };
+    },
+  });
+
+  candidate.bytes = PNG;
+  const prepared = await pending;
+
+  expect(decodedBytes).toEqual(Array.from(JPEG));
+  expect(decodedMime).toBe("image/jpeg");
+  expect(prepared.encodedBytes).toBe(JPEG.byteLength);
+});
+
+test("intake snapshot is isolated from in-place caller mutation after validation", async () => {
+  const bytes = JPEG.slice();
+  let decodedBytes: number[] = [];
+  const pending = prepareImageIntake(input({ bytes }), DECISION, {
+    decode: async ({ bytes: decoderBytes }) => {
+      decodedBytes = Array.from(decoderBytes);
+      return { width: 2400, height: 1600, orientation: 1 };
+    },
+  });
+
+  bytes.fill(0);
+  await pending;
+
+  expect(decodedBytes).toEqual(Array.from(JPEG));
+});
+
 test("retaining a raw image is an explicit project-scoped choice with a deletion path", async () => {
   const prepared = await prepareImageIntake(
     input(),
@@ -224,10 +260,13 @@ test("a stalled decoder is aborted and normalized to one timeout error", async (
 });
 
 test("decoder exceptions are normalized without exposing provider or browser internals", async () => {
-  await rejectCode(
-    prepareImageIntake(input(), DECISION, { decode: async () => { throw new Error("codec exploded"); } }),
-    "decode-failed",
-  );
+  const thrown = await prepareImageIntake(input(), DECISION, {
+    decode: async () => { throw new Error("secret decoder/provider detail"); },
+  }).catch((error: unknown) => error);
+
+  expect(thrown).toMatchObject({ name: "ImageIntakeError", code: "decode-failed" });
+  expect("cause" in (thrown as object)).toBe(false);
+  expect(String(thrown)).not.toContain("secret decoder/provider detail");
 });
 
 test("caller cancellation aborts decode and is distinct from timeout", async () => {

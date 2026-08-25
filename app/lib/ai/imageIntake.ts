@@ -211,17 +211,19 @@ const preflight = (
   const acceptedDecision = requireDecision(decision);
   const limits = limitsFrom(options);
   const name = input.name.trim();
+  const sourceBytes = input.bytes;
   if (!name) throw new ImageIntakeError("invalid-name", "The selected image has no readable filename.");
-  if (input.bytes.byteLength === 0) {
+  if (sourceBytes.byteLength === 0) {
     throw new ImageIntakeError("empty-file", "The selected image is empty.");
   }
-  if (input.bytes.byteLength > limits.maxBytes) {
+  if (sourceBytes.byteLength > limits.maxBytes) {
     throw new ImageIntakeError(
       "file-too-large",
-      `The selected image is ${input.bytes.byteLength} bytes; this intake allows at most ${limits.maxBytes}.`,
+      `The selected image is ${sourceBytes.byteLength} bytes; this intake allows at most ${limits.maxBytes}.`,
     );
   }
-  const mimeType = sniffImageMimeType(input.bytes);
+  const bytes = sourceBytes.slice();
+  const mimeType = sniffImageMimeType(bytes);
   if (!mimeType) {
     throw new ImageIntakeError(
       "unsupported-signature",
@@ -241,6 +243,8 @@ const preflight = (
     mimeType,
     declaredMimeType: declared ? mimeType : null,
     name,
+    bytes,
+    encodedBytes: bytes.byteLength,
   };
 };
 
@@ -327,7 +331,7 @@ export async function prepareImageIntake(
   try {
     const decoding = Promise.resolve().then(() =>
       decoder.decode({
-        bytes: input.bytes.slice(),
+        bytes: prepared.bytes.slice(),
         mimeType: prepared.mimeType,
         signal: controller.signal,
       }),
@@ -338,17 +342,14 @@ export async function prepareImageIntake(
       throw new ImageIntakeError(
         "decode-timeout",
         `The image did not decode within ${prepared.limits.decodeTimeoutMs} milliseconds.`,
-        { cause: error },
       );
     }
     if (cancelled || options.signal?.aborted) {
-      throw new ImageIntakeError("cancelled", "Image intake was cancelled.", { cause: error });
+      throw new ImageIntakeError("cancelled", "Image intake was cancelled.");
     }
-    if (error instanceof ImageIntakeError) throw error;
     throw new ImageIntakeError(
       "decode-failed",
       "The image could not be decoded safely as JPEG, PNG, or WebP.",
-      { cause: error },
     );
   } finally {
     clearTimeout(timeout);
@@ -366,7 +367,7 @@ export async function prepareImageIntake(
     name: prepared.name,
     mimeType: prepared.mimeType,
     declaredMimeType: prepared.declaredMimeType,
-    encodedBytes: input.bytes.byteLength,
+    encodedBytes: prepared.encodedBytes,
     ...normalized,
     consentToAnalyze: true,
     rights: prepared.acceptedDecision.rights,
