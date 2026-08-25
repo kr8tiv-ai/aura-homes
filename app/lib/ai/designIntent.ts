@@ -176,27 +176,89 @@ const fail = (code: DesignIntentErrorCode, path: string, message: string): never
   throw new DesignIntentError(code, path, message);
 };
 
-const own = (value: object, key: string): boolean => Object.prototype.hasOwnProperty.call(value, key);
-
 const strictObject = <K extends string>(value: unknown, path: string, keys: readonly K[]): Record<K, unknown> => {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return fail("invalid-type", path, "Expected an object.");
   }
-  const record = value as Record<string, unknown>;
-  const allowed = new Set<string>(keys);
-  for (const key of Object.keys(record)) {
-    if (!allowed.has(key)) fail("unknown-key", `${path}.${key}`, "Unknown keys are not accepted.");
+  let prototype: object | null;
+  let ownKeys: Array<string | symbol>;
+  let descriptors: Array<PropertyDescriptor | undefined>;
+  try {
+    prototype = Object.getPrototypeOf(value);
+    ownKeys = Reflect.ownKeys(value);
+    descriptors = ownKeys.map((key) => Object.getOwnPropertyDescriptor(value, key));
+  } catch {
+    return fail("invalid-type", path, "Expected a safely inspectable JSON object.");
   }
+  if (prototype !== Object.prototype && prototype !== null) {
+    return fail("invalid-type", path, "Custom object prototypes are not accepted.");
+  }
+  const allowed = new Set<string>(keys);
+  const record: Partial<Record<K, unknown>> = {};
+  ownKeys.forEach((key, index) => {
+    const keyPath = `${path}.${String(key)}`;
+    if (typeof key !== "string" || !allowed.has(key)) {
+      fail("unknown-key", keyPath, "Unknown keys are not accepted.");
+    }
+    const descriptor = descriptors[index];
+    if (!descriptor || !("value" in descriptor) || descriptor.enumerable !== true) {
+      fail("invalid-type", keyPath, "Expected an enumerable JSON data property, not an accessor or hidden value.");
+    }
+    record[key as K] = (descriptor as PropertyDescriptor & { value: unknown }).value;
+  });
   for (const key of keys) {
-    if (!own(record, key)) fail("missing-key", `${path}.${key}`, "This required field is missing.");
+    if (!(key in record)) fail("missing-key", `${path}.${key}`, "This required field is missing.");
   }
   return record as Record<K, unknown>;
 };
 
 const arrayOf = (value: unknown, path: string, maximum: number): unknown[] => {
   if (!Array.isArray(value)) return fail("invalid-type", path, "Expected an array.");
-  if (value.length > maximum) fail("too-many-items", path, `Expected at most ${maximum} items.`);
-  return value;
+  let prototype: object | null;
+  let ownKeys: Array<string | symbol>;
+  let descriptors: Array<PropertyDescriptor | undefined>;
+  try {
+    prototype = Object.getPrototypeOf(value);
+    ownKeys = Reflect.ownKeys(value);
+    descriptors = ownKeys.map((key) => Object.getOwnPropertyDescriptor(value, key));
+  } catch {
+    return fail("invalid-type", path, "Expected a safely inspectable JSON array.");
+  }
+  if (prototype !== Array.prototype) {
+    return fail("invalid-type", path, "Custom array prototypes are not accepted.");
+  }
+  const lengthIndex = ownKeys.findIndex((key) => key === "length");
+  const lengthDescriptor = lengthIndex >= 0 ? descriptors[lengthIndex] : undefined;
+  const length = lengthDescriptor && "value" in lengthDescriptor ? lengthDescriptor.value : null;
+  if (!Number.isSafeInteger(length) || length < 0) {
+    return fail("invalid-type", path, "Array length must be a safe whole number.");
+  }
+  if (length > maximum) fail("too-many-items", path, `Expected at most ${maximum} items.`);
+
+  const indexed = new Map<number, unknown>();
+  ownKeys.forEach((key, descriptorIndex) => {
+    if (key === "length") return;
+    const keyPath = `${path}.${String(key)}`;
+    if (typeof key !== "string" || !/^(?:0|[1-9][0-9]*)$/.test(key)) {
+      fail("unknown-key", keyPath, "Arrays cannot carry custom or Symbol properties.");
+    }
+    const itemIndex = Number(key);
+    if (!Number.isSafeInteger(itemIndex) || itemIndex < 0 || itemIndex >= length) {
+      fail("unknown-key", keyPath, "Array index is outside the declared length.");
+    }
+    const descriptor = descriptors[descriptorIndex];
+    if (!descriptor || !("value" in descriptor) || descriptor.enumerable !== true) {
+      fail("invalid-type", `${path}[${itemIndex}]`, "Expected an enumerable JSON data element, not an accessor or hidden value.");
+    }
+    indexed.set(itemIndex, (descriptor as PropertyDescriptor & { value: unknown }).value);
+  });
+
+  const result: unknown[] = [];
+  for (let index = 0; index < length; index += 1) {
+    if (!indexed.has(index)) fail("invalid-type", `${path}[${index}]`, "Sparse arrays are not accepted.");
+    result.push(indexed.get(index));
+  }
+  return result;
 };
 
 const text = (value: unknown, path: string, maximum: number): string => {

@@ -137,6 +137,70 @@ test("unknown keys fail inside every nested object family", () => {
   }
 });
 
+test("custom prototypes, Symbols, and non-enumerable unknown keys cannot hide geometry", () => {
+  const inheritedRoot = Object.assign(Object.create({ vertices: [{ x: 0, y: 0 }] }), completeIntent());
+  expectIssue(inheritedRoot, "invalid-type", "$");
+
+  const inheritedNested = completeIntent();
+  inheritedNested.requestedUse = Object.assign(
+    Object.create({ coordinates: [0, 0] }),
+    inheritedNested.requestedUse,
+  );
+  expectIssue(inheritedNested, "invalid-type", "$.requestedUse");
+
+  const symbol = completeIntent();
+  Object.defineProperty(symbol, Symbol("geometry"), { value: [0, 0], enumerable: true });
+  expectIssue(symbol, "unknown-key", "$.Symbol(geometry)");
+
+  const hidden = completeIntent();
+  Object.defineProperty(hidden, "geometry", { value: [0, 0], enumerable: false });
+  expectIssue(hidden, "unknown-key", "$.geometry");
+});
+
+test("arrays reject holes, custom properties, Symbols, and accessor elements", () => {
+  const sparse = completeIntent();
+  sparse.rooms = new Array(1);
+  expectIssue(sparse, "invalid-type", "$.rooms[0]");
+
+  const custom = completeIntent();
+  Object.assign(custom.rooms as unknown[], { vertices: [{ x: 0, y: 0 }] });
+  expectIssue(custom, "unknown-key", "$.rooms.vertices");
+
+  const symbol = completeIntent();
+  Object.defineProperty(symbol.rooms, Symbol("geometry"), { value: true, enumerable: true });
+  expectIssue(symbol, "unknown-key", "$.rooms.Symbol(geometry)");
+
+  const accessor = completeIntent();
+  Object.defineProperty(accessor.rooms, "0", { get: () => ({}), enumerable: true });
+  expectIssue(accessor, "invalid-type", "$.rooms[0]");
+});
+
+test("accessors and hostile reflection traps are rejected without invocation or private error leakage", () => {
+  const candidate = completeIntent();
+  let getterCalls = 0;
+  Object.defineProperty(candidate.requestedUse, "details", {
+    get: () => {
+      getterCalls += 1;
+      throw new Error("private getter detail");
+    },
+    enumerable: true,
+  });
+  expectIssue(candidate, "invalid-type", "$.requestedUse.details");
+  expect(getterCalls).toBe(0);
+
+  const hostile = new Proxy(completeIntent(), {
+    ownKeys: () => { throw new Error("private reflection detail"); },
+  });
+  try {
+    parseDesignIntent(hostile);
+    throw new Error("Expected hostile reflection to fail.");
+  } catch (error) {
+    expect(error).toBeInstanceOf(DesignIntentError);
+    expect(error).toMatchObject({ code: "invalid-type", path: "$" });
+    expect(String(error)).not.toContain("private reflection detail");
+  }
+});
+
 test("geometry-shaped payloads are named and refused at root and nested boundaries", () => {
   expectIssue({ ...completeIntent(), vertices: [{ x: 0, y: 0 }] }, "unknown-key", "$.vertices");
   const nested = completeIntent();
