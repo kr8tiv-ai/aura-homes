@@ -63,13 +63,13 @@
   "evidence": {
     "startedFrom": "804e7c01f4a284ecb46992be3f6ad099687ee3ca",
     "dependencyGate": "G01 verified",
-    "candidateCommit": "1baba58d949e5f1775ed6f2fe22a7c43a6b26fbb",
+    "candidateCommit": "d79508a2e5dbf2ec9bf9f73c4846663bef62a448",
     "focusedTests": "14/14",
     "typecheck": "pass",
     "writeSet": "4/4 exact candidate paths from 804e7c0",
     "protectedPathChanges": 0,
     "repairLoop": "1/1 — closed new-story, landing-media, public-surface, and CSS label-only bypasses",
-    "priorIndependentFinding": "all prior probes retained; dynamic import, require, and protected JSX member-tag bypasses closed in 1baba58",
+    "priorIndependentFinding": "all prior probes retained; all added dynamic/require loaders and JSX member tags fail closed in d79508a",
     "workerVerdict": "candidate-ready-for-independent-verification"
   },
   "status": "verification-pending"
