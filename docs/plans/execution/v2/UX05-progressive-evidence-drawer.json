@@ -1,0 +1,90 @@
+{
+  "graphVersion": "aura-graph/v2.0@680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8",
+  "node": "UX05",
+  "lane": "guided-studio",
+  "stage": "progressive-evidence",
+  "job": "Turn the Guided Studio evidence region into a progressive, accessible drawer whose collapsed shell preserves claim state, blockers, provenance, technical status, and export freshness while secondary evidence mounts only on demand.",
+  "inputs": [
+    {
+      "name": "UX02-verified-canvas-first-shell",
+      "version": "1",
+      "hash": "git:e7a4859b96a5c4815bfc80cce478000bd9087c9c"
+    },
+    {
+      "name": "guided-studio-interaction-design",
+      "version": "2026-08-24",
+      "hash": "git:f7616886f9f8a171c847ef5eb49e932246ff989b"
+    },
+    {
+      "name": "lateral-start-after-UX03-block",
+      "version": "1",
+      "hash": "git:a5b40d9565bf067eafb21ceed286e74fa268453d"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "progressive-evidence-drawer",
+      "acceptanceSchema": "GuidedStudioEvidenceDrawerA11yV1",
+      "path": "app/components/builder/EvidenceDrawer.tsx"
+    },
+    {
+      "name": "guided-evidence-integration",
+      "acceptanceSchema": "Single-document-projection",
+      "path": "app/components/builder/BuilderApp.tsx"
+    },
+    {
+      "name": "served-collapse-and-reopen-proof",
+      "acceptanceSchema": "Playwright-production-export-proof",
+      "path": "app/tests/evidence-drawer.spec.ts"
+    }
+  ],
+  "depends": ["UX02:verified"],
+  "reject": [
+    "UX02 is not independently verified",
+    "collapsing the drawer removes the visible claim state, blocker count, provenance, technical status, or export freshness",
+    "collapsed evidence promotes design-intent to review-ready or changes any project claim",
+    "cost, constraint, co-pilot, or task-guidance modules mount before the drawer is activated",
+    "opening, closing, or focusing an evidence section changes project state, history, persistence, geometry, or design hash",
+    "the drawer introduces a second cost, constraint, readiness, provenance, or export-status model",
+    "a public-site, 3D, renderer, animation, engine, scene, model, texture, shader, camera, lighting, motion, or quality-tier path changes"
+  ],
+  "writeSet": [
+    "docs/plans/execution/v2/UX05-progressive-evidence-drawer.json",
+    "app/components/builder/BuilderApp.tsx",
+    "app/components/builder/EvidenceDrawer.tsx",
+    "app/app/globals.css",
+    "app/tests/evidence-drawer.spec.ts",
+    "app/playwright.ui.config.ts",
+    "app/tests/gate-coverage.spec.ts",
+    "README.md",
+    "docs/SUBMISSION.md"
+  ],
+  "freezeClass": "none",
+  "owner": "primary-agent",
+  "verifier": "independent-fresh-context",
+  "sideEffects": "local",
+  "externalGates": [],
+  "verification": [
+    "npm run typecheck",
+    "npm test",
+    "npm run test:ui",
+    "npx playwright test tests/evidence-drawer.spec.ts --config=playwright.r0.config.ts",
+    "npm run test:graph-v2",
+    "browser evidence: collapsed claim state and blocker count equal expanded state",
+    "browser evidence: cost, constraint, guidance, and co-pilot modules are absent before activation and present after activation",
+    "browser evidence: blocker, provenance, technical, and export summary controls reopen and focus the relevant evidence",
+    "browser evidence: opening and collapsing the drawer leaves the active design hash unchanged",
+    "git diff --name-only <UX05-base>...HEAD"
+  ],
+  "repair": {
+    "maxLoops": 1,
+    "boundary": "UX05 writeSet only"
+  },
+  "evidence": {
+    "startedFrom": "a5b40d9565bf067eafb21ceed286e74fa268453d",
+    "dependencyGate": "UX02 verified at e7a4859b96a5c4815bfc80cce478000bd9087c9c",
+    "writeOwnership": "UX03 is blocked, not active; no active manifest owns an overlapping path",
+    "protectedPathChanges": 0
+  },
+  "status": "ready"
+}
