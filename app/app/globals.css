@@ -1464,6 +1464,14 @@ main p {
   letter-spacing: 0.08em;
   color: var(--st-faint);
 }
+.builder-page__legacy-heading {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 .builder-workspace > :not([hidden]) ~ :not([hidden]) { margin-top: 1rem; }
 
 .builder-mode-shell {
