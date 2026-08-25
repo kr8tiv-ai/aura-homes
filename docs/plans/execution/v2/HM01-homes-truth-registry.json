@@ -78,11 +78,12 @@
   },
   "evidence": {
     "startedFrom": "619cd0454116b88d96219dbd9c74c7c12a3c090b",
+    "readyManifestCommit": "df37314c00e3c9df859ffd0473d25e3ce4ebc7a5",
     "dependencyGate": "G02 independently verified; Graph v2 gate 14/14 and authority pass at HM01 start",
     "writeOwnership": "No active manifest owns an overlapping path; IP02 and UX03 are blocked and every other instantiated node is verified.",
     "existingSurfaceAudit": "token.ts is the canonical live token identity module, the mint artifact is a dated on-chain read, fund.ts mixes live zero-state with future design rules, and no typed registry currently distinguishes verified, source-reported, unknown, and not-established truth classes.",
     "sourceReview": "On 2026-08-25 the official X Layer network documentation still identified mainnet chain 196 and rpc.xlayer.tech; XLaunch documentation still described the 1% pool fee, 60/40 quote-side split, locked-liquidity mechanics, and stock-wrapper risks. Token-specific identity and supply remain pinned to the checked-in on-chain mint receipt rather than scraped market copy.",
     "protectedPathChanges": 0
   },
-  "status": "ready"
+  "status": "active"
 }
