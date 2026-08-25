@@ -79,11 +79,12 @@
     "dependencyGate": "G01 independently verified; Graph v2 authority gate 14/14 and repository clean at preflight",
     "writeOwnership": "No ready, active, or verification-pending manifest owns any G04 path; blocked HM01, IP02, and UX03 do not carry write ownership.",
     "existingSurfaceAudit": "FounderDecisionRegistryV1 contains nine historical records but omits the approved Graph v2 FD20-01 through FD20-20 decisions, has no exact scope or authority-source contract, and encodes supersession in mutable free text.",
+    "readyManifestCommit": "1760d3c60c3d8aba944dc8157b325547f39e7c6a",
     "protectedPathChanges": 0,
     "repairLoop": {
       "used": 0,
       "maximum": 1
     }
   },
-  "status": "ready"
+  "status": "active"
 }
