@@ -43,6 +43,7 @@
     "app/app/build/page.tsx",
     "app/components/builder/BuilderApp.tsx",
     "app/components/builder/GuidedStudioShell.tsx",
+    "app/components/builder/ExportRow.tsx",
     "app/app/globals.css",
     "app/scripts/prove-graph-v2.test.mjs",
     "app/tests/builder-plans-first.spec.ts",

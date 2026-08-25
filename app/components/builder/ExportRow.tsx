@@ -411,7 +411,8 @@ export default function ExportRow({
       <div className="space-y-6">
         {graphMode ? (
           <p className="rounded-md border aura-hairline px-4 py-3 text-xs leading-relaxed text-aura-text/70">
-            This project uses planar graph geometry. DXF, IFC and ifcJSON are written from the
+            This project uses planar graph geometry. The project file, share link, glTF and OBJ
+            below use the current graph-backed design. DXF, IFC and ifcJSON are written from the
             graph storeys&rsquo; bounding boxes — the same hosts fixtures snap to — not from the
             frozen recovery HomeSpec.
           </p>

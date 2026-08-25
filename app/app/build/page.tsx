@@ -71,6 +71,9 @@ export default function BuildPage() {
       </header>
 
       <div className="builder-page__workspace mt-6">
+        <p className="builder-page__disclaimer">
+          Design intent only—not structural, energy, permit, or manufacturing compliance.
+        </p>
         <h2 className="sr-only">Shape the home. Keep every decision.</h2>
         <BuilderApp />
       </div>

@@ -1457,6 +1457,13 @@ main p {
 .builder-page__summary p + p { margin-top: 0.35rem; }
 .builder-page__summary p:last-child { display: none; }
 .builder-page__workspace { margin-top: 0; }
+.builder-page__disclaimer {
+  margin-bottom: 0.45rem;
+  font-family: var(--st-mono-font);
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  color: var(--st-faint);
+}
 .builder-workspace > :not([hidden]) ~ :not([hidden]) { margin-top: 1rem; }
 
 .builder-mode-shell {
