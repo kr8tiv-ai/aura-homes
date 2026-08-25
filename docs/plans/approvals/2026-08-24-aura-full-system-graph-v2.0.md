@@ -9,8 +9,8 @@
 | Approval date | `2026-08-24` |
 | Approved UX direction | `Option 1 — Canvas-first Guided Studio` |
 | Proposed graph commit | `f7616886f9f8a171c847ef5eb49e932246ff989b` |
-| Proposed graph canonical Git-blob SHA-256 | `9EDBA48895B426A2C68760C8AE564978DE9B290CD2B4050D96F049496DA109AC` |
-| Proposed graph content SHA-256 | `680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8` |
+| Proposed graph canonical Git-blob SHA-256 | `680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8` |
+| Proposed graph Git-object SHA-256 | `48A7E075406A0E9C8EE24C11C9C411EC10C0F219D0CCF84D9129FA83D79D49C7` |
 | Approval scope | Graph v2.0 and UX01–UX10 may proceed dependency-first through committed manifests. |
 
 This approval makes `docs/plans/2026-08-22-aura-full-system-graph-v2.0.md`
@@ -32,3 +32,12 @@ explicit authority.
 
 The prior recurring graph auditors remain cancelled. Verification occurs only
 at the point-in-time boundaries defined by Graph v2.0.
+
+## Provenance correction
+
+The first local approval-record commit, `24218b7`, incorrectly labeled a hash
+computed with the two printable characters `\\0` in its object framing as the
+canonical Git-blob SHA-256. This correction uses the established Graph v1.1
+convention: SHA-256 of the exact bytes stored in Git for the graph blob. The
+separately recorded Git-object hash uses the actual NUL-framed Git object. The
+proposal commit and graph bytes did not change.
