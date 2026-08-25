@@ -73,9 +73,10 @@
   "evidence": {
     "startedFrom": "ec0e24f5f123ad95c2781d02d284412a699ff2c7",
     "dependencyGate": "IP01 independently verified at ec0e24f5f123ad95c2781d02d284412a699ff2c7",
+    "readyManifestCommit": "c0bcc5cc7735a06b1b53d80f6765e5c9f4854566",
     "writeOwnership": "No active manifest owns an overlapping path; UX03 is blocked and all other instantiated nodes are verified.",
     "existingSurfaceAudit": "No DesignIntent type or runtime schema exists; existing project, building-graph, discovery, confidence, and assumption contracts remain downstream consumers rather than a parallel geometry input.",
     "protectedPathChanges": 0
   },
-  "status": "ready"
+  "status": "active"
 }
