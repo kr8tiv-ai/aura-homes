@@ -468,6 +468,7 @@ const sourceFacts = (source, fileName) => {
   const sourceFile = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   const imports = [];
   const classes = [];
+  const jsxTags = [];
   let builderApps = 0;
   let inlineStyles = 0;
   let handlers = 0;
@@ -475,8 +476,14 @@ const sourceFacts = (source, fileName) => {
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
       imports.push(node.moduleSpecifier.text);
     }
+    if (ts.isCallExpression(node) && node.arguments.length > 0 && ts.isStringLiteral(node.arguments[0])) {
+      const dynamicImport = node.expression.kind === ts.SyntaxKind.ImportKeyword;
+      const commonJsRequire = ts.isIdentifier(node.expression) && node.expression.text === "require";
+      if (dynamicImport || commonJsRequire) imports.push(node.arguments[0].text);
+    }
     if (ts.isJsxSelfClosingElement(node) || ts.isJsxOpeningElement(node)) {
       const tag = node.tagName.getText(sourceFile);
+      jsxTags.push(tag);
       if (tag === "BuilderApp") builderApps += 1;
       for (const attribute of node.attributes.properties) {
         if (!ts.isJsxAttribute(attribute)) continue;
@@ -491,7 +498,7 @@ const sourceFacts = (source, fileName) => {
     ts.forEachChild(node, visit);
   };
   visit(sourceFile);
-  return { imports, classes, builderApps, inlineStyles, handlers };
+  return { imports, classes, jsxTags, builderApps, inlineStyles, handlers };
 };
 
 export const validateBuilderPageChanges = (baselineSource, candidateSource) => {
@@ -501,6 +508,13 @@ export const validateBuilderPageChanges = (baselineSource, candidateSource) => {
   const forbiddenImport = /(react-three|(?:^|\/)three(?:\/|$)|(?:^|\/)story(?:\/|$)|motion|Viewport|PlanModelPreview|Walkthrough|OpeningHandles|SurfacePicker)/i;
   if (after.imports.some((entry) => forbiddenImport.test(entry))) {
     errors.push("builder page cannot import motion, story, renderer, or protected 3D modules");
+  }
+  if (
+    after.jsxTags.some((tag) =>
+      /^(?:motion\.|Viewport$|PlanModelPreview$|Walkthrough$|OpeningHandles$|SurfacePicker$)/.test(tag),
+    )
+  ) {
+    errors.push("builder page cannot render motion or protected 3D component tags");
   }
   if (before.builderApps !== 1 || after.builderApps !== 1) {
     errors.push("builder page must retain exactly one BuilderApp mount");

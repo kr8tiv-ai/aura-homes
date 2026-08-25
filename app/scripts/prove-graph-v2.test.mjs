@@ -282,9 +282,13 @@ test("the build-route exception requires inspected source and cannot import moti
   const baseline = `import BuilderApp from "@/components/builder/BuilderApp"; export default function Page(){ return <main className="shell"><BuilderApp /></main>; }`;
   const safe = `import BuilderApp from "@/components/builder/BuilderApp"; export default function Page(){ return <main className="shell builder-page--compact"><BuilderApp /></main>; }`;
   const unsafe = `import BuilderApp from "@/components/builder/BuilderApp"; import { motion } from "motion/react"; export default function Page(){ return <main className="shell builder-page--compact"><BuilderApp /></main>; }`;
+  const dynamicUnsafe = `import BuilderApp from "@/components/builder/BuilderApp"; export default async function Page(){ const { motion } = await import("motion/react"); return <motion.main className="shell"><BuilderApp /></motion.main>; }`;
+  const requireUnsafe = `import BuilderApp from "@/components/builder/BuilderApp"; const THREE = require("three"); export default function Page(){ return <main className="shell"><BuilderApp /></main>; }`;
 
   assert.deepEqual(validateBuilderPageChanges(baseline, safe), []);
   assert.match(validateBuilderPageChanges(baseline, unsafe).join("\n"), /cannot import motion/);
+  assert.match(validateBuilderPageChanges(baseline, dynamicUnsafe).join("\n"), /cannot import motion|cannot render motion/);
+  assert.match(validateBuilderPageChanges(baseline, requireUnsafe).join("\n"), /cannot import motion/);
   assert.match(
     validateCandidatePaths(["app/app/build/page.tsx"], pageManifest, registry, {
       contentGates: { "app/app/build/page.tsx": "builder-page-functional-only" },
