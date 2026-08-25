@@ -112,7 +112,16 @@
       "maximum": 1,
       "initialClosureCommit": "f3b464e3d8de8f48a5591beea12138cea273a2c1",
       "repairCommit": "da27335fb39d23d64bfe65494770d48000ea97f4"
+    },
+    "finalVerification": {
+      "verdict": "fail",
+      "closureCommit": "435db6fbacf6be43afcf09d539f6d61d933e5ebd",
+      "passing": "Authority/G01, linear candidate lineage, exact 6/6 write set, manifest-only closure, zero protected paths, repository cleanliness, 10/10 focused decision-ledger tests, 24/24 Graph v2 tests, typecheck, individual transition rewrite rejection, source-payload binding, exact founder identity, global supersession uniqueness, approved node membership, chronology, and the current V1-to-V2 migration all passed.",
+      "blockers": [
+        "the repository transition gate opens only the newest registry-changing commit and its immediate predecessor, so a rewritten ledger can be buried in commit N and followed by an append in commit N+1; the final pair is self-consistent and the earlier accepted ledger is never compared to N"
+      ],
+      "requiredFutureAuthority": "A future explicitly authorized correction must traverse every commit that changes decisions.json from the pinned V1 anchor and prove the canonical prior changes are an exact prefix at every V2 transition before G04 can be re-entered."
     }
   },
-  "status": "verification-pending"
+  "status": "blocked"
 }
