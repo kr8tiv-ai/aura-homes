@@ -100,9 +100,11 @@
       "graphV2": "14/14 passed; authority pass; zero manifest errors at cff9d6c45f2089c25b1d1846ce029403373f25c6"
     },
     "repair": "The independent review proved that the mounted-but-hidden GraphPlanEditor kept projecting a Rooms wall selection after Guided Shell became active. The single permitted repair preserves that plan state but projects it only while the graph plan surface is active; Shell shows its own tool state. The served regression covers both stale selection and stale invalid input, then proves both states restore when Rooms becomes active again.",
-    "independentVerdict": "FAIL at closure c312b780d777a6aefe84d3a48e729e06d2103f63: a wall selection from Guided Rooms remained projected after Guided Shell hid the 2D plan surface",
-    "repairLoop": "1 of 1 completed at cff9d6c45f2089c25b1d1846ce029403373f25c6; pending independent re-verification",
+    "priorIndependentVerdict": "FAIL at closure c312b780d777a6aefe84d3a48e729e06d2103f63: a wall selection from Guided Rooms remained projected after Guided Shell hid the 2D plan surface",
+    "independentVerdict": "FAIL at re-verification of closure 2907ed3e5860779d744c9c2aa8cdc3aeafebc938: after a canonical graph wall changed from 34 to 40 feet, selecting the visible graph in Guided Shell projected the frozen recovery HomeSpec's 34-foot Legacy massing volume instead of canonical graph/storey state",
+    "repairLoop": "exhausted 1 of 1; the named hidden-plan repair passed, but a distinct graph-mode legacy-volume fallback remains",
+    "blocker": "UX03 requires an owner-authorized corrective path that either suppresses the legacy-volume fallback in graph mode or projects the selected canonical storey, plus a graph-edit-to-3D-selection served regression",
     "protectedPathChanges": 0
   },
-  "status": "verification-pending"
+  "status": "blocked"
 }
