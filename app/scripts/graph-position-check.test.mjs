@@ -7,6 +7,7 @@ import path from "node:path";
 import test from "node:test";
 import {
   buildGraphPositionReceipt,
+  buildRepositoryGraphPositionInput,
   deriveMovementOptions,
   parseGraphPositionCliArgs,
   validateDecisionHistorySequence,
@@ -241,6 +242,36 @@ test("position reconciliation rejects dependency, write-set, closure, evidence, 
   assert.match(validateGraphPositionInput(release).join("\n"), /active is invalid for release/);
 });
 
+test("dependency projection must exactly match the committed manifest", () => {
+  const input = validInput();
+  input.dependencies = [];
+  assert.match(
+    validateGraphPositionInput(input).join("\n"),
+    /dependencies must exactly equal the manifest dependencies/,
+  );
+});
+
+test("write projection must exactly match the committed manifest write set", () => {
+  const input = validInput();
+  input.writes.declared = ["app/scripts/not-the-manifest-write.mjs"];
+  input.writes.changed = ["app/scripts/not-the-manifest-write.mjs"];
+  assert.match(
+    validateGraphPositionInput(input).join("\n"),
+    /declared writes must exactly equal the manifest write set/,
+  );
+});
+
+test("failure receipts keep correction movement inside the receipt schema", () => {
+  const input = validInput();
+  input.evidence[0].status = "fail";
+  const receipt = buildGraphPositionReceipt(input);
+  assert.equal(receipt.verdict, "fail");
+  assert.ok(
+    ["blocked-authority", "backward-repair", "lateral-ready"].includes(receipt.correction.safeMove),
+    `unexpected correction movement ${receipt.correction.safeMove}`,
+  );
+});
+
 test("blocked nodes expose only graph-valid repair and committed-ready lateral movement", () => {
   const input = validInput();
   input.manifest.status = "blocked";
@@ -332,7 +363,7 @@ test("CLI failures are bounded and do not mutate the repository", () => {
   assert.equal(result.stdout, "");
 });
 
-test("all exported movement, repository-option, and CLI boundaries contain hostile reflection", () => {
+test("all exported movement, repository-option, and CLI boundaries contain hostile reflection", async () => {
   const movement = { node: "G05" };
   Object.defineProperty(movement, "manifest", {
     enumerable: true,
@@ -352,7 +383,69 @@ test("all exported movement, repository-option, and CLI boundaries contain hosti
   assert.match(repositoryErrors.join("\n"), /options cannot be inspected safely/);
   assert.doesNotMatch(repositoryErrors.join("\n"), /PRIVATE/);
 
+  const revokedCandidate = Proxy.revocable({}, {});
+  revokedCandidate.revoke();
+  let candidateErrors;
+  assert.doesNotThrow(() => {
+    candidateErrors = validateRepositoryDecisionHistory(ROOT, revokedCandidate.proxy);
+  });
+  assert.match(candidateErrors.join("\n"), /candidate cannot be inspected safely/);
+
+  const revokedRepositoryInput = Proxy.revocable({}, {});
+  revokedRepositoryInput.revoke();
+  await assert.rejects(
+    buildRepositoryGraphPositionInput(revokedRepositoryInput.proxy),
+    /repository input cannot be inspected safely/,
+  );
+
   const revokedArgs = Proxy.revocable([], {});
   revokedArgs.revoke();
   assert.throws(() => parseGraphPositionCliArgs(revokedArgs.proxy), /CLI arguments cannot be inspected safely/);
+});
+
+test("integration-pending manifests retain live write ownership", async () => {
+  const temp = mkdtempSync(path.join(tmpdir(), "aura-g05-owner-"));
+  try {
+    execFileSync("git", ["init", "-b", "main"], { cwd: temp });
+    execFileSync("git", ["config", "user.name", "Aura test"], { cwd: temp });
+    execFileSync("git", ["config", "user.email", "test@aura.invalid"], { cwd: temp });
+    mkdirSync(path.join(temp, ".githooks-disabled"));
+    execFileSync("git", ["config", "core.hooksPath", ".githooks-disabled"], { cwd: temp });
+    execFileSync("git", ["config", "core.autocrlf", "false"], { cwd: temp });
+    const executionDir = path.join(temp, "docs", "plans", "execution", "v2");
+    mkdirSync(executionDir, { recursive: true });
+    const target = JSON.parse(readFileSync(
+      path.join(ROOT, "docs", "plans", "execution", "v2", "G05-point-in-time-graph-position.json"),
+      "utf8",
+    ));
+    target.status = "active";
+    target.writeSet = ["app/shared-owned-path.ts"];
+    const owner = structuredClone(target);
+    owner.node = "UX04";
+    owner.status = "integration-pending";
+    writeFileSync(
+      path.join(executionDir, "G05-point-in-time-graph-position.json"),
+      `${JSON.stringify(target, null, 2)}\n`,
+      "utf8",
+    );
+    writeFileSync(
+      path.join(executionDir, "UX04-command-measurement-bar.json"),
+      `${JSON.stringify(owner, null, 2)}\n`,
+      "utf8",
+    );
+    execFileSync("git", ["add", "."], { cwd: temp });
+    execFileSync("git", ["commit", "-m", "ownership fixture"], { cwd: temp });
+    const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: temp, encoding: "utf8" }).trim();
+    const input = await buildRepositoryGraphPositionInput({
+      repoRoot: temp,
+      phase: "preflight",
+      node: "G05",
+      base: head,
+      candidate: head,
+      evidence: [],
+    });
+    assert.deepEqual(input.writes.overlappingOwners, ["UX04"]);
+  } finally {
+    rmSync(temp, { recursive: true, force: true });
+  }
 });
