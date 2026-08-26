@@ -111,6 +111,8 @@
     "interactionProof": "The served compact bar projects the selected wall's exact canonical length, focuses the existing GraphPlanEditor NumberField, commits through the existing graph vertex mutator, names undo and redo as Move a plan point, retains invalid raw input and its constraint without changing the design hash, restores the canonical value on Escape, refuses unknown Ctrl K text without mutation, and reaches the original document with exactly one Undo after the cancelled field later blurs on a 390x844 viewport.",
     "priorIndependentVerdict": "FAIL at closure 4ae1a6fcd8c906f13990608ffc208dd5d37a288e: after Undo/Redo, an invalid exact draft, Escape, and later palette-induced blur, the restored canonical value was recommitted as a ghost history entry, so the first Undo was a no-op.",
     "boundedRepair": "GraphPlanEditor NumberField now treats a parsed value identical to its canonical value as cancellation rather than a commit. The served regression reproduces the complete 390x844 Escape-then-blur sequence and requires one Undo to restore the original document.",
+    "independentVerdict": "FAIL after the single allowed repair: an exact canonical vertex value of -16.8766 is displayed and restored as -16.877; Escape followed by palette-induced blur commits the rounded value and changes the project hash. Authority, dependency, exact-write, closure, freeze, clean-worktree, typecheck, Graph v2 24/24, focused served 15/15, and the original 390x844 regression all pass.",
+    "blockedReason": "UX04 requires a new owner-authorized corrective node or founder decision because its repair allowance is exhausted at 1 of 1; UX08 cannot advance through this dependency.",
     "repairLoop": {
       "used": 1,
       "maximum": 1
@@ -118,5 +120,5 @@
     "protectedPathChanges": 0,
     "githubSync": "blocked: current GitHub OAuth credential lacks workflow scope required to push the preserved source-ci workflow"
   },
-  "status": "verification-pending"
+  "status": "blocked"
 }
