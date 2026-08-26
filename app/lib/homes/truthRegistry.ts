@@ -24,6 +24,98 @@ function isRecord(value: unknown): value is UnknownRecord {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+function inspectJsonValue(
+  value: unknown,
+  pathLabel: string,
+  errors: string[],
+  seen = new Set<object>(),
+): unknown {
+  if (value === null || typeof value === "string" || typeof value === "boolean") return value;
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) errors.push(`${pathLabel} contains a non-finite number`);
+    return value;
+  }
+  if (typeof value !== "object") {
+    errors.push(`${pathLabel} contains a non-JSON value`);
+    return undefined;
+  }
+
+  let isArray: boolean;
+  let prototype: object | null;
+  let descriptors: Record<PropertyKey, PropertyDescriptor>;
+  try {
+    isArray = Array.isArray(value);
+    prototype = Object.getPrototypeOf(value);
+    descriptors = Object.getOwnPropertyDescriptors(value) as Record<PropertyKey, PropertyDescriptor>;
+  } catch {
+    errors.push(`${pathLabel} cannot be inspected safely`);
+    return undefined;
+  }
+  if (seen.has(value)) {
+    errors.push(`${pathLabel} contains a cycle`);
+    return undefined;
+  }
+  seen.add(value);
+
+  const ownKeys = Reflect.ownKeys(descriptors);
+  if (ownKeys.some((key) => typeof key === "symbol")) {
+    errors.push(`${pathLabel} contains symbol keys`);
+  }
+  if (prototype !== (isArray ? Array.prototype : Object.prototype) && prototype !== null) {
+    errors.push(`${pathLabel} must use a plain JSON prototype`);
+  }
+
+  const output: UnknownRecord | unknown[] = isArray ? [] : Object.create(null) as UnknownRecord;
+  const lengthDescriptor = isArray ? descriptors.length : null;
+  const length = isArray && lengthDescriptor && "value" in lengthDescriptor &&
+      Number.isSafeInteger(lengthDescriptor.value) && lengthDescriptor.value >= 0
+    ? Number(lengthDescriptor.value)
+    : 0;
+  if (isArray && (!lengthDescriptor || !("value" in lengthDescriptor) ||
+      !Number.isSafeInteger(lengthDescriptor.value) || lengthDescriptor.value < 0)) {
+    errors.push(`${pathLabel}.length must be a safe data property`);
+  }
+
+  for (const key of ownKeys) {
+    if (typeof key !== "string" || (isArray && key === "length")) continue;
+    const descriptor = descriptors[key];
+    const childPath = `${pathLabel}.${key}`;
+    if (!("value" in descriptor) || descriptor.enumerable !== true) {
+      errors.push(`${childPath} must be an enumerable data property`);
+      continue;
+    }
+    if (isArray && (!/^(?:0|[1-9]\d*)$/.test(key) || Number(key) >= length)) {
+      errors.push(`${childPath} is not a valid array element`);
+      continue;
+    }
+    const child = inspectJsonValue(descriptor.value, childPath, errors, seen);
+    if (isArray) (output as unknown[])[Number(key)] = child;
+    else (output as UnknownRecord)[key] = child;
+  }
+  if (isArray) {
+    for (let index = 0; index < length; index += 1) {
+      if (!Object.hasOwn(output, index)) errors.push(`${pathLabel} contains an array hole at ${index}`);
+    }
+  }
+  seen.delete(value);
+  return output;
+}
+
+function enforceExactKeys(
+  value: UnknownRecord,
+  allowedKeys: readonly string[],
+  pathLabel: string,
+  errors: string[],
+): void {
+  const allowed = new Set(allowedKeys);
+  for (const key of Object.keys(value)) {
+    if (!allowed.has(key)) errors.push(`${pathLabel} has unknown key ${key}`);
+  }
+  for (const key of allowedKeys) {
+    if (!Object.hasOwn(value, key)) errors.push(`${pathLabel} is missing key ${key}`);
+  }
+}
+
 function strictIsoMillis(value: unknown): number | null {
   if (typeof value !== "string") return null;
   const match = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{3}))?Z)?$/.exec(value);
@@ -51,9 +143,19 @@ function strictIsoMillis(value: unknown): number | null {
   return milliseconds;
 }
 
-export function validateHomesMintArtifactParity(artifact: unknown): string[] {
+export function validateHomesMintArtifactParity(artifactCandidate: unknown): string[] {
   const errors: string[] = [];
-  if (!isRecord(artifact)) return ["mint artifact must be an object"];
+  const safeArtifact = inspectJsonValue(artifactCandidate, "mint artifact", errors);
+  if (!isRecord(safeArtifact)) {
+    return Array.from(new Set([...errors, "mint artifact must be an object"]));
+  }
+  const artifact = safeArtifact;
+  enforceExactKeys(
+    artifact,
+    ["schema", "verifiedAt", "rpc", "chainId", "block", "token", "totalSupply", "knownHolders", "coverage", "notes"],
+    "mint artifact",
+    errors,
+  );
 
   if (artifact.schema !== "HomesMintVerificationV1") {
     errors.push("mint artifact schema must equal HomesMintVerificationV1");
@@ -78,6 +180,7 @@ export function validateHomesMintArtifactParity(artifact: unknown): string[] {
   if (token === null) {
     errors.push("mint artifact token must be an object");
   } else {
+    enforceExactKeys(token, ["address", "name", "symbol", "decimals"], "mint artifact.token", errors);
     if (token.address !== HOMES_TOKEN_ADDRESS) {
       errors.push(`mint artifact token.address must equal ${HOMES_TOKEN_ADDRESS}`);
     }
@@ -90,6 +193,7 @@ export function validateHomesMintArtifactParity(artifact: unknown): string[] {
   if (totalSupply === null) {
     errors.push("mint artifact totalSupply must be an object");
   } else {
+    enforceExactKeys(totalSupply, ["raw", "tokens"], "mint artifact.totalSupply", errors);
     if (totalSupply.raw !== "1000000000000000000000000000") {
       errors.push("mint artifact totalSupply.raw must equal the reviewed receipt");
     }
@@ -97,7 +201,40 @@ export function validateHomesMintArtifactParity(artifact: unknown): string[] {
       errors.push("mint artifact totalSupply.tokens must equal 1000000000");
     }
   }
-  return errors;
+  const knownHolders = isRecord(artifact.knownHolders) ? artifact.knownHolders : null;
+  if (knownHolders === null) {
+    errors.push("mint artifact knownHolders must be an object");
+  } else {
+    enforceExactKeys(
+      knownHolders,
+      ["creatorWallet", "xlaunchLocker", "wspcxxPool"],
+      "mint artifact.knownHolders",
+      errors,
+    );
+    for (const holderId of ["creatorWallet", "xlaunchLocker", "wspcxxPool"] as const) {
+      const holder = isRecord(knownHolders[holderId]) ? knownHolders[holderId] : null;
+      if (holder === null) errors.push(`mint artifact.knownHolders.${holderId} must be an object`);
+      else enforceExactKeys(
+        holder,
+        ["address", "raw", "tokens", "percentOfSupply"],
+        `mint artifact.knownHolders.${holderId}`,
+        errors,
+      );
+    }
+  }
+  const coverage = isRecord(artifact.coverage) ? artifact.coverage : null;
+  if (coverage === null) {
+    errors.push("mint artifact coverage must be an object");
+  } else {
+    enforceExactKeys(
+      coverage,
+      ["publishedAddressTokens", "percentOfSupply", "unaccountedTokens", "sentence"],
+      "mint artifact.coverage",
+      errors,
+    );
+  }
+  if (!Array.isArray(artifact.notes)) errors.push("mint artifact notes must be an array");
+  return Array.from(new Set(errors));
 }
 
 const mintArtifactErrors = validateHomesMintArtifactParity(mintVerification);
@@ -525,15 +662,19 @@ const canonicalRegistry: HomesTruthRegistry = {
   claims: claims.map((fact) => ({ ...fact, sourceIds: [...fact.sourceIds] })),
 };
 
-export function validateHomesTruthRegistry(registry: unknown): string[] {
+export function validateHomesTruthRegistry(registryCandidate: unknown): string[] {
   const errors: string[] = [];
-  if (!isRecord(registry)) {
-    return [
+  const safeRegistry = inspectJsonValue(registryCandidate, "registry", errors);
+  if (!isRecord(safeRegistry)) {
+    return Array.from(new Set([
+      ...errors,
       "registry must be an object",
       "registry.sources must be an array",
       "registry.claims must be an array",
-    ];
+    ]));
   }
+  const registry = safeRegistry;
+  enforceExactKeys(registry, ["schema", "asOfISO", "sources", "claims"], "registry", errors);
 
   const sourceIds = new Set<string>();
   const sourcesById = new Map<string, HomesTruthSource>();
@@ -560,6 +701,12 @@ export function validateHomesTruthRegistry(registry: unknown): string[] {
       errors.push(`source at index ${index} must be an object`);
       continue;
     }
+    enforceExactKeys(
+      source,
+      ["id", "kind", "title", "uri", "checkedAtISO", "blockNumber"],
+      `registry.sources.${index}`,
+      errors,
+    );
     const sourceId = typeof source.id === "string" ? source.id : `source[${index}]`;
     if (typeof source.id !== "string" || !/^[a-z][a-z0-9-]{2,63}$/.test(source.id)) {
       errors.push(`invalid source id: ${sourceId}`);
@@ -627,6 +774,12 @@ export function validateHomesTruthRegistry(registry: unknown): string[] {
       errors.push(`claim at index ${index} must be an object`);
       continue;
     }
+    enforceExactKeys(
+      fact,
+      ["id", "status", "value", "sourceIds", "limitation", "missingEvidence"],
+      `registry.claims.${index}`,
+      errors,
+    );
     const factId = typeof fact.id === "string" ? fact.id : `claim[${index}]`;
     const factStatus = typeof fact.status === "string" ? fact.status : "invalid-status";
     if (typeof fact.id !== "string") {
@@ -742,7 +895,7 @@ export function validateHomesTruthRegistry(registry: unknown): string[] {
     if (!claimIds.has(required)) errors.push(`missing required claim: ${required}`);
   }
 
-  return errors;
+  return Array.from(new Set(errors));
 }
 
 const canonicalErrors = validateHomesTruthRegistry(canonicalRegistry);

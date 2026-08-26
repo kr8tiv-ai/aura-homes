@@ -381,3 +381,81 @@ test("malformed runtime registry shapes return bounded errors instead of throwin
     "network.name sourceIds must be an array",
   );
 });
+
+test("revoked proxies and throwing getters fail closed at every truth boundary", () => {
+  const revokedRegistry = Proxy.revocable({}, {});
+  revokedRegistry.revoke();
+  expect(() => validateHomesTruthRegistry(revokedRegistry.proxy)).not.toThrow();
+  expect(validateHomesTruthRegistry(revokedRegistry.proxy).join("\n")).toContain(
+    "registry cannot be inspected safely",
+  );
+
+  const hostileRegistry = mutableRegistry() as unknown as {
+    sources: unknown[];
+    claims: unknown[];
+  };
+  const revokedSource = Proxy.revocable({}, {});
+  revokedSource.revoke();
+  hostileRegistry.sources[0] = revokedSource.proxy;
+  const throwingClaim = structuredClone(HOMES_TRUTH_REGISTRY.claims[0]) as unknown as Record<string, unknown>;
+  Object.defineProperty(throwingClaim, "status", {
+    enumerable: true,
+    get() {
+      throw new Error("private claim getter");
+    },
+  });
+  hostileRegistry.claims[0] = throwingClaim;
+  const registryErrors = validateHomesTruthRegistry(hostileRegistry).join("\n");
+  expect(registryErrors).toContain("registry.sources.0 cannot be inspected safely");
+  expect(registryErrors).toContain("registry.claims.0.status must be an enumerable data property");
+  expect(registryErrors).not.toContain("private claim getter");
+
+  const revokedMint = Proxy.revocable({}, {});
+  revokedMint.revoke();
+  expect(() => validateHomesMintArtifactParity(revokedMint.proxy)).not.toThrow();
+  expect(validateHomesMintArtifactParity(revokedMint.proxy).join("\n")).toContain(
+    "mint artifact cannot be inspected safely",
+  );
+
+  const hostileMint = structuredClone(mintVerification) as unknown as Record<string, unknown>;
+  const throwingToken = structuredClone(mintVerification.token) as unknown as Record<string, unknown>;
+  Object.defineProperty(throwingToken, "address", {
+    enumerable: true,
+    get() {
+      throw new Error("private token getter");
+    },
+  });
+  hostileMint.token = throwingToken;
+  const mintErrors = validateHomesMintArtifactParity(hostileMint).join("\n");
+  expect(mintErrors).toContain("mint artifact.token.address must be an enumerable data property");
+  expect(mintErrors).not.toContain("private token getter");
+});
+
+test("unknown registry, source, claim, and mint-artifact fields cannot smuggle claims", () => {
+  const registry = mutableRegistry() as unknown as Record<string, unknown>;
+  registry.guaranteedReturn = "15%";
+  const registrySources = registry.sources as Array<Record<string, unknown>>;
+  registrySources[0].propertyFund = "live";
+  const registryClaims = registry.claims as Array<Record<string, unknown>>;
+  registryClaims[0].approved = true;
+  expect(validateHomesTruthRegistry(registry)).toEqual(expect.arrayContaining([
+    "registry has unknown key guaranteedReturn",
+    "registry.sources.0 has unknown key propertyFund",
+    "registry.claims.0 has unknown key approved",
+  ]));
+
+  const artifact = structuredClone(mintVerification) as unknown as Record<string, unknown>;
+  artifact.legalFund = "approved";
+  (artifact.token as Record<string, unknown>).ownership = "cabin equity";
+  (artifact.totalSupply as Record<string, unknown>).yield = "15%";
+  const knownHolders = artifact.knownHolders as Record<string, Record<string, unknown>>;
+  knownHolders.creatorWallet.fundClaim = true;
+  delete (artifact.coverage as Record<string, unknown>).sentence;
+  expect(validateHomesMintArtifactParity(artifact)).toEqual(expect.arrayContaining([
+    "mint artifact has unknown key legalFund",
+    "mint artifact.token has unknown key ownership",
+    "mint artifact.totalSupply has unknown key yield",
+    "mint artifact.knownHolders.creatorWallet has unknown key fundClaim",
+    "mint artifact.coverage is missing key sentence",
+  ]));
+});
