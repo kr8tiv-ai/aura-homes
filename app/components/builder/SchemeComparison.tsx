@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   compareSavedSchemes,
   type ComparedScheme,
@@ -134,22 +134,31 @@ export default function SchemeComparison({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
+  const refreshSequence = useRef(0);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (invalidateComparison = false) => {
+    const sequence = ++refreshSequence.current;
     try {
       const next = await listDesigns();
+      if (sequence !== refreshSequence.current) return;
       setDesigns(next);
       const available = new Set(next.filter((design) => design.readable).map((design) => design.id));
       setSelectedIds((current) => current.filter((id) => available.has(id)));
+      if (invalidateComparison) {
+        setLoaded([]);
+        setComparison(null);
+        setAnnouncement("The saved library changed. Compare again to reopen the exact current records.");
+      }
       setError(null);
     } catch (err) {
+      if (sequence !== refreshSequence.current) return;
       setError(explainStoreError(err).message);
     }
   }, []);
 
   useEffect(() => {
     void refresh();
-    return onLibraryChange(() => void refresh());
+    return onLibraryChange(() => void refresh(true));
   }, [refresh]);
 
   const readable = designs.filter((design) => design.readable);
