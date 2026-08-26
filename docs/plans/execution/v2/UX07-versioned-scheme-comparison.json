@@ -103,7 +103,17 @@
     "planCommit": "646fb4b",
     "readyManifestCommit": "f9c2592",
     "protectedPathChanges": 0,
-    "githubSync": "blocked: current GitHub OAuth credential lacks workflow scope required to push the preserved source-ci workflow"
+    "githubSync": "blocked: current GitHub OAuth credential lacks workflow scope required to push the preserved source-ci workflow",
+    "candidateCommit": "cde894a59d11db3179f140675f841b110069ee48",
+    "candidateWriteSet": "11 declared paths; 11 changed paths; zero delta; no protected path",
+    "typecheck": "pass",
+    "focusedDeterministic": "12/12 comparison and gate-coverage proofs passed",
+    "deterministicGate": "735 declared; 731 passed; 4 intentional served-only skips",
+    "focusedServed": "1/1 saved-scheme keyboard and project-state proof passed against the candidate export",
+    "graphGate": "24/24; authority pass",
+    "repairAttempt": "1/1: serialized overlapping library refreshes and invalidated open comparisons after a library mutation; focused served proof passed",
+    "fullUiGate": "blocked twice at 136/137: UX07 passed both times; unchanged protected walkthrough.spec.ts reduced-motion camera timing case failed both full runs at data-walk-camera=not moved; its isolated rerun passed 1/1",
+    "blocker": "The manifest requires npm run test:ui green. That command is red on an unchanged frozen 3D/camera/animation walkthrough path, and founder policy forbids changing that surface. UX07 cannot be called verified without weakening a declared gate."
   },
-  "status": "active"
+  "status": "blocked"
 }
