@@ -46,7 +46,10 @@
   "writeSet": [
     "docs/plans/execution/v2/UX03-contextual-inspector.json",
     "app/components/builder/BuilderApp.tsx",
-    "app/tests/builder-plans-first.spec.ts"
+    "app/tests/builder-plans-first.spec.ts",
+    "app/tests/gate-coverage.spec.ts",
+    "README.md",
+    "docs/SUBMISSION.md"
   ],
   "freezeClass": "none",
   "owner": "primary-agent",
@@ -100,11 +103,11 @@
     "priorIndependentVerdict": "FAIL at closure c312b780d777a6aefe84d3a48e729e06d2103f63: a wall selection from Guided Rooms remained projected after Guided Shell hid the 2D plan surface",
     "independentVerdict": "FAIL at re-verification of closure 2907ed3e5860779d744c9c2aa8cdc3aeafebc938: after a canonical graph wall changed from 34 to 40 feet, selecting the visible graph in Guided Shell projected the frozen recovery HomeSpec's 34-foot Legacy massing volume instead of canonical graph/storey state",
     "repairLoop": {
-      "used": 0,
+      "used": 1,
       "maximum": 1,
       "attempt": 2
     },
-    "blockerDisposition": "Owner authorization received. The corrective attempt is limited to projecting the selected canonical storey in the inspector and adding the graph-edit-to-3D-selection served regression; no renderer or scene behavior may change.",
+    "blockerDisposition": "Owner authorization received. The corrective attempt projects the selected canonical storey, adds the graph-edit-to-3D-selection regression, and consumes its single repair loop to reconcile the deterministic gate counter plus the two public verification receipts from 726 to 727 declarations; no renderer or scene behavior changes.",
     "protectedPathChanges": 0
   },
   "status": "active"
