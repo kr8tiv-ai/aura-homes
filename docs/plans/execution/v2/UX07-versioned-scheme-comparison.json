@@ -1,0 +1,101 @@
+{
+  "graphVersion": "aura-graph/v2.0@680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8",
+  "node": "UX07",
+  "lane": "guided-studio",
+  "stage": "versioned-scheme-comparison",
+  "job": "Let a person compare two or three explicitly saved cabin schemes by exact canonical identity and existing program, area, cost, constraint, and export facts without ranking, guessed evidence, autonomous mutation, or a second project model.",
+  "inputs": [
+    {
+      "name": "UX03-verified-contextual-inspector",
+      "version": "751db70",
+      "hash": "git:751db70c65669fa59f17b95be27d4803dfde5cb6"
+    },
+    {
+      "name": "approved-variants-and-comparison-design",
+      "version": "2026-08-24",
+      "hash": "git:f7616886f9f8a171c847ef5eb49e932246ff989b"
+    },
+    {
+      "name": "UX07-implementation-plan",
+      "version": "2026-08-26",
+      "hash": "git:646fb4b"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "canonical-scheme-comparison-projection",
+      "acceptanceSchema": "AuraSchemeComparisonV1",
+      "path": "app/lib/builder/schemeComparison.ts"
+    },
+    {
+      "name": "saved-scheme-comparison-surface",
+      "acceptanceSchema": "Keyboard-accessible local-library comparison",
+      "path": "app/components/builder/SchemeComparison.tsx"
+    },
+    {
+      "name": "UX07-browser-evidence",
+      "acceptanceSchema": "Playwright deterministic and served proof",
+      "path": "app/tests/scheme-comparison.spec.ts"
+    }
+  ],
+  "depends": ["UX03:verified"],
+  "reject": [
+    "UX03 is not independently verified",
+    "fewer than two or more than three schemes can be presented as a comparison",
+    "a scheme lacks its saved record id, document version, saved timestamp, or complete canonical document hash",
+    "a saved signature that differs from the reopened document hash is accepted, hidden, or silently repaired",
+    "two records with the same canonical document hash are presented as different schemes",
+    "program, area, cost, constraint, readiness, provenance, or export facts are retyped or recomputed outside their existing owning modules",
+    "an option is called best, recommended, optimal, compliant, approved, or ready without a declared objective and evidence",
+    "selecting, ordering, clearing, or viewing a comparison changes project state, editor history, geometry, persistence, or the active design hash",
+    "a corrupt, unreadable, future, deleted, or concurrently changed library record becomes a partial or stale comparison column",
+    "opening a compared scheme bypasses the existing explicit library open and undo path",
+    "a public-site, 3D, renderer, animation, engine, scene, model, texture, shader, camera, lighting, motion, or quality-tier path changes"
+  ],
+  "writeSet": [
+    "docs/plans/execution/v2/UX07-versioned-scheme-comparison.json",
+    "app/lib/builder/schemeComparison.ts",
+    "app/components/builder/SchemeComparison.tsx",
+    "app/components/builder/BuilderApp.tsx",
+    "app/tests/scheme-comparison.spec.ts",
+    "app/playwright.ui.config.ts",
+    "app/tests/gate-coverage.spec.ts",
+    "README.md",
+    "docs/SUBMISSION.md"
+  ],
+  "freezeClass": "none",
+  "owner": "primary-agent",
+  "verifier": "independent-fresh-context",
+  "sideEffects": "local-read-only",
+  "externalGates": [],
+  "verification": [
+    "npm run typecheck",
+    "npx playwright test tests/scheme-comparison.spec.ts",
+    "npm test",
+    "npm run test:ui",
+    "npx playwright test tests/scheme-comparison.spec.ts --config=playwright.r0.config.ts",
+    "npm run test:graph-v2",
+    "fixture: stale, duplicate, corrupt, future, deleted, and more-than-three candidate sets fail closed",
+    "fixture: legacy and planar-graph schemes derive identity, program, area, cost, blocker, and export facts only from existing owners",
+    "browser evidence: two and three saved schemes can be selected, ordered, compared, and cleared by keyboard",
+    "browser evidence: changing the reference column changes only factual deltas and never labels a winner",
+    "browser evidence: selection, comparison, reference changes, and clearing leave the active design hash and undo history unchanged",
+    "browser evidence: opening a scheme remains an explicit existing library action and one undo restores the prior project",
+    "git diff --name-only <UX07-base>...HEAD"
+  ],
+  "repair": {
+    "maxLoops": 1,
+    "boundary": "UX07 writeSet only"
+  },
+  "evidence": {
+    "startedFrom": "646fb4b",
+    "dependencyGate": "UX03 independently verified at 751db70c65669fa59f17b95be27d4803dfde5cb6; Graph v2 authority and freeze guard pass",
+    "lateralReason": "UX04 is blocked after its one permitted repair, so UX08 cannot advance; UX07 is a sibling from verified UX03 and has no UX04 dependency.",
+    "writeOwnership": "No ready, active, verification-pending, or integration-pending manifest owns a UX07 path; blocked nodes do not retain write ownership.",
+    "existingSurfaceAudit": "VariationStrip already generates validated deterministic candidate documents and ProjectLibrary already persists explicit complete saved versions. No surface compares selected saved records by complete canonical identity, shared program/area/cost/blocker/export facts, or a user-chosen reference.",
+    "planCommit": "646fb4b",
+    "protectedPathChanges": 0,
+    "githubSync": "blocked: current GitHub OAuth credential lacks workflow scope required to push the preserved source-ci workflow"
+  },
+  "status": "ready"
+}
