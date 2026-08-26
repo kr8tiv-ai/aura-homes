@@ -134,7 +134,29 @@
       ],
       "used": 1,
       "maximum": 1
+    },
+    "reentryVerification": {
+      "verdict": "verification-pending",
+      "activationCommit": "93e87191925a967fa07d91348eaaa6c4076f6de0",
+      "candidateCommit": "dd8d89a23bde53e29f6abaf119389ff59ff61c9c",
+      "redProof": "The isolated multi-commit repository fixture failed because the old gate returned an empty error list after a valid append, a fully rehashed rewrite, and a later valid append.",
+      "repair": "The repository gate now proves the pinned V1 commit is an ancestor, reopens the exact pinned blob, walks every first-parent registry-changing commit in order, requires a zero-change V1-to-V2 migration, validates every committed V2 ledger, proves every adjacent V2 change list is an exact prefix, and then checks any uncommitted candidate as the final transition.",
+      "writeSetCheck": {
+        "declared": 3,
+        "changed": 3,
+        "delta": 0,
+        "candidateGuardErrors": []
+      },
+      "gateReceipts": {
+        "decisionLedger": "11/11 passed, including the real cloned multi-commit buried-rewrite fixture",
+        "repositoryReceipt": "FounderDecisionLedgerGateReceiptV1 authoritySeed pass; changes 0; errors []",
+        "typecheck": "passed at candidate dd8d89a23bde53e29f6abaf119389ff59ff61c9c",
+        "graphV2": "25/25 passed across eleven decision-ledger proofs and fourteen graph/freeze proofs; authority pass",
+        "candidateGuard": "three repair paths accepted; errors []"
+      },
+      "protectedPathChanges": 0,
+      "independentVerifier": "required before verified; recurring auditor was canceled by the founder"
     }
   },
-  "status": "active"
+  "status": "verification-pending"
 }
