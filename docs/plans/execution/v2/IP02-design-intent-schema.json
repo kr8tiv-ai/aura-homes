@@ -113,7 +113,10 @@
       "repairPaths": [
         "docs/plans/execution/v2/IP02-design-intent-schema.json",
         "app/lib/ai/designIntent.ts",
-        "app/tests/design-intent.spec.ts"
+        "app/tests/design-intent.spec.ts",
+        "app/tests/gate-coverage.spec.ts",
+        "README.md",
+        "docs/SUBMISSION.md"
       ],
       "used": 1,
       "maximum": 1
