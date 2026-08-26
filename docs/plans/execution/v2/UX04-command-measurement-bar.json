@@ -106,7 +106,7 @@
       "productionUi": "136 of 136 passed against a fresh repaired static export in 15.8 minutes",
       "focusedBuilder": "15 of 15 passed against the fresh repaired UX04 export, including the 390x844 one-Undo-after-Escape regression",
       "graphV2": "24 of 24 passed; approved Graph v2 authority pass; UX04 verification-pending manifest valid",
-      "graphPosition": "pending refreshed explicit preflight at repaired candidate a906eb75a0e6c34fb58c0112ab83268bcbfed0dd"
+      "graphPosition": "explicit preflight PASS for UX04 at base 770806e5584c3842ade7171c16faae39dc4abeba and repaired candidate a906eb75a0e6c34fb58c0112ab83268bcbfed0dd; authority, UX03 dependency, exact writes, clean worktree, declared evidence, and complete decision history pass; remain:UX04 allowed; independent verification required"
     },
     "interactionProof": "The served compact bar projects the selected wall's exact canonical length, focuses the existing GraphPlanEditor NumberField, commits through the existing graph vertex mutator, names undo and redo as Move a plan point, retains invalid raw input and its constraint without changing the design hash, restores the canonical value on Escape, refuses unknown Ctrl K text without mutation, and reaches the original document with exactly one Undo after the cancelled field later blurs on a 390x844 viewport.",
     "priorIndependentVerdict": "FAIL at closure 4ae1a6fcd8c906f13990608ffc208dd5d37a288e: after Undo/Redo, an invalid exact draft, Escape, and later palette-induced blur, the restored canonical value was recommitted as a ghost history entry, so the first Undo was a no-op.",
