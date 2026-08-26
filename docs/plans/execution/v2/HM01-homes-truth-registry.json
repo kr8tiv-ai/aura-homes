@@ -132,7 +132,30 @@
       ],
       "used": 1,
       "maximum": 1
+    },
+    "reentryVerification": {
+      "verdict": "verification-pending",
+      "activationCommit": "21e0200d9295b8cf618082649d02e00c791744df",
+      "candidateCommit": "268fb82d55e4c69249753d7b3ad42ea3848237d4",
+      "redProof": "The focused fixture reproduced both final-verifier blockers: revoked root input leaked TypeError from Array.isArray, and registry/source/claim promotional unknown keys validated with an empty error list.",
+      "repair": "Every runtime registry and mint candidate is recursively copied through own enumerable data-property descriptors into detached plain JSON before reads. Revoked proxies, accessors, cycles, symbols, custom prototypes, sparse/custom arrays, and non-JSON values fail closed; exact required and allowed keys are enforced for the registry, every source, every claim, and every nested mint artifact object.",
+      "writeSetCheck": {
+        "declared": 3,
+        "changed": 3,
+        "delta": 0,
+        "candidateGuardErrors": []
+      },
+      "gateReceipts": {
+        "focusedHomesTruthRegistry": "17/17 passed, including revoked root/source/mint proxies, throwing claim/token getters, private-error non-leakage, and missing/unknown promotional fields at every object layer",
+        "focusedWithCoverage": "24/24 passed across seventeen HM01 proofs and seven gate-coverage proofs",
+        "typecheck": "passed at candidate 268fb82d55e4c69249753d7b3ad42ea3848237d4",
+        "deterministic": "736 declared; 732 passed and 4 intentional served-only skips in 54.0 seconds",
+        "graphV2": "25/25 passed; authority pass",
+        "candidateGuard": "three repair paths accepted; errors []"
+      },
+      "protectedPathChanges": 0,
+      "independentVerifier": "required before verified; recurring auditor was canceled by the founder"
     }
   },
-  "status": "active"
+  "status": "verification-pending"
 }
