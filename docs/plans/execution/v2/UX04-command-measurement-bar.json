@@ -1,0 +1,102 @@
+{
+  "graphVersion": "aura-graph/v2.0@680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8",
+  "node": "UX04",
+  "lane": "guided-studio",
+  "stage": "command-measurement-bar",
+  "job": "Project active-tool measurements, deterministic command discovery, cancellation, and named history actions into the compact Guided Studio project bar without creating a second edit path.",
+  "inputs": [
+    {
+      "name": "UX03-verified-contextual-inspector",
+      "version": "751db70",
+      "hash": "git:751db70c65669fa59f17b95be27d4803dfde5cb6"
+    },
+    {
+      "name": "approved-canvas-first-guided-studio-design",
+      "version": "2026-08-24",
+      "hash": "git:f7616886f9f8a171c847ef5eb49e932246ff989b"
+    },
+    {
+      "name": "UX04-implementation-plan",
+      "version": "2026-08-26",
+      "hash": "git:7ba2919301ef391cc1d45639548761485146df90"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "command-measurement-projection",
+      "acceptanceSchema": "GuidedStudioCommandMeasurementV1",
+      "path": "app/lib/builder/guidedStudio.ts"
+    },
+    {
+      "name": "compact-command-measurement-bar",
+      "acceptanceSchema": "Keyboard-and-a11y project chrome",
+      "path": "app/components/builder/GuidedStudioShell.tsx"
+    },
+    {
+      "name": "UX04-browser-evidence",
+      "acceptanceSchema": "Playwright deterministic and served proof",
+      "path": "app/tests/builder-plans-first.spec.ts"
+    }
+  ],
+  "depends": ["UX03:verified"],
+  "reject": [
+    "UX03 is not independently verified",
+    "the bar stores project, geometry, selection, persistence, or a second history stack",
+    "the bar introduces a numeric commit path separate from the existing exact-value handler and canonical graph mutator",
+    "the bar introduces a phrase parser or guessed language mutation separate from the existing deterministic command path",
+    "unknown command text mutates the project instead of producing discovery or refusal",
+    "invalid exact input is discarded, silently clamped, or detached from its constraint",
+    "Escape changes the project, loses the canonical value, or leaves an obscured invalid draft",
+    "undo or redo describes implementation identifiers instead of the project action",
+    "keyboard focus is hidden, trapped, or moved into an inactive surface",
+    "the 1280 by 720 first canvas moves below the fold",
+    "a public-site, 3D, renderer, animation, engine, scene, model, texture, shader, camera, lighting, motion, or quality-tier path changes"
+  ],
+  "writeSet": [
+    "docs/plans/execution/v2/UX04-command-measurement-bar.json",
+    "app/lib/builder/guidedStudio.ts",
+    "app/components/builder/GraphPlanEditor.tsx",
+    "app/components/builder/GuidedStudioShell.tsx",
+    "app/components/builder/BuilderApp.tsx",
+    "app/tests/builder-plans-first.spec.ts",
+    "app/tests/gate-coverage.spec.ts",
+    "README.md",
+    "docs/SUBMISSION.md"
+  ],
+  "freezeClass": "none",
+  "owner": "primary-agent",
+  "verifier": "independent-fresh-context",
+  "sideEffects": "local",
+  "externalGates": [],
+  "verification": [
+    "npm run typecheck",
+    "npm test",
+    "npm run test:ui",
+    "npx playwright test tests/builder-plans-first.spec.ts --config=playwright.r0.config.ts",
+    "npm run test:graph-v2",
+    "browser evidence: the compact bar names the active measurement and focuses the existing exact field",
+    "browser evidence: Enter uses the existing canonical edit path; invalid raw input and its constraint remain visible; Escape restores the canonical value without changing the document hash",
+    "browser evidence: Ctrl K discovers the existing deterministic commands and undo or redo names the project action",
+    "browser evidence: 1280x720 canvas and first-edit controls remain visible at scrollY=0",
+    "git diff --name-only <UX04-base>...HEAD"
+  ],
+  "repair": {
+    "maxLoops": 1,
+    "boundary": "UX04 writeSet only"
+  },
+  "evidence": {
+    "startedFrom": "7ba2919301ef391cc1d45639548761485146df90",
+    "dependencyGate": "UX03 independently verified at 751db70c65669fa59f17b95be27d4803dfde5cb6; Graph v2 authority and freeze guard pass",
+    "writeOwnership": "No ready, active, verification-pending, or integration-pending manifest owns a UX04 path; prior UX03 ownership is verified and closed.",
+    "designCommit": "f7616886f9f8a171c847ef5eb49e932246ff989b",
+    "planCommit": "7ba2919301ef391cc1d45639548761485146df90",
+    "lateralReason": "none; UX04 is the direct forward child of verified UX03",
+    "repairLoop": {
+      "used": 0,
+      "maximum": 1
+    },
+    "protectedPathChanges": 0,
+    "githubSync": "blocked: current GitHub OAuth credential lacks workflow scope required to push the preserved source-ci workflow"
+  },
+  "status": "ready"
+}
