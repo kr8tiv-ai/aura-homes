@@ -58,17 +58,7 @@
     "a public-site, 3D, renderer, animation, engine, scene, model, texture, shader, camera, lighting, motion, or quality-tier path changes"
   ],
   "writeSet": [
-    "docs/plans/execution/v2/UX07-versioned-scheme-comparison.json",
-    "app/lib/builder/schemeComparison.ts",
-    "app/components/builder/SchemeComparison.tsx",
-    "app/components/builder/BuilderApp.tsx",
-    "app/tests/scheme-comparison.spec.ts",
-    "app/tests/scheme-comparison-ui.spec.ts",
-    "app/package.json",
-    "app/playwright.ui.config.ts",
-    "app/tests/gate-coverage.spec.ts",
-    "README.md",
-    "docs/SUBMISSION.md"
+    "docs/plans/execution/v2/UX07-versioned-scheme-comparison.json"
   ],
   "freezeClass": "none",
   "owner": "primary-agent",
@@ -113,7 +103,17 @@
     "graphGate": "24/24; authority pass",
     "repairAttempt": "1/1: serialized overlapping library refreshes and invalidated open comparisons after a library mutation; focused served proof passed",
     "fullUiGate": "blocked twice at 136/137: UX07 passed both times; unchanged protected walkthrough.spec.ts reduced-motion camera timing case failed both full runs at data-walk-camera=not moved; its isolated rerun passed 1/1",
-    "blocker": "The manifest requires npm run test:ui green. That command is red on an unchanged frozen 3D/camera/animation walkthrough path, and founder policy forbids changing that surface. UX07 cannot be called verified without weakening a declared gate."
+    "blocker": "The manifest requires npm run test:ui green. That command is red on an unchanged frozen 3D/camera/animation walkthrough path, and founder policy forbids changing that surface. UX07 cannot be called verified without weakening a declared gate.",
+    "verificationReentry": {
+      "authorizedAt": "2026-08-26",
+      "instruction": "continue without stopping until I interrupt; earlier founder instruction: approve everything",
+      "startedFrom": "a3e91ed66d868f49767e6b3c20fcbac24c8c6329",
+      "reason": "A later source-bound full UI run passed all 137 tests without changing the frozen walkthrough or any UX07 production path, resolving UX07's sole recorded blocker.",
+      "writeOwnership": "Manifest-only verification reentry; no production, test, shared bookkeeping, public visual, or frozen path is claimed.",
+      "repairPaths": [
+        "docs/plans/execution/v2/UX07-versioned-scheme-comparison.json"
+      ]
+    }
   },
-  "status": "blocked"
+  "status": "active"
 }
