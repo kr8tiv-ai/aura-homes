@@ -49,11 +49,7 @@
   "writeSet": [
     "docs/plans/execution/v2/HM01-homes-truth-registry.json",
     "app/lib/homes/truthRegistry.ts",
-    "app/tests/homes-truth-registry.spec.ts",
-    "app/package.json",
-    "app/tests/gate-coverage.spec.ts",
-    "README.md",
-    "docs/SUBMISSION.md"
+    "app/tests/homes-truth-registry.spec.ts"
   ],
   "freezeClass": "none",
   "owner": "primary-agent",
@@ -122,7 +118,21 @@
       ],
       "requiredFutureAuthority": "A future explicitly authorized correction must use safe own-data-property extraction/reflection guards and exact allowed-key schemas for every registry and mint-artifact object before HM01 can be re-entered."
     },
-    "protectedPathChanges": 0
+    "protectedPathChanges": 0,
+    "ownerReentry": {
+      "authorizedAt": "2026-08-26",
+      "instruction": "continue without stopping until I interrupt; earlier founder instruction: approve everything",
+      "startedFrom": "ce2387ab391a71d8d086d767818a34accaa17ae7",
+      "reason": "HM01 is a dependency-safe lateral security repair whose final verifier found fail-open reflection and unknown-key handling.",
+      "writeOwnership": "The reentry write set is narrowed to the manifest, HOMES truth validator, and focused test; it has zero overlap with active or verification-pending nodes.",
+      "repairPaths": [
+        "docs/plans/execution/v2/HM01-homes-truth-registry.json",
+        "app/lib/homes/truthRegistry.ts",
+        "app/tests/homes-truth-registry.spec.ts"
+      ],
+      "used": 1,
+      "maximum": 1
+    }
   },
-  "status": "blocked"
+  "status": "active"
 }
