@@ -88,8 +88,9 @@
     "writeOwnership": "G04, HM01, IP02, and UX03 are blocked and carry no live ownership; all other instantiated manifests are verified; no ready, active, or verification-pending manifest owns a G05 path.",
     "designCommit": "e8f19e47186991fc6364a849853d0e943e26dc22",
     "planCommit": "79b39e9ef45705e1f512d04e1bf53af158645454",
+    "readyManifestCommit": "eb658bc34f6741bac79ff6fd04c24851d1f3c70c",
     "lateralReason": "G04 exhausted its repair after a full-history bypass; G05 depends only on verified G01 and explicitly owns point-in-time reconciliation, so it is a graph-valid lateral move.",
     "githubSync": "blocked: current GitHub OAuth credential lacks workflow scope required to push the preserved source-ci workflow; SSH authentication is unavailable"
   },
-  "status": "ready"
+  "status": "active"
 }
