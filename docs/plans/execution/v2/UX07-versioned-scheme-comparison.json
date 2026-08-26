@@ -58,6 +58,7 @@
     "app/components/builder/SchemeComparison.tsx",
     "app/components/builder/BuilderApp.tsx",
     "app/tests/scheme-comparison.spec.ts",
+    "app/package.json",
     "app/playwright.ui.config.ts",
     "app/tests/gate-coverage.spec.ts",
     "README.md",
