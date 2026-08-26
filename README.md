@@ -15,7 +15,7 @@
 [![Live](https://img.shields.io/badge/live-aurahomes.fun-047857?style=flat-square&labelColor=f5f5f4)](https://aurahomes.fun)
 [![HOMES](https://img.shields.io/badge/%24HOMES-live_on_X_Layer_196-047857?style=flat-square&labelColor=f5f5f4)](https://aurahomes.fun/homes)
 [![X Layer](https://img.shields.io/badge/labs-X_Layer_testnet_1952-171a18?style=flat-square&labelColor=f5f5f4)](#x-layer-experiments)
-[![Tests](https://img.shields.io/badge/gates-727_unit_%2B_136_UI_%2B_hardware_proof-171a18?style=flat-square&labelColor=f5f5f4)](#verification)
+[![Tests](https://img.shields.io/badge/gates-730_unit_%2B_136_UI_%2B_hardware_proof-171a18?style=flat-square&labelColor=f5f5f4)](#verification)
 [![License](https://img.shields.io/badge/license-MIT-171a18?style=flat-square&labelColor=f5f5f4)](LICENSE)
 
 <sub>Open-source product and hackathon submission by <a href="https://github.com/Matt-Aurora-Ventures">Matt Haynes / Aura Ventures</a>. Alberta first; designed to travel.</sub>
@@ -304,7 +304,7 @@ The current release checkpoint produced:
 | Suite | Result |
 | --- | ---: |
 | TypeScript / production compilation | Passed |
-| Deterministic app + contract-truth specs | **727 declared** (724 passed + 3 served-only skipped in the deterministic run) |
+| Deterministic app + contract-truth specs | **730 declared** (726 passed + 4 served-only skipped in the deterministic run) |
 | Playwright UI specs against a fresh static export | **136 passed** |
 | Hardware scene proof (real GPU, desktop + mobile) | **Passed at `fb6439c`** on 2026-08-14 — meadow settled both tiers, wind measured at 26% pixel motion on an idle scene, render p95 8.3 ms at the full tier. The commit is the one recorded inside [`meadow-proof.json`](app/shots/r03-meadow/meadow-proof.json). It needs a quiet machine and a real GPU, so it is dated rather than implied — and **12 scene files have changed since**, so it describes the scene as it was proven, not as it ships today. |
 | Money anchor (`agent/` `npm run demo`) | **Reconciles to the dollar** — ex-land $199,100 / $301,280 / $443,900 vs `data/alberta/cost-model.json` |
