@@ -110,11 +110,12 @@
     "protectedPathChanges": 0,
     "priorIndependentVerdict": "FAIL at closure b02611d52e903c43764b518b70a604406bf265b0: dependency and write projections were not reconciled to the manifest, revoked repository boundaries leaked raw TypeErrors, failure receipts could emit schema-invalid remain corrections, and integration-pending ownership was omitted.",
     "repair": "The single bounded repair adds exact manifest dependency and write-set equality, safe inspection before exported coercion or destructuring, schema-valid blocked-authority correction fallback, integration-pending ownership, independent authority/input reopening, and direct adversarial regression fixtures for every finding.",
+    "independentVerdict": "PASS at closure a51ebcb528925cb9385b0cbe69e60ec7cba8bd6d: authority and G01 pass; lineage is valid; candidate and manifest write sets are exact 6/6; closure is manifest-only; zero protected paths; repository clean; all five repair findings are closed; graph-position 14/14, decision-ledger 10/10 plus CLI, Graph v2 24/24, and typecheck pass; independentVerification remains required and no external side effects occur.",
     "repairLoop": {
       "used": 1,
       "maximum": 1
     },
     "githubSync": "blocked: current GitHub OAuth credential lacks workflow scope required to push the preserved source-ci workflow; SSH authentication is unavailable"
   },
-  "status": "verification-pending"
+  "status": "verified"
 }
