@@ -90,6 +90,7 @@
     "writeOwnership": "No ready, active, verification-pending, or integration-pending manifest owns a UX04 path; prior UX03 ownership is verified and closed.",
     "designCommit": "f7616886f9f8a171c847ef5eb49e932246ff989b",
     "planCommit": "7ba2919301ef391cc1d45639548761485146df90",
+    "readyManifestCommit": "770806e5584c3842ade7171c16faae39dc4abeba",
     "lateralReason": "none; UX04 is the direct forward child of verified UX03",
     "repairLoop": {
       "used": 0,
@@ -98,5 +99,5 @@
     "protectedPathChanges": 0,
     "githubSync": "blocked: current GitHub OAuth credential lacks workflow scope required to push the preserved source-ci workflow"
   },
-  "status": "ready"
+  "status": "active"
 }
