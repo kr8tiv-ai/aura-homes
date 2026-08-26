@@ -365,7 +365,7 @@ test("the checked-in mint artifact must remain the exact reviewed X Layer mainne
   ]));
 });
 
-test("malformed runtime registry shapes return bounded errors instead of throwing", () => {
+test("malformed, hostile, and unreviewed runtime shapes fail closed", () => {
   expect(() => validateHomesTruthRegistry({})).not.toThrow();
   expect(validateHomesTruthRegistry({})).toEqual(expect.arrayContaining([
     "registry.sources must be an array",
@@ -380,9 +380,7 @@ test("malformed runtime registry shapes return bounded errors instead of throwin
   expect(validateHomesTruthRegistry(missingSourceIds)).toContain(
     "network.name sourceIds must be an array",
   );
-});
 
-test("revoked proxies and throwing getters fail closed at every truth boundary", () => {
   const revokedRegistry = Proxy.revocable({}, {});
   revokedRegistry.revoke();
   expect(() => validateHomesTruthRegistry(revokedRegistry.proxy)).not.toThrow();
@@ -429,9 +427,7 @@ test("revoked proxies and throwing getters fail closed at every truth boundary",
   const mintErrors = validateHomesMintArtifactParity(hostileMint).join("\n");
   expect(mintErrors).toContain("mint artifact.token.address must be an enumerable data property");
   expect(mintErrors).not.toContain("private token getter");
-});
 
-test("unknown registry, source, claim, and mint-artifact fields cannot smuggle claims", () => {
   const registry = mutableRegistry() as unknown as Record<string, unknown>;
   registry.guaranteedReturn = "15%";
   const registrySources = registry.sources as Array<Record<string, unknown>>;
