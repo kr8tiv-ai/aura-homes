@@ -89,8 +89,30 @@
     "designCommit": "e8f19e47186991fc6364a849853d0e943e26dc22",
     "planCommit": "79b39e9ef45705e1f512d04e1bf53af158645454",
     "readyManifestCommit": "eb658bc34f6741bac79ff6fd04c24851d1f3c70c",
+    "activationCommit": "52a75858fa8bf791b7d76d0a86b9a07518ac9905",
+    "candidateCommit": "963ff83bc034593c88af20a7c965c668b4b8c3d1",
     "lateralReason": "G04 exhausted its repair after a full-history bypass; G05 depends only on verified G01 and explicitly owns point-in-time reconciliation, so it is a graph-valid lateral move.",
+    "writeSetCheck": {
+      "declared": 6,
+      "changed": 6,
+      "delta": 0,
+      "candidateGuardErrors": []
+    },
+    "gateReceipts": {
+      "graphPosition": "10/10 passed, including full real-Git history traversal, exact receipt input, hostile reflection, position drift, safe movement, CLI policy, and declared-evidence equality",
+      "decisionLedger": "10/10 passed; current authority seed pass; zero appended changes; errors []",
+      "graphV2": "24/24 passed; approved Graph v2 authority pass; every instantiated manifest valid",
+      "typecheck": "passed at candidate 963ff83bc034593c88af20a7c965c668b4b8c3d1",
+      "pointInTimeReceipt": "preflight PASS for G05 at base 79b39e9 and candidate 963ff83; authority, dependency, writes, worktree, evidence, and complete decision history pass; remain:G05 allowed; independent verification still required"
+    },
+    "decisionHistoryProof": "The checker enumerates every first-parent commit changing decisions.json from pinned V1 anchor b054226 to the inspected candidate. A temporary real Git repository proves accepted-to-rewritten-to-appended history fails at the buried rewrite rather than validating only the final pair.",
+    "movementProof": "Backward repair is offered only with remaining manifest budget. Lateral work is offered only for a committed ready manifest with satisfied dependencies, no external gates, and an unclaimed write set. Proposed strategic rows are excluded.",
+    "protectedPathChanges": 0,
+    "repairLoop": {
+      "used": 0,
+      "maximum": 1
+    },
     "githubSync": "blocked: current GitHub OAuth credential lacks workflow scope required to push the preserved source-ci workflow; SSH authentication is unavailable"
   },
-  "status": "active"
+  "status": "verification-pending"
 }
