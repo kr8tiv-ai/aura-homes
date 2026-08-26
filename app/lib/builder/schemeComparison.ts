@@ -148,7 +148,8 @@ function projectScheme(
   if (record.signature !== designHash)
     return fail(`Saved scheme ${record.id} signature does not match its reopened document hash.`);
 
-  const graph = document.geometry.kind === "building-graph" ? document.geometry.graph : null;
+  const graphGeometry = document.geometry.kind === "building-graph" ? document.geometry : null;
+  const graph = graphGeometry?.graph ?? null;
   const summary = graph ? summarizeBuildingGraph(graph) : summarizeHome(document.spec);
   const roomSet = graph ? comfortRoomsFromGraph(graph) : comfortRooms(document.spec);
   const storeyCount = graph
@@ -183,7 +184,7 @@ function projectScheme(
       state: readiness.state,
       blockers: readiness.gaps.map((gap) => gap.need),
       warnings: [
-        ...(graph ? document.geometry.migrationWarnings : []),
+        ...(graphGeometry?.migrationWarnings ?? []),
         ...(roomSet.blockedReason ? [roomSet.blockedReason] : []),
       ],
       quarantinedItems: document.quarantine.entries.length,
@@ -197,7 +198,7 @@ function projectScheme(
       state: "design-intent",
       blockers: ["The scheme could not be priced, so its readiness could not be compared."],
       warnings: [
-        ...(graph ? document.geometry.migrationWarnings : []),
+        ...(graphGeometry?.migrationWarnings ?? []),
         ...(roomSet.blockedReason ? [roomSet.blockedReason] : []),
       ],
       quarantinedItems: document.quarantine.entries.length,

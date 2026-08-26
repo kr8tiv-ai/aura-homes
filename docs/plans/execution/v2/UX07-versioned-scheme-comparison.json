@@ -36,6 +36,11 @@
       "name": "UX07-browser-evidence",
       "acceptanceSchema": "Playwright deterministic and served proof",
       "path": "app/tests/scheme-comparison.spec.ts"
+    },
+    {
+      "name": "UX07-served-browser-evidence",
+      "acceptanceSchema": "Playwright served keyboard and project-state proof",
+      "path": "app/tests/scheme-comparison-ui.spec.ts"
     }
   ],
   "depends": ["UX03:verified"],
@@ -58,6 +63,7 @@
     "app/components/builder/SchemeComparison.tsx",
     "app/components/builder/BuilderApp.tsx",
     "app/tests/scheme-comparison.spec.ts",
+    "app/tests/scheme-comparison-ui.spec.ts",
     "app/package.json",
     "app/playwright.ui.config.ts",
     "app/tests/gate-coverage.spec.ts",
@@ -74,7 +80,7 @@
     "npx playwright test tests/scheme-comparison.spec.ts",
     "npm test",
     "npm run test:ui",
-    "npx playwright test tests/scheme-comparison.spec.ts --config=playwright.r0.config.ts",
+    "npx playwright test tests/scheme-comparison-ui.spec.ts --config=playwright.r0.config.ts",
     "npm run test:graph-v2",
     "fixture: stale, duplicate, corrupt, future, deleted, and more-than-three candidate sets fail closed",
     "fixture: legacy and planar-graph schemes derive identity, program, area, cost, blocker, and export facts only from existing owners",

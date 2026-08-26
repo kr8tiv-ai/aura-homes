@@ -247,6 +247,7 @@ import Plan2D from "./Plan2D";
 import PlanCatalog from "./PlanCatalog";
 import PlanSheet from "./PlanSheet";
 import ProjectLibrary from "./ProjectLibrary";
+import SchemeComparison from "./SchemeComparison";
 import Readout from "./Readout";
 import SpecPanel, { type SunState } from "./SpecPanel";
 import SurfacePicker, { SurfaceQuickSwitch } from "./SurfacePicker";
@@ -2391,16 +2392,24 @@ export default function BuilderApp() {
               crash-recovery handshake, and both have to be running whether or not
               this is the tab on screen. */}
           <Pane on={workspace === "library"}>
-            <ProjectLibrary
-              value={state.doc}
-              onOpen={(loaded, label) =>
-                dispatch({
-                  type: "load",
-                  doc: loaded,
-                  label,
-                })
-              }
+            <SchemeComparison
+              region={auraProject?.requirements.location.region ?? "Alberta"}
+              municipality={auraProject?.requirements.location.municipality ?? ""}
+              scenario={auraProject?.budgetBasis?.scenario}
+              budgetCapCad={auraProject?.requirements.budgetCad.max ?? null}
             />
+            <div className="mt-6">
+              <ProjectLibrary
+                value={state.doc}
+                onOpen={(loaded, label) =>
+                  dispatch({
+                    type: "load",
+                    doc: loaded,
+                    label,
+                  })
+                }
+              />
+            </div>
             <p className="mt-5 rounded-md border aura-hairline px-4 py-3 text-xs leading-relaxed text-aura-text/60">
               Every saved design and autosave is a complete versioned project: shell geometry,
               partitions, finishes, fixtures, comfort targets and anything held for repair. Opening or
