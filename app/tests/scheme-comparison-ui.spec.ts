@@ -7,8 +7,6 @@ test("saved schemes are keyboard-comparable without changing the open design", a
   await expect(page.locator(".builder-viewport canvas").first()).toBeAttached({ timeout: 90_000 });
 
   const root = page.locator("[data-active-design-hash]");
-  const originalHash = await root.getAttribute("data-active-design-hash");
-  const originalUndo = await page.getByRole("button", { name: /^Undo/ }).first().isDisabled();
 
   await page.getByRole("tab", { name: /Library/ }).click();
   const comparison = page.getByRole("region", { name: "Compare saved schemes" });
@@ -38,6 +36,8 @@ test("saved schemes are keyboard-comparable without changing the open design", a
   await page.getByRole("button", { name: "Save to this browser" }).click();
   await expect(comparison.getByRole("checkbox")).toHaveCount(3);
 
+  const comparisonStartHash = await root.getAttribute("data-active-design-hash");
+  const comparisonStartUndo = await page.getByRole("button", { name: /^Undo/ }).first().isDisabled();
   const boxes = comparison.getByRole("checkbox");
   await boxes.nth(0).focus();
   await page.keyboard.press("Space");
@@ -57,6 +57,6 @@ test("saved schemes are keyboard-comparable without changing the open design", a
   await comparison.getByRole("radio").nth(1).check();
   await comparison.getByRole("button", { name: "Clear comparison" }).click();
   await expect(table).toHaveCount(0);
-  await expect(root).toHaveAttribute("data-active-design-hash", originalHash ?? "");
-  expect(await page.getByRole("button", { name: /^Undo/ }).first().isDisabled()).toBe(originalUndo);
+  await expect(root).toHaveAttribute("data-active-design-hash", comparisonStartHash ?? "");
+  expect(await page.getByRole("button", { name: /^Undo/ }).first().isDisabled()).toBe(comparisonStartUndo);
 });
