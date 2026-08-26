@@ -91,7 +91,24 @@
     "designCommit": "f7616886f9f8a171c847ef5eb49e932246ff989b",
     "planCommit": "7ba2919301ef391cc1d45639548761485146df90",
     "readyManifestCommit": "770806e5584c3842ade7171c16faae39dc4abeba",
+    "activationCommit": "992401844394a9f407667526450136cc887aec4f",
+    "candidateCommit": "cfb98e5c4777952243a27375a77a97ce02a37c23",
     "lateralReason": "none; UX04 is the direct forward child of verified UX03",
+    "writeSetCheck": {
+      "declared": 9,
+      "changed": 9,
+      "delta": 0,
+      "candidateGuardErrors": []
+    },
+    "gateReceipts": {
+      "typecheck": "passed at candidate cfb98e5c4777952243a27375a77a97ce02a37c23",
+      "deterministic": "730 declared; 726 passed; 4 served-only skipped; zero failures in 1.1 minutes",
+      "productionUi": "136 of 136 passed against a fresh static export in 16.4 minutes",
+      "focusedBuilder": "15 of 15 passed against the fresh UX04 export; compact bar single-case proof passed independently",
+      "graphV2": "24 of 24 passed; approved Graph v2 authority pass; UX04 active manifest valid",
+      "graphPosition": "explicit preflight PASS for UX04 at base 770806e5584c3842ade7171c16faae39dc4abeba and candidate cfb98e5c4777952243a27375a77a97ce02a37c23; authority, UX03 dependency, exact writes, worktree, declared evidence, and complete decision history pass; remain:UX04 allowed; independent verification required"
+    },
+    "interactionProof": "The served compact bar projects the selected wall's exact canonical length, focuses the existing GraphPlanEditor NumberField, commits through the existing graph vertex mutator, names undo and redo as Move a plan point, retains invalid raw input and its constraint without changing the design hash, restores the canonical value on Escape, and refuses unknown Ctrl K text without mutation.",
     "repairLoop": {
       "used": 0,
       "maximum": 1
@@ -99,5 +116,5 @@
     "protectedPathChanges": 0,
     "githubSync": "blocked: current GitHub OAuth credential lacks workflow scope required to push the preserved source-ci workflow"
   },
-  "status": "active"
+  "status": "verification-pending"
 }
