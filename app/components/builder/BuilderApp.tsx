@@ -1263,8 +1263,11 @@ export default function BuilderApp() {
       editorMode === "pro" || (mode === "2d" && workspace !== "drawings");
     if (graphMode && graphPlanSurfaceActive && graphInspectorState) return graphInspectorState;
 
+    const selectedGraphStorey = graphMode && selectedVolumeId
+      ? graphGeometry?.graph.storeys.find((storey) => storey.id === selectedVolumeId) ?? null
+      : null;
     let selection: StudioInspectorSelection | null = null;
-    if (selectedOpeningId && openingVolumeId) {
+    if (!graphMode && selectedOpeningId && openingVolumeId) {
       const volume = spec.volumes.find((candidate) => candidate.id === openingVolumeId);
       const opening = volume?.openings.find((candidate) => candidate.id === selectedOpeningId);
       if (volume && opening) {
@@ -1302,7 +1305,25 @@ export default function BuilderApp() {
           actions: ["Adjust measured placement", "Review clearance"],
         };
       }
-    } else if (selectedVolumeId && activeVolume) {
+    } else if (selectedGraphStorey) {
+      const xValues = selectedGraphStorey.vertices.map((vertex) => vertex.xFt);
+      const zValues = selectedGraphStorey.vertices.map((vertex) => vertex.zFt);
+      const widthFt = Math.max(...xValues) - Math.min(...xValues);
+      const depthFt = Math.max(...zValues) - Math.min(...zValues);
+      const measured = (value: number) => `${Math.round(value * 100) / 100} ft`;
+      selection = {
+        kind: "volume",
+        id: selectedGraphStorey.id,
+        identity: selectedGraphStorey.name,
+        dimensions: [
+          { label: "Width", value: measured(widthFt) },
+          { label: "Depth", value: measured(depthFt) },
+          { label: "Wall height", value: measured(selectedGraphStorey.heightFt) },
+        ],
+        placement: "Canonical planar graph storey",
+        actions: ["Select a wall in plan", "Review exact graph dimensions"],
+      };
+    } else if (!graphMode && selectedVolumeId && activeVolume) {
       selection = {
         kind: "volume",
         id: activeVolume.id,
@@ -1335,6 +1356,7 @@ export default function BuilderApp() {
     activeVolume,
     editorMode,
     fixtures.items,
+    graphGeometry,
     graphInspectorState,
     graphMode,
     mode,

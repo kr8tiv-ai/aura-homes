@@ -348,3 +348,42 @@ test("the served contextual inspector exposes tool, selection, and invalid state
   await expect(inspector).toContainText("-1");
   await expect(root).toHaveAttribute("data-active-design-hash", before ?? "");
 });
+
+test("a served graph edit stays canonical when the visible model is selected", async ({ page }, testInfo) => {
+  test.skip(
+    !process.env.PLAYWRIGHT_TEST_BASE_URL && !testInfo.project.use.baseURL,
+    "served UX03 graph-selection proof runs with the manifest's local base URL",
+  );
+  test.setTimeout(180_000);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto("/build?mode=guided");
+  const canvas = page.locator(".builder-viewport canvas").first();
+  await expect(canvas).toBeAttached({ timeout: 90_000 });
+
+  await page.getByRole("button", { name: "Pro", exact: true }).click();
+  await page.getByRole("button", { name: "Convert to planar editing" }).click();
+  await expect(page.getByRole("heading", { name: "Planar building graph" })).toBeVisible();
+  await page.getByRole("button", { name: "Guided", exact: true }).click();
+  const steps = page.getByRole("navigation", { name: "Guided design steps" });
+  await steps.getByRole("button", { name: "Rooms", exact: true }).click();
+
+  const inspector = page.getByRole("region", { name: "Selection inspector" });
+  const wall = page.getByRole("button", { name: /^Wall .* feet long, .* feet thick$/ }).first();
+  await wall.click();
+  const length = page.getByLabel(/Wall .* · length \(feet\)/).first();
+  await length.fill("40");
+  await length.press("Enter");
+  await expect(inspector).toContainText("40 ft");
+
+  await steps.getByRole("button", { name: "Shell", exact: true }).click();
+  await expect(inspector).toHaveAttribute("data-inspector-state", "tool");
+  const box = await canvas.boundingBox();
+  expect(box, "the graph model canvas has a rendered box").not.toBeNull();
+  await canvas.click({ position: { x: box!.width / 2, y: box!.height * 0.58 } });
+
+  await expect(inspector).toHaveAttribute("data-inspector-state", "selection");
+  await expect(inspector).toContainText("Ground floor");
+  await expect(inspector).toContainText("40 ft");
+  await expect(inspector).not.toContainText("Legacy massing volume");
+  await expect(inspector).not.toContainText("Main house");
+});
