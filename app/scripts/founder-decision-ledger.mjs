@@ -474,26 +474,32 @@ export const validateFounderDecisionRepositoryTransition = (candidate, repoRootI
     ? fileURLToPath(repoRootInput)
     : path.resolve(String(repoRootInput));
   const registryPath = EXPECTED_HISTORICAL_REGISTRY.path;
-  let latestCommit;
-  let latestBytes;
-  let previousBytes;
   let historicalBytes;
+  let registryCommits;
+  let committedBytes;
   try {
-    latestCommit = execFileSync("git", ["log", "-1", "--format=%H", "--", registryPath], {
-      cwd: repoRoot, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
-    }).trim();
-    latestBytes = execFileSync("git", ["cat-file", "blob", `${latestCommit}:${registryPath}`], {
-      cwd: repoRoot, stdio: ["ignore", "pipe", "pipe"],
-    });
-    const previousCommit = execFileSync("git", ["log", "-1", "--format=%H", `${latestCommit}^`, "--", registryPath], {
-      cwd: repoRoot, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
-    }).trim();
-    previousBytes = execFileSync("git", ["cat-file", "blob", `${previousCommit}:${registryPath}`], {
-      cwd: repoRoot, stdio: ["ignore", "pipe", "pipe"],
-    });
+    execFileSync(
+      "git",
+      ["merge-base", "--is-ancestor", EXPECTED_HISTORICAL_REGISTRY.pinnedAtCommit, "HEAD"],
+      { cwd: repoRoot, stdio: "ignore" },
+    );
     historicalBytes = execFileSync("git", ["cat-file", "blob", `${EXPECTED_HISTORICAL_REGISTRY.pinnedAtCommit}:${registryPath}`], {
       cwd: repoRoot, stdio: ["ignore", "pipe", "pipe"],
     });
+    const commitOutput = execFileSync(
+      "git",
+      [
+        "log", "--first-parent", "--full-history", "--reverse", "--format=%H",
+        `${EXPECTED_HISTORICAL_REGISTRY.pinnedAtCommit}..HEAD`, "--", registryPath,
+      ],
+      { cwd: repoRoot, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+    ).trim();
+    registryCommits = commitOutput.length > 0 ? commitOutput.split(/\r?\n/u) : [];
+    committedBytes = registryCommits.map((commit) => execFileSync(
+      "git",
+      ["cat-file", "blob", `${commit}:${registryPath}`],
+      { cwd: repoRoot, stdio: ["ignore", "pipe", "pipe"] },
+    ));
   } catch {
     return ["repository decision history cannot be reopened"];
   }
@@ -503,27 +509,47 @@ export const validateFounderDecisionRepositoryTransition = (candidate, repoRootI
     errors.push("pinned historical decision registry does not match its stored and object hashes");
   }
 
-  let latest;
-  let previous;
+  let historical;
+  let committedLedgers;
   try {
-    latest = JSON.parse(latestBytes.toString("utf8"));
-    previous = JSON.parse(previousBytes.toString("utf8"));
+    historical = JSON.parse(historicalBytes.toString("utf8"));
+    committedLedgers = committedBytes.map((bytes) => JSON.parse(bytes.toString("utf8")));
   } catch {
     return [...new Set([...errors, "repository decision history is not valid JSON"])];
   }
 
   const candidateErrors = validateFounderDecisionLedger(candidate);
-  if (candidateErrors.length > 0) return [...new Set([...errors, ...candidateErrors])];
-  const candidateMatchesLatest = equalCanonical(candidate, latest);
-  const transitionBase = candidateMatchesLatest ? previous : latest;
-  if (transitionBase?.schema === "FounderDecisionRegistryV1") {
-    if (!equalCanonical(previous, JSON.parse(historicalBytes.toString("utf8"))) || candidate.changes.length !== 0) {
-      errors.push("Graph v2 ledger migration must start from the pinned V1 registry with zero appended changes");
+  if (candidateErrors.length > 0) errors.push(...candidateErrors);
+  if (historical?.schema !== EXPECTED_HISTORICAL_REGISTRY.lastSchema) {
+    errors.push("pinned historical decision registry has an unexpected schema");
+  }
+  if (committedLedgers.length === 0) {
+    errors.push("repository decision history has no Graph v2 migration from the pinned V1 registry");
+    return [...new Set(errors)];
+  }
+
+  for (let index = 0; index < committedLedgers.length; index += 1) {
+    const current = committedLedgers[index];
+    const commit = registryCommits[index];
+    if (current?.schema !== "FounderDecisionRegistryV2") {
+      errors.push(`repository decision history commit ${commit} is not a recognized V2 ledger`);
+      continue;
     }
-  } else if (transitionBase?.schema === "FounderDecisionRegistryV2") {
-    errors.push(...validateFounderDecisionTransition(transitionBase, candidate));
-  } else {
-    errors.push("repository decision history has no recognized transition base");
+    errors.push(...validateFounderDecisionLedger(current)
+      .map((error) => `repository decision history commit ${commit}: ${error}`));
+    if (index === 0) {
+      if (!Array.isArray(current.changes) || current.changes.length !== 0) {
+        errors.push("Graph v2 ledger migration must start from the pinned V1 registry with zero appended changes");
+      }
+      continue;
+    }
+    errors.push(...validateFounderDecisionTransition(committedLedgers[index - 1], current)
+      .map((error) => `repository decision history commit ${commit}: ${error}`));
+  }
+
+  const latest = committedLedgers.at(-1);
+  if (candidateErrors.length === 0 && !equalCanonical(candidate, latest)) {
+    errors.push(...validateFounderDecisionTransition(latest, candidate));
   }
   return [...new Set(errors)];
 };

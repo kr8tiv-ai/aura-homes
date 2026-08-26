@@ -1,16 +1,23 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import {
+  EXPECTED_HISTORICAL_REGISTRY,
   hashFounderDecisionChange,
   hashFounderDecisionSourcePayload,
   validateFounderDecisionSourceRecord,
   validateFounderDecisionSources,
   validateFounderDecisionLedger,
+  validateFounderDecisionRepositoryTransition,
   validateFounderDecisionTransition,
 } from "./founder-decision-ledger.mjs";
 
 const registryUrl = new URL("../../docs/plans/registry/decisions.json", import.meta.url);
+const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
 const ledger = () => JSON.parse(readFileSync(registryUrl, "utf8"));
 
 const validChange = (base, overrides = {}) => {
@@ -208,6 +215,70 @@ test("a ledger transition is append-only even when an attacker recomputes the en
   const removed = structuredClone(previous);
   removed.changes = [];
   assert.match(validateFounderDecisionTransition(previous, removed).join("\n"), /cannot remove prior decisions/);
+});
+
+test("repository traversal rejects a rewrite buried before a later valid append", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "aura-g04-history-"));
+  const temporaryRepo = join(temporaryRoot, "repo");
+  const registryPath = EXPECTED_HISTORICAL_REGISTRY.path;
+  const registryFile = join(temporaryRepo, ...registryPath.split("/"));
+  const commitRegistry = (candidate, message) => {
+    writeFileSync(registryFile, `${JSON.stringify(candidate, null, 2)}\n`, "utf8");
+    execFileSync("git", ["add", "--", registryPath], { cwd: temporaryRepo, stdio: "ignore" });
+    execFileSync("git", ["commit", "-q", "--no-verify", "-m", message], {
+      cwd: temporaryRepo,
+      stdio: "pipe",
+    });
+    return execFileSync("git", ["rev-parse", "HEAD"], { cwd: temporaryRepo, encoding: "utf8" }).trim();
+  };
+
+  try {
+    const sourceHead = execFileSync("git", ["rev-parse", "HEAD"], {
+      cwd: repoRoot,
+      encoding: "utf8",
+    }).trim();
+    execFileSync("git", ["clone", "-q", "--no-hardlinks", repoRoot, temporaryRepo], {
+      cwd: temporaryRoot,
+      stdio: "ignore",
+    });
+    execFileSync("git", ["checkout", "-q", sourceHead], { cwd: temporaryRepo, stdio: "ignore" });
+    execFileSync("git", ["config", "user.name", "Aura Test"], { cwd: temporaryRepo, stdio: "ignore" });
+    execFileSync("git", ["config", "user.email", "test@aura.invalid"], { cwd: temporaryRepo, stdio: "ignore" });
+    execFileSync("git", ["config", "commit.gpgSign", "false"], { cwd: temporaryRepo, stdio: "ignore" });
+    const emptyHooks = join(temporaryRepo, ".git", "hooks-empty");
+    mkdirSync(emptyHooks);
+    execFileSync("git", ["config", "core.hooksPath", emptyHooks], {
+      cwd: temporaryRepo,
+      stdio: "ignore",
+    });
+
+    const baseline = ledger();
+    const firstAppend = structuredClone(baseline);
+    firstAppend.changes.push(validChange(firstAppend));
+    commitRegistry(firstAppend, "first append");
+
+    const rewritten = structuredClone(firstAppend);
+    rewritten.changes[0].decision = "Earlier founder history rewritten and rehashed.";
+    rewritten.changes[0].entrySha256 = hashFounderDecisionChange(rewritten.changes[0]);
+    commitRegistry(rewritten, "buried rewrite");
+
+    const finalLedger = structuredClone(rewritten);
+    const second = validChange(finalLedger, {
+      id: "FD-2026-08-26-after-rewrite",
+      recordedAtISO: "2026-08-26T12:00:00.000Z",
+      effectiveDate: "2026-08-26",
+      previousEntrySha256: finalLedger.changes[0].entrySha256,
+    });
+    finalLedger.changes.push(second);
+    commitRegistry(finalLedger, "later append");
+
+    assert.match(
+      validateFounderDecisionRepositoryTransition(finalLedger, temporaryRepo).join("\n"),
+      /previous decision history is not an exact prefix/,
+    );
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
 });
 
 test("founder source records bind the full substantive payload, exact identity, and chronology", () => {
