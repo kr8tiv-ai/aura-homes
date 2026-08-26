@@ -20,7 +20,8 @@ test("saved schemes are keyboard-comparable without changing the open design", a
   const name = page.getByLabel("Name this design");
   await name.fill("Reference cabin");
   await page.getByRole("button", { name: "Save to this browser" }).click();
-  await expect(comparison.getByRole("checkbox")).toHaveCount(1);
+  await expect(page.getByText("Saved “Reference cabin” to this browser.")).toBeVisible();
+  await expect(comparison).toContainText("Save at least two distinct schemes");
 
   await page.getByRole("tab", { name: /Plans/ }).click();
   await page.locator(".variation-apply").nth(0).click();
