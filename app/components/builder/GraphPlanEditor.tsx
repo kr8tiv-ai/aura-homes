@@ -109,6 +109,9 @@ export const vertexEditLabel = (vertexId: string): string => `graph:vertex:${ver
 /** A dimension as a person says it: 12.5, 8, 0.75 — never 8.0 and never 8.000. */
 const feet = (value: number): string => String(Number(value.toFixed(3)));
 
+/** A canonical numeric field must preserve every stored digit on restore and blur. */
+const exactFeet = (value: number): string => String(value);
+
 const wallRunFt = (wall: GraphWallEdge, vertices: Map<string, GraphVertex>): number => {
   const start = vertices.get(wall.startVertexId);
   const end = vertices.get(wall.endVertexId);
@@ -186,7 +189,7 @@ function NumberField({
   note?: string;
 }) {
   const ref = useRef<HTMLInputElement | null>(null);
-  const text = feet(value);
+  const text = exactFeet(value);
   const readOnly = !onCommit;
 
   useEffect(() => {

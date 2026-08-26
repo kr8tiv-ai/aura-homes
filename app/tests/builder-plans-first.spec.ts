@@ -518,4 +518,20 @@ test("the compact bar reaches the canonical exact field, names history, and canc
   await expect(root).toHaveAttribute("data-active-design-hash", editedHash ?? "");
   await undo.click();
   await expect(root).toHaveAttribute("data-active-design-hash", originalHash ?? "");
+
+  const vertex = page.getByRole("button", { name: /^Vertex .* X .* feet, Z .* feet$/ }).first();
+  await vertex.click();
+  const vertexX = page.getByLabel(/Vertex .* · X \(feet\)/).first();
+  await vertexX.fill("-16.8766");
+  await vertexX.press("Enter");
+  const preciseHash = await root.getAttribute("data-active-design-hash");
+  expect(preciseHash).not.toBe(originalHash);
+
+  await vertexX.press("Escape");
+  await page.keyboard.press("Control+k");
+  await expect(page.getByRole("dialog", { name: "Builder commands" })).toBeVisible();
+  await expect(root).toHaveAttribute("data-active-design-hash", preciseHash ?? "");
+  await page.keyboard.press("Escape");
+  await undo.click();
+  await expect(root).toHaveAttribute("data-active-design-hash", originalHash ?? "");
 });
