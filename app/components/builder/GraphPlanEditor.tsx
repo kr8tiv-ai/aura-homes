@@ -169,6 +169,8 @@ function NumberField({
   step,
   onCommit,
   onInvalid,
+  onCancel,
+  focusRequest,
   note,
 }: {
   label: string;
@@ -179,6 +181,8 @@ function NumberField({
   /** Absent means the graph exposes no mutator for this value — see `note`. */
   onCommit?: (value: number, raw: string) => void;
   onInvalid?: (raw: string, constraint: string) => void;
+  onCancel?: () => void;
+  focusRequest?: number;
   note?: string;
 }) {
   const ref = useRef<HTMLInputElement | null>(null);
@@ -188,6 +192,12 @@ function NumberField({
   useEffect(() => {
     if (ref.current) ref.current.value = text;
   }, [text, revision]);
+
+  useEffect(() => {
+    if (!focusRequest || readOnly || !ref.current) return;
+    ref.current.focus();
+    ref.current.select();
+  }, [focusRequest, readOnly]);
 
   const commit = () => {
     const input = ref.current;
@@ -212,7 +222,14 @@ function NumberField({
         aria-readonly={readOnly || undefined}
         onBlur={readOnly ? undefined : commit}
         onKeyDown={(event) => {
-          if (readOnly || event.key !== "Enter") return;
+          if (readOnly) return;
+          if (event.key === "Escape") {
+            event.preventDefault();
+            if (ref.current) ref.current.value = text;
+            onCancel?.();
+            return;
+          }
+          if (event.key !== "Enter") return;
           event.preventDefault();
           commit();
         }}
@@ -279,10 +296,12 @@ export default function GraphPlanEditor({
   graph,
   onEdit,
   onInspectorState,
+  measurementFocusRequest,
 }: {
   graph: BuildingGraph;
   onEdit: (graph: BuildingGraph, label: string) => void;
   onInspectorState?: (state: StudioInspectorState) => void;
+  measurementFocusRequest?: number;
 }) {
   const [activeStoreyId, setActiveStoreyId] = useState(graph.storeys[0]?.id ?? "");
   const storey = graph.storeys.find((item) => item.id === activeStoreyId) ?? graph.storeys[0];
@@ -608,6 +627,13 @@ export default function GraphPlanEditor({
   const refuseMalformedExact = (raw: string, constraint: string) => {
     setExactInvalid(invalidExactInput(raw, constraint));
     refuse(constraint);
+  };
+
+  const cancelExactDraft = () => {
+    setExactInvalid(null);
+    setProblem(null);
+    setAnnouncement("Exact value restored from the project.");
+    setFieldRevision((revision) => revision + 1);
   };
 
   const commitVertexX = (value: number) => {
@@ -1220,6 +1246,8 @@ export default function GraphPlanEditor({
                 step={GRID_SNAP_FT}
                 onCommit={fieldCommit(commitVertexX)}
                 onInvalid={refuseMalformedExact}
+                onCancel={cancelExactDraft}
+                focusRequest={measurementFocusRequest}
               />
               <NumberField
                 label={`Vertex ${selectedVertex.id} · Z (feet)`}
@@ -1228,6 +1256,7 @@ export default function GraphPlanEditor({
                 step={GRID_SNAP_FT}
                 onCommit={fieldCommit(commitVertexZ)}
                 onInvalid={refuseMalformedExact}
+                onCancel={cancelExactDraft}
                 note={`Arrow keys move the selected vertex by ${feet(GRID_SNAP_FT)} ft, Shift+arrow by ${feet(COARSE_STEP_FT)} ft. A typed value is used exactly.`}
               />
             </div>
@@ -1247,6 +1276,7 @@ export default function GraphPlanEditor({
                   }),
                 )}
                 onInvalid={refuseMalformedExact}
+                onCancel={cancelExactDraft}
               />
               <NumberField
                 label="Width (feet)"
@@ -1262,6 +1292,8 @@ export default function GraphPlanEditor({
                   }),
                 )}
                 onInvalid={refuseMalformedExact}
+                onCancel={cancelExactDraft}
+                focusRequest={measurementFocusRequest}
               />
               <NumberField
                 label="Sill (feet)"
@@ -1277,6 +1309,7 @@ export default function GraphPlanEditor({
                   }),
                 )}
                 onInvalid={refuseMalformedExact}
+                onCancel={cancelExactDraft}
               />
               <NumberField
                 label="Head height (feet)"
@@ -1292,6 +1325,7 @@ export default function GraphPlanEditor({
                   }),
                 )}
                 onInvalid={refuseMalformedExact}
+                onCancel={cancelExactDraft}
                 note="A typed value writes this opening through setGraphOpening. A hang-off or overlap is refused and the numbers snap back to the box the wall actually has."
               />
             </div>
@@ -1304,6 +1338,8 @@ export default function GraphPlanEditor({
                 step={GRID_SNAP_FT}
                 onCommit={fieldCommit((value) => commitWallLength(selectedWall, value))}
                 onInvalid={refuseMalformedExact}
+                onCancel={cancelExactDraft}
+                focusRequest={measurementFocusRequest}
                 note="Length slides this wall's end vertex along its own direction; every other vertex stays put."
               />
               <NumberField
@@ -1313,6 +1349,7 @@ export default function GraphPlanEditor({
                 step={0.05}
                 onCommit={fieldCommit((value) => commitWallThickness(selectedWall, value))}
                 onInvalid={refuseMalformedExact}
+                onCancel={cancelExactDraft}
                 note="Thickness is a property of this wall only. Neighbouring walls keep the thickness they already have."
               />
             </div>

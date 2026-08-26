@@ -451,3 +451,69 @@ test("a served graph edit stays canonical when the visible model is selected", a
   await expect(inspector).not.toContainText("Legacy massing volume");
   await expect(inspector).not.toContainText("Main house");
 });
+
+test("the compact bar reaches the canonical exact field, names history, and cancels without a write", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    !process.env.PLAYWRIGHT_TEST_BASE_URL && !testInfo.project.use.baseURL,
+    "served UX04 command and measurement proof runs with the manifest's local base URL",
+  );
+  test.setTimeout(180_000);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto("/build?mode=guided");
+  await expect(page.locator(".builder-viewport canvas").first()).toBeAttached({ timeout: 90_000 });
+
+  await page.getByRole("button", { name: "Pro", exact: true }).click();
+  await page.getByRole("button", { name: "Convert to planar editing" }).click();
+  await page.getByRole("button", { name: "Guided", exact: true }).click();
+  const steps = page.getByRole("navigation", { name: "Guided design steps" });
+  await steps.getByRole("button", { name: "Rooms", exact: true }).click();
+
+  const root = page.locator("[data-active-design-hash]");
+  const wall = page.getByRole("button", { name: /^Wall .* feet long, .* feet thick$/ }).first();
+  await wall.click();
+  const exact = page.getByLabel(/Wall .* · length \(feet\)/).first();
+  const original = await exact.inputValue();
+  const originalHash = await root.getAttribute("data-active-design-hash");
+  const bar = page.getByRole("group", { name: "Command and measurement" });
+
+  await expect(bar).toContainText("Length");
+  await expect(bar).toContainText(`${original} ft`);
+  await bar.getByRole("button", { name: "Edit exact Length" }).click();
+  await expect(exact).toBeFocused();
+  await exact.fill("41");
+  await exact.press("Enter");
+  await expect(bar).toContainText("41 ft");
+  const editedHash = await root.getAttribute("data-active-design-hash");
+  expect(editedHash).not.toBe(originalHash);
+
+  const undo = page.getByRole("button", { name: "Undo Move a plan point" });
+  await expect(undo).toBeEnabled();
+  await undo.click();
+  await expect(root).toHaveAttribute("data-active-design-hash", originalHash ?? "");
+  const redo = page.getByRole("button", { name: "Redo Move a plan point" });
+  await expect(redo).toBeEnabled();
+  await redo.click();
+  await expect(root).toHaveAttribute("data-active-design-hash", editedHash ?? "");
+
+  await bar.getByRole("button", { name: "Edit exact Length" }).click();
+  await exact.fill("-1");
+  await exact.press("Enter");
+  await expect(bar).toContainText("-1 ft");
+  await expect(bar).toContainText(/must be longer than zero feet/i);
+  await expect(root).toHaveAttribute("data-active-design-hash", editedHash ?? "");
+  await exact.press("Escape");
+  await expect(bar).toContainText("41 ft");
+  await expect(bar).not.toContainText(/must be longer than zero feet/i);
+  await expect(root).toHaveAttribute("data-active-design-hash", editedHash ?? "");
+
+  await page.keyboard.press("Control+k");
+  const dialog = page.getByRole("dialog", { name: "Builder commands" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("searchbox").fill("make a decision for me");
+  await expect(dialog).toContainText("No matching builder tool — and no edit phrase understood.");
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(root).toHaveAttribute("data-active-design-hash", editedHash ?? "");
+});

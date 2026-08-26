@@ -1,5 +1,7 @@
 "use client";
 
+import type { StudioCommandMeasurementBarState } from "@/lib/builder/guidedStudio";
+
 export type GuidedStudioEditorMode = "guided" | "pro";
 
 export interface GuidedStudioShellStep {
@@ -16,11 +18,15 @@ interface GuidedStudioShellProps {
   activeStepIndex: number;
   canUndo: boolean;
   canRedo: boolean;
+  undoDescription: string | null;
+  redoDescription: string | null;
+  commandMeasurement: StudioCommandMeasurementBarState;
   planRouteOpen: boolean;
   onEditorMode: (mode: GuidedStudioEditorMode) => void;
   onStep: (stepId: string) => void;
   onUndo: () => void;
   onRedo: () => void;
+  onMeasurementFocus: () => void;
   onCommands: () => void;
   onContinuePro: () => void;
   onOpenDrawings: () => void;
@@ -43,11 +49,15 @@ export default function GuidedStudioShell({
   activeStepIndex,
   canUndo,
   canRedo,
+  undoDescription,
+  redoDescription,
+  commandMeasurement,
   planRouteOpen,
   onEditorMode,
   onStep,
   onUndo,
   onRedo,
+  onMeasurementFocus,
   onCommands,
   onContinuePro,
   onOpenDrawings,
@@ -66,15 +76,48 @@ export default function GuidedStudioShell({
           <small>Local autosave · design intent</small>
         </div>
 
+        {!planRouteOpen ? (
+          <div
+            role="group"
+            aria-label="Command and measurement"
+            className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 rounded-md border aura-hairline px-3 py-2 text-xs"
+          >
+            <span className="min-w-0 truncate text-aura-text/65">{commandMeasurement.context}</span>
+            {commandMeasurement.measurement ? (
+              commandMeasurement.measurement.editable ? (
+                <button
+                  type="button"
+                  aria-label={`Edit exact ${commandMeasurement.measurement.label}`}
+                  onClick={onMeasurementFocus}
+                  className="font-mono tabular-nums text-aura-text underline decoration-aura-emerald/60 underline-offset-4"
+                >
+                  <span className="mr-2 text-aura-text/55">{commandMeasurement.measurement.label}</span>
+                  {commandMeasurement.measurement.value}{commandMeasurement.measurement.unit ? ` ${commandMeasurement.measurement.unit}` : ""}
+                </button>
+              ) : (
+                <span className="font-mono tabular-nums text-aura-text">
+                  <span className="mr-2 text-aura-text/55">{commandMeasurement.measurement.label}</span>
+                  {commandMeasurement.measurement.value}{commandMeasurement.measurement.unit ? ` ${commandMeasurement.measurement.unit}` : ""}
+                </span>
+              )
+            ) : null}
+            {commandMeasurement.issue ? (
+              <span className="basis-full text-aura-danger" role="status">
+                {commandMeasurement.issue.constraint}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="builder-project-bar__actions" aria-label="Project history and commands">
           {planRouteOpen ? (
             <span className="builder-readonly-badge" role="status">Read-only drawings</span>
           ) : (
             <>
-              <button aria-label="Undo last project change" className="builder-shell-button" type="button" onClick={onUndo} disabled={!canUndo}>
+              <button aria-label={undoDescription ? `Undo ${undoDescription}` : "Undo last project change"} className="builder-shell-button" type="button" onClick={onUndo} disabled={!canUndo}>
                 Undo
               </button>
-              <button aria-label="Redo last project change" className="builder-shell-button" type="button" onClick={onRedo} disabled={!canRedo}>
+              <button aria-label={redoDescription ? `Redo ${redoDescription}` : "Redo last project change"} className="builder-shell-button" type="button" onClick={onRedo} disabled={!canRedo}>
                 Redo
               </button>
               <button aria-label="Open palette" className="builder-shell-button" type="button" onClick={onCommands}>

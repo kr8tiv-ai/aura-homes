@@ -255,7 +255,9 @@ import { sunPosition } from "./sun";
 import { Button, Segmented } from "./ui";
 import { useAuraProject } from "@/components/project/ProjectContext";
 import {
+  commandMeasurementBarState,
   contextualInspectorState,
+  describeHistoryAction,
   type StudioInspectorSelection,
   type StudioInspectorState,
 } from "@/lib/builder/guidedStudio";
@@ -296,6 +298,10 @@ interface EditorState {
   doc: EditorDoc;
   past: EditorDoc[];
   future: EditorDoc[];
+  /** Human-readable source labels parallel the document stacks. They are view
+   *  state only and never enter a saved BuilderDocument. */
+  pastLabels: string[];
+  futureLabels: string[];
   /** the label of the last edit, for coalescing — never persisted */
   label: string | null;
   /** Counts WHOLE-DOCUMENT arrivals — plan chosen, project opened, share
@@ -436,6 +442,8 @@ function commit(state: EditorState, doc: EditorDoc, label: string): EditorState 
     doc,
     past: coalesce ? state.past : [...state.past, state.doc].slice(-HISTORY_MAX),
     future: [],
+    pastLabels: coalesce ? state.pastLabels : [...state.pastLabels, label].slice(-HISTORY_MAX),
+    futureLabels: [],
     label,
     loadEpoch: state.loadEpoch,
   };
@@ -544,10 +552,13 @@ function reducer(state: EditorState, action: Action): EditorState {
     case "undo": {
       const previous = state.past[state.past.length - 1];
       if (previous === undefined) return state;
+      const previousLabel = state.pastLabels[state.pastLabels.length - 1] ?? "project:change";
       return {
         doc: previous,
         past: state.past.slice(0, -1),
         future: [state.doc, ...state.future].slice(0, HISTORY_MAX),
+        pastLabels: state.pastLabels.slice(0, -1),
+        futureLabels: [previousLabel, ...state.futureLabels].slice(0, HISTORY_MAX),
         // cleared, so the next edit always opens a fresh step
         label: null,
         loadEpoch: state.loadEpoch,
@@ -556,10 +567,13 @@ function reducer(state: EditorState, action: Action): EditorState {
     case "redo": {
       const next = state.future[0];
       if (next === undefined) return state;
+      const nextLabel = state.futureLabels[0] ?? "project:change";
       return {
         doc: next,
         past: [...state.past, state.doc].slice(-HISTORY_MAX),
         future: state.future.slice(1),
+        pastLabels: [...state.pastLabels, nextLabel].slice(-HISTORY_MAX),
+        futureLabels: state.futureLabels.slice(1),
         label: null,
         loadEpoch: state.loadEpoch,
       };
@@ -592,6 +606,8 @@ const initialState = (): EditorState => ({
   doc: defaultBuilderDocument(),
   past: [],
   future: [],
+  pastLabels: [],
+  futureLabels: [],
   label: null,
   loadEpoch: 0,
 });
@@ -762,6 +778,7 @@ export default function BuilderApp() {
   const [openingStatus, setOpeningStatus] = useState<OpeningStatus | null>(null);
   const [graphCanvasStatus, setGraphCanvasStatus] = useState<string | null>(null);
   const [graphInspectorState, setGraphInspectorState] = useState<StudioInspectorState | null>(null);
+  const [measurementFocusRequest, setMeasurementFocusRequest] = useState(0);
 
   /* OPENING IDS ARE UNIQUE PER VOLUME, NOT PER DESIGN — two volumes may both
      carry a `door-s`. Selection is therefore stored as the opening id alone
@@ -1171,6 +1188,8 @@ export default function BuilderApp() {
   /* ---- undo / redo, also on the keyboard, because this is an editor. */
   const canUndo = state.past.length > 0;
   const canRedo = state.future.length > 0;
+  const undoDescription = describeHistoryAction(state.pastLabels[state.pastLabels.length - 1] ?? null);
+  const redoDescription = describeHistoryAction(state.futureLabels[0] ?? null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -1193,6 +1212,8 @@ export default function BuilderApp() {
         setCommandsOpen((open) => !open);
       } else if (event.key === "Escape") {
         setCommandsOpen(false);
+        setCommandQuery("");
+        setPhraseApplied(null);
       }
     };
     window.addEventListener("keydown", onCommandKey);
@@ -1251,6 +1272,8 @@ export default function BuilderApp() {
     GUIDED_STEPS.findIndex((step) => step.id === guidedStep),
   );
   const activeGuidedStep = GUIDED_STEPS[guidedIndex];
+  const graphPlanSurfaceActive =
+    editorMode === "pro" || (mode === "2d" && workspace !== "drawings");
 
   const contextualInspector = useMemo(() => {
     /* GraphPlanEditor stays mounted inside a hidden plan container so its
@@ -1259,8 +1282,6 @@ export default function BuilderApp() {
        it beside the model, while Guided displays it only in 2D and never on
        the read-only drawing route. Hidden plan state is preserved, not shown
        as though its tool were active on Shell, Site, Materials, or Review. */
-    const graphPlanSurfaceActive =
-      editorMode === "pro" || (mode === "2d" && workspace !== "drawings");
     if (graphMode && graphPlanSurfaceActive && graphInspectorState) return graphInspectorState;
 
     const selectedGraphStorey = graphMode && selectedVolumeId
@@ -1359,6 +1380,7 @@ export default function BuilderApp() {
     graphGeometry,
     graphInspectorState,
     graphMode,
+    graphPlanSurfaceActive,
     mode,
     openingVolumeId,
     selectedFixtureId,
@@ -1367,6 +1389,19 @@ export default function BuilderApp() {
     spec.volumes,
     workspace,
   ]);
+  const exactFieldAvailable = Boolean(
+    graphMode &&
+      graphPlanSurfaceActive &&
+      graphInspectorState &&
+      (graphInspectorState.state === "selection" || graphInspectorState.state === "invalid") &&
+      (graphInspectorState.selectionKind === "vertex" ||
+        graphInspectorState.selectionKind === "wall" ||
+        graphInspectorState.selectionKind === "opening"),
+  );
+  const commandMeasurement = useMemo(
+    () => commandMeasurementBarState({ inspector: contextualInspector, exactFieldAvailable }),
+    [contextualInspector, exactFieldAvailable],
+  );
   const commandWorkspaces = WORKSPACES.filter((item) =>
     `${item.label} ${item.hint}`.toLowerCase().includes(commandQuery.trim().toLowerCase()),
   );
@@ -1524,6 +1559,9 @@ export default function BuilderApp() {
         activeStepIndex={guidedIndex}
         canUndo={canUndo}
         canRedo={canRedo}
+        undoDescription={undoDescription}
+        redoDescription={redoDescription}
+        commandMeasurement={commandMeasurement}
         planRouteOpen={planRoute}
         onEditorMode={(editor) => {
           setEditorMode(editor);
@@ -1542,6 +1580,7 @@ export default function BuilderApp() {
         }}
         onUndo={() => dispatch({ type: "undo" })}
         onRedo={() => dispatch({ type: "redo" })}
+        onMeasurementFocus={() => setMeasurementFocusRequest((request) => request + 1)}
         onCommands={() => setCommandsOpen(true)}
         onContinuePro={() => {
           setEditorMode("pro");
@@ -1760,6 +1799,7 @@ export default function BuilderApp() {
                 graph={graphGeometry.graph}
                 onEdit={editGraph}
                 onInspectorState={setGraphInspectorState}
+                measurementFocusRequest={measurementFocusRequest}
               />
             ) : (
               <Plan2D
