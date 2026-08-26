@@ -112,8 +112,30 @@
       "writeOwnership": "Manifest-only verification reentry; no production, test, shared bookkeeping, public visual, or frozen path is claimed.",
       "repairPaths": [
         "docs/plans/execution/v2/UX07-versioned-scheme-comparison.json"
-      ]
+      ],
+      "activationCommit": "0679e2ac8899eab3dc577fe4bd5f1716a3dc7fda"
+    },
+    "reentryVerification": {
+      "verdict": "verification-pending",
+      "implementationCandidate": "cde894a59d11db3179f140675f841b110069ee48",
+      "writeSetCheck": {
+        "declared": 1,
+        "changed": 1,
+        "delta": 0,
+        "candidateGuardErrors": []
+      },
+      "gateReceipts": {
+        "focusedDeterministic": "12/12 passed across five scheme-comparison and seven gate-coverage proofs",
+        "focusedServed": "1/1 passed in 36.9 seconds against the current app export; keyboard compare/open/undo leaves the active project invariants intact",
+        "typecheck": "passed at verification reentry 0679e2ac8899eab3dc577fe4bd5f1716a3dc7fda",
+        "deterministic": "736 declared; 732 passed and 4 intentional served-only skips in the immediately preceding current-source gate",
+        "fullUi": "137/137 passed at source 49d41019b1fd76dddd0716b9ac1d93d9659b94f0; every UX07 production path, served spec, and UI configuration path remains byte-unchanged since that receipt",
+        "graphV2": "25/25 passed; authority pass"
+      },
+      "resolvedBlocker": "The previously failing protected reduced-motion walkthrough passed inside the 137/137 run with zero frozen-path change, so no declared UX07 gate remains red.",
+      "protectedPathChanges": 0,
+      "independentVerifier": "required before verified; recurring auditor was canceled by the founder"
     }
   },
-  "status": "active"
+  "status": "verification-pending"
 }
