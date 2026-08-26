@@ -258,6 +258,75 @@ export function contextualInspectorState(input: StudioInspectorInput): StudioIns
   };
 }
 
+export interface StudioCommandMeasurement {
+  label: string;
+  value: string;
+  unit: string;
+  editable: boolean;
+}
+
+export interface StudioCommandMeasurementBarState {
+  context: string;
+  measurement: StudioCommandMeasurement | null;
+  issue: { raw: string; constraint: string } | null;
+}
+
+const splitMeasuredValue = (source: string): { value: string; unit: string } | null => {
+  const match = /^\s*(-?(?:\d+(?:\.\d+)?|\.\d+))\s*(.*?)\s*$/.exec(source);
+  if (!match) return null;
+  return { value: match[1], unit: match[2] };
+};
+
+/**
+ * Compact, read-only projection for UX04's project bar.
+ *
+ * It deliberately receives whether the CURRENT surface exposes an existing
+ * exact field. That keeps a selected 3D storey measurable but never pretends
+ * its recovery projection owns a numeric editor. The value remains a string so
+ * a refused draft can stay byte-for-byte repairable rather than being parsed,
+ * clamped, or written anywhere by this projection.
+ */
+export function commandMeasurementBarState({
+  inspector,
+  exactFieldAvailable,
+}: {
+  inspector: StudioInspectorState;
+  exactFieldAvailable: boolean;
+}): StudioCommandMeasurementBarState {
+  const dimension = inspector.dimensions[0];
+  const measured = dimension ? splitMeasuredValue(dimension.value) : null;
+  const issue = inspector.state === "invalid"
+    ? { raw: inspector.raw, constraint: inspector.constraint }
+    : null;
+  return {
+    context: inspector.heading,
+    measurement: dimension && measured
+      ? {
+          label: dimension.label,
+          value: issue?.raw ?? measured.value,
+          unit: measured.unit,
+          editable: exactFieldAvailable,
+        }
+      : null,
+    issue,
+  };
+}
+
+/** Human project language for an internal history label; identifiers never leak into chrome. */
+export function describeHistoryAction(label: string | null): string | null {
+  if (!label) return null;
+  if (label.startsWith("graph:vertex:")) return "Move a plan point";
+  if (label.startsWith("phrase ")) return "Apply a command";
+  if (label === "geometry:convert-to-graph") return "Convert to an editable plan";
+  if (label.startsWith("graph:add-")) return "Add to the plan";
+  if (label.startsWith("surface")) return "Change a material";
+  if (label.startsWith("fixture")) return "Edit a fixture";
+  if (label.startsWith("opening")) return "Edit an opening";
+  if (label.startsWith("plan:")) return "Choose a plan";
+  if (label.includes("project") || label === "share-link") return "Open a project";
+  return "Change the project";
+}
+
 export interface FailedProposalRecovery {
   accepted: false;
   preservedProjectHash: string;

@@ -3,7 +3,9 @@ import { expect, test } from "playwright/test";
 import {
   GUIDED_STUDIO_TASKS,
   canonicalEdit,
+  commandMeasurementBarState,
   contextualInspectorState,
+  describeHistoryAction,
   evidenceSummary,
   invalidExactInput,
   studioHistoryLabel,
@@ -245,6 +247,68 @@ test("an invalid exact value outranks selection and preserves the raw value and 
     constraint: "Wall wall-north must be longer than zero feet.",
     recoverable: true,
   });
+});
+
+test("the command bar projects the active tool or one editable exact measurement", () => {
+  const task = GUIDED_STUDIO_TASKS.find((candidate) => candidate.id === "rooms")!;
+  const tool = contextualInspectorState({
+    task,
+    tool: {
+      label: "Shape tool",
+      guidance: "Select a corner, wall, opening, or room.",
+      actions: ["Select an object"],
+    },
+  });
+  const selection = contextualInspectorState({
+    task,
+    selection: {
+      kind: "wall",
+      id: "wall-north",
+      identity: "North wall",
+      dimensions: [
+        { label: "Length", value: "24 ft" },
+        { label: "Thickness", value: "0.5 ft" },
+      ],
+      placement: "Between vertex-1 and vertex-2",
+      actions: ["Type an exact value"],
+    },
+  });
+
+  expect(commandMeasurementBarState({ inspector: tool, exactFieldAvailable: false })).toMatchObject({
+    context: "Shape tool",
+    measurement: null,
+    issue: null,
+  });
+  expect(commandMeasurementBarState({ inspector: selection, exactFieldAvailable: true })).toMatchObject({
+    context: "North wall",
+    measurement: { label: "Length", value: "24", unit: "ft", editable: true },
+    issue: null,
+  });
+});
+
+test("the command bar keeps refused raw input and describes project history without ids", () => {
+  const task = GUIDED_STUDIO_TASKS.find((candidate) => candidate.id === "rooms")!;
+  const invalid = contextualInspectorState({
+    task,
+    selection: {
+      kind: "wall",
+      id: "wall-north",
+      identity: "North wall",
+      dimensions: [{ label: "Length", value: "24 ft" }],
+      placement: "Between vertex-1 and vertex-2",
+      actions: ["Type an exact value"],
+    },
+    invalid: invalidExactInput("-1", "Wall wall-north must be longer than zero feet."),
+  });
+
+  expect(commandMeasurementBarState({ inspector: invalid, exactFieldAvailable: true })).toMatchObject({
+    context: "Check North wall",
+    measurement: { label: "Length", value: "-1", unit: "ft", editable: true },
+    issue: { raw: "-1", constraint: "Wall wall-north must be longer than zero feet." },
+  });
+  expect(describeHistoryAction("graph:vertex:vertex-north-east")).toBe("Move a plan point");
+  expect(describeHistoryAction("phrase 4: Set width to 24 feet")).toBe("Apply a command");
+  expect(describeHistoryAction(null)).toBeNull();
 });
 
 test("a guided 2D task exposes the canvas and first-edit tools in the first 1280 by 720 viewport", async ({
