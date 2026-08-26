@@ -201,6 +201,18 @@ test("accessors and hostile reflection traps are rejected without invocation or 
   }
 });
 
+test("revoked root and array proxies fail through the sanitized contract boundary", () => {
+  const revokedRoot = Proxy.revocable(completeIntent(), {});
+  revokedRoot.revoke();
+  expectIssue(revokedRoot.proxy, "invalid-type", "$");
+
+  const candidate = completeIntent();
+  const revokedRooms = Proxy.revocable(candidate.rooms as unknown[], {});
+  candidate.rooms = revokedRooms.proxy;
+  revokedRooms.revoke();
+  expectIssue(candidate, "invalid-type", "$.rooms");
+});
+
 test("geometry-shaped payloads are named and refused at root and nested boundaries", () => {
   expectIssue({ ...completeIntent(), vertices: [{ x: 0, y: 0 }] }, "unknown-key", "$.vertices");
   const nested = completeIntent();

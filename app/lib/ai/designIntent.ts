@@ -177,9 +177,16 @@ const fail = (code: DesignIntentErrorCode, path: string, message: string): never
 };
 
 const strictObject = <K extends string>(value: unknown, path: string, keys: readonly K[]): Record<K, unknown> => {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+  if (typeof value !== "object" || value === null) {
     return fail("invalid-type", path, "Expected an object.");
   }
+  let isArray: boolean;
+  try {
+    isArray = Array.isArray(value);
+  } catch {
+    return fail("invalid-type", path, "Expected a safely inspectable JSON object.");
+  }
+  if (isArray) return fail("invalid-type", path, "Expected an object.");
   let prototype: object | null;
   let ownKeys: Array<string | symbol>;
   let descriptors: Array<PropertyDescriptor | undefined>;
@@ -213,7 +220,13 @@ const strictObject = <K extends string>(value: unknown, path: string, keys: read
 };
 
 const arrayOf = (value: unknown, path: string, maximum: number): unknown[] => {
-  if (!Array.isArray(value)) return fail("invalid-type", path, "Expected an array.");
+  let isArray: boolean;
+  try {
+    isArray = Array.isArray(value);
+  } catch {
+    return fail("invalid-type", path, "Expected a safely inspectable JSON array.");
+  }
+  if (!isArray) return fail("invalid-type", path, "Expected an array.");
   let prototype: object | null;
   let ownKeys: Array<string | symbol>;
   let descriptors: Array<PropertyDescriptor | undefined>;
