@@ -1,0 +1,9 @@
+{
+  "schema": "AuraGraphPositionPolicyV1",
+  "invocation": "explicit-only",
+  "phases": ["preflight", "integration", "release"],
+  "moveClasses": ["remain", "backward-repair", "lateral-ready", "blocked-authority"],
+  "recurringAutomation": "forbidden",
+  "independentVerification": "required",
+  "sideEffects": "none"
+}

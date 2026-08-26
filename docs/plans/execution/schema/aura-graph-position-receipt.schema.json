@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aurahomes.fun/schemas/aura-graph-position-receipt-v1.json",
+  "title": "AuraGraphPositionReceiptV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "graphVersion", "node", "phase", "invocation", "verdict",
+    "independentVerification", "inspected", "checks", "movement", "correction", "errors"
+  ],
+  "properties": {
+    "schema": { "const": "AuraGraphPositionReceiptV1" },
+    "graphVersion": { "type": "string", "pattern": "^aura-graph/v2\\.0@[A-F0-9]{64}$" },
+    "node": { "type": "string", "pattern": "^(G|IP|UX|ED|OR|AI|LO|CM|HM|DV|Q)[0-9]{2}$" },
+    "phase": { "enum": ["preflight", "integration", "release", "unknown"] },
+    "invocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": { "mode": { "enum": ["explicit", "invalid"] } }
+    },
+    "verdict": { "enum": ["pass", "fail"] },
+    "independentVerification": { "const": "required" },
+    "inspected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifestCommit", "status", "owner", "verifier"],
+      "properties": {
+        "manifestCommit": { "type": ["string", "null"], "pattern": "^[0-9a-f]{40}$" },
+        "status": { "type": ["string", "null"] },
+        "owner": { "type": ["string", "null"] },
+        "verifier": { "type": ["string", "null"] }
+      }
+    },
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authority", "dependencies", "writes", "worktree", "evidence", "decisionHistory"],
+      "properties": {
+        "authority": { "$ref": "#/$defs/check" },
+        "dependencies": { "$ref": "#/$defs/check" },
+        "writes": { "$ref": "#/$defs/check" },
+        "worktree": { "$ref": "#/$defs/check" },
+        "evidence": { "$ref": "#/$defs/check" },
+        "decisionHistory": { "$ref": "#/$defs/check" }
+      }
+    },
+    "movement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requested", "allowed", "options"],
+      "properties": {
+        "requested": { "enum": ["remain", "backward-repair", "lateral-ready", "blocked-authority"] },
+        "allowed": { "type": "boolean" },
+        "options": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+      }
+    },
+    "correction": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["node", "violatedGate", "safeMove", "authorityRequired"],
+          "properties": {
+            "node": { "type": "string" },
+            "violatedGate": { "type": "string", "minLength": 1 },
+            "safeMove": { "enum": ["blocked-authority", "backward-repair", "lateral-ready"] },
+            "authorityRequired": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    },
+    "errors": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
+  },
+  "$defs": {
+    "check": { "enum": ["pass", "fail"] }
+  }
+}
