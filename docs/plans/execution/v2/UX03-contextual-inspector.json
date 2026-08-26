@@ -46,13 +46,7 @@
   "writeSet": [
     "docs/plans/execution/v2/UX03-contextual-inspector.json",
     "app/components/builder/BuilderApp.tsx",
-    "app/components/builder/ContextualInspector.tsx",
-    "app/components/builder/GraphPlanEditor.tsx",
-    "app/lib/builder/guidedStudio.ts",
-    "app/tests/builder-plans-first.spec.ts",
-    "app/tests/gate-coverage.spec.ts",
-    "README.md",
-    "docs/SUBMISSION.md"
+    "app/tests/builder-plans-first.spec.ts"
   ],
   "freezeClass": "none",
   "owner": "primary-agent",
