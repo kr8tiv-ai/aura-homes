@@ -80,6 +80,7 @@
     "activeManifestCommit": "f56c958b313a061fffd4600f18504e0c1a04f5e7",
     "priorCandidate": "cff9d6c45f2089c25b1d1846ce029403373f25c6",
     "correctiveStartedFrom": "9ba006bff602a7ba98abe9c5399736d7b44b7031",
+    "correctiveReadyManifestCommit": "d10415595cb8af743a287b226a29f15c90f9f3d5",
     "ownerAuthorization": "The founder answered the named owner-authorized blocker with 'please continue' and then directed 'continue without stopping until I interrupt'; this authorizes one new bounded UX03 corrective candidate without changing Graph v2 or the frozen 3D behavior.",
     "writeSetCheck": {
       "declared": 9,
@@ -112,5 +113,5 @@
     "blockerDisposition": "Owner authorization received. The corrective attempt is limited to projecting the selected canonical storey in the inspector and adding the graph-edit-to-3D-selection served regression; no renderer or scene behavior may change.",
     "protectedPathChanges": 0
   },
-  "status": "ready"
+  "status": "active"
 }
