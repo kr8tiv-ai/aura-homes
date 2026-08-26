@@ -207,6 +207,13 @@ function NumberField({
       onInvalid?.(input.value, "Enter a finite number in feet.");
       return;
     }
+    /* A canonical value restored by Escape will still blur when focus moves to
+       another control. Revalidating that same number may clear a refusal, but
+       it must never enter the document/history as a second edit. */
+    if (parsed === value) {
+      onCancel?.();
+      return;
+    }
     onCommit(parsed, input.value);
   };
 

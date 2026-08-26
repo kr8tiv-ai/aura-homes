@@ -460,7 +460,7 @@ test("the compact bar reaches the canonical exact field, names history, and canc
     "served UX04 command and measurement proof runs with the manifest's local base URL",
   );
   test.setTimeout(180_000);
-  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/build?mode=guided");
   await expect(page.locator(".builder-viewport canvas").first()).toBeAttached({ timeout: 90_000 });
 
@@ -516,4 +516,6 @@ test("the compact bar reaches the canonical exact field, names history, and canc
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
   await expect(root).toHaveAttribute("data-active-design-hash", editedHash ?? "");
+  await undo.click();
+  await expect(root).toHaveAttribute("data-active-design-hash", originalHash ?? "");
 });
