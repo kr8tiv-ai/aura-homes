@@ -78,28 +78,29 @@
     "priorCandidate": "cff9d6c45f2089c25b1d1846ce029403373f25c6",
     "correctiveStartedFrom": "9ba006bff602a7ba98abe9c5399736d7b44b7031",
     "correctiveReadyManifestCommit": "d10415595cb8af743a287b226a29f15c90f9f3d5",
+    "correctiveCandidate": "8771b560d0761e52c4065f0bfe645e6f2ebc026a",
     "ownerAuthorization": "The founder answered the named owner-authorized blocker with 'please continue' and then directed 'continue without stopping until I interrupt'; this authorizes one new bounded UX03 corrective candidate without changing Graph v2 or the frozen 3D behavior.",
     "writeSetCheck": {
-      "declared": 9,
-      "changed": 9,
+      "declared": 6,
+      "changed": 6,
       "delta": 0,
       "candidateGuardErrors": []
     },
     "browserEvidence": {
       "toolState": "Guided Rooms names the active Shape tool; Guided Shell suppresses preserved plan selection or invalid state and names the active Shell tools instead",
-      "selectionState": "a real graph wall exposes identity, length, thickness, placement, and the canonical exact-value action",
+      "selectionState": "a real graph wall exposes identity, length, thickness, placement, and the canonical exact-value action; after that wall changes from 34 to 40 feet, selecting the visible model projects Ground floor, 40 ft, and Canonical planar graph storey rather than the recovery HomeSpec",
       "invalidState": "raw -1 remains editable beside the violated positive-length constraint, is hidden while Shell is active, and is restored when Rooms becomes active again",
       "documentIdentity": "the active design hash is unchanged by selection and the refused exact value",
       "firstViewport1280x720": "editable plan and first-edit tools visible at scrollY=0"
     },
     "gateReceipts": {
-      "typecheck": "pass at cff9d6c45f2089c25b1d1846ce029403373f25c6",
-      "deterministic": "677 passed, 2 intentionally skipped served-only proofs; 679 declared at cff9d6c45f2089c25b1d1846ce029403373f25c6",
-      "servedUi": "135/135 passed in 18.8m against the rebuilt production export at cff9d6c45f2089c25b1d1846ce029403373f25c6",
-      "focusedServed": "11/11 passed in 40.6s at cff9d6c45f2089c25b1d1846ce029403373f25c6 against the fresh export produced by the preceding full UI gate; the served regression covers selection and invalid state across Rooms-to-Shell-to-Rooms transitions",
-      "graphV2": "14/14 passed; authority pass; zero manifest errors at cff9d6c45f2089c25b1d1846ce029403373f25c6"
+      "typecheck": "pass at 8771b560d0761e52c4065f0bfe645e6f2ebc026a",
+      "deterministic": "724 passed, 3 intentionally skipped served-only proofs; 727 declared in 1.4m at 8771b560d0761e52c4065f0bfe645e6f2ebc026a",
+      "servedUi": "136/136 passed in 15.2m against a fresh production export at 8771b560d0761e52c4065f0bfe645e6f2ebc026a",
+      "focusedServed": "12/12 passed in 1.0m at 8771b560d0761e52c4065f0bfe645e6f2ebc026a; the added served regression changes a canonical wall from 34 to 40 feet, selects the visible model, and requires the inspector to project the canonical Ground floor rather than Legacy massing volume",
+      "graphV2": "24/24 passed; authority pass; zero manifest errors at 8771b560d0761e52c4065f0bfe645e6f2ebc026a"
     },
-    "repair": "The independent review proved that the mounted-but-hidden GraphPlanEditor kept projecting a Rooms wall selection after Guided Shell became active. The single permitted repair preserves that plan state but projects it only while the graph plan surface is active; Shell shows its own tool state. The served regression covers both stale selection and stale invalid input, then proves both states restore when Rooms becomes active again.",
+    "repair": "The owner-authorized corrective attempt replaces graph-mode legacy-volume projection with the selected canonical storey. Its served regression proves a 34-to-40-foot graph edit remains canonical when the visible model is selected. The single repair loop reconciles the resulting deterministic declaration count and public receipts at 727 declared, 724 passed, and 3 served-only skipped.",
     "priorIndependentVerdict": "FAIL at closure c312b780d777a6aefe84d3a48e729e06d2103f63: a wall selection from Guided Rooms remained projected after Guided Shell hid the 2D plan surface",
     "independentVerdict": "FAIL at re-verification of closure 2907ed3e5860779d744c9c2aa8cdc3aeafebc938: after a canonical graph wall changed from 34 to 40 feet, selecting the visible graph in Guided Shell projected the frozen recovery HomeSpec's 34-foot Legacy massing volume instead of canonical graph/storey state",
     "repairLoop": {
@@ -110,5 +111,5 @@
     "blockerDisposition": "Owner authorization received. The corrective attempt projects the selected canonical storey, adds the graph-edit-to-3D-selection regression, and consumes its single repair loop to reconcile the deterministic gate counter plus the two public verification receipts from 726 to 727 declarations; no renderer or scene behavior changes.",
     "protectedPathChanges": 0
   },
-  "status": "active"
+  "status": "verification-pending"
 }
