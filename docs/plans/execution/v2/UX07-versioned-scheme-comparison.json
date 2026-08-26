@@ -94,8 +94,9 @@
     "writeOwnership": "No ready, active, verification-pending, or integration-pending manifest owns a UX07 path; blocked nodes do not retain write ownership.",
     "existingSurfaceAudit": "VariationStrip already generates validated deterministic candidate documents and ProjectLibrary already persists explicit complete saved versions. No surface compares selected saved records by complete canonical identity, shared program/area/cost/blocker/export facts, or a user-chosen reference.",
     "planCommit": "646fb4b",
+    "readyManifestCommit": "f9c2592",
     "protectedPathChanges": 0,
     "githubSync": "blocked: current GitHub OAuth credential lacks workflow scope required to push the preserved source-ci workflow"
   },
-  "status": "ready"
+  "status": "active"
 }
