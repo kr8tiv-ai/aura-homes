@@ -121,7 +121,22 @@
       "used": 1,
       "maximum": 1
     },
+    "reentryEvidence": {
+      "activationCommit": "4dc9e7c0e10ff89571853b5621b7a192996d6feb",
+      "behaviorCommit": "5c7834079839cf8093d91251ffd21b6130a1be7a",
+      "typeSafetyCommit": "70b75701bc3e1146e9166856a962cf8b55e8f6ac",
+      "receiptCommit": "5bd86a3b084eecd3aa0489ff6e5ce92d92bbc292",
+      "writeSetCheck": "6 declared repair paths; 6 changed paths from 43950a6dba5b27527eb9cbe30e0c787344cdce81 through 5bd86a3b084eecd3aa0489ff6e5ce92d92bbc292; zero delta; zero protected paths",
+      "redProof": "The new revoked-root and revoked-array fixture failed with raw TypeError before the correction.",
+      "focusedProof": "17/17 DesignIntent cases passed; combined DesignIntent and gate-coverage proof passed 24/24.",
+      "typecheck": "pass",
+      "deterministicGate": "736 declared; 732 passed; 4 intentional served-only skips; exit 0",
+      "graphGate": "24/24 passed; authority pass; manifest errors empty",
+      "sideEffects": "none",
+      "githubSync": "blocked: the configured GitHub OAuth credential lacks workflow scope and direct SSH has no public key; the preserved source-ci workflow was not removed or bypassed",
+      "remainingGate": "independent fresh-context verification is required before IP02 can become verified"
+    },
     "protectedPathChanges": 0
   },
-  "status": "active"
+  "status": "verification-pending"
 }
