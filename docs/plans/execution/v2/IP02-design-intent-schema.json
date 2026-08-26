@@ -103,9 +103,22 @@
       "passingEvidence": "Authority, IP01 dependency, exact 7/7 write set, manifest-only closure, candidate guard, freeze guard, typecheck, graph-v2, deterministic suite, focused 16/16 contract suite, no side effects, and all previously named adversarial probes passed.",
       "blocker": "Array.isArray executes outside the sanitized reflection boundary in strictObject and arrayOf. A revoked root Proxy or revoked array Proxy therefore escapes a raw TypeError instead of failing as a sanitized DesignIntentError.",
       "requiredCorrection": "With fresh owner authority for another repair, move Array.isArray behind the sanitized boundary (or wrap it equivalently), add revoked-root and revoked-array fixtures, and rerun every declared gate.",
-      "repairAuthority": "blocked: the manifest permits one repair loop and 1/1 has been used"
+      "repairAuthority": "superseded by the founder's fresh continue-without-stopping and approve-everything instruction; re-entry remains bounded to one new IP02 repair loop and the existing write set"
+    },
+    "ownerReentry": {
+      "authorizedAt": "2026-08-26",
+      "instruction": "continue without stopping until I interrupt; earlier founder instruction: approve everything",
+      "startedFrom": "43950a6dba5b27527eb9cbe30e0c787344cdce81",
+      "reason": "IP02 is the highest-leverage blocked dependency and the correction is limited to the exact independently named revoked-proxy boundary defect.",
+      "repairPaths": [
+        "docs/plans/execution/v2/IP02-design-intent-schema.json",
+        "app/lib/ai/designIntent.ts",
+        "app/tests/design-intent.spec.ts"
+      ],
+      "used": 1,
+      "maximum": 1
     },
     "protectedPathChanges": 0
   },
-  "status": "blocked"
+  "status": "active"
 }
