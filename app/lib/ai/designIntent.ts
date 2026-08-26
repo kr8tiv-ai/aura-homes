@@ -227,13 +227,14 @@ const arrayOf = (value: unknown, path: string, maximum: number): unknown[] => {
     return fail("invalid-type", path, "Expected a safely inspectable JSON array.");
   }
   if (!isArray) return fail("invalid-type", path, "Expected an array.");
+  const arrayValue = value as unknown[];
   let prototype: object | null;
   let ownKeys: Array<string | symbol>;
   let descriptors: Array<PropertyDescriptor | undefined>;
   try {
-    prototype = Object.getPrototypeOf(value);
-    ownKeys = Reflect.ownKeys(value);
-    descriptors = ownKeys.map((key) => Object.getOwnPropertyDescriptor(value, key));
+    prototype = Object.getPrototypeOf(arrayValue);
+    ownKeys = Reflect.ownKeys(arrayValue);
+    descriptors = ownKeys.map((key) => Object.getOwnPropertyDescriptor(arrayValue, key));
   } catch {
     return fail("invalid-type", path, "Expected a safely inspectable JSON array.");
   }
