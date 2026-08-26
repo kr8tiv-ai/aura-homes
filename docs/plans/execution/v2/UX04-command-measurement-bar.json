@@ -117,8 +117,21 @@
       "used": 1,
       "maximum": 1
     },
+    "ownerReentry": {
+      "authorizedAt": "2026-08-26",
+      "instruction": "continue without stopping until I interrupt; earlier founder instruction: approve everything",
+      "startedFrom": "7ab5ae770c37f6beb9b43f503f869b59ebfd50c8",
+      "reason": "UX04 is the highest-impact lateral editor blocker and the correction is limited to the exact independently named canonical-precision loss after Escape.",
+      "repairPaths": [
+        "docs/plans/execution/v2/UX04-command-measurement-bar.json",
+        "app/components/builder/GraphPlanEditor.tsx",
+        "app/tests/builder-plans-first.spec.ts"
+      ],
+      "used": 1,
+      "maximum": 1
+    },
     "protectedPathChanges": 0,
     "githubSync": "blocked: current GitHub OAuth credential lacks workflow scope required to push the preserved source-ci workflow"
   },
-  "status": "blocked"
+  "status": "active"
 }
