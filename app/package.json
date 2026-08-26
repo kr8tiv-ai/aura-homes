@@ -12,6 +12,7 @@
     "social:card": "node scripts/build-social-card.mjs",
     "test:release": "node --test scripts/static-release.test.mjs scripts/chunk-recovery.test.mjs",
     "test:graph-v2": "node --test scripts/prove-graph-v2.test.mjs scripts/founder-decision-ledger.test.mjs && node scripts/founder-decision-ledger.mjs && node scripts/prove-graph-v2.mjs",
+    "test:graph-position": "node --test scripts/graph-position-check.test.mjs",
     "test:decision-ledger": "node --test scripts/founder-decision-ledger.test.mjs && node scripts/founder-decision-ledger.mjs",
     "test:source-evidence": "node --test scripts/source-evidence-receipt.test.mjs",
     "release:stage-assets": "node scripts/static-release.mjs stage-assets",

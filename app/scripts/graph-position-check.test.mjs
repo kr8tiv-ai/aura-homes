@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import {
   buildGraphPositionReceipt,
+  deriveMovementOptions,
+  parseGraphPositionCliArgs,
   validateDecisionHistorySequence,
   validateGraphPositionInput,
   validateRepositoryDecisionHistory,
@@ -40,6 +42,7 @@ const validInput = () => ({
   graphVersion: GRAPH_VERSION,
   authority: { status: "pass", errors: [] },
   manifest: {
+    path: "docs/plans/execution/v2/G05-point-in-time-graph-position.json",
     commit: "a".repeat(40),
     status: "active",
     owner: "primary-agent",
@@ -61,6 +64,7 @@ const validInput = () => ({
     delta: [],
     protectedPathErrors: [],
     overlappingOwners: [],
+    closureChanged: [],
   },
   worktree: { status: "clean" },
   evidence: [{ command: "npm run test:graph-position", status: "pass" }],
@@ -166,6 +170,7 @@ test("repository decision history traverses every decisions.json-changing commit
     execFileSync("git", ["config", "user.email", "lucidbloks@gmail.com"], { cwd: temp });
     mkdirSync(path.join(temp, ".githooks-disabled"));
     execFileSync("git", ["config", "core.hooksPath", ".githooks-disabled"], { cwd: temp });
+    execFileSync("git", ["config", "core.autocrlf", "false"], { cwd: temp });
     const file = path.join(temp, REGISTRY_PATH);
     mkdirSync(path.dirname(file), { recursive: true });
     const commitLedger = (value, message) => {
@@ -190,4 +195,155 @@ test("repository decision history traverses every decisions.json-changing commit
   } finally {
     rmSync(temp, { recursive: true, force: true });
   }
+});
+
+test("position reconciliation rejects dependency, write-set, closure, evidence, and phase drift", () => {
+  const dependency = validInput();
+  dependency.dependencies[0].actualStatus = "blocked";
+  assert.match(validateGraphPositionInput(dependency).join("\n"), /does not satisfy G01:verified/);
+
+  const writes = validInput();
+  writes.writes.changed = ["app/scripts/not-owned.mjs"];
+  writes.writes.delta = ["app/scripts/not-owned.mjs"];
+  assert.match(validateGraphPositionInput(writes).join("\n"), /candidate paths do not exactly equal/);
+
+  const protectedPath = validInput();
+  protectedPath.writes.protectedPathErrors = ["app/components/story/Scene.tsx is hard-protected"];
+  assert.match(validateGraphPositionInput(protectedPath).join("\n"), /protected path violations/);
+
+  const overlap = validInput();
+  overlap.writes.overlappingOwners = ["UX99"];
+  assert.match(validateGraphPositionInput(overlap).join("\n"), /overlaps a live owner/);
+
+  const closure = validInput();
+  closure.invocation.phase = "integration";
+  closure.manifest.status = "verification-pending";
+  closure.lineage.closure = "e".repeat(40);
+  closure.writes.closureChanged = ["app/scripts/graph-position-check.mjs"];
+  assert.match(validateGraphPositionInput(closure).join("\n"), /closure must change only the target manifest/);
+
+  const evidence = validInput();
+  evidence.evidence[0].status = "fail";
+  assert.match(validateGraphPositionInput(evidence).join("\n"), /evidence\[0\].status must be pass/);
+
+  const release = validInput();
+  release.invocation.phase = "release";
+  release.manifest.status = "active";
+  assert.match(validateGraphPositionInput(release).join("\n"), /active is invalid for release/);
+});
+
+test("blocked nodes expose only graph-valid repair and committed-ready lateral movement", () => {
+  const input = validInput();
+  input.manifest.status = "blocked";
+  input.manifest.repair = { used: 0, maximum: 1 };
+  input.movement.requested = "lateral-ready";
+  input.movement.lateralCandidates = [
+    {
+      node: "UX04",
+      status: "ready",
+      dependenciesSatisfied: true,
+      externalGates: [],
+      writeSetClaimed: false,
+    },
+    {
+      node: "IP03",
+      status: "proposed",
+      dependenciesSatisfied: true,
+      externalGates: [],
+      writeSetClaimed: false,
+    },
+    {
+      node: "HM02",
+      status: "ready",
+      dependenciesSatisfied: false,
+      externalGates: [],
+      writeSetClaimed: false,
+    },
+  ];
+  const receipt = buildGraphPositionReceipt(input);
+  assert.equal(receipt.verdict, "pass");
+  assert.equal(receipt.movement.allowed, true);
+  assert.deepEqual(receipt.movement.options, ["backward-repair:G05", "lateral-ready:UX04"]);
+  assert.doesNotMatch(JSON.stringify(receipt), /IP03|HM02/);
+});
+
+test("strategic rows and exhausted repair cannot invent a safe move", () => {
+  const input = validInput();
+  input.manifest.status = "blocked";
+  input.manifest.repair = { used: 1, maximum: 1 };
+  input.movement.requested = "lateral-ready";
+  input.movement.lateralCandidates = [{
+    node: "IP03",
+    status: "proposed",
+    dependenciesSatisfied: true,
+    externalGates: [],
+    writeSetClaimed: false,
+  }];
+  const receipt = buildGraphPositionReceipt(input);
+  assert.equal(receipt.verdict, "fail");
+  assert.equal(receipt.movement.allowed, false);
+  assert.deepEqual(receipt.movement.options, ["blocked-authority:G05"]);
+  assert.match(receipt.errors.join("\n"), /requested movement is not graph-valid/);
+});
+
+test("CLI arguments are explicit, full-commit, evidence-bound, and reject external actions", () => {
+  const args = parseGraphPositionCliArgs([
+    "--phase", "preflight",
+    "--node", "G05",
+    "--base", "a".repeat(40),
+    "--candidate", "b".repeat(40),
+    "--evidence-json", JSON.stringify([{ command: "npm run test:graph-position", status: "pass" }]),
+  ]);
+  assert.equal(args.phase, "preflight");
+  assert.equal(args.node, "G05");
+  assert.equal(args.closure, null);
+  assert.equal(args.evidence.length, 1);
+  assert.throws(() => parseGraphPositionCliArgs([
+    "--phase", "preflight", "--node", "G05", "--base", "abc", "--candidate", "b".repeat(40),
+    "--evidence-json", "[]",
+  ]), /base must be a full Git commit/);
+  for (const forbidden of ["--schedule", "--run-url", "--deploy", "--provider", "--payment"]) {
+    assert.throws(() => parseGraphPositionCliArgs([
+      "--phase", "preflight", "--node", "G05", "--base", "a".repeat(40),
+      "--candidate", "b".repeat(40), "--evidence-json", "[]", forbidden, "true",
+    ]), /unknown or forbidden option/);
+  }
+});
+
+test("CLI failures are bounded and do not mutate the repository", () => {
+  const before = execFileSync("git", ["status", "--porcelain"], { cwd: ROOT, encoding: "utf8" });
+  const result = spawnSync(process.execPath, [
+    path.join(ROOT, "app", "scripts", "graph-position-check.mjs"),
+    "--schedule", "true",
+  ], { cwd: ROOT, encoding: "utf8" });
+  const after = execFileSync("git", ["status", "--porcelain"], { cwd: ROOT, encoding: "utf8" });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /unknown or forbidden option|missing required option/);
+  assert.equal(after, before);
+  assert.equal(result.stdout, "");
+});
+
+test("all exported movement, repository-option, and CLI boundaries contain hostile reflection", () => {
+  const movement = { node: "G05" };
+  Object.defineProperty(movement, "manifest", {
+    enumerable: true,
+    get() { throw new Error("PRIVATE_MOVEMENT_VALUE"); },
+  });
+  let movementResult;
+  assert.doesNotThrow(() => { movementResult = deriveMovementOptions(movement); });
+  assert.deepEqual(movementResult, []);
+
+  const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf8" }).trim();
+  const revokedOptions = Proxy.revocable({}, {});
+  revokedOptions.revoke();
+  let repositoryErrors;
+  assert.doesNotThrow(() => {
+    repositoryErrors = validateRepositoryDecisionHistory(ROOT, head, revokedOptions.proxy);
+  });
+  assert.match(repositoryErrors.join("\n"), /options cannot be inspected safely/);
+  assert.doesNotMatch(repositoryErrors.join("\n"), /PRIVATE/);
+
+  const revokedArgs = Proxy.revocable([], {});
+  revokedArgs.revoke();
+  assert.throws(() => parseGraphPositionCliArgs(revokedArgs.proxy), /CLI arguments cannot be inspected safely/);
 });

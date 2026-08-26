@@ -1,13 +1,20 @@
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import {
   APPROVED_GRAPH_NODE_IDS,
   EXPECTED_HISTORICAL_REGISTRY,
   validateFounderDecisionLedger,
   validateFounderDecisionTransition,
 } from "./founder-decision-ledger.mjs";
-import { GRAPH_VERSION } from "./prove-graph-v2.mjs";
+import {
+  GRAPH_VERSION,
+  loadProtectedPaths,
+  validateCandidatePaths,
+  validateExecutionNode,
+  verifyApprovedGraph,
+} from "./prove-graph-v2.mjs";
 
 const PHASES = Object.freeze(["preflight", "integration", "release"]);
 const MANIFEST_STATUSES = Object.freeze([
@@ -146,12 +153,23 @@ export const validateGraphPositionInput = (candidate) => {
   }
 
   if (exactKeys(input.manifest, [
-    "commit", "status", "owner", "verifier", "depends", "externalGates", "writeSet", "repair",
+    "path", "commit", "status", "owner", "verifier", "depends", "externalGates", "writeSet", "repair",
   ], "input.manifest", errors)) {
+    if (typeof input.manifest.path !== "string" ||
+        !/^docs\/plans\/execution\/v2\/[A-Z]{1,3}\d{2}-[a-z0-9-]+\.json$/.test(input.manifest.path) ||
+        !input.manifest.path.split("/").at(-1)?.startsWith(`${input.node}-`)) {
+      errors.push("input.manifest.path must name the inspected node's committed v2 manifest");
+    }
     if (typeof input.manifest.commit !== "string" || !COMMIT.test(input.manifest.commit)) {
       errors.push("input.manifest.commit must be a full Git commit");
     }
     if (!MANIFEST_STATUSES.includes(input.manifest.status)) errors.push("input.manifest.status is invalid");
+    if (input.invocation?.phase === "release" && ["proposed", "ready", "active", "verification-pending"].includes(input.manifest.status)) {
+      errors.push(`manifest status ${input.manifest.status} is invalid for release`);
+    }
+    if (input.invocation?.phase === "integration" && ["proposed", "ready", "active"].includes(input.manifest.status)) {
+      errors.push(`manifest status ${input.manifest.status} is invalid for integration`);
+    }
     if (typeof input.manifest.owner !== "string" || input.manifest.owner.length === 0) errors.push("input.manifest.owner is required");
     if (input.manifest.verifier !== "independent-fresh-context") {
       errors.push("input.manifest.verifier must remain independent-fresh-context");
@@ -192,18 +210,26 @@ export const validateGraphPositionInput = (candidate) => {
   }
 
   if (exactKeys(input.writes, [
-    "declared", "changed", "delta", "protectedPathErrors", "overlappingOwners",
+    "declared", "changed", "delta", "protectedPathErrors", "overlappingOwners", "closureChanged",
   ], "input.writes", errors)) {
     const declared = stringArray(input.writes.declared, "input.writes.declared", errors);
     const changed = stringArray(input.writes.changed, "input.writes.changed", errors);
     const delta = stringArray(input.writes.delta, "input.writes.delta", errors);
     const protectedErrors = stringArray(input.writes.protectedPathErrors, "input.writes.protectedPathErrors", errors);
     const owners = stringArray(input.writes.overlappingOwners, "input.writes.overlappingOwners", errors);
+    const closureChanged = stringArray(input.writes.closureChanged, "input.writes.closureChanged", errors);
     if (JSON.stringify([...declared].sort()) !== JSON.stringify([...changed].sort()) || delta.length > 0) {
       errors.push("candidate paths do not exactly equal the declared write set");
     }
     if (protectedErrors.length > 0) errors.push("candidate contains protected path violations");
     if (owners.length > 0) errors.push("candidate write set overlaps a live owner");
+    if (input.lineage?.closure === null && closureChanged.length > 0) {
+      errors.push("closure paths require a closure commit");
+    }
+    if (input.lineage?.closure !== null &&
+        (closureChanged.length !== 1 || closureChanged[0] !== input.manifest?.path)) {
+      errors.push("closure must change only the target manifest");
+    }
   }
   if (exactKeys(input.worktree, ["status"], "input.worktree", errors) && input.worktree.status !== "clean") {
     errors.push("worktree must be clean");
@@ -227,8 +253,50 @@ export const validateGraphPositionInput = (candidate) => {
   if (exactKeys(input.movement, ["requested", "lateralCandidates"], "input.movement", errors)) {
     if (!MOVE_CLASSES.includes(input.movement.requested)) errors.push("input.movement.requested is invalid");
     if (!Array.isArray(input.movement.lateralCandidates)) errors.push("input.movement.lateralCandidates must be an array");
+    else for (let index = 0; index < input.movement.lateralCandidates.length; index += 1) {
+      const lateral = input.movement.lateralCandidates[index];
+      const label = `input.movement.lateralCandidates[${index}]`;
+      if (exactKeys(lateral, [
+        "node", "status", "dependenciesSatisfied", "externalGates", "writeSetClaimed",
+      ], label, errors)) {
+        if (typeof lateral.node !== "string" || !approvedNodes.has(lateral.node)) errors.push(`${label}.node is not approved`);
+        if (!MANIFEST_STATUSES.includes(lateral.status)) errors.push(`${label}.status is invalid`);
+        if (typeof lateral.dependenciesSatisfied !== "boolean") errors.push(`${label}.dependenciesSatisfied must be boolean`);
+        stringArray(lateral.externalGates, `${label}.externalGates`, errors);
+        if (typeof lateral.writeSetClaimed !== "boolean") errors.push(`${label}.writeSetClaimed must be boolean`);
+      }
+    }
+    const movementOptions = deriveMovementOptions(input);
+    if (!movementOptions.some((option) => option.startsWith(`${input.movement.requested}:`)) &&
+        !(input.movement.requested === "remain" && movementOptions.includes(`remain:${input.node}`))) {
+      errors.push("requested movement is not graph-valid");
+    }
   }
   return [...new Set(errors)];
+};
+
+export const deriveMovementOptions = (input) => {
+  const errors = [];
+  const safeInput = inspectJsonValue(input, "movement input", errors);
+  if (errors.length > 0 || !safeInput || typeof safeInput !== "object" || Array.isArray(safeInput) ||
+      typeof safeInput.node !== "string") return [];
+  if (safeInput.manifest?.status !== "blocked") return [`remain:${safeInput.node}`];
+  const options = [];
+  if (Number.isInteger(safeInput.manifest?.repair?.used) && Number.isInteger(safeInput.manifest?.repair?.maximum) &&
+      safeInput.manifest.repair.used < safeInput.manifest.repair.maximum) {
+    options.push(`backward-repair:${safeInput.node}`);
+  }
+  if (Array.isArray(safeInput.movement?.lateralCandidates)) {
+    for (const candidate of safeInput.movement.lateralCandidates) {
+      if (candidate && typeof candidate === "object" && !Array.isArray(candidate) &&
+          candidate.status === "ready" && candidate.dependenciesSatisfied === true &&
+          Array.isArray(candidate.externalGates) && candidate.externalGates.length === 0 &&
+          candidate.writeSetClaimed === false && typeof candidate.node === "string" && approvedNodes.has(candidate.node)) {
+        options.push(`lateral-ready:${candidate.node}`);
+      }
+    }
+  }
+  return options.length > 0 ? [...new Set(options)] : [`blocked-authority:${safeInput.node}`];
 };
 
 export const buildGraphPositionReceipt = (candidate) => {
@@ -237,6 +305,12 @@ export const buildGraphPositionReceipt = (candidate) => {
   const input = inspectJsonValue(candidate, "input", safeErrors);
   const usable = safeErrors.length === 0 && input && typeof input === "object" && !Array.isArray(input);
   const allErrors = [...new Set([...errors, ...safeErrors])];
+  const movementOptions = usable ? deriveMovementOptions(input) : [];
+  const requestedMovement = usable && typeof input.movement?.requested === "string"
+    ? input.movement.requested
+    : "blocked-authority";
+  const movementAllowed = allErrors.length === 0 && movementOptions.some((option) =>
+    option.startsWith(`${requestedMovement}:`));
   return {
     schema: "AuraGraphPositionReceiptV1",
     graphVersion: usable ? input.graphVersion : GRAPH_VERSION,
@@ -260,14 +334,14 @@ export const buildGraphPositionReceipt = (candidate) => {
       decisionHistory: allErrors.some((error) => error.includes("decision history")) ? "fail" : "pass",
     },
     movement: {
-      requested: usable && typeof input.movement?.requested === "string" ? input.movement.requested : "blocked-authority",
-      allowed: allErrors.length === 0,
-      options: [],
+      requested: requestedMovement,
+      allowed: movementAllowed,
+      options: movementOptions,
     },
     correction: allErrors.length === 0 ? null : {
       node: usable && typeof input.node === "string" ? input.node : "unknown",
       violatedGate: allErrors[0],
-      safeMove: "blocked-authority",
+      safeMove: movementOptions[0]?.split(":")[0] ?? "blocked-authority",
       authorityRequired: "named by the failed gate",
     },
     errors: allErrors,
@@ -305,10 +379,24 @@ const git = (repoRoot, args, encoding = "utf8") => execFileSync("git", args, {
 });
 
 export const validateRepositoryDecisionHistory = (repoRootInput, candidateCommit, options = {}) => {
-  const repoRoot = path.resolve(String(repoRootInput));
-  const anchorCommit = options.anchorCommit ?? EXPECTED_HISTORICAL_REGISTRY.pinnedAtCommit;
-  const expectedStored = options.expectedHistoricalStoredSha256 ?? EXPECTED_HISTORICAL_REGISTRY.storedBlobSha256;
-  const expectedObject = options.expectedHistoricalObjectSha256 ?? EXPECTED_HISTORICAL_REGISTRY.objectSha256;
+  const optionErrors = [];
+  const safeOptions = inspectJsonValue(options, "decision history options", optionErrors);
+  if (optionErrors.length > 0 || safeOptions === undefined || safeOptions === null ||
+      typeof safeOptions !== "object" || Array.isArray(safeOptions)) {
+    return ["decision history options cannot be inspected safely"];
+  }
+  const allowedOptionKeys = ["anchorCommit", "expectedHistoricalStoredSha256", "expectedHistoricalObjectSha256"];
+  const unknownOption = Object.keys(safeOptions).find((key) => !allowedOptionKeys.includes(key));
+  if (unknownOption) return [`decision history options has unknown key ${unknownOption}`];
+  let repoRoot;
+  try {
+    repoRoot = path.resolve(String(repoRootInput));
+  } catch {
+    return ["decision history repository root cannot be inspected safely"];
+  }
+  const anchorCommit = safeOptions.anchorCommit ?? EXPECTED_HISTORICAL_REGISTRY.pinnedAtCommit;
+  const expectedStored = safeOptions.expectedHistoricalStoredSha256 ?? EXPECTED_HISTORICAL_REGISTRY.storedBlobSha256;
+  const expectedObject = safeOptions.expectedHistoricalObjectSha256 ?? EXPECTED_HISTORICAL_REGISTRY.objectSha256;
   if (!COMMIT.test(String(anchorCommit)) || !COMMIT.test(String(candidateCommit))) {
     return ["decision history anchor and candidate must be full Git commits"];
   }
@@ -343,3 +431,249 @@ export const validateRepositoryDecisionHistory = (repoRootInput, candidateCommit
   return [...new Set(errors)];
 };
 
+const symmetricPathDelta = (declared, changed) => [
+  ...declared.filter((entry) => !changed.includes(entry)),
+  ...changed.filter((entry) => !declared.includes(entry)),
+];
+
+const committedManifestEntries = (repoRoot, candidateCommit) => {
+  const directory = "docs/plans/execution/v2";
+  const output = git(repoRoot, ["ls-tree", "-r", "--name-only", candidateCommit, "--", directory]);
+  const paths = output.trim().split(/\r?\n/).filter((entry) => entry.endsWith(".json"));
+  return paths.map((manifestPath) => ({
+    path: manifestPath,
+    manifest: JSON.parse(git(repoRoot, ["cat-file", "blob", `${candidateCommit}:${manifestPath}`])),
+  }));
+};
+
+const dependenciesFor = (manifest, byNode) => (manifest.depends ?? [])
+  .filter((entry) => typeof entry === "string" && /^[A-Z]{1,3}\d{2}:[a-z-]+$/.test(entry))
+  .map((ref) => {
+    const [node] = ref.split(":");
+    return { ref, actualStatus: byNode.get(node)?.manifest?.status ?? "missing" };
+  });
+
+const dependenciesSatisfied = (manifest, byNode) => dependenciesFor(manifest, byNode)
+  .every((dependency) => dependency.actualStatus === dependency.ref.split(":").at(-1));
+
+export const buildRepositoryGraphPositionInput = async ({
+  repoRoot: repoRootInput,
+  phase,
+  node,
+  base,
+  candidate,
+  closure = null,
+  evidence,
+  movement = "remain",
+}) => {
+  const repoRoot = path.resolve(String(repoRootInput));
+  const setupErrors = [];
+  let authority = { ok: false, errors: ["approved graph authority could not be inspected"] };
+  let entries = [];
+  let manifestEntry;
+  let protectedRegistry;
+  try {
+    authority = await verifyApprovedGraph(repoRoot);
+    entries = committedManifestEntries(repoRoot, candidate);
+    manifestEntry = entries.find((entry) => entry.manifest?.node === node);
+    protectedRegistry = await loadProtectedPaths(repoRoot);
+  } catch {
+    setupErrors.push("committed graph position inputs cannot be reopened");
+  }
+  if (!manifestEntry) setupErrors.push(`committed manifest for ${node} is missing at candidate`);
+  const manifest = manifestEntry?.manifest ?? {
+    status: "proposed", owner: "unknown", verifier: "unknown", depends: [], externalGates: [], writeSet: [],
+    repair: { maxLoops: 0 }, evidence: {},
+  };
+  if (manifestEntry) {
+    try {
+      const validation = await validateExecutionNode(manifest, repoRoot);
+      setupErrors.push(...validation.errors.map((error) => `manifest: ${error}`));
+    } catch {
+      setupErrors.push("committed manifest cannot be validated safely");
+    }
+  }
+
+  const byNode = new Map(entries.map((entry) => [entry.manifest?.node, entry]));
+  const lineageErrors = [];
+  try {
+    git(repoRoot, ["merge-base", "--is-ancestor", base, candidate]);
+    if (closure) git(repoRoot, ["merge-base", "--is-ancestor", candidate, closure]);
+  } catch {
+    lineageErrors.push("base, candidate, and closure lineage is invalid");
+  }
+  let changed = [];
+  let closureChanged = [];
+  let manifestCommit = "0".repeat(40);
+  try {
+    changed = git(repoRoot, ["diff", "--name-only", `${base}...${candidate}`]).trim().split(/\r?\n/).filter(Boolean);
+    if (closure) {
+      closureChanged = git(repoRoot, ["diff", "--name-only", `${candidate}...${closure}`]).trim().split(/\r?\n/).filter(Boolean);
+    }
+    if (manifestEntry) {
+      manifestCommit = git(repoRoot, ["log", "-1", "--format=%H", candidate, "--", manifestEntry.path]).trim();
+    }
+  } catch {
+    setupErrors.push("candidate or closure paths cannot be reopened");
+  }
+  let protectedPathErrors = [];
+  if (manifestEntry && protectedRegistry) {
+    try {
+      protectedPathErrors = validateCandidatePaths(changed, manifest, protectedRegistry);
+    } catch {
+      protectedPathErrors = ["candidate protected-path policy cannot be inspected safely"];
+    }
+  }
+
+  const liveStatuses = new Set(["ready", "active", "verification-pending"]);
+  const overlappingOwners = [];
+  for (const entry of entries) {
+    if (entry.manifest?.node === node || !liveStatuses.has(entry.manifest?.status)) continue;
+    if ((entry.manifest.writeSet ?? []).some((ownedPath) => (manifest.writeSet ?? []).includes(ownedPath))) {
+      overlappingOwners.push(entry.manifest.node);
+    }
+  }
+  const lateralCandidates = entries
+    .filter((entry) => entry.manifest?.node !== node)
+    .map((entry) => {
+      const competing = entries.some((owner) => owner.manifest?.node !== entry.manifest.node &&
+        liveStatuses.has(owner.manifest?.status) &&
+        (owner.manifest.writeSet ?? []).some((ownedPath) => (entry.manifest.writeSet ?? []).includes(ownedPath)));
+      return {
+        node: entry.manifest.node,
+        status: entry.manifest.status,
+        dependenciesSatisfied: dependenciesSatisfied(entry.manifest, byNode),
+        externalGates: Array.isArray(entry.manifest.externalGates) ? entry.manifest.externalGates : ["malformed"],
+        writeSetClaimed: competing,
+      };
+    });
+  const decisionErrors = validateRepositoryDecisionHistory(repoRoot, candidate);
+  let historyCommits = [];
+  try {
+    historyCommits = [
+      EXPECTED_HISTORICAL_REGISTRY.pinnedAtCommit,
+      ...git(repoRoot, [
+        "log", "--first-parent", "--reverse", "--format=%H",
+        `${EXPECTED_HISTORICAL_REGISTRY.pinnedAtCommit}..${candidate}`,
+        "--", EXPECTED_HISTORICAL_REGISTRY.path,
+      ]).trim().split(/\r?\n/).filter(Boolean),
+    ];
+  } catch {
+    if (!decisionErrors.includes("repository decision history cannot be reopened")) {
+      decisionErrors.push("repository decision history commits cannot be enumerated");
+    }
+  }
+  let worktreeStatus = "dirty";
+  try {
+    worktreeStatus = git(repoRoot, ["status", "--porcelain"]).trim().length === 0 ? "clean" : "dirty";
+  } catch {
+    setupErrors.push("worktree status cannot be inspected");
+  }
+  const repairUsed = Number.isInteger(manifest.evidence?.repairLoop?.used)
+    ? manifest.evidence.repairLoop.used
+    : 0;
+  const declared = Array.isArray(manifest.writeSet) ? manifest.writeSet : [];
+  return {
+    schema: "AuraGraphPositionInputV1",
+    invocation: { mode: "explicit", phase },
+    node,
+    graphVersion: GRAPH_VERSION,
+    authority: {
+      status: authority.ok && setupErrors.length === 0 && lineageErrors.length === 0 ? "pass" : "fail",
+      errors: [...authority.errors, ...setupErrors, ...lineageErrors],
+    },
+    manifest: {
+      path: manifestEntry?.path ?? `docs/plans/execution/v2/${node}-missing.json`,
+      commit: manifestCommit,
+      status: manifest.status,
+      owner: manifest.owner,
+      verifier: manifest.verifier,
+      depends: Array.isArray(manifest.depends) ? manifest.depends : [],
+      externalGates: Array.isArray(manifest.externalGates) ? manifest.externalGates : ["malformed"],
+      writeSet: declared,
+      repair: { used: repairUsed, maximum: manifest.repair?.maxLoops ?? 0 },
+    },
+    lineage: { base, candidate, closure },
+    dependencies: dependenciesFor(manifest, byNode),
+    writes: {
+      declared,
+      changed,
+      delta: symmetricPathDelta(declared, changed),
+      protectedPathErrors,
+      overlappingOwners,
+      closureChanged,
+    },
+    worktree: { status: worktreeStatus },
+    evidence,
+    decisionHistory: {
+      status: decisionErrors.length === 0 ? "pass" : "fail",
+      commits: historyCommits,
+      errors: decisionErrors,
+    },
+    movement: { requested: movement, lateralCandidates },
+  };
+};
+
+export const parseGraphPositionCliArgs = (argv) => {
+  const argumentErrors = [];
+  const safeArgv = inspectJsonValue(argv, "CLI arguments", argumentErrors);
+  if (argumentErrors.length > 0 || !Array.isArray(safeArgv)) {
+    throw new Error("CLI arguments cannot be inspected safely");
+  }
+  const allowed = new Set(["phase", "node", "base", "candidate", "closure", "evidence-json", "movement"]);
+  const values = Object.create(null);
+  for (let index = 0; index < safeArgv.length; index += 2) {
+    const flag = safeArgv[index];
+    const value = safeArgv[index + 1];
+    if (typeof flag !== "string" || !flag.startsWith("--") || value === undefined) {
+      throw new Error(`invalid argument near ${typeof flag === "string" ? flag : "end"}`);
+    }
+    const key = flag.slice(2);
+    if (!allowed.has(key)) throw new Error(`unknown or forbidden option ${flag}`);
+    if (Object.hasOwn(values, key)) throw new Error(`duplicate option ${flag}`);
+    values[key] = value;
+  }
+  for (const key of ["phase", "node", "base", "candidate", "evidence-json"]) {
+    if (!Object.hasOwn(values, key)) throw new Error(`missing required option --${key}`);
+  }
+  if (!PHASES.includes(values.phase)) throw new Error("phase must be preflight, integration, or release");
+  if (!approvedNodes.has(values.node)) throw new Error("node must be an approved graph node");
+  for (const key of ["base", "candidate"]) {
+    if (!COMMIT.test(values[key])) throw new Error(`${key} must be a full Git commit`);
+  }
+  if (values.closure !== undefined && !COMMIT.test(values.closure)) throw new Error("closure must be a full Git commit");
+  const movement = values.movement ?? "remain";
+  if (!MOVE_CLASSES.includes(movement)) throw new Error("movement is invalid");
+  let evidence;
+  try {
+    evidence = JSON.parse(values["evidence-json"]);
+  } catch {
+    throw new Error("evidence-json must be valid JSON");
+  }
+  if (!Array.isArray(evidence)) throw new Error("evidence-json must be an array");
+  return {
+    phase: values.phase,
+    node: values.node,
+    base: values.base,
+    candidate: values.candidate,
+    closure: values.closure ?? null,
+    movement,
+    evidence,
+  };
+};
+
+const main = async () => {
+  const args = parseGraphPositionCliArgs(process.argv.slice(2));
+  const repoRoot = path.resolve(import.meta.dirname, "..", "..");
+  const input = await buildRepositoryGraphPositionInput({ repoRoot, ...args });
+  const receipt = buildGraphPositionReceipt(input);
+  process.stdout.write(`${JSON.stringify(receipt, null, 2)}\n`);
+  if (receipt.verdict !== "pass") process.exitCode = 1;
+};
+
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+  main().catch((error) => {
+    process.stderr.write(`${error instanceof Error ? error.message : "graph position check failed"}\n`);
+    process.exitCode = 1;
+  });
+}
