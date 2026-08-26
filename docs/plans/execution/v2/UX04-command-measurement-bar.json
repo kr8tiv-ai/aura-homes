@@ -130,8 +130,23 @@
       "used": 1,
       "maximum": 1
     },
+    "reentryEvidence": {
+      "activationCommit": "03346cb8432bdbdbcc2f0a58d2bf036d083fd781",
+      "candidateCommit": "7f5e6ce734f9c320057625676167680eac1567c4",
+      "writeSetCheck": "3 declared repair paths; 3 changed paths from 7ab5ae770c37f6beb9b43f503f869b59ebfd50c8 through 7f5e6ce734f9c320057625676167680eac1567c4; zero delta; zero protected paths",
+      "redProof": "The candidate-bound 390x844 browser regression expected canonical hash 0xcabf1a770e55140cc5195f9de6c6b55f9faeae62df1d78ec587f22a810dd7914 and received rounded-mutation hash 0x7e2a7ca2711ab7d6dfd719f63c13a3dab68c9c5c13c19d7cbe31e93ac5c6b273 before the correction.",
+      "resolution": "NumberField restores JavaScript's lossless round-trippable numeric string while surrounding human-facing dimensions retain the concise three-decimal formatter.",
+      "typecheck": "pass",
+      "focusedSource": "15 declared; 11 pure passed; 4 intentional served-only skips",
+      "focusedServed": "15/15 passed against the candidate export; the exact precision regression passed 1/1 in isolation first",
+      "deterministicGate": "736 declared; 732 passed; 4 intentional served-only skips; exit 0",
+      "productionUi": "137/137 passed against the fresh candidate export in 13.8 minutes",
+      "graphGate": "24/24 passed; authority pass; manifest errors empty",
+      "build": "candidate static export compiled, typechecked, and generated 24/24 pages",
+      "remainingGate": "independent fresh-context verification is required before UX04 can become verified"
+    },
     "protectedPathChanges": 0,
     "githubSync": "blocked: current GitHub OAuth credential lacks workflow scope required to push the preserved source-ci workflow"
   },
-  "status": "active"
+  "status": "verification-pending"
 }
