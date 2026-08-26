@@ -50,6 +50,7 @@ const validInput = () => ({
     depends: ["G01:verified"],
     externalGates: [],
     writeSet: ["app/scripts/graph-position-check.mjs"],
+    verification: ["npm run test:graph-position"],
     repair: { used: 0, maximum: 1 },
   },
   lineage: {
@@ -225,6 +226,14 @@ test("position reconciliation rejects dependency, write-set, closure, evidence, 
   const evidence = validInput();
   evidence.evidence[0].status = "fail";
   assert.match(validateGraphPositionInput(evidence).join("\n"), /evidence\[0\].status must be pass/);
+
+  const missingEvidence = validInput();
+  missingEvidence.manifest.verification.push("npm run typecheck");
+  assert.match(validateGraphPositionInput(missingEvidence).join("\n"), /evidence commands must exactly equal/);
+
+  const inventedEvidence = validInput();
+  inventedEvidence.evidence.push({ command: "npm run invented", status: "pass" });
+  assert.match(validateGraphPositionInput(inventedEvidence).join("\n"), /evidence commands must exactly equal/);
 
   const release = validInput();
   release.invocation.phase = "release";

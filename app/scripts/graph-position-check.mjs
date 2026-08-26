@@ -153,7 +153,7 @@ export const validateGraphPositionInput = (candidate) => {
   }
 
   if (exactKeys(input.manifest, [
-    "path", "commit", "status", "owner", "verifier", "depends", "externalGates", "writeSet", "repair",
+    "path", "commit", "status", "owner", "verifier", "depends", "externalGates", "writeSet", "verification", "repair",
   ], "input.manifest", errors)) {
     if (typeof input.manifest.path !== "string" ||
         !/^docs\/plans\/execution\/v2\/[A-Z]{1,3}\d{2}-[a-z0-9-]+\.json$/.test(input.manifest.path) ||
@@ -177,6 +177,8 @@ export const validateGraphPositionInput = (candidate) => {
     stringArray(input.manifest.depends, "input.manifest.depends", errors);
     const externalGates = stringArray(input.manifest.externalGates, "input.manifest.externalGates", errors);
     stringArray(input.manifest.writeSet, "input.manifest.writeSet", errors);
+    const verification = stringArray(input.manifest.verification, "input.manifest.verification", errors);
+    if (verification.length === 0) errors.push("input.manifest.verification must not be empty");
     if (externalGates.length > 0) errors.push("unresolved external gates block forward movement");
     if (exactKeys(input.manifest.repair, ["used", "maximum"], "input.manifest.repair", errors)) {
       if (!Number.isInteger(input.manifest.repair.used) || !Number.isInteger(input.manifest.repair.maximum) ||
@@ -234,14 +236,20 @@ export const validateGraphPositionInput = (candidate) => {
   if (exactKeys(input.worktree, ["status"], "input.worktree", errors) && input.worktree.status !== "clean") {
     errors.push("worktree must be clean");
   }
+  const evidenceCommands = [];
   if (!Array.isArray(input.evidence) || input.evidence.length === 0) errors.push("input.evidence must be a non-empty array");
   else for (let index = 0; index < input.evidence.length; index += 1) {
     const item = input.evidence[index];
     const label = `input.evidence[${index}]`;
     if (exactKeys(item, ["command", "status"], label, errors)) {
       if (typeof item.command !== "string" || item.command.length === 0) errors.push(`${label}.command is required`);
+      else evidenceCommands.push(item.command);
       if (item.status !== "pass") errors.push(`${label}.status must be pass`);
     }
+  }
+  if (Array.isArray(input.manifest?.verification) &&
+      JSON.stringify([...input.manifest.verification].sort()) !== JSON.stringify([...evidenceCommands].sort())) {
+    errors.push("evidence commands must exactly equal the manifest verification commands");
   }
   if (exactKeys(input.decisionHistory, ["status", "commits", "errors"], "input.decisionHistory", errors)) {
     if (input.decisionHistory.status !== "pass") errors.push("decision history did not pass");
@@ -483,7 +491,7 @@ export const buildRepositoryGraphPositionInput = async ({
   if (!manifestEntry) setupErrors.push(`committed manifest for ${node} is missing at candidate`);
   const manifest = manifestEntry?.manifest ?? {
     status: "proposed", owner: "unknown", verifier: "unknown", depends: [], externalGates: [], writeSet: [],
-    repair: { maxLoops: 0 }, evidence: {},
+    verification: [], repair: { maxLoops: 0 }, evidence: {},
   };
   if (manifestEntry) {
     try {
@@ -591,6 +599,7 @@ export const buildRepositoryGraphPositionInput = async ({
       depends: Array.isArray(manifest.depends) ? manifest.depends : [],
       externalGates: Array.isArray(manifest.externalGates) ? manifest.externalGates : ["malformed"],
       writeSet: declared,
+      verification: Array.isArray(manifest.verification) ? manifest.verification : [],
       repair: { used: repairUsed, maximum: manifest.repair?.maxLoops ?? 0 },
     },
     lineage: { base, candidate, closure },
