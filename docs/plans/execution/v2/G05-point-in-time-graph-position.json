@@ -1,0 +1,95 @@
+{
+  "graphVersion": "aura-graph/v2.0@680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8",
+  "node": "G05",
+  "lane": "governance",
+  "stage": "point-in-time-graph-position",
+  "job": "Create an explicitly invoked, read-only graph-position checker that reconciles full decision history, authority, dependencies, exact write ownership, evidence, protected paths, and safe lateral or backward movement without scheduling itself or self-approving verification.",
+  "inputs": [
+    {
+      "name": "G01-verified-canonical-graph-registry",
+      "version": "b81553a",
+      "hash": "git:b81553a"
+    },
+    {
+      "name": "approved-G05-design",
+      "version": "2026-08-26",
+      "hash": "git:e8f19e47186991fc6364a849853d0e943e26dc22"
+    },
+    {
+      "name": "G05-implementation-plan",
+      "version": "2026-08-26",
+      "hash": "git:79b39e9ef45705e1f512d04e1bf53af158645454"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "graph-position-policy",
+      "acceptanceSchema": "AuraGraphPositionPolicyV1",
+      "path": "docs/plans/registry/graph-position-policy.json"
+    },
+    {
+      "name": "graph-position-receipt-schema",
+      "acceptanceSchema": "AuraGraphPositionReceiptV1 JSON Schema 2020-12",
+      "path": "docs/plans/execution/schema/aura-graph-position-receipt.schema.json"
+    },
+    {
+      "name": "point-in-time-checker",
+      "acceptanceSchema": "Explicit read-only local gate",
+      "path": "app/scripts/graph-position-check.mjs"
+    }
+  ],
+  "depends": ["G01:verified"],
+  "reject": [
+    "G01 is not independently verified or Graph v2 authority does not reopen exactly",
+    "the checker is scheduled, recurring, implicit, backgrounded, or invoked by an automation loop",
+    "the primary operator or receipt self-approves independent verification or an exception",
+    "any decisions.json-changing commit from the pinned V1 anchor to the candidate is skipped",
+    "a committed manifest is missing, stale, malformed, unapproved, or inconsistent with its node status",
+    "a dependency, rejection gate, evidence requirement, or external approval is absent but forward movement is allowed",
+    "candidate paths differ from the manifest write set or another live manifest owns an overlapping path",
+    "candidate or closure lineage is invalid or a closure changes more than the target manifest",
+    "a hard-protected or unapproved public-visual path changes",
+    "a strategic row without a committed ready manifest is offered as lateral work",
+    "unknown keys, accessors, revoked proxies, malformed Git data, invalid JSON, or private exceptions pass or leak",
+    "the implementation performs a network, provider, deployment, branch-setting, persistence, payment, wallet, legal, or other external action"
+  ],
+  "writeSet": [
+    "docs/plans/execution/v2/G05-point-in-time-graph-position.json",
+    "docs/plans/registry/graph-position-policy.json",
+    "docs/plans/execution/schema/aura-graph-position-receipt.schema.json",
+    "app/scripts/graph-position-check.mjs",
+    "app/scripts/graph-position-check.test.mjs",
+    "app/package.json"
+  ],
+  "freezeClass": "none",
+  "owner": "primary-agent",
+  "verifier": "independent-fresh-context",
+  "sideEffects": "none",
+  "externalGates": [],
+  "verification": [
+    "node --test scripts/graph-position-check.test.mjs",
+    "npm run test:graph-position",
+    "npm run test:decision-ledger",
+    "npm run test:graph-v2",
+    "npm run typecheck",
+    "fixture: every decisions.json-changing commit from the pinned V1 anchor is traversed and every V2 transition preserves the prior canonical changes as an exact prefix",
+    "fixture: dependencies, statuses, write sets, lineage, closures, evidence, external gates, and competing ownership reconcile before forward movement",
+    "fixture: blocked nodes expose only graph-valid backward repair or committed ready lateral choices",
+    "fixture: scheduled invocation, self-verification, unsafe values, protected paths, and external-action options fail closed",
+    "git diff --name-only <G05-base>...HEAD"
+  ],
+  "repair": {
+    "maxLoops": 1,
+    "boundary": "G05 writeSet only"
+  },
+  "evidence": {
+    "startedFrom": "79b39e9ef45705e1f512d04e1bf53af158645454",
+    "dependencyGate": "G01 independently verified; approved Graph v2 authority and freeze gate pass",
+    "writeOwnership": "G04, HM01, IP02, and UX03 are blocked and carry no live ownership; all other instantiated manifests are verified; no ready, active, or verification-pending manifest owns a G05 path.",
+    "designCommit": "e8f19e47186991fc6364a849853d0e943e26dc22",
+    "planCommit": "79b39e9ef45705e1f512d04e1bf53af158645454",
+    "lateralReason": "G04 exhausted its repair after a full-history bypass; G05 depends only on verified G01 and explicitly owns point-in-time reconciliation, so it is a graph-valid lateral move.",
+    "githubSync": "blocked: current GitHub OAuth credential lacks workflow scope required to push the preserved source-ci workflow; SSH authentication is unavailable"
+  },
+  "status": "ready"
+}
