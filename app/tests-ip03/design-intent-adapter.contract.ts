@@ -504,7 +504,7 @@ test("hostile request metadata fails before adapter invocation without invoking 
   expect(String(error)).not.toContain("private request getter detail");
 });
 
-test("the IP03 module has no provider, network, value, persistence, project, or rendering dependency", () => {
+test("the isolated IP03 module has no provider, network, value, persistence, project, or rendering dependency", () => {
   const source = readFileSync(join(process.cwd(), "lib", "ai", "designIntentAdapter.ts"), "utf8");
   const executable = source
     .replace(/\/\*[\s\S]*?\*\//g, "")

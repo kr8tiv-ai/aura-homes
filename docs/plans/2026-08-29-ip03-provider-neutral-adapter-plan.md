@@ -34,11 +34,8 @@ Declare `IP02:verified`, no external gate, no side effects, one repair maximum, 
   "docs/plans/2026-08-29-ip03-provider-neutral-adapter-plan.md",
   "docs/plans/execution/v2/IP03-provider-neutral-adapter.json",
   "app/lib/ai/designIntentAdapter.ts",
-  "app/tests/design-intent-adapter.spec.ts",
-  "app/package.json",
-  "app/tests/gate-coverage.spec.ts",
-  "README.md",
-  "docs/SUBMISSION.md"
+  "app/tests-ip03/design-intent-adapter.contract.ts",
+  "app/playwright.ip03.config.ts"
 ]
 ```
 
@@ -87,7 +84,8 @@ G05 exact-write preflight is reserved for the completed candidate because it com
 ## Task 3: Specify the shared contract test-first
 
 **Files:**
-- Create: `app/tests/design-intent-adapter.spec.ts`
+- Create: `app/tests-ip03/design-intent-adapter.contract.ts`
+- Create: `app/playwright.ip03.config.ts`
 - Create: `app/lib/ai/designIntentAdapter.ts`
 
 **Step 1: Write failing contract tests**
@@ -111,7 +109,7 @@ Cover these required surfaces before production code exists:
 Run:
 
 ```powershell
-npx playwright test tests/design-intent-adapter.spec.ts
+npx playwright test --config=playwright.ip03.config.ts
 ```
 
 Expected: FAIL because `designIntentAdapter.ts` does not exist.
@@ -136,7 +134,7 @@ Do not add a router, provider registry, API handler, model selector, prompt edit
 
 **Files:**
 - Modify: `app/lib/ai/designIntentAdapter.ts`
-- Modify: `app/tests/design-intent-adapter.spec.ts`
+- Modify: `app/tests-ip03/design-intent-adapter.contract.ts`
 
 **Step 1: Make request preflight pass**
 
@@ -165,46 +163,48 @@ The fake stores a validated frozen fixture at construction, emits a fixed provid
 Run:
 
 ```powershell
-npx playwright test tests/design-intent-adapter.spec.ts
+npx playwright test --config=playwright.ip03.config.ts
 npm run typecheck
 ```
 
 Expected: every IP03 contract test passes and TypeScript is clean.
 
-## Task 5: Wire the deterministic gate and evidence counts
+## Task 5: Keep the IP03 contract isolated from UX08-owned evidence paths
 
 **Files:**
-- Modify: `app/package.json`
-- Modify: `app/tests/gate-coverage.spec.ts`
-- Modify: `README.md`
-- Modify: `docs/SUBMISSION.md`
+- Create: `app/playwright.ip03.config.ts`
 
-**Step 1: Add IP03 to the deterministic gate**
-
-Add `tests/design-intent-adapter.spec.ts` immediately after `tests/design-intent.spec.ts` in `npm test`.
-
-**Step 2: Run complete deterministic evidence before changing counts**
+**Step 1: Run the dedicated deterministic contract gate**
 
 Run:
+
+```powershell
+npx playwright test --config=playwright.ip03.config.ts
+```
+
+Expected: all 18 IP03 contract cases pass without a server or external service.
+
+The IP03 test lives outside `app/tests/*.spec.ts` intentionally. G05 discovered that UX08 still owns `app/tests/gate-coverage.spec.ts`, `README.md`, and `docs/SUBMISSION.md` while awaiting independent verification. Folding IP03 into the shared runner would require changing those live-owned count surfaces. The dedicated checked-in Playwright configuration preserves committed deterministic proof without crossing that ownership boundary.
+
+**Step 2: Run the unchanged complete deterministic gate**
 
 ```powershell
 npm test
 ```
 
-Capture the declared/passed/skipped totals. Then update the hard count in `gate-coverage.spec.ts`, README badge/evidence rows, and submission evidence to the observed values. Do not predict totals from source text.
+Expected: the existing 737-test gate remains green at 733 passed plus four documented served-only skips. Do not change shared counts or evidence documents until UX08 is independently closed and a future committed manifest owns them.
 
 **Step 3: Run remaining local gates**
 
 Run:
 
 ```powershell
-npx playwright test tests/gate-coverage.spec.ts
 npm run test:graph-v2
 npm run test:graph-position
 git diff --check
 ```
 
-Expected: deterministic evidence, authority, position-contract tests, count agreement, and whitespace all pass.
+Expected: dedicated contract evidence, the unchanged deterministic gate, authority, position-contract tests, and whitespace all pass.
 
 No served UI suite is required because IP03 has no browser surface. Existing UI counts remain unchanged.
 
@@ -215,10 +215,10 @@ No served UI suite is required because IP03 has no browser surface. Existing UI 
 
 **Step 1: Commit the implementation candidate**
 
-Verify the complete node-base-to-candidate diff is exactly the declared eight paths and contains no protected path. Commit the non-manifest behavior, tests, and evidence first.
+Verify the complete node-base-to-candidate diff is exactly the declared five paths and contains no protected path. Commit the non-manifest behavior and dedicated test configuration first.
 
 ```powershell
-git add app/lib/ai/designIntentAdapter.ts app/tests/design-intent-adapter.spec.ts app/package.json app/tests/gate-coverage.spec.ts README.md docs/SUBMISSION.md
+git add app/lib/ai/designIntentAdapter.ts app/tests-ip03/design-intent-adapter.contract.ts app/playwright.ip03.config.ts docs/plans/2026-08-29-ip03-provider-neutral-adapter-plan.md
 git commit -m "feat(ai): add provider-neutral design-intent adapter"
 ```
 

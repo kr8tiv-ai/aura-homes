@@ -30,7 +30,7 @@
     {
       "name": "deterministic-adapter-contract-proof",
       "acceptanceSchema": "Playwright deterministic hostile-boundary proof",
-      "path": "app/tests/design-intent-adapter.spec.ts"
+      "path": "app/tests-ip03/design-intent-adapter.contract.ts"
     }
   ],
   "depends": [
@@ -55,11 +55,8 @@
     "docs/plans/2026-08-29-ip03-provider-neutral-adapter-plan.md",
     "docs/plans/execution/v2/IP03-provider-neutral-adapter.json",
     "app/lib/ai/designIntentAdapter.ts",
-    "app/tests/design-intent-adapter.spec.ts",
-    "app/package.json",
-    "app/tests/gate-coverage.spec.ts",
-    "README.md",
-    "docs/SUBMISSION.md"
+    "app/tests-ip03/design-intent-adapter.contract.ts",
+    "app/playwright.ip03.config.ts"
   ],
   "freezeClass": "none",
   "owner": "primary-agent",
@@ -68,7 +65,7 @@
   "externalGates": [],
   "verification": [
     "npm run typecheck",
-    "npx playwright test tests/design-intent-adapter.spec.ts",
+    "npx playwright test --config=playwright.ip03.config.ts",
     "npm test",
     "npm run test:graph-v2",
     "npm run test:graph-position",
@@ -91,11 +88,18 @@
     "dependencyGate": "IP02 independently verified at f9f7c0c24d55aa1d3366b1e6238160b79154d266",
     "planCommit": "8d24ad3676b104973baea37805148b9d32afefa0",
     "readyManifestCommit": "7e3fb5e1f3ae2811a670f7ce2a215c7452b6ba41",
-    "readinessReconciliation": "Graph v2 authority passed 25/25 before and after the committed ready manifest; IP02 is committed verified; the worktree was clean; UX08 is verification-pending on a disjoint write set; no live manifest overlaps an IP03 path; external gates are empty; declared protected paths are zero. G05 exact-write preflight is reserved for the completed candidate before closure.",
+    "readinessReconciliation": "Graph v2 authority passed 25/25 before and after the committed ready manifest; IP02 is committed verified; the worktree was clean; external gates are empty; declared protected paths are zero. The generic gate did not surface UX08's live ownership of shared count/evidence paths; completed-candidate G05 did, and the one bounded repair removes those paths before closure.",
     "existingSurfaceAudit": "IP01 provides the provider-free safe image-intake receipt and IP02 provides the strict DesignIntent parser. No provider-neutral adapter, deterministic model fake, normalized execution receipt, task cancellation boundary, or provider-cost contract exists. IP03 will not instantiate OpenRouter or a live model.",
-    "writeOwnership": "No ready, active, verification-pending, or integration-pending manifest owns an IP03 path; UX08 is disjoint.",
+    "writeOwnership": "After the bounded repair, no ready, active, verification-pending, or integration-pending manifest owns an IP03 path. The dedicated IP03 test/config replaces shared package, count, README, and submission edits still owned by verification-pending UX08.",
     "protectedPathChanges": 0,
-    "githubSync": "pending: GitHub OAuth workflow scope refresh is in progress so the preserved source-ci workflow can remain intact"
+    "githubSync": "pending: GitHub OAuth workflow scope refresh is in progress so the preserved source-ci workflow can remain intact",
+    "repairLoop": {
+      "used": 1,
+      "maximum": 1,
+      "initialCandidate": "4b4ad28d11f07b6c011fd940b375841575ba0fe1",
+      "initialVerdict": "FAIL: G05 identified overlapping live ownership because UX08 remains verification-pending on the shared package-count evidence surfaces.",
+      "resolution": "Move the 18 IP03 proofs behind a dedicated checked-in Playwright config and restore every UX08-owned shared file exactly, narrowing IP03 to five disjoint declared paths."
+    }
   },
   "status": "active"
 }

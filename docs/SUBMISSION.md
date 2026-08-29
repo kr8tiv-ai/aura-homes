@@ -280,7 +280,7 @@ At the current release checkpoint:
 | Gate | Result |
 |---|---|
 | `npx tsc --noEmit` (app) | Passes |
-| `npm test` (app) — deterministic app + contract-truth specs | 755 declared (751 passed + 4 served-only skipped), including 18 IP03 provider-neutral adapter/fake, strict intent/cost, byte-isolation, source-binding, cancellation/timeout, and hostile-boundary proofs. |
+| `npm test` (app) — deterministic app + contract-truth specs | 737 declared (733 passed + 4 served-only skipped) |
 | `npm run test:ui` (app) — Playwright against a fresh static export | 141/141 passed for the UX08 candidate, including phone-scope, canonical review-note, non-drag keyboard, focus, target-size, non-color, and 320/390 px reflow proof. |
 | `node scripts/meadow-proof.mjs` — hardware scene proof, real GPU | Passed on desktop and mobile tiers at **`fb6439c`** (2026-08-14), the commit recorded in [`app/shots/r03-meadow/meadow-proof.json`](../app/shots/r03-meadow/meadow-proof.json). It needs a quiet machine and a real GPU, so it is dated rather than re-run per commit — **and the scene has moved 12 files since, so this proves the scene as it was that day, not as it ships today.** |
 | `npm run demo` (agent) — the money anchor | Reconciles to the dollar: ex-land $199,100 / $301,280 / $443,900 |
