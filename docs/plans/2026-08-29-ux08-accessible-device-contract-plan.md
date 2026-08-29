@@ -62,26 +62,29 @@ git add docs/plans/execution/v2/UX08-accessible-device-contract.json
 git commit -m "docs(graph): ready UX08 accessible device contract"
 ```
 
-## Task 2: Run the point-in-time preflight and activate UX08
+## Task 2: Reconcile readiness and activate UX08
 
 **Files:**
 - Modify: `docs/plans/execution/v2/UX08-accessible-device-contract.json`
 
-**Step 1: Invoke G05 explicitly**
+**Step 1: Reconcile committed readiness**
 
-Use the ready-manifest commit as both `--base` and `--candidate`, pass evidence entries for the three verified dependencies, authority, clean worktree, declared write set, no external gates, and zero protected paths, and request `remain` during preflight.
+Confirm the checked-in Graph v2 gate passes, `UX02`, `UX04`, and `UX05` are committed as `verified`, the worktree is clean, no live manifest overlaps UX08's write set, there are no external gates, and zero frozen paths are declared.
 
-Run from `app/`:
+Run:
 
 ```powershell
-node scripts/graph-position-check.mjs --phase preflight --node UX08 --base <ready-commit> --candidate <ready-commit> --evidence-json '<evidence-json>' --movement remain
+npm --prefix app run test:graph-v2
+git status --short
 ```
 
-Expected: `verdict: pass`, dependency/write/worktree/evidence/decision-history checks pass, `movement.allowed: true`, and independent verification remains required.
+Expected: Graph v2 authority and every committed manifest pass; UX08 is the only ready/active owner of its paths; worktree is clean.
 
-**Step 2: Record the receipt and activate**
+G05 is deliberately not invoked against an empty ready commit: its exact-write invariant is designed to compare a completed candidate to the full declared write set. The explicit `preflight` receipt is run after the implementation candidate exists and before closure in Task 6.
 
-Set `status` to `active`, record the exact ready commit and G05 receipt, and commit only the manifest.
+**Step 2: Record readiness and activate**
+
+Set `status` to `active`, record the exact ready commit and readiness reconciliation, and commit only the manifest.
 
 ```powershell
 git add docs/plans/execution/v2/UX08-accessible-device-contract.json
@@ -239,9 +242,9 @@ git add app/lib/builder/guidedStudio.ts app/components/builder/GuidedStudioShell
 git commit -m "feat(builder): add accessible device contract"
 ```
 
-**Step 2: Invoke G05 at integration**
+**Step 2: Invoke G05 preflight against the completed candidate**
 
-Use the ready commit as base, implementation commit as candidate, all fresh gate receipts as evidence, and `movement: remain`.
+Use the plan commit immediately before the ready manifest as base so the diff includes every declared plan, manifest, implementation, test, and evidence path; use the implementation commit as candidate, pass all manifest verification commands as fresh evidence, and request `movement: remain`.
 
 Expected: exact declared writes, protected-path policy, clean worktree, dependencies, evidence, and complete decision history pass.
 
