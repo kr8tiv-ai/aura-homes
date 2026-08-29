@@ -1,6 +1,9 @@
 "use client";
 
-import type { StudioCommandMeasurementBarState } from "@/lib/builder/guidedStudio";
+import {
+  deviceCapabilityMessage,
+  type StudioCommandMeasurementBarState,
+} from "@/lib/builder/guidedStudio";
 
 export type GuidedStudioEditorMode = "guided" | "pro";
 
@@ -22,6 +25,7 @@ interface GuidedStudioShellProps {
   redoDescription: string | null;
   commandMeasurement: StudioCommandMeasurementBarState;
   planRouteOpen: boolean;
+  reviewNote: string;
   onEditorMode: (mode: GuidedStudioEditorMode) => void;
   onStep: (stepId: string) => void;
   onUndo: () => void;
@@ -31,6 +35,7 @@ interface GuidedStudioShellProps {
   onContinuePro: () => void;
   onOpenDrawings: () => void;
   onCloseDrawings: () => void;
+  onReviewNote: (note: string) => void;
 }
 
 /**
@@ -53,6 +58,7 @@ export default function GuidedStudioShell({
   redoDescription,
   commandMeasurement,
   planRouteOpen,
+  reviewNote,
   onEditorMode,
   onStep,
   onUndo,
@@ -62,10 +68,12 @@ export default function GuidedStudioShell({
   onContinuePro,
   onOpenDrawings,
   onCloseDrawings,
+  onReviewNote,
 }: GuidedStudioShellProps) {
   const activeStep = steps[activeStepIndex] ?? steps[0];
   const previousStep = steps[activeStepIndex - 1];
   const nextStep = steps[activeStepIndex + 1];
+  const phoneScope = deviceCapabilityMessage("phone");
 
   return (
     <section className="builder-mode-shell" aria-label="Project controls">
@@ -143,6 +151,17 @@ export default function GuidedStudioShell({
 
       {editorMode === "guided" ? (
         <>
+          <aside
+            aria-label="Phone workspace scope"
+            className="builder-device-contract"
+            data-device-contract="phone"
+            role="status"
+          >
+            <strong>{phoneScope.heading}</strong>
+            <span>{phoneScope.summary}</span>
+            {phoneScope.limitation ? <span>{phoneScope.limitation}</span> : null}
+          </aside>
+
           <nav aria-label="Guided design steps" className="guided-step-nav builder-task-rail">
             {steps.map((step, index) => (
               <button
@@ -195,6 +214,28 @@ export default function GuidedStudioShell({
               </button>
             </div>
           </div>
+
+          {activeStepId === "review" && !planRouteOpen ? (
+            <div className="builder-review-note" data-guided-review-note>
+              <div className="builder-review-note__copy">
+                <label htmlFor="guided-review-note">Review note</label>
+                <p id="guided-review-note-help">
+                  Saved in this project&apos;s design brief and carried verbatim to the design request.
+                </p>
+              </div>
+              <textarea
+                id="guided-review-note"
+                aria-describedby="guided-review-note-help guided-review-note-count"
+                maxLength={500}
+                rows={3}
+                value={reviewNote}
+                onChange={(event) => onReviewNote(event.currentTarget.value)}
+              />
+              <small id="guided-review-note-count">
+                {reviewNote.length}/500 · Canonical project history
+              </small>
+            </div>
+          ) : null}
         </>
       ) : null}
     </section>

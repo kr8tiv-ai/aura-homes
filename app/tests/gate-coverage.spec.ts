@@ -198,20 +198,17 @@ test("the counter agrees with what the runners actually declare", () => {
   /* The counter is a regex over source, which is an approximation of what the
      runner does — and the first version of it was wrong by seven. So it is
      pinned against numbers OBSERVED from the runners themselves:
-       npm test        -> 736 declared, after the five pure UX07 saved-scheme
-                          comparison proofs and one IP02 revoked-proxy proof
-                          joined it
-       npm run test:ui -> 137 declared, after the UX07 keyboard comparison
-                          journey joined the served-build gate
-                          against a fresh static export, after the stated-lot
-                          journey and explicit City-register surface joined
-                          the served-build gate
+       npm test        -> 737 declared, after the UX08 device-capability
+                          language proof joined the deterministic gate
+       npm run test:ui -> 141 declared, after the four UX08 phone-scope,
+                          canonical-note, non-drag, and accessibility journeys
+                          joined the served-build gate against a fresh export
      If a spec is added or removed these numbers move, and moving them means
      re-running both suites and writing down what they said — which is the
      point. A counter nobody ever checked against the thing it counts is how
      the README got its numbers wrong in the first place. */
-  expect(UNIT_TESTS).toBe(736);
-  expect(UI_TESTS).toBe(137);
+  expect(UNIT_TESTS).toBe(737);
+  expect(UI_TESTS).toBe(141);
 
   const readme = read(repoRoot, "README.md");
   const submission = read(repoRoot, "docs", "SUBMISSION.md");

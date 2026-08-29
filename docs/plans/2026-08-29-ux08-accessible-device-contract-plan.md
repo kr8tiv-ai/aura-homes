@@ -244,7 +244,7 @@ git commit -m "feat(builder): add accessible device contract"
 
 **Step 2: Invoke G05 preflight against the completed candidate**
 
-Use the plan commit immediately before the ready manifest as base so the diff includes every declared plan, manifest, implementation, test, and evidence path; use the implementation commit as candidate, pass all manifest verification commands as fresh evidence, and request `movement: remain`.
+Use the node start commit `f232036` as base so the diff includes every declared plan, manifest, implementation, test, and evidence path; using the later plan commit would incorrectly omit the plan itself. Use the implementation commit as candidate, pass all manifest verification commands as fresh evidence, and request `movement: remain`.
 
 Expected: exact declared writes, protected-path policy, clean worktree, dependencies, evidence, and complete decision history pass.
 

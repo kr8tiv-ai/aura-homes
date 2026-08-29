@@ -34,6 +34,12 @@ export interface StudioDeviceCapabilities {
   actions: readonly StudioDeviceAction[];
 }
 
+export interface StudioDeviceCapabilityMessage {
+  heading: "Phone review workspace" | "Full editor workspace";
+  summary: string;
+  limitation: string | null;
+}
+
 const REVIEW_ACTIONS = ["review", "measure", "comment", "light-correction"] as const;
 
 export function deviceCapabilities(device: StudioDevice): StudioDeviceCapabilities {
@@ -48,6 +54,33 @@ export function deviceCapabilities(device: StudioDevice): StudioDeviceCapabiliti
     artifact: "canonical-plan",
     fullCadParity: true,
     actions: [...REVIEW_ACTIONS, "structural-edit", "bulk-layout"],
+  };
+}
+
+const DEVICE_ACTION_LANGUAGE: Readonly<Record<StudioDeviceAction, string>> = {
+  review: "review",
+  measure: "measure",
+  comment: "comment",
+  "light-correction": "make light corrections",
+  "structural-edit": "edit structure",
+  "bulk-layout": "arrange layouts",
+};
+
+const sentenceList = (items: readonly string[]): string => {
+  if (items.length < 2) return `${items[0] ?? ""}.`;
+  const sentence = `${items.slice(0, -1).join(", ")}, and ${items.at(-1)} here.`;
+  return `${sentence[0].toUpperCase()}${sentence.slice(1)}`;
+};
+
+/** Visible copy derived from the same device contract used by editor gates. */
+export function deviceCapabilityMessage(device: StudioDevice): StudioDeviceCapabilityMessage {
+  const capabilities = deviceCapabilities(device);
+  return {
+    heading: capabilities.fullCadParity ? "Full editor workspace" : "Phone review workspace",
+    summary: sentenceList(capabilities.actions.map((action) => DEVICE_ACTION_LANGUAGE[action])),
+    limitation: capabilities.fullCadParity
+      ? null
+      : "Use a tablet or desktop for full layout authoring.",
   };
 }
 

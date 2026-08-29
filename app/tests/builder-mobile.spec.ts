@@ -121,6 +121,141 @@ async function openBuilder(page: Page): Promise<Locator> {
   return canvas;
 }
 
+const projectControls = (page: Page): Locator =>
+  page.getByRole("region", { name: "Project controls" });
+
+const reviewNote = (page: Page): Locator => page.getByRole("textbox", { name: "Review note" });
+
+test("UX08 states the bounded phone workspace and reflows at 320 and 390 CSS pixels", async ({
+  page,
+}) => {
+  test.setTimeout(300_000);
+  for (const viewport of [
+    { width: 320, height: 800 },
+    PHONE,
+  ]) {
+    await page.setViewportSize(viewport);
+    await openBuilder(page);
+
+    const scope = projectControls(page).getByRole("status", { name: "Phone workspace scope" });
+    await expect(scope).toBeVisible();
+    await expect(scope).toContainText("Phone review workspace");
+    await expect(scope).toContainText("Review, measure, comment, and make light corrections here.");
+    await expect(scope).toContainText("Use a tablet or desktop for full layout authoring.");
+
+    await guidedStep(page, "Review").click();
+    await expect(reviewNote(page)).toBeVisible();
+
+    for (const selector of [
+      "html",
+      ".builder-page",
+      ".builder-mode-shell",
+      ".builder-project-bar",
+      "[data-device-contract='phone']",
+      "[data-guided-review-note]",
+    ]) {
+      const box = await page.locator(selector).first().evaluate((element) => ({
+        client: element.clientWidth,
+        scroll: element.scrollWidth,
+        left: element.getBoundingClientRect().left,
+        right: element.getBoundingClientRect().right,
+        viewport: window.innerWidth,
+      }));
+      expect(box.client, `${selector} renders at ${viewport.width}px`).toBeGreaterThan(0);
+      expect(box.left, `${selector} starts outside the ${viewport.width}px viewport`).toBeGreaterThanOrEqual(0);
+      expect(box.right, `${selector} ends outside the ${viewport.width}px viewport`).toBeLessThanOrEqual(box.viewport);
+      if (selector === "html") {
+        expect(box.scroll, `the page scrolls sideways at ${viewport.width}px`).toBe(box.client);
+      }
+      if (selector.startsWith("[data-")) {
+        expect(box.scroll, `${selector} hides its own content at ${viewport.width}px`).toBe(box.client);
+      }
+    }
+  }
+});
+
+test("UX08 review notes use the canonical project hash and one Undo restores them", async ({ page }) => {
+  test.setTimeout(240_000);
+  await openBuilder(page);
+  await guidedStep(page, "Review").click();
+
+  const note = reviewNote(page);
+  await expect(note).toBeVisible();
+  const beforeNote = await note.inputValue();
+  const beforeHash = await designHash(page);
+  const nextNote = `${beforeNote}${beforeNote ? " " : ""}Keep the north porch clear for site access.`;
+
+  await note.fill(nextNote);
+  await expect(note).toHaveValue(nextNote);
+  await expect.poll(() => designHash(page)).not.toBe(beforeHash);
+
+  await projectControls(page).getByRole("button", { name: /Undo/ }).click();
+  await expect(note).toHaveValue(beforeNote);
+  await expect.poll(() => designHash(page)).toBe(beforeHash);
+});
+
+test("UX08 keeps a keyboard exact-value alternative to plan dragging", async ({ page }) => {
+  test.setTimeout(240_000);
+  await openBuilder(page);
+  await guidedStep(page, "Shell").click();
+
+  const width = page.getByLabel("Width — east to west");
+  await expect(width).toBeVisible();
+  const beforeHash = await designHash(page);
+  await width.press("ArrowRight");
+  await expect.poll(() => designHash(page)).not.toBe(beforeHash);
+
+  await projectControls(page).getByRole("button", { name: /Undo/ }).click();
+  await expect.poll(() => designHash(page)).toBe(beforeHash);
+});
+
+test("UX08 core targets, keyboard focus, and current state remain perceivable without color", async ({
+  page,
+}) => {
+  test.setTimeout(240_000);
+  await openBuilder(page);
+  await guidedStep(page, "Review").click();
+
+  const controls = projectControls(page);
+  const interactive = controls.locator("button:visible, textarea:visible");
+  const count = await interactive.count();
+  expect(count).toBeGreaterThan(0);
+  for (let index = 0; index < count; index += 1) {
+    const target = interactive.nth(index);
+    const box = await target.boundingBox();
+    expect(box, `target ${index} has a rendered box`).not.toBeNull();
+    expect(box?.width ?? 0, `target ${index} is at least 24 CSS pixels wide`).toBeGreaterThanOrEqual(24);
+    expect(box?.height ?? 0, `target ${index} is at least 24 CSS pixels tall`).toBeGreaterThanOrEqual(24);
+  }
+
+  const note = reviewNote(page);
+  await note.click();
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Tab");
+  await expect(note).toBeFocused();
+  const focus = await note.evaluate((element) => {
+    const style = getComputedStyle(element);
+    const rect = element.getBoundingClientRect();
+    return {
+      outlineStyle: style.outlineStyle,
+      outlineWidth: Number.parseFloat(style.outlineWidth),
+      top: rect.top,
+      bottom: rect.bottom,
+      viewportHeight: window.innerHeight,
+    };
+  });
+  expect(focus.outlineStyle).not.toBe("none");
+  expect(focus.outlineWidth).toBeGreaterThan(0);
+  expect(focus.top).toBeGreaterThanOrEqual(0);
+  expect(focus.bottom).toBeLessThanOrEqual(focus.viewportHeight);
+
+  await expect(guidedStep(page, "Review")).toHaveAttribute("aria-current", "step");
+  await expect(controls.getByText("Local autosave · design intent")).toBeVisible();
+  await expect(controls.getByRole("status", { name: "Phone workspace scope" })).toContainText(
+    "Use a tablet or desktop",
+  );
+});
+
 async function openPlanRoute(page: Page): Promise<void> {
   await expect(routeStrip(page)).toHaveAttribute("data-plan-route", "closed");
   await routeStrip(page).getByRole("button", { name: "Open the drawings" }).click();

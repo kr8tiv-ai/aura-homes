@@ -6,6 +6,8 @@ import {
   commandMeasurementBarState,
   contextualInspectorState,
   describeHistoryAction,
+  deviceCapabilities,
+  deviceCapabilityMessage,
   evidenceSummary,
   invalidExactInput,
   studioHistoryLabel,
@@ -133,6 +135,24 @@ test("the Guided Studio task contract keeps one short, stable path around the ca
     "review",
   ]);
   expect(GUIDED_STUDIO_TASKS.every((task) => task.label.length > 0 && task.nextAction.length > 0)).toBe(true);
+});
+
+test("UX08 device capability language is derived from the honest editor contract", () => {
+  expect(deviceCapabilityMessage("phone")).toEqual({
+    heading: "Phone review workspace",
+    summary: "Review, measure, comment, and make light corrections here.",
+    limitation: "Use a tablet or desktop for full layout authoring.",
+  });
+  expect(deviceCapabilityMessage("desktop")).toEqual({
+    heading: "Full editor workspace",
+    summary: "Review, measure, comment, make light corrections, edit structure, and arrange layouts here.",
+    limitation: null,
+  });
+
+  const phone = deviceCapabilities("phone");
+  expect(phone.actions).toEqual(["review", "measure", "comment", "light-correction"]);
+  expect(phone.fullCadParity).toBe(false);
+  expect(deviceCapabilityMessage("phone").summary.toLowerCase()).not.toContain("full cad");
 });
 
 test("pointer, keyboard, exact value, and accepted AI resolve to one canonical edit and history label", () => {

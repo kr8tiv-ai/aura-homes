@@ -1564,6 +1564,7 @@ export default function BuilderApp() {
         redoDescription={redoDescription}
         commandMeasurement={commandMeasurement}
         planRouteOpen={planRoute}
+        reviewNote={spec.notes}
         onEditorMode={(editor) => {
           setEditorMode(editor);
           if (editor === "pro" && workspace === "plans") setWorkspace("shape");
@@ -1589,6 +1590,7 @@ export default function BuilderApp() {
         }}
         onOpenDrawings={openPlanRoute}
         onCloseDrawings={leavePlanRoute}
+        onReviewNote={(notes) => edit({ ...spec, notes: notes.slice(0, 500) }, "home:notes")}
       />
 
       {/* Retained temporarily as a source-level parity reference while UX02
