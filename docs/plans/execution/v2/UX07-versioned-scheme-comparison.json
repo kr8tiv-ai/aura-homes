@@ -94,7 +94,7 @@
     "readyManifestCommit": "f9c2592",
     "protectedPathChanges": 0,
     "githubSync": "blocked: current GitHub OAuth credential lacks workflow scope required to push the preserved source-ci workflow",
-    "candidateCommit": "cde894a59d11db3179f140675f841b110069ee48",
+    "candidateCommit": "cde894a788262b42b6f937ea88ec501902cd752a",
     "candidateWriteSet": "11 declared paths; 11 changed paths; zero delta; no protected path",
     "typecheck": "pass",
     "focusedDeterministic": "12/12 comparison and gate-coverage proofs passed",
@@ -117,7 +117,7 @@
     },
     "reentryVerification": {
       "verdict": "verification-pending",
-      "implementationCandidate": "cde894a59d11db3179f140675f841b110069ee48",
+      "implementationCandidate": "cde894a788262b42b6f937ea88ec501902cd752a",
       "writeSetCheck": {
         "declared": 1,
         "changed": 1,
