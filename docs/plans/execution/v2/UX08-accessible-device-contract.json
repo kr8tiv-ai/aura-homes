@@ -1,0 +1,125 @@
+{
+  "graphVersion": "aura-graph/v2.0@680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8",
+  "node": "UX08",
+  "lane": "guided-studio",
+  "stage": "accessible-device-contract",
+  "job": "Make the approved desktop, tablet, and phone editor contract visible and testable, with canonical review notes and WCAG 2.2 keyboard, non-drag, focus, target, status, and reflow evidence.",
+  "inputs": [
+    {
+      "name": "UX02-verified-canvas-first-editor-shell",
+      "version": "e7a4859",
+      "hash": "git:e7a4859b96a5c4815bfc80cce478000bd9087c9c"
+    },
+    {
+      "name": "UX04-verified-command-measurement-bar",
+      "version": "f9f7c0c",
+      "hash": "git:f9f7c0c24d55aa1d3366b1e6238160b79154d266"
+    },
+    {
+      "name": "UX05-verified-progressive-evidence-drawer",
+      "version": "63357da",
+      "hash": "git:63357dae646b6a839a96a8baaf5d51cbc8113a2f"
+    },
+    {
+      "name": "approved-canvas-first-guided-studio-design",
+      "version": "2026-08-24",
+      "hash": "git:f7616886f9f8a171c847ef5eb49e932246ff989b"
+    },
+    {
+      "name": "UX08-implementation-plan",
+      "version": "2026-08-29",
+      "hash": "git:e1a9f65245dc520681f4ad850f12edbf686180d0"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "truthful-device-capability-projection",
+      "acceptanceSchema": "StudioDeviceCapabilityMessageV1",
+      "path": "app/lib/builder/guidedStudio.ts"
+    },
+    {
+      "name": "accessible-guided-studio-device-surface",
+      "acceptanceSchema": "Controlled canonical-project shell",
+      "path": "app/components/builder/GuidedStudioShell.tsx"
+    },
+    {
+      "name": "UX08-deterministic-evidence",
+      "acceptanceSchema": "Playwright pure contract proof",
+      "path": "app/tests/builder-plans-first.spec.ts"
+    },
+    {
+      "name": "UX08-served-device-evidence",
+      "acceptanceSchema": "Playwright 320px and 390px browser proof",
+      "path": "app/tests/builder-mobile.spec.ts"
+    }
+  ],
+  "depends": [
+    "UX02:verified",
+    "UX04:verified",
+    "UX05:verified"
+  ],
+  "reject": [
+    "UX02, UX04, or UX05 is not independently verified",
+    "the device surface stores project, comment, geometry, viewport, persistence, or history state",
+    "review comments use any model other than the existing canonical HomeSpec.notes edit and history path",
+    "phone copy claims full CAD parity, structural editing, bulk layout, or another unproven capability",
+    "a drag operation lacks a keyboard, exact-value, or single-pointer alternative",
+    "keyboard focus is invisible, trapped, or entirely obscured by author-controlled content",
+    "a core Guided Studio interactive target is smaller than 24 by 24 CSS pixels without a valid WCAG spacing or inline-text exception",
+    "current, warning, blocking, read-only, error, or device-scope state is communicated by color alone",
+    "the page scrolls horizontally at 320 or 390 CSS pixels instead of containing a legitimate drawing pan inside its own frame",
+    "review-note typing, undo, or exact keyboard correction bypasses the existing canonical project hash and history",
+    "an evidence or professional claim advances as a side effect of a device, note, focus, or layout action",
+    "an undeclared path changes or the complete candidate write set differs from this manifest",
+    "a public-site, 3D, renderer, animation, engine, scene, model, texture, shader, camera, lighting, motion, or quality-tier path changes"
+  ],
+  "writeSet": [
+    "docs/plans/execution/v2/UX08-accessible-device-contract.json",
+    "docs/plans/2026-08-29-ux08-accessible-device-contract-plan.md",
+    "app/lib/builder/guidedStudio.ts",
+    "app/components/builder/GuidedStudioShell.tsx",
+    "app/components/builder/BuilderApp.tsx",
+    "app/app/globals.css",
+    "app/tests/builder-plans-first.spec.ts",
+    "app/tests/builder-mobile.spec.ts",
+    "app/tests/gate-coverage.spec.ts",
+    "README.md",
+    "docs/SUBMISSION.md"
+  ],
+  "freezeClass": "none",
+  "owner": "primary-agent",
+  "verifier": "independent-fresh-context",
+  "sideEffects": "local",
+  "externalGates": [],
+  "verification": [
+    "npm run typecheck",
+    "npx playwright test tests/builder-plans-first.spec.ts",
+    "npx playwright test tests/builder-mobile.spec.ts --config=playwright.r0.config.ts",
+    "npm test",
+    "npm run test:ui",
+    "npm run test:graph-v2",
+    "npm run test:graph-position",
+    "browser evidence: the phone scope names review, measurement, comments, and light corrections and explicitly denies full layout authoring parity",
+    "browser evidence: a review note changes the canonical project hash and one Undo restores the exact prior note and hash",
+    "browser evidence: the existing exact width control changes the canonical project without dragging and one Undo restores it",
+    "browser evidence: core project controls meet the declared target minimum and keyboard focus is visible and unobscured",
+    "browser evidence: text or ARIA identifies current step, read-only state, refusal, and device scope without relying on color",
+    "browser evidence: 320x800 and 390x844 page-level surfaces have no horizontal overflow while drawings remain bounded internal pans",
+    "git diff --name-only <UX08-base>...<UX08-candidate>"
+  ],
+  "repair": {
+    "maxLoops": 1,
+    "boundary": "UX08 writeSet only"
+  },
+  "evidence": {
+    "startedFrom": "f232036",
+    "dependencyGate": "UX02 verified at e7a4859b96a5c4815bfc80cce478000bd9087c9c; UX04 verified at f9f7c0c24d55aa1d3366b1e6238160b79154d266; UX05 verified at 63357dae646b6a839a96a8baaf5d51cbc8113a2f",
+    "designCommit": "f7616886f9f8a171c847ef5eb49e932246ff989b",
+    "planCommit": "e1a9f65245dc520681f4ad850f12edbf686180d0",
+    "existingSurfaceAudit": "The canonical device capability contract, exact-value and keyboard edit routes, no-page-overflow proof, and HomeSpec.notes field already exist. The phone scope is not visible in the Guided Studio, comments are not reachable from Guided Review, and UX08-specific 320px target/focus/non-color/canonical-note evidence is absent.",
+    "writeOwnership": "No ready, active, verification-pending, or integration-pending manifest owns a UX08 path; every predecessor is verified and closed.",
+    "protectedPathChanges": 0,
+    "githubSync": "pending: publication requires refreshing the GitHub OAuth credential with workflow scope while preserving source-ci.yml"
+  },
+  "status": "ready"
+}
