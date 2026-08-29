@@ -92,7 +92,41 @@
     "existingSurfaceAudit": "fund.ts and the existing HOMES page combine a declared current zero-state with future allocation, profit, payout, and wind-down designs. HM01 now provides the strict source-classified truth registry, but no pure receipt-backed projection yet separates gross/provider/Aura/treasury flows, reconciles claims/transfers/spend/balances, or preserves missing evidence as a first-class dashboard state.",
     "writeOwnership": "No ready, active, verification-pending, or integration-pending manifest owns an HM02 path. The dedicated HM02 test and config avoid shared package, gate-count, README, and submission surfaces owned by verification-pending UX08; IP03 owns only its five disjoint adapter paths.",
     "protectedPathChanges": 0,
-    "githubSync": "pending: GitHub OAuth workflow-scope refresh remains open; local graph work continues without altering the preserved workflow"
+    "githubSync": "pending: GitHub OAuth workflow-scope refresh remains open; local graph work continues without altering the preserved workflow",
+    "verificationClosure": {
+      "verdict": "verification-pending",
+      "activationCommit": "115a9175b4ab9c0039a81bddebcefc9b29fcfc9f",
+      "candidateCommit": "e9acd87def3bb90e38a3d2eb9f0832e292ad55f7",
+      "lineageBase": "b50d57cfcdf76ce45ab5f12fc08d1f404ee2fabb",
+      "repairLoop": {
+        "used": 0,
+        "maximum": 1
+      },
+      "writeSetCheck": {
+        "declared": 5,
+        "changed": 5,
+        "delta": 0,
+        "protectedPathChanges": 0,
+        "overlappingOwners": []
+      },
+      "positionReceipt": "G05 explicit preflight passed authority, HM01 dependency, exact 5/5 writes, clean worktree, complete evidence, decision history, and movement remain at candidate e9acd87def3bb90e38a3d2eb9f0832e292ad55f7.",
+      "gateReceipts": {
+        "typecheck": "pass",
+        "focusedDashboard": "13/13 dedicated HM02 contract proofs passed without a server or external service",
+        "deterministic": "737 declared; 733 passed and 4 intentional served-only skips in 52.6 seconds; shared UX08-owned count surfaces remained unchanged",
+        "graphV2": "25/25 passed; authority pass; manifest errors empty",
+        "graphPosition": "14/14 position-check contract tests passed; explicit candidate preflight passed",
+        "diffCheck": "pass"
+      },
+      "contractEvidence": {
+        "truthAndMissingStates": "The current projection binds the verified HM01 version and exposes unknown fee-claim receipts, treasury identity, fee activity, claims, transfers, spend, and balance evidence as explicit gaps rather than authenticated facts or verified zeroes.",
+        "moneySeparation": "Gross fees, provider cost, Aura share, claims, treasury transfers, expected and reported balances, spend, and eight stable use-of-funds categories remain separately named in canonical integer USD micros.",
+        "reconciliation": "Fee splits, source-bound claims, dated running transfer and spend capacity, as-of balances, and aggregate conservation fail closed on split drift, overclaim, overtransfer, overspend, stale reporting, or balance mismatch.",
+        "hostileBoundary": "Exact-key descriptor copying rejects unknown fields, accessors, custom prototypes, cycles, symbols, sparse arrays, throwing getters, revoked proxies, duplicate identities, malformed provenance, and unsafe money through one bounded error.",
+        "isolation": "The result is deterministic, fully detached, deeply frozen, and imports only the HM01 truth contract; no external action or public visual surface changed."
+      },
+      "remainingGate": "independent fresh-context verification"
+    }
   },
-  "status": "active"
+  "status": "verification-pending"
 }
