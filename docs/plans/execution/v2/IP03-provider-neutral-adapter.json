@@ -90,11 +90,12 @@
     "startedFrom": "04b7f8f196c8eec5e93ff6b751264fb46feee87c",
     "dependencyGate": "IP02 independently verified at f9f7c0c24d55aa1d3366b1e6238160b79154d266",
     "planCommit": "8d24ad3676b104973baea37805148b9d32afefa0",
-    "readinessReconciliation": "Graph v2 authority passed 25/25 at node start; IP02 is committed verified; UX08 is verification-pending on a disjoint write set; external gates are empty; declared protected paths are zero.",
+    "readyManifestCommit": "7e3fb5e1f3ae2811a670f7ce2a215c7452b6ba41",
+    "readinessReconciliation": "Graph v2 authority passed 25/25 before and after the committed ready manifest; IP02 is committed verified; the worktree was clean; UX08 is verification-pending on a disjoint write set; no live manifest overlaps an IP03 path; external gates are empty; declared protected paths are zero. G05 exact-write preflight is reserved for the completed candidate before closure.",
     "existingSurfaceAudit": "IP01 provides the provider-free safe image-intake receipt and IP02 provides the strict DesignIntent parser. No provider-neutral adapter, deterministic model fake, normalized execution receipt, task cancellation boundary, or provider-cost contract exists. IP03 will not instantiate OpenRouter or a live model.",
     "writeOwnership": "No ready, active, verification-pending, or integration-pending manifest owns an IP03 path; UX08 is disjoint.",
     "protectedPathChanges": 0,
     "githubSync": "pending: GitHub OAuth workflow scope refresh is in progress so the preserved source-ci workflow can remain intact"
   },
-  "status": "ready"
+  "status": "active"
 }
