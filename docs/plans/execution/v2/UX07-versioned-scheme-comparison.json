@@ -116,7 +116,7 @@
       "activationCommit": "0679e2ac8899eab3dc577fe4bd5f1716a3dc7fda"
     },
     "reentryVerification": {
-      "verdict": "verification-pending",
+      "verdict": "verified",
       "implementationCandidate": "cde894a788262b42b6f937ea88ec501902cd752a",
       "writeSetCheck": {
         "declared": 1,
@@ -163,8 +163,10 @@
         "focusedServed": "1/1 passed against the current export in 25.8 seconds",
         "graphV2": "25/25 passed; authority pass; manifest errors empty"
       },
-      "remainingGate": "one-shot independent re-verification of this evidence-only correction"
+      "independentVerifier": "PASS in the founder-authorized one-shot fresh-context verification on 2026-08-29: linear activation/candidate/closure lineage; exact 3/3 evidence write set; manifest-only closure; both implementation hashes resolve; README and submission report the bound 137/137 receipt; all nine UX07 production, test, configuration, and frozen-walkthrough blobs remain byte-identical to receipt source 49d41019b1fd76dddd0716b9ac1d93d9659b94f0; fresh graph 25/25, typecheck, focused 5/5, and served 1/1 gates passed",
+      "verificationCommit": "021920acce09bfacf02412d02f4d6fc2ae980ac2",
+      "remainingGate": "none"
     }
   },
-  "status": "verification-pending"
+  "status": "verified"
 }
