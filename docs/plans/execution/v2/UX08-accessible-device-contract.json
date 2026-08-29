@@ -28,7 +28,7 @@
     {
       "name": "UX08-implementation-plan",
       "version": "2026-08-29",
-      "hash": "git:e1a9f65245dc520681f4ad850f12edbf686180d0"
+      "hash": "git:15d69e46c3ac23c6020c684e3a88f3bc822be941"
     }
   ],
   "outputs": [
@@ -115,11 +115,13 @@
     "startedFrom": "f232036",
     "dependencyGate": "UX02 verified at e7a4859b96a5c4815bfc80cce478000bd9087c9c; UX04 verified at f9f7c0c24d55aa1d3366b1e6238160b79154d266; UX05 verified at 63357dae646b6a839a96a8baaf5d51cbc8113a2f",
     "designCommit": "f7616886f9f8a171c847ef5eb49e932246ff989b",
-    "planCommit": "e1a9f65245dc520681f4ad850f12edbf686180d0",
+    "planCommit": "15d69e46c3ac23c6020c684e3a88f3bc822be941",
+    "readyManifestCommit": "2ab5955c2a6ac87a970aab8aed2e39f8150e0b32",
+    "readinessReconciliation": "Graph v2 authority passed with UX02, UX04, and UX05 committed verified; no live manifest overlaps this write set; worktree clean before activation; external gates empty; declared protected paths zero. G05 exact-write preflight is reserved for the completed candidate before closure.",
     "existingSurfaceAudit": "The canonical device capability contract, exact-value and keyboard edit routes, no-page-overflow proof, and HomeSpec.notes field already exist. The phone scope is not visible in the Guided Studio, comments are not reachable from Guided Review, and UX08-specific 320px target/focus/non-color/canonical-note evidence is absent.",
     "writeOwnership": "No ready, active, verification-pending, or integration-pending manifest owns a UX08 path; every predecessor is verified and closed.",
     "protectedPathChanges": 0,
     "githubSync": "pending: publication requires refreshing the GitHub OAuth credential with workflow scope while preserving source-ci.yml"
   },
-  "status": "ready"
+  "status": "active"
 }
