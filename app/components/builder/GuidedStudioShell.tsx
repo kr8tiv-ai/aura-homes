@@ -238,6 +238,88 @@ export default function GuidedStudioShell({
           ) : null}
         </>
       ) : null}
+      <style jsx>{`
+        .builder-device-contract {
+          display: none;
+          min-width: 0;
+          gap: 0.25rem;
+          margin-top: 0.55rem;
+          border: 1px solid rgb(var(--tone-emerald) / 0.42);
+          border-radius: 0.7rem;
+          padding: 0.65rem 0.75rem;
+          background: rgb(var(--tone-emerald) / 0.055);
+        }
+        .builder-device-contract strong {
+          font-family: var(--st-mono-font);
+          font-size: 0.62rem;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          color: var(--st-emerald-deep);
+        }
+        .builder-device-contract span {
+          min-width: 0;
+          color: var(--st-ink-dim);
+          font-size: 0.72rem;
+          line-height: 1.45;
+        }
+        .builder-review-note {
+          min-width: 0;
+          display: grid;
+          grid-template-columns: minmax(10rem, 0.7fr) minmax(14rem, 1.3fr) auto;
+          align-items: end;
+          gap: 0.65rem;
+          margin-top: 0.55rem;
+          padding-top: 0.55rem;
+          border-top: 1px solid rgb(var(--tone-ink) / var(--hair-soft-alpha));
+        }
+        .builder-review-note__copy {
+          min-width: 0;
+        }
+        .builder-review-note__copy label {
+          display: block;
+          font-family: var(--st-mono-font);
+          font-size: 0.62rem;
+          font-weight: 700;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          color: var(--st-ink);
+        }
+        .builder-review-note__copy p,
+        .builder-review-note small {
+          color: var(--st-faint);
+          font-size: 0.64rem;
+          line-height: 1.45;
+        }
+        .builder-review-note textarea {
+          min-width: 0;
+          min-height: 5rem;
+          resize: vertical;
+          border: 1px solid rgb(var(--tone-ink) / var(--hair-alpha));
+          border-radius: 0.55rem;
+          padding: 0.65rem 0.75rem;
+          color: var(--st-ink);
+          background: rgb(var(--tone-base) / 0.5);
+        }
+        .builder-review-note textarea:focus-visible {
+          outline: var(--focus-ring-width) solid var(--focus-ring-color);
+          outline-offset: var(--focus-ring-offset);
+        }
+        @media (max-width: 720px) {
+          .builder-device-contract {
+            display: grid;
+          }
+          .builder-review-note {
+            grid-template-columns: minmax(0, 1fr);
+            align-items: stretch;
+          }
+          .builder-review-note textarea {
+            width: 100%;
+          }
+          .builder-review-note small {
+            justify-self: start;
+          }
+        }
+      `}</style>
     </section>
   );
 }

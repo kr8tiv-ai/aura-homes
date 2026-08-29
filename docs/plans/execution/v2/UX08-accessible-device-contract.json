@@ -79,7 +79,6 @@
     "app/lib/builder/guidedStudio.ts",
     "app/components/builder/GuidedStudioShell.tsx",
     "app/components/builder/BuilderApp.tsx",
-    "app/app/globals.css",
     "app/tests/builder-plans-first.spec.ts",
     "app/tests/builder-mobile.spec.ts",
     "app/tests/gate-coverage.spec.ts",
@@ -121,7 +120,11 @@
     "existingSurfaceAudit": "The canonical device capability contract, exact-value and keyboard edit routes, no-page-overflow proof, and HomeSpec.notes field already exist. The phone scope is not visible in the Guided Studio, comments are not reachable from Guided Review, and UX08-specific 320px target/focus/non-color/canonical-note evidence is absent.",
     "writeOwnership": "No ready, active, verification-pending, or integration-pending manifest owns a UX08 path; every predecessor is verified and closed.",
     "protectedPathChanges": 0,
-    "githubSync": "pending: publication requires refreshing the GitHub OAuth credential with workflow scope while preserving source-ci.yml"
+    "githubSync": "pending: publication requires refreshing the GitHub OAuth credential with workflow scope while preserving source-ci.yml",
+    "repairLoop": {
+      "used": 1,
+      "reason": "G05 rejected the protected global stylesheet because repository position reconciliation cannot supply its required builder-css-only content sources. UX08 moved the same scoped rules into its already-owned shell component and narrowed the declared write set; no protected path remains changed."
+    }
   },
   "status": "active"
 }

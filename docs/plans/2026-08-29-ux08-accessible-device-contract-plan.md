@@ -36,7 +36,6 @@ Declare verified dependencies `UX02`, `UX04`, and `UX05`, no external gates, one
   "app/lib/builder/guidedStudio.ts",
   "app/components/builder/GuidedStudioShell.tsx",
   "app/components/builder/BuilderApp.tsx",
-  "app/app/globals.css",
   "app/tests/builder-plans-first.spec.ts",
   "app/tests/builder-mobile.spec.ts",
   "app/tests/gate-coverage.spec.ts",
@@ -238,7 +237,7 @@ Expected: counts, authority, write-set policy, and whitespace all pass.
 Verify `git diff --name-only <activation>...HEAD` is exactly the declared non-manifest implementation/evidence paths and contains zero protected paths.
 
 ```powershell
-git add app/lib/builder/guidedStudio.ts app/components/builder/GuidedStudioShell.tsx app/components/builder/BuilderApp.tsx app/app/globals.css app/tests/builder-plans-first.spec.ts app/tests/builder-mobile.spec.ts app/tests/gate-coverage.spec.ts README.md docs/SUBMISSION.md
+git add app/lib/builder/guidedStudio.ts app/components/builder/GuidedStudioShell.tsx app/components/builder/BuilderApp.tsx app/tests/builder-plans-first.spec.ts app/tests/builder-mobile.spec.ts app/tests/gate-coverage.spec.ts README.md docs/SUBMISSION.md docs/plans/2026-08-29-ux08-accessible-device-contract-plan.md
 git commit -m "feat(builder): add accessible device contract"
 ```
 
