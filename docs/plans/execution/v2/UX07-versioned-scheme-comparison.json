@@ -148,6 +148,22 @@
       ],
       "used": 1,
       "maximum": 1
+    },
+    "evidenceCorrectionVerification": {
+      "verdict": "verification-pending",
+      "activationCommit": "e5a1bc0bb626f4053cc96aba53602ea769c78321",
+      "candidateCommit": "be8d009ecbf0700679b459f26bb39bbf2ccc0d0b",
+      "actualImplementationCandidate": "cde894a788262b42b6f937ea88ec501902cd752a",
+      "writeSetCheck": "3 declared evidence paths; 3 changed paths; zero delta; zero protected paths",
+      "correction": "Both mistyped implementation hashes now resolve to the actual candidate. README.md and docs/SUBMISSION.md now report the source-bound 137/137 result instead of the superseded 136/137 blocker.",
+      "sourceBinding": "No app/components/builder, app/lib/builder, scheme-comparison test, or UI configuration path changed between receipt source 49d41019b1fd76dddd0716b9ac1d93d9659b94f0 and this evidence candidate.",
+      "gateReceipts": {
+        "typecheck": "pass",
+        "focusedDeterministic": "5/5 passed",
+        "focusedServed": "1/1 passed against the current export in 25.8 seconds",
+        "graphV2": "25/25 passed; authority pass; manifest errors empty"
+      },
+      "remainingGate": "one-shot independent re-verification of this evidence-only correction"
     }
   },
   "status": "verification-pending"
