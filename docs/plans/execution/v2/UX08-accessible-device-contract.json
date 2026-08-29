@@ -124,7 +124,37 @@
     "repairLoop": {
       "used": 1,
       "reason": "G05 rejected the protected global stylesheet because repository position reconciliation cannot supply its required builder-css-only content sources. UX08 moved the same scoped rules into its already-owned shell component and narrowed the declared write set; no protected path remains changed."
+    },
+    "verificationClosure": {
+      "verdict": "verification-pending",
+      "activationCommit": "21fcc7bea788a3971b3958a0aad9796f46cf9dd2",
+      "candidateCommit": "2d5aff599db6e765fc39e77e4799258a7fcdaa40",
+      "lineageBase": "f232036151eb8be0ada1f43b2ba49e2f97e5293d",
+      "writeSetCheck": {
+        "declared": 10,
+        "changed": 10,
+        "delta": 0,
+        "protectedPathChanges": 0,
+        "overlappingOwners": []
+      },
+      "positionReceipt": "G05 explicit preflight passed authority, dependencies, exact writes, clean worktree, complete evidence, and decision history for movement remain at candidate 2d5aff599db6e765fc39e77e4799258a7fcdaa40.",
+      "gateReceipts": {
+        "typecheck": "pass",
+        "focusedDeterministic": "16 declared; 12 passed and 4 intentional served-only skips",
+        "focusedServed": "12/12 builder-mobile proofs passed against a fresh 24-page export",
+        "deterministic": "737 declared; 733 passed and 4 intentional served-only skips",
+        "fullUi": "141/141 passed against a fresh static export in 11.7 minutes after the bounded repair",
+        "graphV2": "25/25 passed; authority pass; manifest errors empty",
+        "graphPosition": "14/14 position-check contract tests passed; explicit candidate preflight passed"
+      },
+      "browserEvidence": {
+        "phoneScope": "At 320x800 and 390x844 the visible phone contract names review, measurement, comments, and light corrections and directs full layout authoring to tablet or desktop without page-level horizontal overflow.",
+        "canonicalReviewNote": "The Guided Review note writes HomeSpec.notes through the existing coalesced home:notes history label; its canonical project hash changes and one Undo restores the exact prior note and hash.",
+        "nonDragAlternative": "The existing exact width control accepts keyboard ArrowRight without dragging, changes the canonical project hash, and one Undo restores it.",
+        "perceivableState": "Core Guided Studio buttons and the review textarea measure at least 24 by 24 CSS pixels; keyboard focus is visible and unobscured; current step, autosave/design-intent state, and phone scope are present in text or ARIA rather than color alone."
+      },
+      "remainingGate": "independent fresh-context verification"
     }
   },
-  "status": "active"
+  "status": "verification-pending"
 }
