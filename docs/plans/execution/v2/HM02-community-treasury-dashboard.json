@@ -87,11 +87,12 @@
     "startedFrom": "b50d57cfcdf76ce45ab5f12fc08d1f404ee2fabb",
     "dependencyGate": "HM01 independently verified at f9f7c0c24d55aa1d3366b1e6238160b79154d266",
     "planCommit": "ba442bc91da46fb0113bab4d61ca5538ba38d1b0",
-    "readinessReconciliation": "Graph v2 authority passed 25/25 before the ready manifest; HM01 is committed verified; external gates are empty; declared protected paths are zero.",
+    "readyManifestCommit": "6bb1a65e23c9292aacc8a7e3c72b87090209f915",
+    "activationReconciliation": "Graph v2 authority passed 25/25 before and after the committed ready manifest; HM01 is committed verified; the worktree was clean; external gates are empty; declared protected paths are zero; HM02 is the only live owner of its five declared paths.",
     "existingSurfaceAudit": "fund.ts and the existing HOMES page combine a declared current zero-state with future allocation, profit, payout, and wind-down designs. HM01 now provides the strict source-classified truth registry, but no pure receipt-backed projection yet separates gross/provider/Aura/treasury flows, reconciles claims/transfers/spend/balances, or preserves missing evidence as a first-class dashboard state.",
     "writeOwnership": "No ready, active, verification-pending, or integration-pending manifest owns an HM02 path. The dedicated HM02 test and config avoid shared package, gate-count, README, and submission surfaces owned by verification-pending UX08; IP03 owns only its five disjoint adapter paths.",
     "protectedPathChanges": 0,
     "githubSync": "pending: GitHub OAuth workflow-scope refresh remains open; local graph work continues without altering the preserved workflow"
   },
-  "status": "ready"
+  "status": "active"
 }
