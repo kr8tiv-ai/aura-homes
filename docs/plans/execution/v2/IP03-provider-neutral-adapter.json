@@ -99,7 +99,37 @@
       "initialCandidate": "4b4ad28d11f07b6c011fd940b375841575ba0fe1",
       "initialVerdict": "FAIL: G05 identified overlapping live ownership because UX08 remains verification-pending on the shared package-count evidence surfaces.",
       "resolution": "Move the 18 IP03 proofs behind a dedicated checked-in Playwright config and restore every UX08-owned shared file exactly, narrowing IP03 to five disjoint declared paths."
+    },
+    "verificationClosure": {
+      "verdict": "verification-pending",
+      "activationCommit": "e7a5a723eed84f50da14c66f59557378c1b080cc",
+      "candidateCommit": "cb2aa08fae65f38dcc4ab27824408c1a666523bc",
+      "lineageBase": "04b7f8f196c8eec5e93ff6b751264fb46feee87c",
+      "writeSetCheck": {
+        "declared": 5,
+        "changed": 5,
+        "delta": 0,
+        "protectedPathChanges": 0,
+        "overlappingOwners": []
+      },
+      "positionReceipt": "G05 explicit preflight passed authority, IP02 dependency, exact 5/5 writes, clean worktree, complete evidence, decision history, and movement remain at repaired candidate cb2aa08fae65f38dcc4ab27824408c1a666523bc.",
+      "gateReceipts": {
+        "typecheck": "pass",
+        "focusedAdapter": "18/18 dedicated IP03 contract proofs passed in 1.6s without a server or external service",
+        "deterministic": "737 declared; 733 passed and 4 intentional served-only skips in 47.0s; shared UX08-owned count surfaces remained byte-identical to the node base",
+        "graphV2": "25/25 passed; authority pass; manifest errors empty",
+        "graphPosition": "14/14 position-check contract tests passed; explicit repaired-candidate preflight passed",
+        "diffCheck": "pass"
+      },
+      "contractEvidence": {
+        "sharedBoundary": "Hosted-shaped and deterministic-fake adapters execute through the same typed request, response, error, cancellation, timeout, and integer-USD-micro receipt boundary while retaining honest adapter-kind provenance.",
+        "requestIsolation": "Request metadata is strict JSON-like data; image bytes are synchronously snapshotted; MIME signature, intake facts, byte length, source fingerprint, and bounded timeout are checked before adapter invocation.",
+        "outputPromotion": "Every raw intent passes the strict IP02 parser, contains the exact requested uploaded-image fingerprint, and is returned detached and deeply frozen with a validated receipt.",
+        "hostileBoundary": "Unknown keys, geometry, accessors, custom prototypes, revoked proxies, arbitrary thrown values, private messages, causes, receipt traps, and adapter descriptor traps fail through bounded safe errors without invocation or leakage.",
+        "sideEffects": "The module imports only IP01/IP02 contracts and contains no provider SDK, network, secret, wallet, payment, persistence, project, geometry, 3D, renderer, or animation dependency."
+      },
+      "remainingGate": "independent fresh-context verification"
     }
   },
-  "status": "active"
+  "status": "verification-pending"
 }
