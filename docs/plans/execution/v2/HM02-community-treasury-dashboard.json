@@ -1,0 +1,97 @@
+{
+  "graphVersion": "aura-graph/v2.0@680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8",
+  "node": "HM02",
+  "lane": "homes-community",
+  "stage": "community-treasury-dashboard",
+  "job": "Create a deterministic receipt-backed HOMES community and treasury dashboard projection that separates gross fees, provider cost, Aura share, claims, treasury transfers, balances, and use-of-funds categories while making every missing-evidence state visible and performing no external action.",
+  "inputs": [
+    {
+      "name": "HM01-verified-homes-truth-registry",
+      "version": "f9f7c0c",
+      "hash": "git:f9f7c0c24d55aa1d3366b1e6238160b79154d266"
+    },
+    {
+      "name": "approved-community-treasury-dashboard-contract",
+      "version": "2.0",
+      "hash": "git:f7616886f9f8a171c847ef5eb49e932246ff989b"
+    },
+    {
+      "name": "HM02-implementation-plan",
+      "version": "2026-08-29",
+      "hash": "git:ba442bc91da46fb0113bab4d61ca5538ba38d1b0"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "homes-community-treasury-dashboard-projection",
+      "acceptanceSchema": "HomesCommunityTreasuryDashboardV1",
+      "path": "app/lib/homes/communityDashboard.ts"
+    },
+    {
+      "name": "deterministic-dashboard-contract-proof",
+      "acceptanceSchema": "Playwright deterministic hostile-boundary proof",
+      "path": "app/tests-hm02/community-dashboard.contract.ts"
+    }
+  ],
+  "depends": [
+    "HM01:verified"
+  ],
+  "reject": [
+    "HM01 is not independently verified",
+    "missing fee, claim, treasury, balance, transfer, spend, or receipt evidence is represented as a verified zero or authenticated fact",
+    "gross fees, provider cost, Aura share, claims, treasury transfers, reported balances, or use-of-funds amounts are combined or unnamed",
+    "gross fees do not equal provider cost plus Aura share, claims exceed Aura share, treasury transfers exceed claimed Aura funds, or spend exceeds treasury inflow",
+    "a reported Aura or treasury balance disagrees with the event-derived balance",
+    "a non-zero money row lacks bounded receipt provenance or reuses an event or receipt identity",
+    "money is negative, non-integer, non-canonical, floating point, unsafe, not denominated in USD micros, or silently rounded",
+    "an unknown key, accessor, custom prototype, cycle, symbol, sparse array, hostile proxy, throwing getter, aliased input, or mutable result passes validation",
+    "a raw thrown value, message, stack, cause, URL, receipt body, or private detail escapes the bounded error boundary",
+    "a receipt is presented as independently authenticated, legal authority, custody, ownership, equity, yield, return, fund participation, or property proof",
+    "the module performs a network, provider, secret, wallet, claim, transfer, payment, persistence, legal, property, or other external action",
+    "a React component, CSS file, route, public-page structure, or visual design changes",
+    "an undeclared path changes or the complete candidate write set differs from this manifest",
+    "a website 3D, rendering, animation, engine, scene, public visual, model, texture, shader, camera, lighting, motion, or quality-tier path changes"
+  ],
+  "writeSet": [
+    "docs/plans/2026-08-29-hm02-community-treasury-dashboard-plan.md",
+    "docs/plans/execution/v2/HM02-community-treasury-dashboard.json",
+    "app/lib/homes/communityDashboard.ts",
+    "app/tests-hm02/community-dashboard.contract.ts",
+    "app/playwright.hm02.config.ts"
+  ],
+  "freezeClass": "none",
+  "owner": "primary-agent",
+  "verifier": "independent-fresh-context",
+  "sideEffects": "none",
+  "externalGates": [],
+  "verification": [
+    "npm run typecheck",
+    "npx playwright test --config=playwright.hm02.config.ts",
+    "npm test",
+    "npm run test:graph-v2",
+    "npm run test:graph-position",
+    "fixture: current dashboard binds HM01 and renders unknown claim receipts and treasury identity as missing rather than verified zero",
+    "fixture: gross, provider, Aura, claim, treasury-transfer, balance, and use-of-funds values remain separately named and conserved",
+    "fixture: every non-zero event requires unique bounded receipt provenance and structurally present provenance is not described as authenticated",
+    "fixture: absent balance evidence remains missing while present balances exactly reconcile to event-derived balances",
+    "fixture: negative, floating, non-canonical, over-claim, over-transfer, over-spend, duplicate, malformed, and hostile inputs fail closed",
+    "fixture: result is deterministic, deeply frozen, detached, stably ordered, and exposes stable use-of-funds categories and missing-data states",
+    "static proof: the module has no network, provider SDK, secret, wallet, claim, transfer, payment, persistence, property, legal activation, React, CSS, public-page, geometry, 3D, renderer, or animation dependency",
+    "git diff --name-only <HM02-base>...<HM02-candidate>"
+  ],
+  "repair": {
+    "maxLoops": 1,
+    "boundary": "HM02 writeSet only"
+  },
+  "evidence": {
+    "startedFrom": "b50d57cfcdf76ce45ab5f12fc08d1f404ee2fabb",
+    "dependencyGate": "HM01 independently verified at f9f7c0c24d55aa1d3366b1e6238160b79154d266",
+    "planCommit": "ba442bc91da46fb0113bab4d61ca5538ba38d1b0",
+    "readinessReconciliation": "Graph v2 authority passed 25/25 before the ready manifest; HM01 is committed verified; external gates are empty; declared protected paths are zero.",
+    "existingSurfaceAudit": "fund.ts and the existing HOMES page combine a declared current zero-state with future allocation, profit, payout, and wind-down designs. HM01 now provides the strict source-classified truth registry, but no pure receipt-backed projection yet separates gross/provider/Aura/treasury flows, reconciles claims/transfers/spend/balances, or preserves missing evidence as a first-class dashboard state.",
+    "writeOwnership": "No ready, active, verification-pending, or integration-pending manifest owns an HM02 path. The dedicated HM02 test and config avoid shared package, gate-count, README, and submission surfaces owned by verification-pending UX08; IP03 owns only its five disjoint adapter paths.",
+    "protectedPathChanges": 0,
+    "githubSync": "pending: GitHub OAuth workflow-scope refresh remains open; local graph work continues without altering the preserved workflow"
+  },
+  "status": "ready"
+}
