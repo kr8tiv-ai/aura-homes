@@ -155,8 +155,8 @@
         "candidateGuard": "three repair paths accepted; errors []"
       },
       "protectedPathChanges": 0,
-      "independentVerifier": "required before verified; recurring auditor was canceled by the founder"
+      "independentVerifier": "PASS in the founder-authorized one-shot fresh-context verification on 2026-08-28: authority re-established; candidate dd8d89a23bde53e29f6abaf119389ff59ff61c9c; exact 3/3 repair paths; manifest-only closure; zero frozen paths; fresh graph and ledger run 25/25 including the real cloned buried-rewrite proof"
     }
   },
-  "status": "verification-pending"
+  "status": "verified"
 }

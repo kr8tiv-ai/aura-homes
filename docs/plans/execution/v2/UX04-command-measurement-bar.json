@@ -143,10 +143,11 @@
       "productionUi": "137/137 passed against the fresh candidate export in 13.8 minutes",
       "graphGate": "24/24 passed; authority pass; manifest errors empty",
       "build": "candidate static export compiled, typechecked, and generated 24/24 pages",
-      "remainingGate": "independent fresh-context verification is required before UX04 can become verified"
+      "remainingGate": "cleared by the founder-authorized one-shot fresh-context verification on 2026-08-28",
+      "independentReverification": "PASS: authority re-established; candidate 7f5e6ce734f9c320057625676167680eac1567c4; exact 3/3 repair paths; candidate-bound BUILD_ID; fresh served 15/15 including -16.8766 to Escape to Ctrl+K blur with unchanged hash and one Undo; zero frozen paths"
     },
     "protectedPathChanges": 0,
     "githubSync": "blocked: current GitHub OAuth credential lacks workflow scope required to push the preserved source-ci workflow"
   },
-  "status": "verification-pending"
+  "status": "verified"
 }
