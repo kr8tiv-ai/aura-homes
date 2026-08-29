@@ -1,0 +1,100 @@
+{
+  "graphVersion": "aura-graph/v2.0@680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8",
+  "node": "IP03",
+  "lane": "image-to-plan",
+  "stage": "provider-neutral-adapter",
+  "job": "Create one fail-closed provider-neutral image-to-DesignIntent task contract and deterministic fake with shared typed request, response, error, cancellation, timeout, and integer-micro cost surfaces, without network, money, secrets, persistence, project mutation, or provider-specific behavior.",
+  "inputs": [
+    {
+      "name": "IP02-verified-design-intent-schema",
+      "version": "f9f7c0c",
+      "hash": "git:f9f7c0c24d55aa1d3366b1e6238160b79154d266"
+    },
+    {
+      "name": "approved-provider-neutral-adapter-contract",
+      "version": "2.0",
+      "hash": "git:f7616886f9f8a171c847ef5eb49e932246ff989b"
+    },
+    {
+      "name": "IP03-implementation-plan",
+      "version": "2026-08-29",
+      "hash": "git:8d24ad3676b104973baea37805148b9d32afefa0"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "provider-neutral-design-intent-task-boundary",
+      "acceptanceSchema": "AuraDesignIntentAdapterV1",
+      "path": "app/lib/ai/designIntentAdapter.ts"
+    },
+    {
+      "name": "deterministic-adapter-contract-proof",
+      "acceptanceSchema": "Playwright deterministic hostile-boundary proof",
+      "path": "app/tests/design-intent-adapter.spec.ts"
+    }
+  ],
+  "depends": [
+    "IP02:verified"
+  ],
+  "reject": [
+    "IP02 is not independently verified",
+    "fixture and hosted-shaped execution use different task, response, error, cancellation, timeout, or cost interfaces",
+    "adapter output is returned without strict promotion through parseDesignIntent",
+    "unknown, malformed, geometry-bearing, accessor, proxy, aliased, or mutable adapter output or receipt passes validation",
+    "request metadata, bytes, response, fixture, intent, or receipt remain aliased to caller- or adapter-owned mutable data",
+    "timeout or caller cancellation cannot abort and settle independently of a hung adapter",
+    "a raw error, cause, message, stack, URL, header, body, credential, provider name, or private detail escapes normalization",
+    "cost is negative, floating point, unsafe, non-USD, hidden, or combined with an Aura user fee",
+    "request ID, adapter ID/version, model ID, provider request ID, source fingerprint, token count, timeout, MIME signature, or encoded byte length is absent, inconsistent, unsafe, or unbounded",
+    "the deterministic fake reads time, randomness, storage, network, wallet, payment, project, geometry, or another external state",
+    "an OpenRouter or provider-specific SDK, name, secret, live call, model choice, fee, budget, credit, payment, persistence, project mutation, or autonomous geometry enters IP03",
+    "an undeclared path changes or the complete candidate write set differs from this manifest",
+    "a website 3D, rendering, animation, engine, scene, public visual, model, texture, shader, camera, lighting, motion, or quality-tier path changes"
+  ],
+  "writeSet": [
+    "docs/plans/2026-08-29-ip03-provider-neutral-adapter-plan.md",
+    "docs/plans/execution/v2/IP03-provider-neutral-adapter.json",
+    "app/lib/ai/designIntentAdapter.ts",
+    "app/tests/design-intent-adapter.spec.ts",
+    "app/package.json",
+    "app/tests/gate-coverage.spec.ts",
+    "README.md",
+    "docs/SUBMISSION.md"
+  ],
+  "freezeClass": "none",
+  "owner": "primary-agent",
+  "verifier": "independent-fresh-context",
+  "sideEffects": "none",
+  "externalGates": [],
+  "verification": [
+    "npm run typecheck",
+    "npx playwright test tests/design-intent-adapter.spec.ts",
+    "npm test",
+    "npm run test:graph-v2",
+    "npm run test:graph-position",
+    "fixture: fake and hosted-shaped adapters use the exact same public method and boundary",
+    "fixture: request metadata and byte snapshots are detached before adapter invocation",
+    "fixture: deterministic fake repeats exactly without clock, randomness, network, storage, secrets, money, or project access",
+    "fixture: malformed, hostile, unknown-key, geometry-bearing, aliased, or mutable output and receipts fail closed",
+    "fixture: caller cancellation and timeout are distinct, abort adapter work, and settle a hung task",
+    "fixture: raw thrown values and provider-private detail normalize to bounded safe errors",
+    "fixture: integer USD-micro cost and safe token/identifier facts survive a frozen detached round trip",
+    "static proof: the module has no provider SDK, fetch, XMLHttpRequest, WebSocket, wallet, payment, persistence, project, geometry, 3D, renderer, or animation dependency",
+    "git diff --name-only <IP03-base>...<IP03-candidate>"
+  ],
+  "repair": {
+    "maxLoops": 1,
+    "boundary": "IP03 writeSet only"
+  },
+  "evidence": {
+    "startedFrom": "04b7f8f196c8eec5e93ff6b751264fb46feee87c",
+    "dependencyGate": "IP02 independently verified at f9f7c0c24d55aa1d3366b1e6238160b79154d266",
+    "planCommit": "8d24ad3676b104973baea37805148b9d32afefa0",
+    "readinessReconciliation": "Graph v2 authority passed 25/25 at node start; IP02 is committed verified; UX08 is verification-pending on a disjoint write set; external gates are empty; declared protected paths are zero.",
+    "existingSurfaceAudit": "IP01 provides the provider-free safe image-intake receipt and IP02 provides the strict DesignIntent parser. No provider-neutral adapter, deterministic model fake, normalized execution receipt, task cancellation boundary, or provider-cost contract exists. IP03 will not instantiate OpenRouter or a live model.",
+    "writeOwnership": "No ready, active, verification-pending, or integration-pending manifest owns an IP03 path; UX08 is disjoint.",
+    "protectedPathChanges": 0,
+    "githubSync": "pending: GitHub OAuth workflow scope refresh is in progress so the preserved source-ci workflow can remain intact"
+  },
+  "status": "ready"
+}
