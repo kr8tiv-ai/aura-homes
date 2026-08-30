@@ -94,7 +94,9 @@
     "startedFrom": "b7affd3cb272655da1e03036da62c88c3a84207f",
     "dependencyGate": "IP06 independently verified and committed at b7affd3cb272655da1e03036da62c88c3a84207f",
     "planCommit": "1b8603514f1590d8b81018e2ddce880d22cfc19e",
+    "readyManifestCommit": "ddadb74fec0beed239916e5d25dc686375349491",
     "readinessReconciliation": "Founder-approved Graph v2 and graph-position contracts are green; IP06 is committed verified; OR02 is a disjoint verification-pending lane and owns no IP07 path; the worktree was clean at node selection; no other live manifest overlaps the exact five-path IP07 set; external gates are empty; protected-path changes are zero.",
+    "activationReconciliation": "The committed ready manifest passed Graph v2 authority 25/25 and graph-position contracts 14/14. IP06 remains independently verified; OR02 remains path-disjoint; the exact five-path IP07 write set is unclaimed; the worktree was clean; and no external or protected-path gate blocks local provider-free project revision contract work. Exact G05 is reserved for the completed five-path candidate and manifest-only closure.",
     "existingSurfaceAudit": "AuraProject already owns the canonical BuilderDocument and hash, artifactManifests already travels with project serialization, withProjectDesign owns canonical design replacement, and the local project store already exposes failure-aware storage. IP07 adds only a strict revision record and an injected atomic transaction/read seam; it does not create a second project model or storage implementation.",
     "dependencyInterpretation": "The approved image-to-plan lane places IP07 directly after verified IP06 and before IP08, ED01, and AI01. UX06 also depends on IP06 but is lateral; none of those downstream nodes is entered here.",
     "writeOwnership": "OR02 is the only other verification-pending manifest and its five paths are disjoint; no ready, active, verification-pending, or integration-pending manifest owns an IP07 path.",
@@ -103,7 +105,7 @@
     "protectedPathChanges": 0,
     "githubSync": "remote-backed branch synchronized through founder-authorized repository SSH route",
     "verificationClosure": {
-      "verdict": "ready",
+      "verdict": "active",
       "candidateCommit": "pending",
       "lineageBase": "pending activation commit",
       "writeSetCheck": {
@@ -121,5 +123,5 @@
       "remainingGate": "not entered"
     }
   },
-  "status": "ready"
+  "status": "active"
 }
