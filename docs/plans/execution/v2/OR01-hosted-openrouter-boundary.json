@@ -112,7 +112,39 @@
     "writeOwnership": "No ready, active, verification-pending, or integration-pending manifest owns an OR01 path. IP04 retains only its disjoint five-path verification ownership.",
     "protectedPathChanges": 0,
     "liveActivation": "not authorized or reachable in OR01; no route will import the server factory and all tests use an injected deterministic transport",
-    "githubSync": "deferred by founder direction; this node remains local"
+    "githubSync": "deferred by founder direction; this node remains local",
+    "verificationClosure": {
+      "verdict": "verification-pending",
+      "activationCommit": "f4f5c9ee80d16c6048f925a0dba69db46c2e487c",
+      "candidateCommit": "63a94e507fdfb46952c14f3a98aa7142811a6148",
+      "lineageBase": "1383b5ccb5f99e9614d464cd63f107ebbaef2899",
+      "writeSetCheck": {
+        "declared": 6,
+        "changed": 6,
+        "delta": 0,
+        "protectedPathChanges": 0,
+        "overlappingOwners": []
+      },
+      "positionReceipt": "G05 explicit preflight passed authority, G02/IP03 dependencies, exact 6/6 writes, clean candidate, complete evidence, decision history, and movement remain at candidate 63a94e507fdfb46952c14f3a98aa7142811a6148.",
+      "gateReceipts": {
+        "typecheck": "pass",
+        "focusedOpenRouterBoundary": "13/13 dedicated OR01 contract proofs passed in 894ms without a server, key, route, network request, model call, or external service",
+        "deterministic": "737 declared; 733 passed and 4 intentional served-only skips in 19.7s",
+        "graphV2": "25/25 passed; authority pass; manifest errors empty",
+        "graphPosition": "14/14 position-check contract tests passed; explicit OR01 candidate preflight passed",
+        "diffCheck": "pass"
+      },
+      "contractEvidence": {
+        "sharedBoundary": "The hosted adapter implements the exact verified IP03 request, response, cancellation, error, and integer-USD-micro receipt contract; IP03 remains the only strict DesignIntent promotion boundary.",
+        "fixedRequest": "The detached deeply frozen request contains static instructions, text before one validated MIME data URL, the exact source fingerprint, strict closed DesignIntent JSON Schema aligned to IP02 limits, zero temperature, non-streaming mode, required parameters, data-collection denial, ZDR-only routing, and disabled fallbacks.",
+        "hostileBoundary": "Caller-injected task fields, hostile configurations, accessors, custom objects, revoked proxies, unsafe identity/usage facts, malformed JSON, empty or multiple choices, and incomplete responses fail without accessor invocation, private detail, or partial provider output.",
+        "statusAndUsage": "Cancellation and HTTP 402/408/429/5xx map to bounded IP03 errors; successful provider identity, token counts, and cost are validated and cost is rounded to safe integer USD micros before IP03 receipt promotion.",
+        "serverIsolation": "Only the server-only wrapper owns process environment access, the fixed HTTPS endpoint, authorization header, and fetch. It is default-off, exact-model-allowlist-gated, unimported by routes/components/application modules, and never invoked by tests.",
+        "sideEffects": "No route, live request, key setup, provider contact, spend, persistence, wallet, payment logic, fee logic, UI, public design, or frozen 3D/rendering/animation dependency entered OR01."
+      },
+      "independentVerification": null,
+      "remainingGate": "independent fresh-context verification"
+    }
   },
-  "status": "active"
+  "status": "verification-pending"
 }
