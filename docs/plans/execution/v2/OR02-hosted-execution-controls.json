@@ -1,0 +1,101 @@
+{
+  "graphVersion": "aura-graph/v2.0@680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8",
+  "node": "OR02",
+  "lane": "hosted-ai",
+  "stage": "hosted-execution-controls",
+  "job": "Implement a provider-neutral atomic control plane for every future hosted design-intent execution with opaque user/session/project rate limits, UTC-day spend reservation, concurrency and byte caps, default-off kill switch, no-content retention, redacted audit receipts, and deterministic-fake fallback, without a route, live call, account mutation, spend, persistence adapter, UI, or frozen design work.",
+  "inputs": [
+    {
+      "name": "OR01-verified-hosted-openrouter-boundary",
+      "version": "f5f57b1",
+      "hash": "git:f5f57b132d29bc2a761f68107e8d56791b8ef7c3"
+    },
+    {
+      "name": "approved-hosted-control-contract",
+      "version": "2.0",
+      "hash": "git:f7616886f9f8a171c847ef5eb49e932246ff989b"
+    },
+    {
+      "name": "OR02-implementation-plan",
+      "version": "2026-08-29",
+      "hash": "git:7698d40889dedfc6c3b4afc0b483493249fc6c8b"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "atomic-hosted-execution-control-plane",
+      "acceptanceSchema": "AuraOpenRouterExecutionControlsV1",
+      "path": "app/lib/ai/openRouterExecutionControls.ts"
+    },
+    {
+      "name": "hosted-control-contract-proof",
+      "acceptanceSchema": "Playwright atomic rate, spend, privacy, fallback, and hostile-boundary proof",
+      "path": "app/tests-or02/openrouter-execution-controls.contract.ts"
+    }
+  ],
+  "depends": [
+    "OR01:verified"
+  ],
+  "reject": [
+    "OR01 is not independently verified",
+    "a hosted-shaped execution can start without one successful atomic reservation",
+    "per-user, per-session, per-project, global daily spend, concurrency, input byte, output byte, or kill-switch gates are missing or bypassable",
+    "provider cost is represented outside safe integer USD micros or actual hosted cost can exceed its reservation or daily ceiling",
+    "a hosted attempt is not counted or a reservation is released more or less than exactly once",
+    "kill-switch, rate, spend, concurrency, or bounded temporary hosted failure touches the hosted adapter after selecting deterministic fallback",
+    "unsafe input, accounting drift, invalid output or receipt, oversized output, or store failure falls back instead of failing closed",
+    "audit evidence contains image bytes, source name, prompt, model output, provider body, secret, or a raw user, session, or project identifier",
+    "content retention is anything other than none or audit retention is absent and unbounded",
+    "unknown keys, symbols, accessors, custom prototypes, cycles, aliases, sparse arrays, unsafe numbers, or mutable outputs pass the boundary",
+    "a provider SDK or name, server-only fetch wrapper, network call, credential, environment read, account/guardrail/workspace mutation, storage implementation, clock, randomness, wallet, payment, fee, project persistence, React, public UI, CSS, or external action enters OR02",
+    "an undeclared path changes or the complete candidate write set differs from this manifest",
+    "a website 3D, rendering, animation, engine, scene, public visual, model, texture, shader, camera, lighting, motion, or quality-tier path changes"
+  ],
+  "writeSet": [
+    "docs/plans/2026-08-29-or02-hosted-execution-controls-plan.md",
+    "docs/plans/execution/v2/OR02-hosted-execution-controls.json",
+    "app/lib/ai/openRouterExecutionControls.ts",
+    "app/tests-or02/openrouter-execution-controls.contract.ts",
+    "app/playwright.or02.config.ts"
+  ],
+  "freezeClass": "none",
+  "owner": "primary-agent",
+  "verifier": "independent-fresh-context",
+  "sideEffects": "none",
+  "externalGates": [],
+  "verification": [
+    "npm run typecheck",
+    "npx playwright test --config=playwright.or02.config.ts",
+    "npm test",
+    "npm run test:graph-v2",
+    "npm run test:graph-position",
+    "fixture: hosted execution reserves atomically and settles exact IP03 provider cost without content in its audit receipt",
+    "fixture: user, session, project, daily spend, concurrency, and kill-switch gates independently choose deterministic fallback before hosted execution",
+    "fixture: encoded input and declared output bytes are bounded before either adapter runs",
+    "fixture: bounded temporary hosted failures release once and use one fake fallback while invalid output, receipt, accounting, and oversized output fail closed",
+    "fixture: actual provider cost cannot exceed the reservation or global daily cap",
+    "fixture: explicit UTC day and minute transitions reset only their declared windows",
+    "fixture: hostile boundaries, store failures, and malformed store results fail without accessors, mutation, private detail, or partial reservation",
+    "fixture: successful results and redacted audit receipts are detached and deeply frozen",
+    "static proof: controls have no provider, network, secret, environment, account mutation, storage implementation, clock, randomness, wallet, payment, fee, persistence, React, UI, CSS, 3D, renderer, scene, animation, camera, lighting, shader, model, or texture dependency",
+    "git diff --check",
+    "git diff --name-only <OR02-base>...<OR02-candidate>"
+  ],
+  "repair": {
+    "maxLoops": 1,
+    "boundary": "OR02 writeSet only"
+  },
+  "evidence": {
+    "startedFrom": "45e830960e4435d5e9d18d43a03aa5915a192c98",
+    "dependencyGate": "OR01 independently verified at f5f57b132d29bc2a761f68107e8d56791b8ef7c3",
+    "planCommit": "7698d40889dedfc6c3b4afc0b483493249fc6c8b",
+    "readinessReconciliation": "Graph v2 authority and position contracts were green at node selection; OR01 is committed verified; IP05 is verification-pending but owns no OR02 path; the worktree was clean; no other live manifest overlaps the five-path OR02 set; external gates are empty; declared protected paths are zero. G05 exact-write preflight is reserved for the completed candidate before closure.",
+    "officialInterfaceResearch": "Official OpenRouter documentation checked 2026-08-29 confirms per-request ZDR, opt-in prompt/response logging, metadata retention, response-native token/cost accounting, and provider workspace budget behavior including possible in-flight overshoot. These facts require stricter Aura-side reservation and privacy gates and do not authorize a request, account mutation, or spend.",
+    "existingSurfaceAudit": "OR01 owns fixed private routing and a default-off unreachable server transport. IP03 owns strict task and receipt promotion plus a deterministic fake. No user/session/project control scope, atomic reservation store contract, daily/concurrency/byte ceiling, redacted audit receipt, or controlled fake-fallback orchestrator exists.",
+    "dependencyInterpretation": "The approved lane places OR02 directly after verified OR01 and before OR03/OR04/AI02/CM01. IP05 is unrelated lateral work and remains held at independent verification.",
+    "writeOwnership": "IP05 is the only live manifest and its five paths are disjoint; no ready, active, verification-pending, or integration-pending manifest owns an OR02 path.",
+    "protectedPathChanges": 0,
+    "githubSync": "authorized by founder; branch push remains pending GitHub CLI workflow-scope account confirmation"
+  },
+  "status": "ready"
+}
