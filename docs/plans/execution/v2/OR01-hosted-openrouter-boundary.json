@@ -104,7 +104,9 @@
     "dependencyGate": "G02 is verified at 0d0738cfecf7e7e15142debaf6e94db250acdadb and IP03 is independently verified at 0fd80cf62f49b1364f261fac4ce9c05579583b4c.",
     "planCommit": "18d4491c0c952a3a297478b2d4badad00bd633ee",
     "planHistory": "Initial plan commit c6652368b8bb8322116fb381e05043befbe033a4 was followed by formatting-only correction 18d4491c0c952a3a297478b2d4badad00bd633ee before readiness.",
+    "readyManifestCommit": "c86919bc8f713870850313e4e978e628c294d4f9",
     "readinessReconciliation": "Graph v2 authority passed 25/25 with IP04 valid at verification-pending; the worktree was clean; G02 and IP03 are committed verified; no live owner overlaps an OR01 path; external gates for local default-off code are empty; declared protected paths are zero.",
+    "activationReconciliation": "Graph-position contracts passed 14/14 after the committed ready manifest. OR01 is an approved lateral node whose G02 and IP03 dependencies are verified. No route or caller exists, so implementation can remain default-off and side-effect-free while IP04 awaits independent verification.",
     "officialInterfaceResearch": "Official OpenRouter documentation checked 2026-08-29 confirms bearer-authenticated chat completions, base64 image data URLs, strict JSON Schema output, required-parameter routing, per-request data-collection denial and ZDR constraints, provider fallback controls, abortable HTTP behavior, and usage metadata. These facts define a boundary and do not authorize a request.",
     "existingSurfaceAudit": "IP03 already owns strict task/request validation, image byte snapshotting, cancellation/timeout arbitration, DesignIntent promotion, receipt promotion, and safe public error normalization. No OpenRouter request builder, response parser, server-only secret transport, route, or live execution path exists.",
     "writeOwnership": "No ready, active, verification-pending, or integration-pending manifest owns an OR01 path. IP04 retains only its disjoint five-path verification ownership.",
@@ -112,5 +114,5 @@
     "liveActivation": "not authorized or reachable in OR01; no route will import the server factory and all tests use an injected deterministic transport",
     "githubSync": "deferred by founder direction; this node remains local"
   },
-  "status": "ready"
+  "status": "active"
 }
