@@ -90,8 +90,9 @@
     "startedFrom": "c19e97dc82657fac2c524be0227ae87e7e0d4a81",
     "dependencyGate": "IP05 independently verified and committed at 156b470d13ee2ce985e572526ef37687dfa3462e",
     "planCommit": "31c1a6da462b52721218097887181c118dba87ee",
-    "readyManifestCommit": "pending",
+    "readyManifestCommit": "6c66921d90b2640985c2ee2c72c318ca3f65216b",
     "readinessReconciliation": "Founder-approved Graph v2 and graph-position contracts are green; IP05 is committed verified; OR02 remains disjoint verification-pending work and owns no IP06 path; the worktree was clean at node selection; no other live manifest overlaps the exact five-path IP06 set; external gates are empty; protected-path changes are zero.",
+    "activationReconciliation": "The committed ready manifest passed Graph v2 authority 25/25 and graph-position contracts 14/14. IP05 remains verified, OR02 remains path-disjoint, the exact five-path IP06 write set is unclaimed, the worktree was clean, and no external or protected-path gate blocks local provider-free preview/commit contract work. Exact G05 is reserved for the completed five-path candidate and manifest-only closure.",
     "existingSurfaceAudit": "IP05 already returns a complete immutable validated proposal and existing BuilderDocument hashing/validation plus the editor load reducer already own canonical documents and one-step undo. No pure contract currently binds explainable preview facts, exact cost evidence, deliberate confirmation, one inert load action, and zero-write cancel without importing UI or persistence.",
     "dependencyInterpretation": "The approved image-to-plan lane places IP06 directly after verified IP05. IP07 and UX06 depend on IP06; neither is entered here. OR02 is a disjoint lateral node and does not block provider-free IP06 readiness.",
     "writeOwnership": "OR02 is the only verification-pending manifest and its five paths are disjoint; no ready, active, verification-pending, or integration-pending manifest owns an IP06 path.",
@@ -108,5 +109,5 @@
       "remainingGate": "not entered"
     }
   },
-  "status": "ready"
+  "status": "active"
 }
