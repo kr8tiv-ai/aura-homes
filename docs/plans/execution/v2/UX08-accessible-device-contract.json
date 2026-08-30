@@ -153,8 +153,16 @@
         "nonDragAlternative": "The existing exact width control accepts keyboard ArrowRight without dragging, changes the canonical project hash, and one Undo restores it.",
         "perceivableState": "Core Guided Studio buttons and the review textarea measure at least 24 by 24 CSS pixels; keyboard focus is visible and unobscured; current step, autosave/design-intent state, and phone scope are present in text or ARIA rather than color alone."
       },
-      "remainingGate": "independent fresh-context verification"
+      "independentVerification": {
+        "date": "2026-08-29",
+        "verdict": "independent fresh-context pass",
+        "authority": "Graph v2 proposal f7616886f9f8a171c847ef5eb49e932246ff989b and Matt-authored approval e031a83b8d9dcd428ffaab46d83b39370f2962a0 independently matched the approved raw and Git-object hashes.",
+        "lineageAndWrites": "Base f232036151eb8be0ada1f43b2ba49e2f97e5293d, activation 21fcc7bea788a3971b3958a0aad9796f46cf9dd2, candidate 2d5aff599db6e765fc39e77e4799258a7fcdaa40, and closure 04b7f8f196c8eec5e93ff6b751264fb46feee87c form valid ancestry; candidate changed exactly 10/10 declared paths, closure changed only this manifest, protected/frozen changes and live ownership overlaps were zero, and external gates were empty.",
+        "freshReceipts": "typecheck passed; builder-plans-first 12 passed with 4 intentional served-only skips; builder-mobile 12/12 passed; deterministic suite 733 passed with 4 intentional served-only skips; full UI 141/141 passed; graph-v2 25/25 passed; graph-position 14/14 passed; exact G05 preflight passed all checks with movement remain.",
+        "sourceVerdict": "The phone scope remains bounded and truthful, canonical review notes and exact-value edits preserve project hashing and undo, reflow/target/focus/non-color contracts are evidenced, and no public-site or frozen rendering surface changed."
+      },
+      "remainingGate": "none"
     }
   },
-  "status": "verification-pending"
+  "status": "verified"
 }
