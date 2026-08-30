@@ -105,8 +105,8 @@
     "verificationClosure": {
       "verdict": "verification-pending",
       "activationCommit": "40a518da384b4a0188bcee20d8523c2f07878e65",
-      "candidateCommit": "5758789006c2779f221de8b626b136f1844cfc97",
-      "lineageBase": "ae77ee5a9b6bf0011bc36da2abd31a23fb526a43",
+      "candidateCommit": "4ba750068587eeda72abc88db03c53028742e4a2",
+      "lineageBase": "b695d677b3fbd6213b73608f6772d1b66a48f117",
       "manifestCorrectionCommit": "2b23a2bc81950997554ae83ad49690dcef292736",
       "writeSetCheck": {
         "declared": 5,
@@ -115,10 +115,10 @@
         "protectedPathChanges": 0,
         "overlappingOwners": []
       },
-      "positionReceipt": "Pending exact G05 reproduction against the non-interleaved ae77ee5-to-5758789 candidate and this manifest-only closure.",
+      "positionReceipt": "Pending exact G05 reproduction against the non-interleaved b695d67-to-4ba7500 candidate and this manifest-only closure.",
       "gateReceipts": {
         "typecheck": "pending final candidate rerun",
-        "focusedValidator": "16/16 dedicated IP05 contract proofs passed, including unsupported-compiler fail-closed coverage, without a server, model, provider, or external service",
+        "focusedValidator": "17/17 dedicated IP05 contract proofs passed, including every canonical compiler-refusal class, without a server, model, provider, or external service",
         "deterministic": "pending final candidate rerun",
         "graphV2": "pending final candidate rerun",
         "graphPosition": "pending final candidate rerun",
@@ -151,11 +151,11 @@
       "focusedRed": "16 passed and 1 failed before the final correction: a stale south-and-west project was accepted after intent narrowed opening capacity to south only.",
       "focusedGreen": "17/17 passed after the final correction, including program and opening compiler-fit refusals.",
       "repositoryGates": "focused green; repository-wide, graph, exact-write, and independent gates pending the clean final candidate.",
-      "candidateCommit": "pending-final-fit-refusal-candidate",
-      "exactWriteSet": "pending exact five-path comparison from b695d677b3fbd6213b73608f6772d1b66a48f117",
+      "candidateCommit": "4ba750068587eeda72abc88db03c53028742e4a2",
+      "exactWriteSet": "candidate 4ba750068587eeda72abc88db03c53028742e4a2 changes exactly the declared five IP05 paths from b695d677b3fbd6213b73608f6772d1b66a48f117; exact G05 awaits this manifest-only closure",
       "g05Receipt": "pending non-interleaved candidate and manifest-only closure",
       "remainingGate": "repository gates, exact G05, and fresh independent reverification of the final repaired candidate"
     }
   },
-  "status": "active"
+  "status": "verification-pending"
 }
