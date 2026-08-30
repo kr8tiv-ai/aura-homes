@@ -86,7 +86,7 @@
     "startedFrom": "588b75c367f3f2fa4e45ba972b5e5d9c28ea088e",
     "dependencyGate": "IP03 independently verified at 0fd80cf62f49b1364f261fac4ce9c05579583b4c",
     "planCommit": "505aec57c06f32de635f9967a9cd060b10d15e53",
-    "readyManifestCommit": "8385d159638cab5834c38ce0adb5d3f4a1596e24",
+    "readyManifestCommit": "8385d154e1871cdce38c6962ddc40b1e581b1e98",
     "readinessReconciliation": "Graph v2 authority passed 25/25 before and after the committed ready manifest and position contracts passed 14/14 at node start; IP03 is committed verified; the worktree was clean; no live manifest overlaps an IP04 path; external gates are empty; declared protected paths are zero. G05 exact-write preflight is reserved for the completed candidate before closure.",
     "existingSurfaceAudit": "DesignIntent, strict parsing, graph/document factories, validators, canonical document hashing, and deterministic graph mutations exist. No intent compiler or canonical compiled-project proposal exists. AuraProject persistence requires time-bearing durable identity and remains downstream in IP07.",
     "dependencyInterpretation": "The approved activation sequence places local IP04/IP05 before hosted OR01/OR02. OR03 may later feed this compiler through the verified IP03 boundary but is not required to activate the provider-free compiler.",
