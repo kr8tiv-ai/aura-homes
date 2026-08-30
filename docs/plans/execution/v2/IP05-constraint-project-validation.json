@@ -97,7 +97,38 @@
     "writeOwnership": "All instantiated manifests are verified; no ready, active, verification-pending, or integration-pending manifest owns an IP05 path.",
     "professionalBoundary": "The span gate records geometry facts and always requires professional review; it does not assert structural, code, permit, engineering, or construction adequacy.",
     "protectedPathChanges": 0,
-    "githubSync": "authorized by founder; branch push is pending GitHub CLI workflow-scope confirmation"
+    "githubSync": "authorized by founder; branch push is pending GitHub CLI workflow-scope confirmation",
+    "verificationClosure": {
+      "verdict": "verification-pending",
+      "activationCommit": "40a518da384b4a0188bcee20d8523c2f07878e65",
+      "candidateCommit": "7c01922530018ae5f5c17e74b35459330a7447ad",
+      "lineageBase": "f5f57b132d29bc2a761f68107e8d56791b8ef7c3",
+      "manifestCorrectionCommit": "2b23a2bc81950997554ae83ad49690dcef292736",
+      "writeSetCheck": {
+        "declared": 5,
+        "changed": 5,
+        "delta": 0,
+        "protectedPathChanges": 0,
+        "overlappingOwners": []
+      },
+      "positionReceipt": "G05 explicit preflight passed authority, IP04 dependency, exact 5/5 writes, clean candidate, complete evidence, decision history, and movement remain at candidate 7c01922530018ae5f5c17e74b35459330a7447ad.",
+      "gateReceipts": {
+        "typecheck": "pass",
+        "focusedValidator": "15/15 dedicated IP05 contract proofs passed in 2.2s without a server, model, provider, or external service",
+        "deterministic": "737 declared; 733 passed and 4 intentional served-only skips in 19.8s",
+        "graphV2": "25/25 passed; authority pass; manifest errors empty",
+        "graphPosition": "14/14 position-check contract tests passed in isolation; one earlier concurrent repository-history fixture hit Git object-write contention while graph-v2 was traversing history, then the unchanged exact gate passed",
+        "diffCheck": "pass"
+      },
+      "contractEvidence": {
+        "strictBoundary": "Unknown keys, symbols, accessors, custom prototypes, cycles, sparse arrays, oversized values, revoked proxies, aliases, and malformed intent fail closed without mutation, private detail, partial project, or partial receipt.",
+        "canonicalIntegrity": "Intent, document, and proposal hashes, source fingerprints, unresolved questions, exact canonical v2 document bytes, and validated building-graph topology are recomputed without migration, normalization, quarantine, or repair.",
+        "constraintReconciliation": "Storeys, requested room names and counts, minimum room areas, opening counts and head fit, climate mapping, and disclosed compiler defaults reconcile exactly or return one bounded refusal.",
+        "rightsAndProfessionalBoundary": "Uploaded-image sources require exactly one source-bound consent, rights, retention, and disposal approval; non-image sources cannot acquire image rights; spans remain concept-only and professional-review-required.",
+        "sideEffects": "The validator is provider-free, network-free, secret-free, storage-free, clock-free, randomness-free, wallet-free, payment-free, fee-free, budget-free, persistence-free, UI-free, and outside every frozen 3D/rendering/animation surface."
+      },
+      "remainingGate": "independent fresh-context verification"
+    }
   },
-  "status": "active"
+  "status": "verification-pending"
 }
