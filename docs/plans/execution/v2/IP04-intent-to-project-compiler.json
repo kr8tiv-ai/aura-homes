@@ -121,9 +121,16 @@
         "canonicalOutput": "The result contains a validated detached deeply frozen BuilderDocument, canonical document hash, intent hash, source fingerprints, decisions, unresolved questions, and a proposal hash binding the full compilation contract.",
         "sideEffects": "The compiler is provider-free, network-free, secret-free, storage-free, clock-free, randomness-free, wallet-free, payment-free, fee-free, budget-free, persistence-free, UI-free, and outside every frozen 3D/rendering/animation surface."
       },
-      "independentVerification": null,
-      "remainingGate": "independent fresh-context verification"
+      "independentVerification": {
+        "date": "2026-08-29",
+        "verdict": "independent fresh-context pass",
+        "authorityAndLineage": "Exact approved Graph v2 authority and Matt-authored approval matched; base 588b75c367f3f2fa4e45ba972b5e5d9c28ea088e, activation 5a979fe1f147105607559649aac5f919576a1f2d, candidate 3b48ad1a9813da69f6581239d4265d5aefa03f14, and closure 1383b5ccb5f99e9614d464cd63f107ebbaef2899 form valid ancestry.",
+        "writesAndGates": "Candidate changed exactly 5/5 declared paths; closure changed only this manifest; IP03 is verified; live ownership overlap, protected/frozen changes, and external gates were zero; exact G05 preflight passed all checks with movement remain.",
+        "freshReceipts": "typecheck passed; dedicated compiler contract 12/12 passed; deterministic suite 733 passed with 4 intentional served-only skips; graph-v2 25/25 passed; graph-position 14/14 passed.",
+        "sourceVerdict": "Strict IP02 promotion, deterministic existing graph/document factories, bounded no-partial refusals, canonical hashes, and detached deeply frozen outputs are fail-closed with no provider, network, storage, clock, randomness, money, UI, or frozen 3D/rendering dependency."
+      },
+      "remainingGate": "none"
     }
   },
-  "status": "verification-pending"
+  "status": "verified"
 }
