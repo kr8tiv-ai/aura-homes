@@ -1,9 +1,9 @@
 # OR01 Hosted OpenRouter Boundary — Implementation Plan
 
-**Date:** 2026-08-29  
-**Graph:** `aura-graph/v2.0@680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8`  
-**Node:** OR01  
-**Movement:** lateral from IP04 while IP04 awaits independent verification  
+**Date:** 2026-08-29
+**Graph:** `aura-graph/v2.0@680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8`
+**Node:** OR01
+**Movement:** lateral from IP04 while IP04 awaits independent verification
 **Side effects in this node:** none
 
 ## Outcome
