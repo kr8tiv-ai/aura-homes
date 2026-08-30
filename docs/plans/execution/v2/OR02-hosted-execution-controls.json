@@ -129,6 +129,7 @@
       "remainingGate": "independent fresh-context verification"
     },
     "repairLoop": {
+      "used": 1,
       "attempt": 1,
       "authorizedBy": "manifest repair.maxLoops and founder authorization for all bounded verification passes",
       "baseCommit": "b490dab890e561e5a2054c96d268d916891155db",
@@ -142,8 +143,11 @@
       "focusedRed": "10 passed and 1 failed before repair at the hostile-byte assertion; the phantom-reservation assertion followed in the same bounded hostile-store contract.",
       "focusedGreen": "11/11 passed after repair.",
       "repositoryGates": "typecheck pass; 737 declared with 733 pass and 4 intentional served-only skips; graph-v2 25/25; graph-position 14/14; diff check clean.",
-      "remainingGate": "commit repaired candidate, exact G05 preflight, then fresh independent reverification"
+      "candidateCommit": "0ea59f4f9c89def51a2d45be6f92205c6db339c3",
+      "exactWriteSet": "repair base b490dab890e561e5a2054c96d268d916891155db to candidate changed exactly the declared 5/5 OR02 paths with zero protected paths or overlaps",
+      "g05Receipt": "explicit preflight passed authority, OR01 dependency, exact writes, clean worktree, complete evidence, decision history, and movement remain",
+      "remainingGate": "fresh independent reverification of the repaired candidate"
     }
   },
-  "status": "active"
+  "status": "verification-pending"
 }
