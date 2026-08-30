@@ -47,6 +47,7 @@
     "a compiler default for openings or climate is accepted without the exact disclosed decision",
     "an unsupported or malformed canonical compiler outcome is converted into success for a stale rehashed project",
     "a canonical program or opening fit refusal becomes null and skips exact compiler reconciliation",
+    "a successful canonical recompile differs from the accepted compiler-owned project or document geometry",
     "an uploaded-image source lacks exactly one matching consent, rights, retention, and disposition approval or a non-image source gains an image-rights claim",
     "structural span, code, permit, engineering, or construction adequacy is presented as verified rather than review-required",
     "a refusal returns a partial project, validation receipt, repaired candidate, raw exception, private path detail, or mutable data",
@@ -79,6 +80,7 @@
     "fixture: omitted opening counts and default climate require their disclosed compiler decisions",
     "fixture: unsupported compiler outcomes fail closed and cannot validate a stale rehashed project",
     "fixture: program and opening fit refusals map immediately to bounded mismatch gates and never admit stale geometry",
+    "fixture: a successful canonical recompile binds the exact compiler-owned project and opening placement",
     "fixture: every uploaded-image fingerprint has exactly one source-bound consent, rights, retention, and disposition approval",
     "fixture: room clear spans are finite and positive while professional structural adequacy remains review-required",
     "fixture: successful output is detached and deeply frozen and failed output contains no project or receipt",
@@ -105,8 +107,8 @@
     "verificationClosure": {
       "verdict": "verification-pending",
       "activationCommit": "40a518da384b4a0188bcee20d8523c2f07878e65",
-      "candidateCommit": "4ba750068587eeda72abc88db03c53028742e4a2",
-      "lineageBase": "b695d677b3fbd6213b73608f6772d1b66a48f117",
+      "candidateCommit": "pending final repair candidate",
+      "lineageBase": "324b6c81100dc030012769461f5264f72f86874b",
       "manifestCorrectionCommit": "2b23a2bc81950997554ae83ad49690dcef292736",
       "writeSetCheck": {
         "declared": 5,
@@ -115,10 +117,10 @@
         "protectedPathChanges": 0,
         "overlappingOwners": []
       },
-      "positionReceipt": "Pending exact G05 reproduction against the non-interleaved b695d67-to-4ba7500 candidate and this manifest-only closure.",
+      "positionReceipt": "Pending exact G05 reproduction against the non-interleaved 324b6c8-to-final candidate and its manifest-only closure.",
       "gateReceipts": {
         "typecheck": "pending final candidate rerun",
-        "focusedValidator": "17/17 dedicated IP05 contract proofs passed, including every canonical compiler-refusal class, without a server, model, provider, or external service",
+        "focusedValidator": "18/18 dedicated IP05 contract proofs passed, including every canonical compiler-refusal class and compile-success project binding, without a server, model, provider, or external service",
         "deterministic": "pending final candidate rerun",
         "graphV2": "pending final candidate rerun",
         "graphPosition": "pending final candidate rerun",
@@ -137,22 +139,23 @@
       "used": 1,
       "attempt": 1,
       "authorizedBy": "manifest repair.maxLoops and founder authorization for all bounded verification passes",
-      "baseCommit": "b695d677b3fbd6213b73608f6772d1b66a48f117",
-      "independentVerdict": "fail: prior findings closed; the final deep pass found that program/opening fit refusals still became null and bypassed compiler-only capacity rules",
+      "baseCommit": "324b6c81100dc030012769461f5264f72f86874b",
+      "independentVerdict": "fail: compiler-refusal bypasses closed; the next deep pass found a successful recompile could choose different opening walls while stale rehashed geometry still passed semantic checks",
       "findings": [
         "default compiler decisions were authenticated by code presence rather than exact field and statement",
         "room reconciliation flattened storeys and accepted cross-storey swaps",
         "a 0.1 square-foot tolerance accepted a real minimum-area shortfall",
         "a non-fit canonical compiler refusal became null and allowed a stale rehashed project to skip exact decision checks",
         "the prior candidate-to-closure range interleaved OR02 paths and therefore did not satisfy G05",
-        "opening orientation capacity and other compiler-only fit rules were not reproduced by semantic checks, so null still admitted stale geometry"
+        "opening orientation capacity and other compiler-only fit rules were not reproduced by semantic checks, so null still admitted stale geometry",
+        "a compile-success south/west-to-north/east priority change produced different canonical opening walls while stale rehashed geometry was accepted"
       ],
-      "repair": "Keep every closed fix; eliminate nullable compiler outcomes; map program/opening fit refusals directly to stable public mismatch gates; map every other compiler refusal to integrity; add orientation-capacity and long-label regressions; and rebuild a non-interleaved lineage.",
-      "focusedRed": "16 passed and 1 failed before the final correction: a stale south-and-west project was accepted after intent narrowed opening capacity to south only.",
-      "focusedGreen": "17/17 passed after the final correction, including program and opening compiler-fit refusals.",
+      "repair": "Keep every closed fix and its specific gate; after semantic/domain reconciliation, bind every successful validation to the exact canonical compiler proposal hash; add the south/west-to-north/east compile-success placement regression; and rebuild a non-interleaved lineage.",
+      "focusedRed": "17 passed and 1 failed: a stale south-and-west project was accepted after a successful canonical recompile moved the openings to north and east.",
+      "focusedGreen": "18/18 passed after exact successful-compiler project binding, including refusal and compile-success drift cases.",
       "repositoryGates": "focused green; repository-wide, graph, exact-write, and independent gates pending the clean final candidate.",
-      "candidateCommit": "4ba750068587eeda72abc88db03c53028742e4a2",
-      "exactWriteSet": "candidate 4ba750068587eeda72abc88db03c53028742e4a2 changes exactly the declared five IP05 paths from b695d677b3fbd6213b73608f6772d1b66a48f117; exact G05 awaits this manifest-only closure",
+      "candidateCommit": "pending final repair candidate",
+      "exactWriteSet": "pending final candidate across exactly the declared five IP05 paths from 324b6c81100dc030012769461f5264f72f86874b",
       "g05Receipt": "pending non-interleaved candidate and manifest-only closure",
       "remainingGate": "repository gates, exact G05, and fresh independent reverification of the final repaired candidate"
     }

@@ -698,6 +698,9 @@ function validateSnapshot(value: unknown): DesignIntentProjectValidationResult {
   if (canonicalJson(project.decisions) !== canonicalJson(expectedProject.decisions)) {
     return refuse("integrity", "integrity-failed");
   }
+  if (project.projectHash !== expectedProject.projectHash) {
+    return refuse("integrity", "integrity-failed");
+  }
   validateRights(intent, root.sourceApprovals);
   const largestClearSpanFt = largestClearSpan(graph);
   const conceptOnlyNotice =

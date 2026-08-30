@@ -446,6 +446,28 @@ test("compiler fit refusals cannot be bypassed by stale semantically plausible g
   });
 });
 
+test("a successful canonical recompile binds the exact compiler-owned project", () => {
+  const stale = fixture();
+  (stale.intent.openings as Record<string, unknown>).orientationPriorities = ["north", "east"];
+
+  const recompiled = compileDesignIntentToProject(stale.intent);
+  expect(recompiled.ok).toBe(true);
+  if (!recompiled.ok) throw new Error("Expected the changed orientation to compile.");
+
+  const openingWalls = (project: typeof stale.project) => graphOf(project).storeys
+    .flatMap((storey) => storey.walls)
+    .filter((wall) => wall.openings.length > 0)
+    .map((wall) => wall.id)
+    .sort();
+  expect(openingWalls(stale.project)).not.toEqual(openingWalls(recompiled.project));
+
+  rehash(stale.intent, stale.project);
+  expect(validateDesignIntentProject(stale)).toMatchObject({
+    ok: false,
+    error: { gate: "integrity", code: "integrity-failed" },
+  });
+});
+
 test("uploaded-image provenance requires exactly one matching rights approval", () => {
   const missing = fixture();
   missing.sourceApprovals = [];

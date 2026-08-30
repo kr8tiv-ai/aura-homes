@@ -1,7 +1,7 @@
 import { defineConfig } from "playwright/test";
 
 export default defineConfig({
-  // Repair loop 1 proves every canonical compiler refusal fails closed.
+  // Repair loop 1 proves refusals and successful recompiles bind canonically.
   testDir: "./tests-ip05",
   testMatch: "design-intent-project-validator.contract.ts",
   workers: 1,
