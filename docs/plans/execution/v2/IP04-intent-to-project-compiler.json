@@ -92,7 +92,38 @@
     "dependencyInterpretation": "The approved activation sequence places local IP04/IP05 before hosted OR01/OR02. OR03 may later feed this compiler through the verified IP03 boundary but is not required to activate the provider-free compiler.",
     "writeOwnership": "No ready, active, verification-pending, or integration-pending manifest owns an IP04 path.",
     "protectedPathChanges": 0,
-    "githubSync": "deferred by founder direction; this node remains local"
+    "githubSync": "deferred by founder direction; this node remains local",
+    "verificationClosure": {
+      "verdict": "verification-pending",
+      "activationCommit": "5a979fe1f147105607559649aac5f919576a1f2d",
+      "candidateCommit": "3b48ad1a9813da69f6581239d4265d5aefa03f14",
+      "lineageBase": "588b75c367f3f2fa4e45ba972b5e5d9c28ea088e",
+      "writeSetCheck": {
+        "declared": 5,
+        "changed": 5,
+        "delta": 0,
+        "protectedPathChanges": 0,
+        "overlappingOwners": []
+      },
+      "positionReceipt": "G05 explicit preflight passed authority, IP03 dependency, exact 5/5 writes, clean candidate, complete evidence, decision history, and movement remain at candidate 3b48ad1a9813da69f6581239d4265d5aefa03f14.",
+      "gateReceipts": {
+        "typecheck": "pass",
+        "focusedCompiler": "12/12 dedicated IP04 contract proofs passed in 1.5s without a server, model, provider, or external service",
+        "deterministic": "737 declared; 733 passed and 4 intentional served-only skips in 19.6s",
+        "graphV2": "25/25 passed; authority pass; manifest errors empty",
+        "graphPosition": "14/14 position-check contract tests passed in isolation; one earlier concurrent repository-history fixture hit Git object-write contention while graph-v2 was traversing history, then the unchanged exact gate passed",
+        "diffCheck": "pass"
+      },
+      "contractEvidence": {
+        "strictPromotion": "Unknown keys, hidden geometry, accessors, custom prototypes, revoked proxies, and malformed intent fail through the IP02 parser with a bounded invalid-intent result.",
+        "deterministicGeometry": "Target, range-midpoint, and disclosed default footprints compile to deterministic half-foot rectangular graph geometry; one and two storeys, room faces, supported roofs, and exact openings use existing graph factories.",
+        "boundedRefusal": "Unsupported split levels, storey counts, A-frame topology, impossible room programs, invalid roof pitches, opening over-capacity, and factory refusals return no partial project.",
+        "canonicalOutput": "The result contains a validated detached deeply frozen BuilderDocument, canonical document hash, intent hash, source fingerprints, decisions, unresolved questions, and a proposal hash binding the full compilation contract.",
+        "sideEffects": "The compiler is provider-free, network-free, secret-free, storage-free, clock-free, randomness-free, wallet-free, payment-free, fee-free, budget-free, persistence-free, UI-free, and outside every frozen 3D/rendering/animation surface."
+      },
+      "independentVerification": null,
+      "remainingGate": "independent fresh-context verification"
+    }
   },
-  "status": "active"
+  "status": "verification-pending"
 }
