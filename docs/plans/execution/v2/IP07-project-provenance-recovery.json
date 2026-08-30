@@ -1,0 +1,125 @@
+{
+  "graphVersion": "aura-graph/v2.0@680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8",
+  "node": "IP07",
+  "lane": "image-to-plan",
+  "stage": "project-persistence-provenance-recovery",
+  "job": "Persist an explicitly accepted IP06 revision as one canonical existing AuraProject design update plus one strict versioned provenance record through an injected atomic store, then prove durable operation-specific recovery without raw image content, a second project model, UI, providers, money execution, or frozen design work.",
+  "inputs": [
+    {
+      "name": "IP06-verified-explainable-preview-commit",
+      "version": "b7affd3",
+      "hash": "git:b7affd3cb272655da1e03036da62c88c3a84207f"
+    },
+    {
+      "name": "approved-project-persistence-provenance-contract",
+      "version": "2.0",
+      "hash": "git:f7616886f9f8a171c847ef5eb49e932246ff989b"
+    },
+    {
+      "name": "IP07-implementation-plan",
+      "version": "2026-08-30",
+      "hash": "git:1b8603514f1590d8b81018e2ddce880d22cfc19e"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "atomic-image-plan-project-revision-contract",
+      "acceptanceSchema": "AuraDesignIntentProjectRevisionV1",
+      "path": "app/lib/ai/designIntentProjectRevision.ts"
+    },
+    {
+      "name": "project-revision-persistence-recovery-proof",
+      "acceptanceSchema": "Playwright strict transaction, provenance, retention, durable-witness, and recovery proof",
+      "path": "app/tests-ip07/design-intent-project-revision.contract.ts"
+    }
+  ],
+  "depends": [
+    "IP06:verified"
+  ],
+  "reject": [
+    "IP06 is not independently verified",
+    "a caller-supplied preview, commit receipt, current document hash, validation status, or project hash is trusted without recomputing IP06 from the complete input and exact confirmation",
+    "the stored project or caller project does not match the exact expected canonical project hash before mutation",
+    "the stored design hash does not match the recomputed IP06 before-document hash",
+    "the accepted document and its provenance record are not written in one atomic project transaction",
+    "a transaction result is treated as durable commitment without a trusted strongly consistent revision-witness read-back",
+    "whole-project equality is required after commit so a later legitimate project edit can falsely reject an earlier durable revision",
+    "a duplicate or conflicting revision identifier can append more than one record or overwrite provenance",
+    "the record omits project id, prior project hash, preview id, before/after document hashes, candidate project hash, transition label, contract/model/rule versions, execution/cost evidence, source fingerprint, consent, rights, retention, disposition, or commit instant",
+    "IP03 provider cost and IP06 provider-cost evidence differ or cost uses anything other than exact safe integer USD micros",
+    "delete-after-analysis retains an image reference, retain-with-project omits its bounded opaque reference, or any raw image byte, filename, prompt, model output, provider body, credential, or hidden instruction enters the revision",
+    "recovery mutates storage, accepts an unreadable/corrupt project or record, or returns a missing/mutated revision as recovered",
+    "unknown keys, symbols, accessors, custom prototypes, cycles, aliases, sparse arrays, unsafe numbers, revoked values, mutable outputs, raw errors, or private detail pass the boundary",
+    "a provider SDK or name, network call, credential, environment read, browser storage implementation, clock, randomness, account/cloud mutation, payment, fee calculation, wallet, checkout, editor dispatch, React, public UI, CSS, or external action enters IP07",
+    "a second project/document model, silent project repair, or non-atomic persistence claim enters IP07",
+    "an undeclared path changes or the complete candidate write set differs from this manifest",
+    "a website 3D, rendering, animation, engine, scene, public visual, model, texture, shader, geometry, camera, lighting, motion, or quality-tier path changes"
+  ],
+  "writeSet": [
+    "docs/plans/2026-08-30-ip07-project-provenance-recovery-plan.md",
+    "docs/plans/execution/v2/IP07-project-provenance-recovery.json",
+    "app/lib/ai/designIntentProjectRevision.ts",
+    "app/tests-ip07/design-intent-project-revision.contract.ts",
+    "app/playwright.ip07.config.ts"
+  ],
+  "freezeClass": "none",
+  "owner": "primary-agent",
+  "verifier": "independent-fresh-context",
+  "sideEffects": "injected-local-project-store-only",
+  "externalGates": [],
+  "verification": [
+    "npm run typecheck",
+    "npx playwright test --config=playwright.ip07.config.ts",
+    "npm test",
+    "npm run test:graph-v2",
+    "npm run test:graph-position",
+    "fixture: exact IP06 confirmation persists one canonical AuraProject design revision and one complete strict provenance record in one transaction",
+    "fixture: a fabricated transaction return, unreadable store, missing witness, mutated witness, or store error fails closed without a success receipt",
+    "fixture: a later legitimate project edit before read-back preserves the earlier exact revision witness without requiring whole-project equality",
+    "fixture: stale caller/store project, changed IP06 input, forged confirmation, invalid proposal, no-op proposal, duplicate revision, and conflicting duplicate all fail closed",
+    "fixture: revision records exact contract, adapter, model, token, provider-cost, Aura-fee, total-cost, source, consent, rights, retention, disposition, hash, and commit-time evidence",
+    "fixture: delete retention requires no retained reference, retain choice requires one bounded opaque reference, and raw image/content surfaces are rejected",
+    "fixture: recovery returns an exact durable revision with zero writes and refuses missing, corrupt, or mutated project/revision state",
+    "fixture: hostile boundaries fail without accessors, mutation, private detail, partial project, or partial revision",
+    "fixture: successful persistence and recovery receipts plus every nested project/revision surface are detached and deeply frozen",
+    "static proof: IP07 has no provider, network, secret, environment, browser storage implementation, clock, randomness, account/cloud mutation, payment, fee calculation, wallet, checkout, editor dispatch, React, UI, CSS, 3D, renderer, scene, animation, camera, lighting, shader, model, or texture dependency",
+    "git diff --check",
+    "git diff --name-only <IP07-base>...<IP07-candidate>"
+  ],
+  "repair": {
+    "maxLoops": 1,
+    "boundary": "IP07 writeSet only"
+  },
+  "evidence": {
+    "startedFrom": "b7affd3cb272655da1e03036da62c88c3a84207f",
+    "dependencyGate": "IP06 independently verified and committed at b7affd3cb272655da1e03036da62c88c3a84207f",
+    "planCommit": "1b8603514f1590d8b81018e2ddce880d22cfc19e",
+    "readinessReconciliation": "Founder-approved Graph v2 and graph-position contracts are green; IP06 is committed verified; OR02 is a disjoint verification-pending lane and owns no IP07 path; the worktree was clean at node selection; no other live manifest overlaps the exact five-path IP07 set; external gates are empty; protected-path changes are zero.",
+    "existingSurfaceAudit": "AuraProject already owns the canonical BuilderDocument and hash, artifactManifests already travels with project serialization, withProjectDesign owns canonical design replacement, and the local project store already exposes failure-aware storage. IP07 adds only a strict revision record and an injected atomic transaction/read seam; it does not create a second project model or storage implementation.",
+    "dependencyInterpretation": "The approved image-to-plan lane places IP07 directly after verified IP06 and before IP08, ED01, and AI01. UX06 also depends on IP06 but is lateral; none of those downstream nodes is entered here.",
+    "writeOwnership": "OR02 is the only other verification-pending manifest and its five paths are disjoint; no ready, active, verification-pending, or integration-pending manifest owns an IP07 path.",
+    "retentionBoundary": "Raw image content is never accepted by IP07. Delete-after-analysis requires no retained reference; retain-with-project records only an opaque bounded reference whose media storage remains outside this node.",
+    "costBoundary": "IP07 records exact already-verified provider cost plus supplied Aura fee and total evidence; it does not calculate a fee, authorize spend, execute payment, select a provider, or make a commercial claim.",
+    "protectedPathChanges": 0,
+    "githubSync": "remote-backed branch synchronized through founder-authorized repository SSH route",
+    "verificationClosure": {
+      "verdict": "ready",
+      "candidateCommit": "pending",
+      "lineageBase": "pending activation commit",
+      "writeSetCheck": {
+        "declared": 5,
+        "candidate": "pending",
+        "undeclared": 0,
+        "protected": 0
+      },
+      "positionReceipt": "Exact closure-aware G05 is reserved for the completed five-path candidate and manifest-only closure after test-first implementation.",
+      "remainingGate": "activation, recorded RED, implementation, full repository gates, exact candidate, manifest-only closure, closure-aware G05, push, and independent verification"
+    },
+    "repairLoop": {
+      "used": 0,
+      "attempt": 0,
+      "remainingGate": "not entered"
+    }
+  },
+  "status": "ready"
+}
