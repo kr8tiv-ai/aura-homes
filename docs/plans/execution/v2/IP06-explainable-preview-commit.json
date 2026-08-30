@@ -102,7 +102,7 @@
     "protectedPathChanges": 0,
     "githubSync": "remote-backed branch synchronized through the founder-authorized repository SSH route",
     "verificationClosure": {
-      "verdict": "verification-pending",
+      "verdict": "verified",
       "activationCommit": "51685819033bebbb36447531221039bb0a6fc077",
       "candidateCommit": "a64f29786b3be228050e6d522903956243909265",
       "lineageBase": "f8db07b3ac788f2e8f9b5b5744e6264c16b4e0f6",
@@ -123,7 +123,8 @@
       },
       "contractReceipt": "A complete IP05 proposal is revalidated into a detached immutable preview with strict intent, assumptions, confidence, unresolved questions, validation, exact cost evidence, document/project hashes, changed sections, exact confirmation, one transition-bound inert undoable load action, and a zero-write cancel surface.",
       "sideEffects": "No route, provider request, network, environment, credential, storage, clock, randomness, payment execution, fee calculation, editor dispatch, React/UI/CSS, public design, or frozen 3D/rendering/animation dependency entered IP06.",
-      "remainingGate": "manifest-only closure, closure-aware G05, push, and independent fresh-context repair verification"
+      "independentVerification": "PASS at pushed closure 6a04f1e2bb56b59600af2e5d103bce896a1ac638 with no CRITICAL, HIGH, MEDIUM, or LOW findings; exact A-to-B then B-to-C runtime reproduction restored B in one undo, malformed transition label failed invalid-preview, all declared gates and closure-aware G05 passed",
+      "remainingGate": "none"
     },
     "repairLoop": {
       "used": 1,
@@ -136,9 +137,9 @@
       "focusedGreen": "11/11 passed after transition-bound action labels made consecutive proposal labels distinct and preserved the exact immediately prior document.",
       "candidateCommit": "a64f29786b3be228050e6d522903956243909265",
       "exactWriteSet": "candidate a64f29786b3be228050e6d522903956243909265 changes exactly the declared five IP06 paths from f8db07b3ac788f2e8f9b5b5744e6264c16b4e0f6 with zero protected paths",
-      "g05Receipt": "pending candidate and manifest-only closure",
-      "remainingGate": "repository gates, exact candidate, closure-aware G05, push, and fresh independent verification"
+      "g05Receipt": "pass at closure 6a04f1e2bb56b59600af2e5d103bce896a1ac638 for authority, dependencies, writes, clean worktree, evidence, and decision history",
+      "remainingGate": "none"
     }
   },
-  "status": "verification-pending"
+  "status": "verified"
 }
