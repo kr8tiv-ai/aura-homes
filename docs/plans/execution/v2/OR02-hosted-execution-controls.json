@@ -110,7 +110,7 @@
     "verificationClosure": {
       "verdict": "verification-pending",
       "activationCommit": "3970661464c7ff3e11848d2594979649debb7bc5",
-      "candidateCommit": "pending",
+      "candidateCommit": "58d845ae9573ff0ab506f0da01bdb170b65c9b62",
       "lineageBase": "31c1a6da462b52721218097887181c118dba87ee",
       "writeSetCheck": {
         "declared": 5,
@@ -119,7 +119,7 @@
         "protectedPathChanges": 0,
         "overlappingOwners": []
       },
-      "positionReceipt": "Pending exact closure-aware G05 reproduction against base 31c1a6da462b52721218097887181c118dba87ee, the new five-path candidate, and its manifest-only closure.",
+      "positionReceipt": "This manifest-only closure binds base 31c1a6da462b52721218097887181c118dba87ee and exact five-path candidate 58d845ae9573ff0ab506f0da01bdb170b65c9b62 for closure-aware G05 reproduction before independent verification.",
       "gateReceipts": {
         "typecheck": "pass",
         "focusedControls": "15/15 dedicated OR02 contract proofs passed after a 13-pass/2-fail red phase, including pre-mutation history capacity refusal and reservation-safe UTC-day rollover, without a server, provider request, account mutation, or external service",
@@ -160,8 +160,8 @@
       "focusedRed": "13 passed and 2 failed: full retained history was accepted and mutated, while next-day work dispatched across a live reservation and left the older execution unable to settle.",
       "focusedGreen": "15/15 passed after bounded pre-mutation history refusal and reservation-safe UTC-day rollover for duplicate and distinct request identifiers.",
       "repositoryGates": "focused 15/15, typecheck, deterministic 733+4, Graph v2 25/25, graph-position 14/14, and diff checks passed; exact G05 and independent verification remain pending.",
-      "candidateCommit": "pending",
-      "exactWriteSet": "pending exact five-path comparison from 31c1a6da462b52721218097887181c118dba87ee",
+      "candidateCommit": "58d845ae9573ff0ab506f0da01bdb170b65c9b62",
+      "exactWriteSet": "candidate 58d845ae9573ff0ab506f0da01bdb170b65c9b62 changes exactly the declared five OR02 paths from 31c1a6da462b52721218097887181c118dba87ee with zero protected paths",
       "g05Receipt": "pending non-interleaved candidate and manifest-only closure",
       "remainingGate": "repository gates, exact G05, and fresh independent reverification of the final repaired candidate"
     }
