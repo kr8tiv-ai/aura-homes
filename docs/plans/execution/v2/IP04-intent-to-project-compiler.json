@@ -1,0 +1,97 @@
+{
+  "graphVersion": "aura-graph/v2.0@680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8",
+  "node": "IP04",
+  "lane": "image-to-plan",
+  "stage": "intent-to-project-compiler",
+  "job": "Compile strict DesignIntent data into one deterministic graph-backed BuilderDocument proposal and canonical hashes through existing builder factories, with explicit decisions and bounded refusals, without model-authored coordinates, providers, persistence, money, UI, or frozen 3D/design work.",
+  "inputs": [
+    {
+      "name": "IP03-verified-provider-neutral-adapter",
+      "version": "0fd80cf",
+      "hash": "git:0fd80cf62f49b1364f261fac4ce9c05579583b4c"
+    },
+    {
+      "name": "approved-intent-compiler-contract",
+      "version": "2.0",
+      "hash": "git:f7616886f9f8a171c847ef5eb49e932246ff989b"
+    },
+    {
+      "name": "IP04-implementation-plan",
+      "version": "2026-08-29",
+      "hash": "git:505aec57c06f32de635f9967a9cd060b10d15e53"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "deterministic-intent-project-compiler",
+      "acceptanceSchema": "AuraDesignIntentCompilerV1",
+      "path": "app/lib/ai/designIntentCompiler.ts"
+    },
+    {
+      "name": "deterministic-compiler-contract-proof",
+      "acceptanceSchema": "Playwright deterministic factory and hostile-boundary proof",
+      "path": "app/tests-ip04/design-intent-compiler.contract.ts"
+    }
+  ],
+  "depends": [
+    "IP03:verified"
+  ],
+  "reject": [
+    "IP03 is not independently verified",
+    "input is compiled without strict promotion through parseDesignIntent",
+    "model-authored coordinates, walls, polygons, room faces, openings, roofs, hashes, timestamps, or project identifiers enter the compiler",
+    "a requested room, minimum area, opening count, storey, split level, roof form, or orientation priority is silently dropped, clamped, repaired, or approximated",
+    "an unsupported or factory-refused program returns a partial project instead of a bounded refusal",
+    "the same intent and compiler version produce different canonical document or proposal hashes",
+    "the proposal document fails validateBuilderDocument or its document hash differs from hashBuilderDocument",
+    "caller input, factory intermediates, decisions, unresolved questions, source fingerprints, document, graph, or result remain aliased and mutable",
+    "a provider SDK or name, network call, credential, model invocation, storage, clock, randomness, wallet, payment, fee, budget, project persistence, React, public UI, or external action enters IP04",
+    "an undeclared path changes or the complete candidate write set differs from this manifest",
+    "a website 3D, rendering, animation, engine, scene, public visual, model, texture, shader, camera, lighting, motion, or quality-tier path changes"
+  ],
+  "writeSet": [
+    "docs/plans/2026-08-29-ip04-intent-to-project-compiler-plan.md",
+    "docs/plans/execution/v2/IP04-intent-to-project-compiler.json",
+    "app/lib/ai/designIntentCompiler.ts",
+    "app/tests-ip04/design-intent-compiler.contract.ts",
+    "app/playwright.ip04.config.ts"
+  ],
+  "freezeClass": "none",
+  "owner": "primary-agent",
+  "verifier": "independent-fresh-context",
+  "sideEffects": "none",
+  "externalGates": [],
+  "verification": [
+    "npm run typecheck",
+    "npx playwright test --config=playwright.ip04.config.ts",
+    "npm test",
+    "npm run test:graph-v2",
+    "npm run test:graph-position",
+    "fixture: strict intent promotion rejects unknown keys, geometry, accessors, custom prototypes, and revoked proxies",
+    "fixture: same intent and compiler version return identical intent, document, and proposal hashes",
+    "fixture: target, range, and disclosed default footprint rules create deterministic half-foot editable graph dimensions without model coordinates",
+    "fixture: one and two storeys, requested rooms and minimum areas compile through existing graph factories or return bounded refusals",
+    "fixture: supported roofs and exact openings compile through existing factories while unsupported roof, split-level, over-capacity, and impossible programs fail visibly",
+    "fixture: deterministic material, climate, siting, and fallback mappings are named in decisions",
+    "fixture: validated document hash is hashBuilderDocument output and proposal hash binds compiler version, intent hash, document hash, decisions, unresolved questions, and source fingerprints",
+    "fixture: output is detached and deeply frozen without mutating input",
+    "static proof: the compiler has no provider, network, secret, storage, clock, randomness, wallet, payment, fee, budget, persistence, React, UI, 3D, renderer, scene, animation, camera, lighting, shader, model, or texture dependency",
+    "git diff --name-only <IP04-base>...<IP04-candidate>"
+  ],
+  "repair": {
+    "maxLoops": 1,
+    "boundary": "IP04 writeSet only"
+  },
+  "evidence": {
+    "startedFrom": "588b75c367f3f2fa4e45ba972b5e5d9c28ea088e",
+    "dependencyGate": "IP03 independently verified at 0fd80cf62f49b1364f261fac4ce9c05579583b4c",
+    "planCommit": "505aec57c06f32de635f9967a9cd060b10d15e53",
+    "readinessReconciliation": "Graph v2 authority passed 25/25 and position contracts passed 14/14 at node start; IP03 is committed verified; the worktree was clean; external gates are empty; declared protected paths are zero.",
+    "existingSurfaceAudit": "DesignIntent, strict parsing, graph/document factories, validators, canonical document hashing, and deterministic graph mutations exist. No intent compiler or canonical compiled-project proposal exists. AuraProject persistence requires time-bearing durable identity and remains downstream in IP07.",
+    "dependencyInterpretation": "The approved activation sequence places local IP04/IP05 before hosted OR01/OR02. OR03 may later feed this compiler through the verified IP03 boundary but is not required to activate the provider-free compiler.",
+    "writeOwnership": "No ready, active, verification-pending, or integration-pending manifest owns an IP04 path.",
+    "protectedPathChanges": 0,
+    "githubSync": "deferred by founder direction; this node remains local"
+  },
+  "status": "ready"
+}
