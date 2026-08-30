@@ -125,8 +125,16 @@
         "hostileBoundary": "Exact-key descriptor copying rejects unknown fields, accessors, custom prototypes, cycles, symbols, sparse arrays, throwing getters, revoked proxies, duplicate identities, malformed provenance, and unsafe money through one bounded error.",
         "isolation": "The result is deterministic, fully detached, deeply frozen, and imports only the HM01 truth contract; no external action or public visual surface changed."
       },
-      "remainingGate": "independent fresh-context verification"
+      "independentVerification": {
+        "date": "2026-08-29",
+        "verdict": "independent fresh-context verification pass",
+        "authorityAndLineage": "Exact approved Graph v2 authority and Matt-authored approval matched; base b50d57cfcdf76ce45ab5f12fc08d1f404ee2fabb, activation 115a9175b4ab9c0039a81bddebcefc9b29fcfc9f, candidate e9acd87def3bb90e38a3d2eb9f0832e292ad55f7, and closure 3764595e154b3bde65dd1745ca80a88d9ce211bf form valid ancestry.",
+        "writesAndGates": "Candidate changed exactly 5/5 declared paths; closure changed only this manifest; HM01 is verified; live ownership overlap, protected/frozen changes, and external gates were zero; exact G05 preflight passed all checks with movement remain.",
+        "freshReceipts": "typecheck passed; dedicated dashboard contract 13/13 passed; deterministic suite 733 passed with 4 intentional served-only skips; graph-v2 25/25 passed; graph-position 14/14 passed.",
+        "sourceVerdict": "The receipt-backed projection preserves explicit missing evidence, separately names and conserves all money layers, reconciles dated claims/transfers/spend/balances, rejects hostile or unsafe inputs, and remains deterministic, detached, deeply frozen, and free of external action or UI/rendering dependencies."
+      },
+      "remainingGate": "none"
     }
   },
-  "status": "verification-pending"
+  "status": "verified"
 }
