@@ -130,6 +130,7 @@
       "remainingGate": "independent fresh-context verification"
     },
     "repairLoop": {
+      "used": 1,
       "attempt": 1,
       "authorizedBy": "manifest repair.maxLoops and founder authorization for all bounded verification passes",
       "baseCommit": "a00501529c065ad7c57e88a98d1241066adb5fb3",
@@ -143,8 +144,11 @@
       "focusedRed": "13 passed and 2 failed before repair; the storey-swap and forged-disclosure regressions failed as expected, with the area shortfall sharing the program regression.",
       "focusedGreen": "15/15 passed after repair.",
       "repositoryGates": "typecheck pass; 737 declared with 733 pass and 4 intentional served-only skips; graph-v2 25/25; graph-position 14/14; diff check clean.",
-      "remainingGate": "commit repaired candidate, exact G05 preflight, then fresh independent reverification"
+      "candidateCommit": "b490dab890e561e5a2054c96d268d916891155db",
+      "exactWriteSet": "repair base a00501529c065ad7c57e88a98d1241066adb5fb3 to candidate changed exactly the declared 5/5 IP05 paths with zero protected paths or overlaps",
+      "g05Receipt": "explicit preflight passed authority, IP04 dependency, exact writes, clean worktree, complete evidence, decision history, and movement remain",
+      "remainingGate": "fresh independent reverification of the repaired candidate"
     }
   },
-  "status": "active"
+  "status": "verification-pending"
 }
