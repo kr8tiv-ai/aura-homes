@@ -781,13 +781,7 @@ const transact = async (
   try {
     const receipt = exactRecord(snapshot(raw), ["state", "value"] as const);
     const returnedState = parseState(receipt.state);
-    let committedRaw: unknown;
-    try {
-      committedRaw = await dependencies.read.call(dependencies.storeObject);
-    } catch {
-      return refuse("control-store-failed");
-    }
-    const committedState = parseState(committedRaw);
+    const committedState = await readCommittedState(dependencies);
     if (JSON.stringify(committedState) !== JSON.stringify(returnedState)) {
       return refuse("control-store-failed");
     }
@@ -797,33 +791,42 @@ const transact = async (
   }
 };
 
+const readCommittedState = async (
+  dependencies: ParsedDependencies,
+): Promise<OpenRouterControlState> => {
+  let raw: unknown;
+  try {
+    raw = await dependencies.read.call(dependencies.storeObject);
+  } catch {
+    return refuse("control-store-failed");
+  }
+  return parseState(raw);
+};
+
 const sameCounters = (
   left: OpenRouterControlCounters,
   right: OpenRouterControlCounters,
 ): boolean => JSON.stringify(left) === JSON.stringify(right);
 
-const release = async (
+const retainedReservationCounters = async (
   parsed: ParsedInput,
   dependencies: ParsedDependencies,
   id: string,
 ): Promise<OpenRouterControlCounters> => {
-  const receipt = await transact(dependencies, (stateValue) => {
-    const state = parseState(stateValue);
-    const matches = state.reservations.filter((item) => item.id === id);
-    if (matches.length !== 1) return refuse("accounting-failed");
-    const next = { ...state, reservations: state.reservations.filter((item) => item.id !== id) };
-    return { state: next, value: counters(next, parsed) };
-  });
-  try {
-    const parsedCounters = parseCounters(snapshot(receipt.value));
-    if (receipt.state.reservations.some((item) => item.id === id) ||
-        !sameCounters(parsedCounters, counters(receipt.state, parsed))) {
-      return refuse("control-store-failed");
-    }
-    return parsedCounters;
-  } catch {
+  const state = await readCommittedState(dependencies);
+  const matches = state.reservations.filter((item) =>
+    item.id === id &&
+    item.id === reservationId(parsed) &&
+    item.requestId === parsed.request.requestId &&
+    item.day === parsed.window.day &&
+    item.userHash === parsed.scopeHashes.userHash &&
+    item.sessionHash === parsed.scopeHashes.sessionHash &&
+    item.projectHash === parsed.scopeHashes.projectHash &&
+    item.reservedProviderCostMicros === parsed.estimatedProviderCostMicros);
+  if (matches.length !== 1) {
     return refuse("control-store-failed");
   }
+  return counters(state, parsed);
 };
 
 const settle = async (
@@ -987,7 +990,7 @@ export async function runControlledDesignIntentTask(
   try {
     response = await runDesignIntentTask(parsed.request, dependencies.hostedAdapter);
   } catch (error) {
-    const released = await release(parsed, dependencies, id);
+    const retained = await retainedReservationCounters(parsed, dependencies, id);
     if (error instanceof DesignIntentTaskError) {
       const reasonByCode: Partial<Record<string, OpenRouterControlReason>> = {
         unavailable: "hosted-unavailable",
@@ -996,25 +999,25 @@ export async function runControlledDesignIntentTask(
         timeout: "hosted-timeout",
       };
       const reason = reasonByCode[error.code];
-      if (reason) return fallbackResult(parsed, dependencies, reason, released);
+      if (reason) return fallbackResult(parsed, dependencies, reason, retained);
     }
     return refuse("execution-failed");
   }
 
   if (response.adapter.kind !== "hosted") {
-    await release(parsed, dependencies, id);
+    await retainedReservationCounters(parsed, dependencies, id);
     return refuse("execution-failed");
-  }
-  const outputBytes = responseBytes(response);
-  if (outputBytes > parsed.declaredMaxOutputBytes || outputBytes > parsed.policy.maxOutputBytes) {
-    await release(parsed, dependencies, id);
-    return refuse("output-too-large");
   }
   const actualProviderCostMicros = response.receipt.providerCostMicros;
   if (!Number.isSafeInteger(actualProviderCostMicros) || actualProviderCostMicros < 0 ||
       actualProviderCostMicros > parsed.estimatedProviderCostMicros) {
-    await release(parsed, dependencies, id);
+    await retainedReservationCounters(parsed, dependencies, id);
     return refuse("accounting-failed");
+  }
+  const outputBytes = responseBytes(response);
+  if (outputBytes > parsed.declaredMaxOutputBytes || outputBytes > parsed.policy.maxOutputBytes) {
+    await settle(parsed, dependencies, id, actualProviderCostMicros);
+    return refuse("output-too-large");
   }
   const settled = await settle(
     parsed,

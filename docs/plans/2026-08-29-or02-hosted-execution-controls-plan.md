@@ -41,7 +41,7 @@ Provider controls are defense in depth, not Aura authority. Aura must reserve co
    - global daily committed-plus-reserved provider-cost cap;
    - concurrency cap;
    - input and declared output byte caps.
-5. Count hosted attempts even when the provider later fails, release every reservation exactly once, and never allow actual hosted cost to exceed its reservation or daily cap.
+5. Count every hosted dispatch. Settle exact cost only from a verified bounded receipt; if output, receipt, timeout, cancellation, or provider completion is uncertain after dispatch, retain the reservation as a reconciliation hold so concurrency and spend capacity cannot be silently reused. Never allow a successful result whose actual hosted cost exceeds its reservation or daily cap.
 6. Route kill-switch, rate, spend, concurrency, and bounded temporary hosted failures to the injected deterministic fake. Unsafe input, accounting drift, oversized output, invalid receipts, or store failures fail closed instead of falling back.
 7. Return a detached deeply frozen execution result and redacted audit receipt containing only versioned policy/rule identity, opaque-scope hashes, byte/counter/cost facts, route, reason, and bucket—never image bytes, source name, prompt, model output, raw provider body, secret, or raw user/session/project identifier.
 8. Require `contentRetention: "none"` and a bounded audit-retention-days declaration; it does not persist or delete anything itself.
@@ -64,7 +64,7 @@ The dedicated OR02 contract will first fail because the control-plane module doe
 - one hosted execution reserves atomically, settles exact IP03 provider cost, and returns no content in its audit receipt;
 - user, session, project, global daily spend, concurrency, and kill-switch gates independently select the deterministic fake without touching the hosted adapter;
 - encoded image bytes and declared output bytes are bounded before either adapter runs;
-- temporary hosted unavailability/rate/payment failures release once and use one deterministic fallback, while invalid output/receipt and accounting drift fail closed;
+- temporary hosted unavailability/rate/payment failures retain one reconciliation hold and use one deterministic fallback, while invalid output/receipt and accounting drift retain the hold and fail closed;
 - actual provider cost cannot exceed the reservation or global cap;
 - UTC bucket changes reset only their declared windows and stale counters cannot smuggle spend or concurrency;
 - hostile boundaries do not invoke accessors, mutate inputs, leak private details, or return partial reservations;
@@ -91,5 +91,7 @@ The dedicated OR02 contract will first fail because the control-plane module doe
 The fresh-context verifier found that the injected atomic-store boundary could return a fabricated hosted decision without returning the state it committed, a typed-array species lookup could invoke a hostile own `constructor` accessor, and the committed plan contained trailing spaces. The single Graph-authorized repair requires a bounded `{ state, value }` transaction receipt, proves the exact reservation/request/counters before hosted execution, copies bytes only through inspected indexed data descriptors, adds adversarial regressions, and removes the whitespace. No provider, route, persistence implementation, account mutation, UI, or external side effect enters the node.
 
 The final fresh-context pass on this still-open repair attempt showed that the receipt alone was not durable-commit evidence: a store could execute the operation and echo its result without saving it. The store contract now explicitly requires `read()` as a trusted, strongly consistent durable-state primitive after a resolved transaction. Every transaction receipt is compared with that independently read committed snapshot before the controller can proceed, including before any hosted adapter call. A noncommitting store regression proves the hosted call count remains zero. OR02 does not claim that an arbitrarily malicious implementation can prove its own durability; a future production adapter must earn separate verification against this atomicity contract.
+
+The final deep review also proved that releasing a reservation after dispatch erases real or possible provider spend on timeout, invalid output, oversized output, or cost overage. The bounded correction now distinguishes pre-dispatch denial from post-dispatch uncertainty: uncertain attempts retain their exact reservation for reconciliation, verified oversized responses settle their exact valid receipt cost before refusing the output, and a second request cannot reuse the held daily capacity. No production reconciler, persistence implementation, provider call, or money movement enters OR02.
 
 Stop and refuse rather than expanding OR02 if implementation requires a live provider call, route, secret, account login, account/guardrail mutation, workspace-budget mutation, spend, fee, payment, persistent production store, project mutation, UI, GitHub synchronization outside the separately authorized branch push, or any frozen/public design path.

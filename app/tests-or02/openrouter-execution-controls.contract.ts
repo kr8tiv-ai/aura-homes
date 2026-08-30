@@ -17,6 +17,7 @@ import {
   OpenRouterControlError,
   runControlledDesignIntentTask,
   type OpenRouterAtomicControlStore,
+  type OpenRouterControlDependencies,
   type OpenRouterControlPolicy,
   type OpenRouterControlState,
   type OpenRouterStoreOperation,
@@ -361,14 +362,19 @@ test("input and declared output caps refuse before either adapter runs", async (
   }
 });
 
-test("temporary hosted failures release once and use exactly one fake fallback", async () => {
+test("temporary hosted failures retain one reconciliation hold and cannot bypass the daily cap", async () => {
   for (const failure of ["unavailable", "rate-limited", "payment-required"] as const) {
     const state = atomicStore();
     let fallbackCalls = 0;
+    let hostedCalls = 0;
     const fallback = fake();
-    const result = await runControlledDesignIntentTask(input(`failure-${failure}`), {
+    const limits = { globalDailyProviderCostMicros: 2_000 };
+    const adapters: OpenRouterControlDependencies = {
       store: state.store,
-      hostedAdapter: hosted(async () => { throw new DesignIntentAdapterFailure(failure); }),
+      hostedAdapter: hosted(async () => {
+        hostedCalls += 1;
+        throw new DesignIntentAdapterFailure(failure);
+      }),
       fallbackAdapter: {
         ...fallback,
         async run(request, context) {
@@ -376,15 +382,28 @@ test("temporary hosted failures release once and use exactly one fake fallback",
           return fallback.run(request, context);
         },
       },
-    });
+    };
+    const result = await runControlledDesignIntentTask(input(`failure-${failure}`, limits), adapters);
     expect(result).toMatchObject({
       route: "deterministic-fake",
-      audit: { reason: `hosted-${failure}` },
+      audit: {
+        reason: `hosted-${failure}`,
+        counters: { activeReservations: 1, reservedProviderCostMicros: 1_250 },
+      },
     });
     expect(fallbackCalls).toBe(1);
-    expect(state.snapshot().reservations).toEqual([]);
+    expect(hostedCalls).toBe(1);
+    expect(state.snapshot().reservations).toHaveLength(1);
     expect(state.snapshot().committedProviderCostMicros).toBe(0);
-    expect(state.transactions()).toBe(2);
+    expect(state.transactions()).toBe(1);
+
+    const blockedRetry = await runControlledDesignIntentTask(input(`failure-${failure}-retry`, limits), adapters);
+    expect(blockedRetry).toMatchObject({
+      route: "deterministic-fake",
+      audit: { reason: "daily-spend-limit" },
+    });
+    expect(hostedCalls).toBe(1);
+    expect(state.snapshot().reservations).toHaveLength(1);
   }
 });
 
@@ -411,8 +430,9 @@ test("invalid hosted output and actual cost above reservation fail closed withou
       },
     }), code);
     expect(fallbackCalls).toBe(0);
-    expect(state.snapshot().reservations).toEqual([]);
+    expect(state.snapshot().reservations).toHaveLength(1);
     expect(state.snapshot().committedProviderCostMicros).toBe(0);
+    expect(state.transactions()).toBe(1);
   }
 });
 
@@ -426,7 +446,7 @@ test("actual serialized output is bounded after hosted execution and before retu
     fallbackAdapter: fake(),
   }), "output-too-large");
   expect(state.snapshot().reservations).toEqual([]);
-  expect(state.snapshot().committedProviderCostMicros).toBe(0);
+  expect(state.snapshot().committedProviderCostMicros).toBe(1_250);
 });
 
 test("explicit UTC minute and day transitions reset only their declared counters", async () => {
