@@ -113,16 +113,16 @@
     "verificationClosure": {
       "verdict": "verification-pending",
       "activationCommit": "3970661464c7ff3e11848d2594979649debb7bc5",
-      "candidateCommit": "pending concurrent-readback repair candidate",
+      "candidateCommit": "41859f46b202d8ec68f52214424f3f2a1900eb77",
       "lineageBase": "49e4de0bc4fce60cce854895e883641205579730",
       "writeSetCheck": {
         "declared": 5,
-        "changed": "pending candidate",
+        "changed": 5,
         "delta": 0,
         "protectedPathChanges": 0,
         "overlappingOwners": []
       },
-      "positionReceipt": "Pending closure-aware G05 reproduction against base 49e4de0bc4fce60cce854895e883641205579730, the exact five-path concurrent-readback repair candidate, and its manifest-only closure.",
+      "positionReceipt": "This manifest-only closure binds base 49e4de0bc4fce60cce854895e883641205579730 and exact five-path candidate 41859f46b202d8ec68f52214424f3f2a1900eb77 for closure-aware G05 reproduction before independent verification.",
       "gateReceipts": {
         "typecheck": "pass",
         "focusedControls": "17/17 dedicated OR02 contract proofs passed after deterministic reservation-race, settlement-race, and unreadable-fallback red phases, without a server, provider request, account mutation, or external service",
@@ -138,7 +138,7 @@
         "privacyAndAudit": "Audit receipts retain no content, hash opaque user/session/project scopes, declare bounded audit retention, expose only counters and accounting facts, and are detached and deeply frozen.",
         "sideEffects": "The control plane contains no network call, provider SDK, credential, environment read, clock, randomness, storage implementation, account mutation, wallet, checkout, fee, project persistence, React, public UI, CSS, or frozen 3D/rendering/animation dependency."
       },
-      "remainingGate": "repository gates, exact five-path candidate, manifest-only closure, closure-aware G05, push, and independent fresh-context verification of the concurrent-readback repair"
+      "remainingGate": "manifest-only closure, closure-aware G05, push, and independent fresh-context verification of the concurrent-readback repair"
     },
     "repairLoop": {
       "used": 1,
@@ -165,9 +165,9 @@
       "focusedRed": "Both deterministic interleavings failed with control-store-failed after their first operations had committed; unreadable kill-switch fallback returned fake success instead of a bounded store failure.",
       "focusedGreen": "17/17 passed after operation-specific durable readback and mandatory fallback-store readability.",
       "repositoryGates": "focused 17/17, typecheck, deterministic 733+4, Graph v2 25/25, graph-position 14/14, and diff checks passed; exact candidate, G05, push, and independent gates remain pending.",
-      "candidateCommit": "pending concurrent-readback repair candidate",
-      "exactWriteSet": "pending exact five-path candidate from 49e4de0bc4fce60cce854895e883641205579730",
-      "g05Receipt": "pending candidate and manifest-only closure",
+      "candidateCommit": "41859f46b202d8ec68f52214424f3f2a1900eb77",
+      "exactWriteSet": "candidate 41859f46b202d8ec68f52214424f3f2a1900eb77 changes exactly the declared five OR02 paths from 49e4de0bc4fce60cce854895e883641205579730 with zero protected paths",
+      "g05Receipt": "pending manifest-only closure",
       "remainingGate": "repository gates, exact G05, push, and fresh independent verification"
     }
   },
