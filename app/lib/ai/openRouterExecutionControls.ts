@@ -795,11 +795,7 @@ const transact = async (
   try {
     const receipt = exactRecord(snapshot(raw), ["state", "value"] as const);
     const returnedState = parseState(receipt.state);
-    const committedState = await readCommittedState(dependencies);
-    if (JSON.stringify(committedState) !== JSON.stringify(returnedState)) {
-      return refuse("control-store-failed");
-    }
-    return { state: committedState, value: receipt.value };
+    return { state: returnedState, value: receipt.value };
   } catch {
     return refuse("control-store-failed");
   }
@@ -837,7 +833,13 @@ const retainedReservationCounters = async (
     item.sessionHash === parsed.scopeHashes.sessionHash &&
     item.projectHash === parsed.scopeHashes.projectHash &&
     item.reservedProviderCostMicros === parsed.policy.maxProviderCostMicrosPerRequest);
-  if (matches.length !== 1) {
+  const matchingRequests = state.requests.filter((item) =>
+    item.requestId === parsed.request.requestId &&
+    item.minute === parsed.window.minute &&
+    item.userHash === parsed.scopeHashes.userHash &&
+    item.sessionHash === parsed.scopeHashes.sessionHash &&
+    item.projectHash === parsed.scopeHashes.projectHash);
+  if (matches.length !== 1 || matchingRequests.length !== 1) {
     return refuse("control-store-failed");
   }
   return counters(state, parsed);
@@ -874,6 +876,23 @@ const settle = async (
     if (receipt.state.reservations.some((item) => item.id === id) ||
         !sameCounters(parsedCounters, counters(receipt.state, parsed))) {
       return refuse("control-store-failed");
+    }
+    const committedState = await readCommittedState(dependencies);
+    if (committedState.day < receipt.state.day ||
+        committedState.reservations.some((item) => item.id === id)) {
+      return refuse("control-store-failed");
+    }
+    if (committedState.day === receipt.state.day) {
+      const matchingRequests = committedState.requests.filter((item) =>
+        item.requestId === parsed.request.requestId &&
+        item.minute === parsed.window.minute &&
+        item.userHash === parsed.scopeHashes.userHash &&
+        item.sessionHash === parsed.scopeHashes.sessionHash &&
+        item.projectHash === parsed.scopeHashes.projectHash);
+      if (matchingRequests.length !== 1 ||
+          committedState.committedProviderCostMicros < receipt.state.committedProviderCostMicros) {
+        return refuse("control-store-failed");
+      }
     }
     return parsedCounters;
   } catch {
@@ -975,6 +994,7 @@ export async function runControlledDesignIntentTask(
     if (!sameCounters(decision.counters, counters(reservationReceipt.state, parsed))) {
       return refuse("control-store-failed");
     }
+    await readCommittedState(dependencies);
     return fallbackResult(parsed, dependencies, decision.reason, decision.counters);
   }
 
@@ -999,6 +1019,7 @@ export async function runControlledDesignIntentTask(
       !sameCounters(decision.counters, counters(reservationReceipt.state, parsed))) {
     return refuse("control-store-failed");
   }
+  await retainedReservationCounters(parsed, dependencies, id);
   let response: DesignIntentTaskResponse;
   try {
     response = await runDesignIntentTask(parsed.request, dependencies.hostedAdapter);

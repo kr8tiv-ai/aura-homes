@@ -202,6 +202,37 @@ const atomicStore = (initial: OpenRouterControlState = emptyState()) => {
   };
 };
 
+const interleavingStore = (target: "reserve" | "settle") => {
+  let state = structuredClone(emptyState());
+  let targetTransactions = 0;
+  let releaseFirstTarget: (() => void) | null = null;
+  const store: OpenRouterAtomicControlStore = {
+    async transact(operation: OpenRouterStoreOperation) {
+      const before = structuredClone(state);
+      const result = operation(structuredClone(state));
+      state = structuredClone(result.state);
+      const reservationDelta = state.reservations.length - before.reservations.length;
+      const isTarget = target === "reserve" ? reservationDelta === 1 : reservationDelta === -1;
+      if (isTarget) {
+        targetTransactions += 1;
+        if (targetTransactions === 1) {
+          await new Promise<void>((resolve) => { releaseFirstTarget = resolve; });
+        } else if (targetTransactions === 2) {
+          releaseFirstTarget?.();
+        }
+      }
+      return structuredClone(result);
+    },
+    async read() {
+      return structuredClone(state);
+    },
+  };
+  return {
+    store,
+    snapshot: () => structuredClone(state),
+  };
+};
+
 const expectControlError = async (promise: Promise<unknown>, code: string) => {
   try {
     await promise;
@@ -246,6 +277,58 @@ test("one authorized hosted task reserves atomically, settles exact cost, and em
   expect(auditText).not.toContain("private-cabin.jpg");
   expect(auditText).not.toContain("Owner-provided cabin reference");
   expect(auditText).not.toContain(sourceFingerprint);
+});
+
+test("a later committed reservation does not invalidate an earlier durable reservation receipt", async () => {
+  const state = interleavingStore("reserve");
+  const dependencies: OpenRouterControlDependencies = {
+    store: state.store,
+    hostedAdapter: hosted(),
+    fallbackAdapter: fake(),
+  };
+
+  const results = await Promise.all([
+    runControlledDesignIntentTask(input("reservation-race-first"), dependencies),
+    runControlledDesignIntentTask(input("reservation-race-second"), dependencies),
+  ]);
+
+  expect(results.map((result) => result.route)).toEqual(["hosted", "hosted"]);
+  expect(state.snapshot()).toMatchObject({
+    committedProviderCostMicros: 2_500,
+    reservations: [],
+  });
+});
+
+test("a later committed settlement does not invalidate an earlier durable settlement receipt", async () => {
+  const state = interleavingStore("settle");
+  let hostedCalls = 0;
+  let releaseHosted!: () => void;
+  const hostedGate = new Promise<void>((resolve) => { releaseHosted = resolve; });
+  const adapter = hosted(async () => {
+    hostedCalls += 1;
+    await hostedGate;
+    return rawResponse();
+  });
+  const dependencies: OpenRouterControlDependencies = {
+    store: state.store,
+    hostedAdapter: adapter,
+    fallbackAdapter: fake(),
+  };
+
+  const first = runControlledDesignIntentTask(input("settlement-race-first"), dependencies);
+  await expect.poll(() => state.snapshot().reservations.length).toBe(1);
+  await expect.poll(() => hostedCalls).toBe(1);
+  const second = runControlledDesignIntentTask(input("settlement-race-second"), dependencies);
+  await expect.poll(() => state.snapshot().reservations.length).toBe(2);
+  await expect.poll(() => hostedCalls).toBe(2);
+  releaseHosted();
+
+  const results = await Promise.all([first, second]);
+  expect(results.map((result) => result.route)).toEqual(["hosted", "hosted"]);
+  expect(state.snapshot()).toMatchObject({
+    committedProviderCostMicros: 2_500,
+    reservations: [],
+  });
 });
 
 test("kill switch, rate, spend, and concurrency gates choose the fake before hosted execution", async () => {
@@ -698,6 +781,20 @@ test("hostile boundaries and store failures are bounded without accessors, mutat
   }), "control-store-failed");
   expect(calls).toBe(0);
   expect(JSON.stringify(storeError)).not.toContain("private-database-detail");
+
+  const unreadableFallbackStore: OpenRouterAtomicControlStore = {
+    async transact(operation) { return structuredClone(operation(emptyState())); },
+    async read() { throw new Error("private-read-detail"); },
+  };
+  const unreadableFallbackError = await expectControlError(runControlledDesignIntentTask(
+    input("unreadable-fallback", { liveExecutionEnabled: false }),
+    {
+      store: unreadableFallbackStore,
+      hostedAdapter: hosted(),
+      fallbackAdapter: fake(),
+    },
+  ), "control-store-failed");
+  expect(JSON.stringify(unreadableFallbackError)).not.toContain("private-read-detail");
 
   let uncommittedHostedCalls = 0;
   let uncommittedTransactions = 0;

@@ -1,7 +1,7 @@
 import { defineConfig } from "playwright/test";
 
 export default defineConfig({
-  // Repair loop 1 also proves bounded history and reservation-safe UTC rollover.
+  // The still-open repair loop also proves operation-witness readback under concurrent state advancement.
   testDir: "./tests-or02",
   testMatch: "openrouter-execution-controls.contract.ts",
   workers: 1,
