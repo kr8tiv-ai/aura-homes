@@ -103,8 +103,8 @@
     "verificationClosure": {
       "verdict": "verification-pending",
       "activationCommit": "3970661464c7ff3e11848d2594979649debb7bc5",
-      "candidateCommit": "55bcbdcfa265ab3a497094155d91a670e9732cf7",
-      "lineageBase": "45e830960e4435d5e9d18d43a03aa5915a192c98",
+      "candidateCommit": "1d1eaaa87b6f9a1a9e870a0fac83fa21192d03b7",
+      "lineageBase": "a11bcc1e8a59b7366ebccc672bf2393667f049e7",
       "writeSetCheck": {
         "declared": 5,
         "changed": 5,
@@ -112,13 +112,13 @@
         "protectedPathChanges": 0,
         "overlappingOwners": []
       },
-      "positionReceipt": "G05 explicit preflight passed authority, OR01 dependency, exact 5/5 writes, clean candidate, complete evidence, decision history, and movement remain at candidate 55bcbdcfa265ab3a497094155d91a670e9732cf7.",
+      "positionReceipt": "Pending exact G05 reproduction against the non-interleaved a11bcc1-to-1d1eaaa candidate and this manifest-only closure.",
       "gateReceipts": {
-        "typecheck": "pass",
-        "focusedControls": "11/11 dedicated OR02 contract proofs passed in 860ms without a server, provider request, account mutation, or external service",
-        "deterministic": "737 declared; 733 passed and 4 intentional served-only skips in 22.6s",
-        "graphV2": "25/25 passed; authority pass; manifest errors empty",
-        "graphPosition": "14/14 position-check contract tests passed in isolation; one earlier concurrent repository-history fixture hit Git object-write contention while graph-v2 was traversing history, then the unchanged exact gate passed",
+        "typecheck": "pending final candidate rerun",
+        "focusedControls": "11/11 dedicated OR02 contract proofs passed, including noncommitting-store refusal before hosted execution, without a server, provider request, account mutation, or external service",
+        "deterministic": "pending final candidate rerun",
+        "graphV2": "pending final candidate rerun",
+        "graphPosition": "pending final candidate rerun",
         "diffCheck": "pass"
       },
       "contractEvidence": {
@@ -128,7 +128,7 @@
         "privacyAndAudit": "Audit receipts retain no content, hash opaque user/session/project scopes, declare bounded audit retention, expose only counters and accounting facts, and are detached and deeply frozen.",
         "sideEffects": "The control plane contains no network call, provider SDK, credential, environment read, clock, randomness, storage implementation, account mutation, wallet, checkout, fee, project persistence, React, public UI, CSS, or frozen 3D/rendering/animation dependency."
       },
-      "remainingGate": "independent fresh-context verification"
+      "remainingGate": "repository gates, exact non-interleaved G05, and independent fresh-context verification"
     },
     "repairLoop": {
       "used": 1,
@@ -147,11 +147,11 @@
       "focusedRed": "The focused suite rejected the new read-bearing dependency shape before implementation; the noncommitting-store regression demonstrates the required zero-hosted-call refusal boundary.",
       "focusedGreen": "11/11 passed after the final correction.",
       "repositoryGates": "focused green; repository-wide, graph, exact-write, and independent gates pending the clean final candidate.",
-      "candidateCommit": "pending-final-repair-candidate",
-      "exactWriteSet": "pending exact five-path comparison from a11bcc1e8a59b7366ebccc672bf2393667f049e7",
+      "candidateCommit": "1d1eaaa87b6f9a1a9e870a0fac83fa21192d03b7",
+      "exactWriteSet": "candidate 1d1eaaa87b6f9a1a9e870a0fac83fa21192d03b7 changes exactly the declared five OR02 paths from a11bcc1e8a59b7366ebccc672bf2393667f049e7; exact G05 awaits this manifest-only closure",
       "g05Receipt": "pending non-interleaved candidate and manifest-only closure",
       "remainingGate": "repository gates, exact G05, and fresh independent reverification of the final repaired candidate"
     }
   },
-  "status": "active"
+  "status": "verification-pending"
 }
