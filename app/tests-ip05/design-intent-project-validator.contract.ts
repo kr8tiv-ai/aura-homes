@@ -424,6 +424,28 @@ test("an unsupported compiler outcome cannot validate a stale project", () => {
   });
 });
 
+test("compiler fit refusals cannot be bypassed by stale semantically plausible geometry", () => {
+  const orientation = fixture();
+  (orientation.intent.openings as Record<string, unknown>).orientationPriorities = ["south"];
+  const openingRefusal = compileDesignIntentToProject(orientation.intent);
+  expect(openingRefusal).toMatchObject({ ok: false, error: { code: "openings-do-not-fit" } });
+  rehash(orientation.intent, orientation.project);
+  expect(validateDesignIntentProject(orientation)).toMatchObject({
+    ok: false,
+    error: { gate: "openings", code: "opening-mismatch" },
+  });
+
+  const longLabel = fixture();
+  (longLabel.intent.rooms as Array<Record<string, unknown>>)[0].label = "A".repeat(37);
+  const programRefusal = compileDesignIntentToProject(longLabel.intent);
+  expect(programRefusal).toMatchObject({ ok: false, error: { code: "program-does-not-fit" } });
+  rehash(longLabel.intent, longLabel.project);
+  expect(validateDesignIntentProject(longLabel)).toMatchObject({
+    ok: false,
+    error: { gate: "program", code: "program-mismatch" },
+  });
+});
+
 test("uploaded-image provenance requires exactly one matching rights approval", () => {
   const missing = fixture();
   missing.sourceApprovals = [];
