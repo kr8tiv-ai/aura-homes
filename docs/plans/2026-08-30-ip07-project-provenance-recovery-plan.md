@@ -211,4 +211,3 @@ Stop rather than broadening IP07 if any implementation requires:
 - autonomous editor dispatch, hidden mutation, inferred confirmation, a second project model, or a non-atomic persistence claim;
 - payment, wallet, checkout, fee calculation, spend, deployment, DNS, legal/provider/partner approval, or any other external gate;
 - any website 3D, rendering, animation, engine, scene, model, texture, shader, geometry, camera, lighting, motion, or quality-tier path.
-
