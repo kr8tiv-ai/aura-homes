@@ -1,7 +1,7 @@
 import { defineConfig } from "playwright/test";
 
 export default defineConfig({
-  // Repair loop 1 keeps store-commit and hostile-byte regressions in this contract.
+  // Repair loop 1 also proves durable read-back precedes every hosted call.
   testDir: "./tests-or02",
   testMatch: "openrouter-execution-controls.contract.ts",
   workers: 1,

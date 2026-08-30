@@ -39,6 +39,7 @@
   "reject": [
     "OR01 is not independently verified",
     "a hosted-shaped execution can start without one successful atomic reservation",
+    "a transaction result is treated as durable commitment without a trusted strongly consistent state read-back",
     "per-user, per-session, per-project, global daily spend, concurrency, input byte, output byte, or kill-switch gates are missing or bypassable",
     "provider cost is represented outside safe integer USD micros or actual hosted cost can exceed its reservation or daily ceiling",
     "a hosted attempt is not counted or a reservation is released more or less than exactly once",
@@ -70,6 +71,7 @@
     "npm run test:graph-v2",
     "npm run test:graph-position",
     "fixture: hosted execution reserves atomically and settles exact IP03 provider cost without content in its audit receipt",
+    "fixture: a store that echoes a valid transaction result without committing it is refused before hosted execution",
     "fixture: user, session, project, daily spend, concurrency, and kill-switch gates independently choose deterministic fallback before hosted execution",
     "fixture: encoded input and declared output bytes are bounded before either adapter runs",
     "fixture: bounded temporary hosted failures release once and use one fake fallback while invalid output, receipt, accounting, and oversized output fail closed",
@@ -132,22 +134,24 @@
       "used": 1,
       "attempt": 1,
       "authorizedBy": "manifest repair.maxLoops and founder authorization for all bounded verification passes",
-      "baseCommit": "b490dab890e561e5a2054c96d268d916891155db",
-      "independentVerdict": "fail: one critical, one important, and one minor finding",
+      "baseCommit": "a11bcc1e8a59b7366ebccc672bf2393667f049e7",
+      "independentVerdict": "fail: the typed-array and malformed-receipt findings closed; final fresh-context pass found durable commitment was not independently observed and the prior closure lineage was interleaved",
       "findings": [
         "a fabricated store decision could start hosted execution without evidence of a committed reservation",
         "typed-array species lookup could invoke a hostile own constructor accessor",
-        "the committed candidate range contained trailing spaces in the implementation plan"
+        "the committed candidate range contained trailing spaces in the implementation plan",
+        "a store could echo the exact operation result without persisting it and hosted execution would still begin",
+        "the prior candidate-to-closure range interleaved IP05 manifest work and therefore did not satisfy G05"
       ],
-      "repair": "Require a bounded state-and-value transaction receipt, bind hosted execution to the exact returned reservation, request, and counters, inspect byte index descriptors without species lookup, add adversarial regressions, and remove committed whitespace.",
-      "focusedRed": "10 passed and 1 failed before repair at the hostile-byte assertion; the phantom-reservation assertion followed in the same bounded hostile-store contract.",
-      "focusedGreen": "11/11 passed after repair.",
-      "repositoryGates": "typecheck pass; 737 declared with 733 pass and 4 intentional served-only skips; graph-v2 25/25; graph-position 14/14; diff check clean.",
-      "candidateCommit": "0ea59f4f9c89def51a2d45be6f92205c6db339c3",
-      "exactWriteSet": "repair base b490dab890e561e5a2054c96d268d916891155db to candidate changed exactly the declared 5/5 OR02 paths with zero protected paths or overlaps",
-      "g05Receipt": "explicit preflight passed authority, OR01 dependency, exact writes, clean worktree, complete evidence, decision history, and movement remain",
-      "remainingGate": "fresh independent reverification of the repaired candidate"
+      "repair": "Keep the closed receipt-shape and hostile-byte fixes; establish read() as a trusted strongly consistent durable-state primitive; compare every transaction receipt with the committed read-back before proceeding; add the noncommitting-store regression; and rebuild a non-interleaved candidate/closure lineage.",
+      "focusedRed": "The focused suite rejected the new read-bearing dependency shape before implementation; the noncommitting-store regression demonstrates the required zero-hosted-call refusal boundary.",
+      "focusedGreen": "11/11 passed after the final correction.",
+      "repositoryGates": "focused green; repository-wide, graph, exact-write, and independent gates pending the clean final candidate.",
+      "candidateCommit": "pending-final-repair-candidate",
+      "exactWriteSet": "pending exact five-path comparison from a11bcc1e8a59b7366ebccc672bf2393667f049e7",
+      "g05Receipt": "pending non-interleaved candidate and manifest-only closure",
+      "remainingGate": "repository gates, exact G05, and fresh independent reverification of the final repaired candidate"
     }
   },
-  "status": "verification-pending"
+  "status": "active"
 }

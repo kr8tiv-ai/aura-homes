@@ -180,6 +180,7 @@ const emptyState = (): OpenRouterControlState => ({
 const atomicStore = (initial: OpenRouterControlState = emptyState()) => {
   let state = structuredClone(initial);
   let transactions = 0;
+  let reads = 0;
   const store: OpenRouterAtomicControlStore = {
     async transact(operation: OpenRouterStoreOperation) {
       transactions += 1;
@@ -187,11 +188,16 @@ const atomicStore = (initial: OpenRouterControlState = emptyState()) => {
       state = structuredClone(result.state);
       return structuredClone(result);
     },
+    async read() {
+      reads += 1;
+      return structuredClone(state);
+    },
   };
   return {
     store,
     snapshot: () => structuredClone(state),
     transactions: () => transactions,
+    reads: () => reads,
   };
 };
 
@@ -492,6 +498,7 @@ test("hostile boundaries and store failures are bounded without accessors, mutat
   let calls = 0;
   const broken: OpenRouterAtomicControlStore = {
     async transact() { throw new Error("private-database-detail"); },
+    async read() { return emptyState(); },
   };
   const storeError = await expectControlError(runControlledDesignIntentTask(input(), {
     store: broken,
@@ -501,37 +508,30 @@ test("hostile boundaries and store failures are bounded without accessors, mutat
   expect(calls).toBe(0);
   expect(JSON.stringify(storeError)).not.toContain("private-database-detail");
 
-  let phantomHostedCalls = 0;
-  let phantomTransactions = 0;
-  const phantom: OpenRouterAtomicControlStore = {
-    async transact() {
-      phantomTransactions += 1;
-      if (phantomTransactions !== 1) throw new Error("no-reservation-exists");
-      return {
-        kind: "hosted",
-        reason: "hosted-authorized",
-        reservationId: "phantom-reservation",
-        counters: {
-          userMinuteRequests: 1,
-          sessionMinuteRequests: 1,
-          projectMinuteRequests: 1,
-          activeReservations: 1,
-          committedProviderCostMicros: 0,
-          reservedProviderCostMicros: 1_250,
-        },
-      };
+  let uncommittedHostedCalls = 0;
+  let uncommittedTransactions = 0;
+  let uncommittedReads = 0;
+  const uncommitted: OpenRouterAtomicControlStore = {
+    async transact(operation) {
+      uncommittedTransactions += 1;
+      return structuredClone(operation(emptyState()));
+    },
+    async read() {
+      uncommittedReads += 1;
+      return emptyState();
     },
   };
   await expectControlError(runControlledDesignIntentTask(input(), {
-    store: phantom,
+    store: uncommitted,
     hostedAdapter: hosted(async () => {
-      phantomHostedCalls += 1;
+      uncommittedHostedCalls += 1;
       return rawResponse();
     }),
     fallbackAdapter: fake(),
   }), "control-store-failed");
-  expect(phantomHostedCalls).toBe(0);
-  expect(phantomTransactions).toBe(1);
+  expect(uncommittedHostedCalls).toBe(0);
+  expect(uncommittedTransactions).toBe(1);
+  expect(uncommittedReads).toBe(1);
 });
 
 test("successful results and every nested audit/output surface are detached and deeply frozen", async () => {

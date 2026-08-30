@@ -118,6 +118,13 @@ export type OpenRouterStoreOperation = (
 
 export interface OpenRouterAtomicControlStore {
   transact(operation: OpenRouterStoreOperation): Promise<unknown>;
+  /**
+   * Return a strongly consistent snapshot of durable state after every
+   * preceding resolved transaction. The controller treats this method as a
+   * trusted storage primitive; an adapter that cannot provide that guarantee
+   * is not an OR02 control store.
+   */
+  read(): Promise<unknown>;
 }
 
 export interface OpenRouterControlDependencies {
@@ -577,6 +584,7 @@ const inspectCallableRecord = <K extends string>(
 interface ParsedDependencies {
   storeObject: object;
   transact: OpenRouterAtomicControlStore["transact"];
+  read: OpenRouterAtomicControlStore["read"];
   hostedAdapter: DesignIntentAdapter;
   fallbackAdapter: DesignIntentAdapter;
 }
@@ -585,11 +593,14 @@ const parseDependencies = (value: unknown): ParsedDependencies => {
   const dependencies = inspectCallableRecord(value, [
     "store", "hostedAdapter", "fallbackAdapter",
   ] as const);
-  const store = inspectCallableRecord(dependencies.store, ["transact"] as const);
-  if (typeof store.transact !== "function") return refuse("invalid-control-input");
+  const store = inspectCallableRecord(dependencies.store, ["transact", "read"] as const);
+  if (typeof store.transact !== "function" || typeof store.read !== "function") {
+    return refuse("invalid-control-input");
+  }
   return {
     storeObject: dependencies.store as object,
     transact: store.transact as OpenRouterAtomicControlStore["transact"],
+    read: store.read as OpenRouterAtomicControlStore["read"],
     hostedAdapter: dependencies.hostedAdapter as DesignIntentAdapter,
     fallbackAdapter: dependencies.fallbackAdapter as DesignIntentAdapter,
   };
@@ -769,7 +780,18 @@ const transact = async (
   }
   try {
     const receipt = exactRecord(snapshot(raw), ["state", "value"] as const);
-    return { state: parseState(receipt.state), value: receipt.value };
+    const returnedState = parseState(receipt.state);
+    let committedRaw: unknown;
+    try {
+      committedRaw = await dependencies.read.call(dependencies.storeObject);
+    } catch {
+      return refuse("control-store-failed");
+    }
+    const committedState = parseState(committedRaw);
+    if (JSON.stringify(committedState) !== JSON.stringify(returnedState)) {
+      return refuse("control-store-failed");
+    }
+    return { state: committedState, value: receipt.value };
   } catch {
     return refuse("control-store-failed");
   }
