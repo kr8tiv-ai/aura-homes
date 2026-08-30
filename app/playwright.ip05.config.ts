@@ -1,7 +1,7 @@
 import { defineConfig } from "playwright/test";
 
 export default defineConfig({
-  // Repair loop 1 keeps the fresh verifier regressions inside the same bounded contract.
+  // Repair loop 1 also proves unsupported compiler outcomes fail closed.
   testDir: "./tests-ip05",
   testMatch: "design-intent-project-validator.contract.ts",
   workers: 1,

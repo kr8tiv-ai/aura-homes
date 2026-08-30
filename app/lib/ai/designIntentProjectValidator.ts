@@ -476,7 +476,13 @@ function expectedRooms(intent: DesignIntent, storeys: number): ExpectedRoom[][] 
 
 function exactCompilerProject(intent: DesignIntent): CompiledDesignIntentProject | null {
   const compiled = compileDesignIntentToProject(intent);
-  if (!compiled.ok) return null;
+  if (!compiled.ok) {
+    if (compiled.error.code === "program-does-not-fit" ||
+        compiled.error.code === "openings-do-not-fit") {
+      return null;
+    }
+    return refuse("integrity", "integrity-failed");
+  }
   return compiled.project;
 }
 

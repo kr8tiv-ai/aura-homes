@@ -411,6 +411,19 @@ test("climate mapping and disclosed climate defaults cannot drift", () => {
   });
 });
 
+test("an unsupported compiler outcome cannot validate a stale project", () => {
+  const stale = fixture();
+  Object.assign(stale.intent.roof as Record<string, unknown>, {
+    forms: ["a-frame"],
+    preferredPitchDegrees: null,
+  });
+  rehash(stale.intent, stale.project);
+  expect(validateDesignIntentProject(stale)).toMatchObject({
+    ok: false,
+    error: { gate: "integrity", code: "integrity-failed" },
+  });
+});
+
 test("uploaded-image provenance requires exactly one matching rights approval", () => {
   const missing = fixture();
   missing.sourceApprovals = [];

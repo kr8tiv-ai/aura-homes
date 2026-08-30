@@ -138,9 +138,11 @@ Record immutable gate receipts and close the manifest as `verification-pending` 
 
 The fresh-context verifier found that code-only decision membership did not authenticate the compiler's exact disclosure, room matching flattened storey ownership, and a `0.1 ft²` tolerance admitted a real minimum-area shortfall. The single Graph-authorized repair adds adversarial fixtures for all three cases, requires exact compiler decision objects, compares rooms within their assigned storey, and enforces the stated minimum without a business tolerance. No dependency, output, side effect, or write-set boundary changes.
 
+The final fresh-context pass on the same still-open repair attempt also proved that a compiler refusal outside the semantic fit gates could be converted into `null`, skipping exact compiler decisions and accepting a rehashed stale project. The bounded correction preserves semantic program/opening reconciliation for fit refusals but fails closed at integrity for unsupported or malformed compiler outcomes. An A-frame/stale-gable regression proves the canonical compiler cannot be bypassed. This remains repair-loop use `1`, not a new implementation loop.
+
 - IP04 loses verified status or another live manifest claims an IP05 path.
 - Validation needs a provider, network, secret, clock, randomness, persistence, money, UI, CSS, public design, or frozen 3D/rendering path.
 - A candidate is migrated, repaired, normalized, or partially returned instead of refused.
 - Structural, code, permit, engineering, or construction adequacy is presented as verified.
 - Uploaded-image rights are inferred without exact source-bound evidence.
-- A second repair loop would be required.
+- Any further finding after this still-open authorized repair is independently closed would require new graph authority.
