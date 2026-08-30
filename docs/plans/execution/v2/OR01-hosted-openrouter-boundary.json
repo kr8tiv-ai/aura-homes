@@ -142,9 +142,16 @@
         "serverIsolation": "Only the server-only wrapper owns process environment access, the fixed HTTPS endpoint, authorization header, and fetch. It is default-off, exact-model-allowlist-gated, unimported by routes/components/application modules, and never invoked by tests.",
         "sideEffects": "No route, live request, key setup, provider contact, spend, persistence, wallet, payment logic, fee logic, UI, public design, or frozen 3D/rendering/animation dependency entered OR01."
       },
-      "independentVerification": null,
-      "remainingGate": "independent fresh-context verification"
+      "independentVerification": {
+        "date": "2026-08-29",
+        "verdict": "independent fresh-context pass",
+        "authorityAndLineage": "Exact approved Graph v2 authority and Matt-authored approval matched; base 1383b5ccb5f99e9614d464cd63f107ebbaef2899, activation f4f5c9ee80d16c6048f925a0dba69db46c2e487c, candidate 63a94e507fdfb46952c14f3a98aa7142811a6148, and closure dbc3c8b9ca2a788b9aa76b31b89112654ec0800d form valid ancestry.",
+        "writesAndGates": "Candidate changed exactly 6/6 declared paths; closure changed only this manifest; G02 and IP03 are verified; live ownership overlap, protected/frozen changes, and external gates were zero; exact G05 preflight passed all checks with movement remain.",
+        "freshReceipts": "typecheck passed; dedicated OpenRouter boundary contract 13/13 passed; deterministic suite 733 passed with 4 intentional served-only skips; graph-v2 25/25 passed; graph-position 14/14 passed.",
+        "sourceVerdict": "The fixed caller-nonoverridable request, strict structured output and hostile-response handling, privacy/ZDR routing, bounded status and usage evidence, and default-off server-only allowlisted transport are fail-closed, unimported by product routes or components, and expose no reachable live-call or spend path."
+      },
+      "remainingGate": "none"
     }
   },
-  "status": "verification-pending"
+  "status": "verified"
 }
