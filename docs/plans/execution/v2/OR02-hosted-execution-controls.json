@@ -104,7 +104,7 @@
     "verificationClosure": {
       "verdict": "verification-pending",
       "activationCommit": "3970661464c7ff3e11848d2594979649debb7bc5",
-      "candidateCommit": "pending final repair candidate",
+      "candidateCommit": "f1f157d161d12843b3d04ec715c9039994ceb2f3",
       "lineageBase": "c3ad646c87b21e23182c8a3d65e8dabeabc7d3b4",
       "writeSetCheck": {
         "declared": 5,
@@ -113,13 +113,13 @@
         "protectedPathChanges": 0,
         "overlappingOwners": []
       },
-      "positionReceipt": "Pending exact closure-aware G05 reproduction against base c3ad646c87b21e23182c8a3d65e8dabeabc7d3b4, the final candidate, and its manifest-only closure.",
+      "positionReceipt": "Pending exact closure-aware G05 reproduction against base c3ad646c87b21e23182c8a3d65e8dabeabc7d3b4, candidate f1f157d161d12843b3d04ec715c9039994ceb2f3, and this manifest-only closure.",
       "gateReceipts": {
-        "typecheck": "pending final candidate rerun",
+        "typecheck": "pass",
         "focusedControls": "12/12 dedicated OR02 contract proofs passed, including durable read-back, retained uncertain holds, exact known-cost reconciliation, and retry blocking, without a server, provider request, account mutation, or external service",
-        "deterministic": "pending final candidate rerun",
-        "graphV2": "pending final candidate rerun",
-        "graphPosition": "pending final candidate rerun",
+        "deterministic": "737 declared; 733 passed and 4 intentional served-only skips",
+        "graphV2": "25/25 passed; authority pass; manifest errors empty",
+        "graphPosition": "14/14 passed",
         "diffCheck": "pass"
       },
       "contractEvidence": {
@@ -149,9 +149,9 @@
       "repair": "Keep every closed fix; distinguish uncertain outcomes from verified receipts; atomically settle exact known cost before an overage refusal even beyond estimate/cap; retain an exact-cost hold only if safe-integer aggregation is impossible; and add the max-concurrency retry regression.",
       "focusedRed": "11 passed and 1 failed: a verified 9,000-micro overage retained only the 1,000-micro estimate instead of recording known spend.",
       "focusedGreen": "12/12 passed after exact known-cost reconciliation, including second-dispatch blocking under the daily cap.",
-      "repositoryGates": "focused green; repository-wide, graph, exact-write, and independent gates pending the clean final candidate.",
-      "candidateCommit": "pending final repair candidate",
-      "exactWriteSet": "pending final candidate across exactly the declared five OR02 paths from c3ad646c87b21e23182c8a3d65e8dabeabc7d3b4",
+      "repositoryGates": "focused 12/12, typecheck, deterministic 733+4, Graph v2 25/25, graph-position 14/14, and diff checks passed; independent verification remains pending.",
+      "candidateCommit": "f1f157d161d12843b3d04ec715c9039994ceb2f3",
+      "exactWriteSet": "candidate f1f157d161d12843b3d04ec715c9039994ceb2f3 changes exactly the declared five OR02 paths from c3ad646c87b21e23182c8a3d65e8dabeabc7d3b4 with zero protected paths",
       "g05Receipt": "pending non-interleaved candidate and manifest-only closure",
       "remainingGate": "repository gates, exact G05, and fresh independent reverification of the final repaired candidate"
     }
