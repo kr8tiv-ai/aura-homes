@@ -44,6 +44,8 @@
     "provider cost is represented outside safe integer USD micros, the per-request ceiling exceeds the daily ceiling, or a known actual hosted cost is not reconciled exactly before refusal",
     "a hosted dispatch is not counted, a verified response is not settled exactly once, uncertain post-dispatch spend releases its reconciliation hold, known overage retains only the smaller estimate, or concurrent work reserves less than the full authorized per-request ceiling",
     "same-day request history is discarded or a backward UTC-minute replay can reopen an earlier rate bucket",
+    "control-state array bounds can exceed the hostile-boundary node ceiling or history capacity is checked only after a reservation commits",
+    "a UTC-day transition occurs while any reservation remains live or a duplicate request identifier is accepted from an existing reservation",
     "kill-switch, rate, spend, concurrency, or bounded temporary hosted failure touches the hosted adapter after selecting deterministic fallback",
     "unsafe input, accounting drift, invalid output or receipt, oversized output, or store failure falls back instead of failing closed",
     "audit evidence contains image bytes, source name, prompt, model output, provider body, secret, or a raw user, session, or project identifier",
@@ -80,6 +82,8 @@
     "fixture: a verified cost above estimate but within the reserved ceiling settles exactly and blocks a second dispatch under the daily cap",
     "fixture: concurrent requests reserve the full per-request ceiling so verified overages cannot cross the daily cap",
     "fixture: explicit UTC day and minute transitions reset only their declared windows while backward same-day minute replay fails closed",
+    "fixture: bounded current-day history refuses before mutation and leaves durable state byte-identical at capacity",
+    "fixture: UTC-day rollover refuses while any reservation is live and an in-flight request identifier cannot dispatch twice",
     "fixture: hostile boundaries, store failures, and malformed store results fail without accessors, mutation, private detail, or partial reservation",
     "fixture: successful results and redacted audit receipts are detached and deeply frozen",
     "static proof: controls have no provider, network, secret, environment, account mutation, storage implementation, clock, randomness, wallet, payment, fee, persistence, React, UI, CSS, 3D, renderer, scene, animation, camera, lighting, shader, model, or texture dependency",
@@ -91,7 +95,7 @@
     "boundary": "OR02 writeSet only"
   },
   "evidence": {
-    "startedFrom": "156b470d13ee2ce985e572526ef37687dfa3462e",
+    "startedFrom": "31c1a6da462b52721218097887181c118dba87ee",
     "dependencyGate": "OR01 independently verified at f5f57b132d29bc2a761f68107e8d56791b8ef7c3",
     "planCommit": "7698d40889dedfc6c3b4afc0b483493249fc6c8b",
     "readyManifestCommit": "ccd7af30c9618bfa65b18f3371393eff0d43ab9a",
@@ -106,8 +110,8 @@
     "verificationClosure": {
       "verdict": "verification-pending",
       "activationCommit": "3970661464c7ff3e11848d2594979649debb7bc5",
-      "candidateCommit": "2c6b8768ca4802859960fd9a90488205e6cd23f3",
-      "lineageBase": "156b470d13ee2ce985e572526ef37687dfa3462e",
+      "candidateCommit": "pending",
+      "lineageBase": "31c1a6da462b52721218097887181c118dba87ee",
       "writeSetCheck": {
         "declared": 5,
         "changed": 5,
@@ -115,10 +119,10 @@
         "protectedPathChanges": 0,
         "overlappingOwners": []
       },
-      "positionReceipt": "This manifest-only closure binds base 156b470d13ee2ce985e572526ef37687dfa3462e and exact five-path candidate 2c6b8768ca4802859960fd9a90488205e6cd23f3 for closure-aware G05 reproduction before independent verification.",
+      "positionReceipt": "Pending exact closure-aware G05 reproduction against base 31c1a6da462b52721218097887181c118dba87ee, the new five-path candidate, and its manifest-only closure.",
       "gateReceipts": {
         "typecheck": "pass",
-        "focusedControls": "13/13 dedicated OR02 contract proofs passed after a 9-pass/4-fail red phase, including durable read-back, retained uncertain holds, full-ceiling concurrent reservation, exact known-cost reconciliation, and backward-minute refusal, without a server, provider request, account mutation, or external service",
+        "focusedControls": "15/15 dedicated OR02 contract proofs passed after a 13-pass/2-fail red phase, including pre-mutation history capacity refusal and reservation-safe UTC-day rollover, without a server, provider request, account mutation, or external service",
         "deterministic": "737 declared; 733 passed and 4 intentional served-only skips",
         "graphV2": "25/25 passed; authority pass; manifest errors empty",
         "graphPosition": "14/14 passed",
@@ -131,14 +135,14 @@
         "privacyAndAudit": "Audit receipts retain no content, hash opaque user/session/project scopes, declare bounded audit retention, expose only counters and accounting facts, and are detached and deeply frozen.",
         "sideEffects": "The control plane contains no network call, provider SDK, credential, environment read, clock, randomness, storage implementation, account mutation, wallet, checkout, fee, project persistence, React, public UI, CSS, or frozen 3D/rendering/animation dependency."
       },
-      "remainingGate": "repository gates, exact non-interleaved G05, and independent fresh-context verification of the final ceiling-reservation and monotonic-window repair"
+      "remainingGate": "repository gates, exact non-interleaved G05, and independent fresh-context verification of the bounded-state and reservation-safe rollover repair"
     },
     "repairLoop": {
       "used": 1,
       "attempt": 1,
       "authorizedBy": "manifest repair.maxLoops and founder authorization for all bounded verification passes",
-      "baseCommit": "156b470d13ee2ce985e572526ef37687dfa3462e",
-      "independentVerdict": "fail: prior accounting repairs closed, but estimate-only concurrent reservations could exceed the daily ceiling and backward same-day minutes could replay a consumed rate bucket",
+      "baseCommit": "31c1a6da462b52721218097887181c118dba87ee",
+      "independentVerdict": "fail: prior cost and monotonic-minute repairs closed, but retained history could poison durable state and UTC-day rollover could duplicate an in-flight request identifier",
       "findings": [
         "a fabricated store decision could start hosted execution without evidence of a committed reservation",
         "typed-array species lookup could invoke a hostile own constructor accessor",
@@ -148,14 +152,16 @@
         "timeout, invalid output, oversized output, and cost overage released the reservation after dispatch, recording zero and allowing repeated cap bypass",
         "a verified 9,000-micro receipt on a 1,000-micro reservation retained only 1,000 micros and allowed a second 9,000-micro hosted dispatch under a 10,000-micro cap",
         "two concurrent 1,000-micro estimates could both dispatch and later commit 18,000 micros under a 10,000-micro daily cap",
-        "discarding prior-minute request history allowed a 12:34 request after 12:35 to replay the earlier user rate bucket"
+        "discarding prior-minute request history allowed a 12:34 request after 12:35 to replay the earlier user rate bucket",
+        "6,666 retained request records crossed the 40,000-node snapshot boundary only after a reservation had already committed, stranding the hold in unreadable durable state",
+        "day rollover cleared request history but retained live reservations, allowing the same request identifier to dispatch twice across midnight"
       ],
-      "repair": "Keep every closed fix; reserve the policy's full authorized per-request ceiling before dispatch; reject a per-request ceiling above the daily ceiling; preserve bounded current-day request history; and reject backward same-day minute replay.",
-      "focusedRed": "9 passed and 4 failed: temporary holds reserved only the estimate; verified within-ceiling overage was refused; two concurrent requests both dispatched beyond the daily cap; and backward-minute replay was accepted.",
-      "focusedGreen": "13/13 passed after full-ceiling reservation, within-ceiling exact settlement, concurrent dispatch blocking, and monotonic same-day minute enforcement.",
-      "repositoryGates": "focused 13/13, typecheck, deterministic 733+4, Graph v2 25/25, graph-position 14/14, and diff checks passed; exact G05 and independent verification remain pending.",
-      "candidateCommit": "2c6b8768ca4802859960fd9a90488205e6cd23f3",
-      "exactWriteSet": "candidate 2c6b8768ca4802859960fd9a90488205e6cd23f3 changes exactly the declared five OR02 paths from 156b470d13ee2ce985e572526ef37687dfa3462e with zero protected paths",
+      "repair": "Keep every closed fix; align state array limits beneath the snapshot node ceiling; refuse history exhaustion before mutation; cap policy concurrency to the reservation-state bound; block UTC-day transition while any reservation remains live; and reject duplicate request identifiers across active reservations.",
+      "focusedRed": "13 passed and 2 failed: full retained history was accepted and mutated, while next-day work dispatched across a live reservation and left the older execution unable to settle.",
+      "focusedGreen": "15/15 passed after bounded pre-mutation history refusal and reservation-safe UTC-day rollover for duplicate and distinct request identifiers.",
+      "repositoryGates": "focused 15/15, typecheck, deterministic 733+4, Graph v2 25/25, graph-position 14/14, and diff checks passed; exact G05 and independent verification remain pending.",
+      "candidateCommit": "pending",
+      "exactWriteSet": "pending exact five-path comparison from 31c1a6da462b52721218097887181c118dba87ee",
       "g05Receipt": "pending non-interleaved candidate and manifest-only closure",
       "remainingGate": "repository gates, exact G05, and fresh independent reverification of the final repaired candidate"
     }

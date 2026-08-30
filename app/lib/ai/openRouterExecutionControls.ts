@@ -202,6 +202,8 @@ const MAX_NODES = 40_000;
 const MAX_ARRAY_ITEMS = 20_000;
 const MAX_KEYS = 1_024;
 const MAX_TEXT = 65_536;
+const MAX_STATE_RESERVATIONS = 1_000;
+const MAX_STATE_REQUESTS = 4_000;
 
 function snapshotPlain(
   value: unknown,
@@ -400,7 +402,7 @@ const parsePolicy = (value: unknown): OpenRouterControlPolicy => {
     perProjectRequestsPerMinute: positive(record.perProjectRequestsPerMinute, 100_000),
     globalDailyProviderCostMicros,
     maxProviderCostMicrosPerRequest,
-    maxConcurrent: positive(record.maxConcurrent, 100_000),
+    maxConcurrent: positive(record.maxConcurrent, MAX_STATE_RESERVATIONS),
     maxInputBytes: positive(record.maxInputBytes, 64 * 1024 * 1024),
     maxOutputBytes: positive(record.maxOutputBytes, 16 * 1024 * 1024),
     contentRetention: "none",
@@ -530,7 +532,8 @@ const parseState = (value: unknown): OpenRouterControlState => {
   }
   if (record.version !== OPENROUTER_CONTROL_STATE_VERSION ||
       !Array.isArray(record.reservations) || !Array.isArray(record.requests) ||
-      record.reservations.length > 10_000 || record.requests.length > 20_000) {
+      record.reservations.length > MAX_STATE_RESERVATIONS ||
+      record.requests.length > MAX_STATE_REQUESTS) {
     return refuse("control-store-failed");
   }
   try {
@@ -634,6 +637,7 @@ const normalizedForWindow = (
 ): OpenRouterControlState => {
   if (parsed.window.day < state.day) return refuse("accounting-failed");
   const changedDay = parsed.window.day !== state.day;
+  if (changedDay && state.reservations.length > 0) return refuse("accounting-failed");
   if (!changedDay && state.requests.some((item) => item.minute > parsed.window.minute)) {
     return refuse("accounting-failed");
   }
@@ -687,6 +691,7 @@ const reserve = (
   if (current.projectMinuteRequests >= parsed.policy.perProjectRequestsPerMinute) {
     return { state, value: fallbackDecision(state, parsed, "project-rate-limit") };
   }
+  if (state.requests.length >= MAX_STATE_REQUESTS) return refuse("accounting-failed");
   if (state.committedProviderCostMicros + current.reservedProviderCostMicros +
       parsed.policy.maxProviderCostMicrosPerRequest > parsed.policy.globalDailyProviderCostMicros) {
     return { state, value: fallbackDecision(state, parsed, "daily-spend-limit") };
@@ -695,7 +700,8 @@ const reserve = (
     return { state, value: fallbackDecision(state, parsed, "concurrency-limit") };
   }
   const id = reservationId(parsed);
-  if (state.reservations.some((item) => item.id === id) ||
+  if (state.reservations.some((item) => item.id === id ||
+      item.requestId === parsed.request.requestId) ||
       state.requests.some((item) => item.requestId === parsed.request.requestId)) {
     return refuse("accounting-failed");
   }

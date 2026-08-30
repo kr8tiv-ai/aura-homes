@@ -572,6 +572,85 @@ test("explicit UTC minute and day transitions reset only their declared counters
   expect(state.snapshot().requests.every((item) => item.minute.startsWith("2026-08-30"))).toBe(true);
 });
 
+test("bounded current-day history refuses before mutation instead of poisoning durable state", async () => {
+  const fullHistory: OpenRouterControlState = {
+    ...emptyState(),
+    requests: Array.from({ length: 4_000 }, (_, index) => ({
+      requestId: `prior-${index}`,
+      minute: "2026-08-29T00:00Z",
+      userHash: `0x${"1".repeat(64)}`,
+      sessionHash: `0x${"2".repeat(64)}`,
+      projectHash: `0x${"3".repeat(64)}`,
+    })),
+  };
+  const state = atomicStore(fullHistory);
+  let hostedCalls = 0;
+  const request = input("history-cap", {
+    perUserRequestsPerMinute: 100_000,
+    perSessionRequestsPerMinute: 100_000,
+    perProjectRequestsPerMinute: 100_000,
+    maxConcurrent: 1_000,
+  });
+  request.window.minute = "2026-08-29T23:59Z";
+
+  await expectControlError(runControlledDesignIntentTask(request, {
+    store: state.store,
+    hostedAdapter: hosted(async () => { hostedCalls += 1; return rawResponse(); }),
+    fallbackAdapter: fake(),
+  }), "accounting-failed");
+
+  expect(hostedCalls).toBe(0);
+  expect(state.snapshot()).toEqual(fullHistory);
+});
+
+test("a UTC-day transition waits for every live reservation and cannot duplicate an in-flight request id", async () => {
+  for (const nextRequestId of ["duplicate-id", "different-id"]) {
+    const state = atomicStore();
+    let hostedCalls = 0;
+    let releaseFirst: ((value: RawDesignIntentAdapterResponse) => void) | undefined;
+    const adapter = hosted(async () => {
+      hostedCalls += 1;
+      if (hostedCalls === 1) {
+        return new Promise<RawDesignIntentAdapterResponse>((resolve) => { releaseFirst = resolve; });
+      }
+      return rawResponse(500);
+    });
+    const firstInput = input("duplicate-id", { maxConcurrent: 2 });
+    firstInput.window = { day: "2026-08-29", minute: "2026-08-29T23:59Z" };
+    const first = runControlledDesignIntentTask(firstInput, {
+      store: state.store,
+      hostedAdapter: adapter,
+      fallbackAdapter: fake(),
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(hostedCalls).toBe(1);
+
+    const nextInput = input(nextRequestId, { maxConcurrent: 2 });
+    nextInput.window = { day: "2026-08-30", minute: "2026-08-30T00:00Z" };
+    const nextOutcome = await runControlledDesignIntentTask(nextInput, {
+      store: state.store,
+      hostedAdapter: adapter,
+      fallbackAdapter: fake(),
+    }).then(
+      (value) => ({ value, error: null }),
+      (error: unknown) => ({ value: null, error }),
+    );
+
+    releaseFirst?.(rawResponse(500));
+    const firstResult = await first;
+    expect(firstResult.route).toBe("hosted");
+    expect(nextOutcome.value).toBeNull();
+    expect(nextOutcome.error).toBeInstanceOf(OpenRouterControlError);
+    expect(nextOutcome.error).toMatchObject({ code: "accounting-failed" });
+    expect(hostedCalls).toBe(1);
+    expect(state.snapshot()).toMatchObject({
+      day: "2026-08-29",
+      committedProviderCostMicros: 500,
+      reservations: [],
+    });
+  }
+});
+
 test("hostile boundaries and store failures are bounded without accessors, mutation, or partial output", async () => {
   let invoked = 0;
   const hostile = input() as ReturnType<typeof input> & Record<string, unknown>;
