@@ -104,8 +104,8 @@
     "verificationClosure": {
       "verdict": "verification-pending",
       "activationCommit": "3970661464c7ff3e11848d2594979649debb7bc5",
-      "candidateCommit": "1d1eaaa87b6f9a1a9e870a0fac83fa21192d03b7",
-      "lineageBase": "a11bcc1e8a59b7366ebccc672bf2393667f049e7",
+      "candidateCommit": "bc4a79be314a0f6473f4799c84caf2185e12473c",
+      "lineageBase": "d80d8a7fe0e0e5fc3cb698a8a2f1a59d42c0f002",
       "writeSetCheck": {
         "declared": 5,
         "changed": 5,
@@ -113,10 +113,10 @@
         "protectedPathChanges": 0,
         "overlappingOwners": []
       },
-      "positionReceipt": "Pending exact G05 reproduction against the non-interleaved a11bcc1-to-1d1eaaa candidate and this manifest-only closure.",
+      "positionReceipt": "Pending exact G05 reproduction against the non-interleaved d80d8a7-to-bc4a79b candidate and this manifest-only closure.",
       "gateReceipts": {
         "typecheck": "pending final candidate rerun",
-        "focusedControls": "11/11 dedicated OR02 contract proofs passed, including noncommitting-store refusal before hosted execution, without a server, provider request, account mutation, or external service",
+        "focusedControls": "11/11 dedicated OR02 contract proofs passed, including durable read-back, retained reconciliation holds, retry blocking, and exact valid-cost settlement, without a server, provider request, account mutation, or external service",
         "deterministic": "pending final candidate rerun",
         "graphV2": "pending final candidate rerun",
         "graphPosition": "pending final candidate rerun",
@@ -149,11 +149,11 @@
       "focusedRed": "8 passed and 3 failed: temporary failure erased its reservation, invalid/overage output erased its hold, and oversized output recorded zero provider cost.",
       "focusedGreen": "11/11 passed after the final correction, including retained reconciliation holds and exact oversized-output settlement.",
       "repositoryGates": "focused green; repository-wide, graph, exact-write, and independent gates pending the clean final candidate.",
-      "candidateCommit": "pending-final-accounting-candidate",
-      "exactWriteSet": "pending exact five-path comparison from d80d8a7fe0e0e5fc3cb698a8a2f1a59d42c0f002",
+      "candidateCommit": "bc4a79be314a0f6473f4799c84caf2185e12473c",
+      "exactWriteSet": "candidate bc4a79be314a0f6473f4799c84caf2185e12473c changes exactly the declared five OR02 paths from d80d8a7fe0e0e5fc3cb698a8a2f1a59d42c0f002; exact G05 awaits this manifest-only closure",
       "g05Receipt": "pending non-interleaved candidate and manifest-only closure",
       "remainingGate": "repository gates, exact G05, and fresh independent reverification of the final repaired candidate"
     }
   },
-  "status": "active"
+  "status": "verification-pending"
 }
