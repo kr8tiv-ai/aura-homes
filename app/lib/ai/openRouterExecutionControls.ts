@@ -840,20 +840,19 @@ const settle = async (
     const matches = state.reservations.filter((item) => item.id === id);
     if (matches.length !== 1) return refuse("accounting-failed");
     const reservation = matches[0];
-    if (actualProviderCostMicros > reservation.reservedProviderCostMicros) {
-      return refuse("accounting-failed");
-    }
+    const exactCommittedCostMicros = state.committedProviderCostMicros + actualProviderCostMicros;
+    const canCommitExactly = Number.isSafeInteger(exactCommittedCostMicros);
     const next: OpenRouterControlState = {
       ...state,
-      committedProviderCostMicros: state.day === reservation.day
-        ? state.committedProviderCostMicros + actualProviderCostMicros
+      committedProviderCostMicros: state.day === reservation.day && canCommitExactly
+        ? exactCommittedCostMicros
         : state.committedProviderCostMicros,
-      reservations: state.reservations.filter((item) => item.id !== id),
+      reservations: state.day === reservation.day && canCommitExactly
+        ? state.reservations.filter((item) => item.id !== id)
+        : state.reservations.map((item) => item.id === id
+          ? { ...item, reservedProviderCostMicros: actualProviderCostMicros }
+          : item),
     };
-    if (state.day === reservation.day &&
-        next.committedProviderCostMicros > parsed.policy.globalDailyProviderCostMicros) {
-      return refuse("accounting-failed");
-    }
     return { state: next, value: counters(next, parsed) };
   });
   try {
@@ -1009,9 +1008,12 @@ export async function runControlledDesignIntentTask(
     return refuse("execution-failed");
   }
   const actualProviderCostMicros = response.receipt.providerCostMicros;
-  if (!Number.isSafeInteger(actualProviderCostMicros) || actualProviderCostMicros < 0 ||
-      actualProviderCostMicros > parsed.estimatedProviderCostMicros) {
+  if (!Number.isSafeInteger(actualProviderCostMicros) || actualProviderCostMicros < 0) {
     await retainedReservationCounters(parsed, dependencies, id);
+    return refuse("accounting-failed");
+  }
+  if (actualProviderCostMicros > parsed.estimatedProviderCostMicros) {
+    await settle(parsed, dependencies, id, actualProviderCostMicros);
     return refuse("accounting-failed");
   }
   const outputBytes = responseBytes(response);

@@ -408,32 +408,67 @@ test("temporary hosted failures retain one reconciliation hold and cannot bypass
 });
 
 test("invalid hosted output and actual cost above reservation fail closed without fake fallback", async () => {
-  const cases: Array<[RawDesignIntentAdapterResponse, string]> = [
-    [{ intent: { geometry: "smuggled" }, receipt: rawResponse().receipt }, "execution-failed"],
-    [rawResponse(1_251), "accounting-failed"],
-  ];
-  for (const [response, code] of cases) {
-    const state = atomicStore();
-    let fallbackCalls = 0;
-    const fallback = fake();
-    const value = input(`unsafe-${code}`);
-    if (code === "accounting-failed") value.estimatedProviderCostMicros = 1_250;
-    await expectControlError(runControlledDesignIntentTask(value, {
-      store: state.store,
-      hostedAdapter: hosted(async () => response),
-      fallbackAdapter: {
-        ...fallback,
-        async run(request, context) {
-          fallbackCalls += 1;
-          return fallback.run(request, context);
-        },
+  const state = atomicStore();
+  let fallbackCalls = 0;
+  const fallback = fake();
+  await expectControlError(runControlledDesignIntentTask(input("unsafe-execution-failed"), {
+    store: state.store,
+    hostedAdapter: hosted(async () => ({
+      intent: { geometry: "smuggled" },
+      receipt: rawResponse().receipt,
+    })),
+    fallbackAdapter: {
+      ...fallback,
+      async run(request, context) {
+        fallbackCalls += 1;
+        return fallback.run(request, context);
       },
-    }), code);
-    expect(fallbackCalls).toBe(0);
-    expect(state.snapshot().reservations).toHaveLength(1);
-    expect(state.snapshot().committedProviderCostMicros).toBe(0);
-    expect(state.transactions()).toBe(1);
-  }
+    },
+  }), "execution-failed");
+  expect(fallbackCalls).toBe(0);
+  expect(state.snapshot().reservations).toHaveLength(1);
+  expect(state.snapshot().committedProviderCostMicros).toBe(0);
+  expect(state.transactions()).toBe(1);
+});
+
+test("a verified cost overage records exact known spend before refusing and blocks another dispatch", async () => {
+  const state = atomicStore();
+  let hostedCalls = 0;
+  const limits = {
+    globalDailyProviderCostMicros: 10_000,
+    maxProviderCostMicrosPerRequest: 10_000,
+    maxConcurrent: 2,
+  };
+  const dependencies: OpenRouterControlDependencies = {
+    store: state.store,
+    hostedAdapter: hosted(async () => {
+      hostedCalls += 1;
+      return rawResponse(9_000);
+    }),
+    fallbackAdapter: fake(),
+  };
+
+  const first = input("known-overage-first", limits);
+  first.estimatedProviderCostMicros = 1_000;
+  await expectControlError(
+    runControlledDesignIntentTask(first, dependencies),
+    "accounting-failed",
+  );
+  expect(state.snapshot().reservations).toEqual([]);
+  expect(state.snapshot().committedProviderCostMicros).toBe(9_000);
+
+  const second = input("known-overage-second", limits);
+  second.estimatedProviderCostMicros = 9_000;
+  const blocked = await runControlledDesignIntentTask(second, dependencies);
+  expect(blocked).toMatchObject({
+    route: "deterministic-fake",
+    audit: {
+      reason: "daily-spend-limit",
+      counters: { committedProviderCostMicros: 9_000 },
+    },
+  });
+  expect(hostedCalls).toBe(1);
+  expect(state.snapshot().committedProviderCostMicros).toBe(9_000);
 });
 
 test("actual serialized output is bounded after hosted execution and before return", async () => {

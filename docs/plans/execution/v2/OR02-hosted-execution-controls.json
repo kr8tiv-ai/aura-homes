@@ -41,8 +41,8 @@
     "a hosted-shaped execution can start without one successful atomic reservation",
     "a transaction result is treated as durable commitment without a trusted strongly consistent state read-back",
     "per-user, per-session, per-project, global daily spend, concurrency, input byte, output byte, or kill-switch gates are missing or bypassable",
-    "provider cost is represented outside safe integer USD micros or actual hosted cost can exceed its reservation or daily ceiling",
-    "a hosted dispatch is not counted, a verified response is not settled exactly once, or uncertain post-dispatch spend releases its reconciliation hold",
+    "provider cost is represented outside safe integer USD micros or a known actual hosted cost is not reconciled exactly before refusal",
+    "a hosted dispatch is not counted, a verified response is not settled exactly once, uncertain post-dispatch spend releases its reconciliation hold, or known overage retains only the smaller estimate",
     "kill-switch, rate, spend, concurrency, or bounded temporary hosted failure touches the hosted adapter after selecting deterministic fallback",
     "unsafe input, accounting drift, invalid output or receipt, oversized output, or store failure falls back instead of failing closed",
     "audit evidence contains image bytes, source name, prompt, model output, provider body, secret, or a raw user, session, or project identifier",
@@ -76,7 +76,7 @@
     "fixture: encoded input and declared output bytes are bounded before either adapter runs",
     "fixture: bounded temporary hosted failures retain one reconciliation hold and use one fake fallback while invalid output, receipt, and accounting retain the hold and fail closed",
     "fixture: verified oversized output settles exact provider cost before refusal and held spend blocks a repeated hosted dispatch",
-    "fixture: actual provider cost cannot exceed the reservation or global daily cap",
+    "fixture: a verified cost overage is recorded exactly before refusal and blocks a second dispatch under the daily cap",
     "fixture: explicit UTC day and minute transitions reset only their declared windows",
     "fixture: hostile boundaries, store failures, and malformed store results fail without accessors, mutation, private detail, or partial reservation",
     "fixture: successful results and redacted audit receipts are detached and deeply frozen",
@@ -104,8 +104,8 @@
     "verificationClosure": {
       "verdict": "verification-pending",
       "activationCommit": "3970661464c7ff3e11848d2594979649debb7bc5",
-      "candidateCommit": "bc4a79be314a0f6473f4799c84caf2185e12473c",
-      "lineageBase": "d80d8a7fe0e0e5fc3cb698a8a2f1a59d42c0f002",
+      "candidateCommit": "pending final repair candidate",
+      "lineageBase": "c3ad646c87b21e23182c8a3d65e8dabeabc7d3b4",
       "writeSetCheck": {
         "declared": 5,
         "changed": 5,
@@ -113,17 +113,17 @@
         "protectedPathChanges": 0,
         "overlappingOwners": []
       },
-      "positionReceipt": "Pending exact G05 reproduction against the non-interleaved d80d8a7-to-bc4a79b candidate and this manifest-only closure.",
+      "positionReceipt": "Pending exact closure-aware G05 reproduction against base c3ad646c87b21e23182c8a3d65e8dabeabc7d3b4, the final candidate, and its manifest-only closure.",
       "gateReceipts": {
         "typecheck": "pending final candidate rerun",
-        "focusedControls": "11/11 dedicated OR02 contract proofs passed, including durable read-back, retained reconciliation holds, retry blocking, and exact valid-cost settlement, without a server, provider request, account mutation, or external service",
+        "focusedControls": "12/12 dedicated OR02 contract proofs passed, including durable read-back, retained uncertain holds, exact known-cost reconciliation, and retry blocking, without a server, provider request, account mutation, or external service",
         "deterministic": "pending final candidate rerun",
         "graphV2": "pending final candidate rerun",
         "graphPosition": "pending final candidate rerun",
         "diffCheck": "pass"
       },
       "contractEvidence": {
-        "atomicAccounting": "One hosted attempt requires one atomic reservation, counts the attempt, settles exact safe-integer USD-micro cost, and releases or settles the reservation exactly once.",
+        "atomicAccounting": "One hosted attempt requires one atomic reservation, counts the attempt, settles exact safe-integer USD-micro cost, records known overage before refusal, and retains the exact known amount if aggregate settlement cannot remain a safe integer.",
         "preflightControls": "Default-off kill switch, user/session/project minute rates, UTC-day spend, concurrency, input bytes, and declared output bytes are checked before hosted execution; bounded control denials choose the deterministic IP03 fake without touching hosted execution.",
         "failClosedBoundary": "Invalid input, unsafe values, malformed store state or result, accounting drift, invalid hosted response, excess actual cost, and oversized actual output fail closed without a fallback or partial response.",
         "privacyAndAudit": "Audit receipts retain no content, hash opaque user/session/project scopes, declare bounded audit retention, expose only counters and accounting facts, and are detached and deeply frozen.",
@@ -135,22 +135,23 @@
       "used": 1,
       "attempt": 1,
       "authorizedBy": "manifest repair.maxLoops and founder authorization for all bounded verification passes",
-      "baseCommit": "d80d8a7fe0e0e5fc3cb698a8a2f1a59d42c0f002",
-      "independentVerdict": "fail: durable read-back closed; final deep pass found post-dispatch failures released possible provider spend and reopened daily capacity",
+      "baseCommit": "c3ad646c87b21e23182c8a3d65e8dabeabc7d3b4",
+      "independentVerdict": "fail: durable read-back and uncertain holds closed; the next deep pass found a verified overage retained only its smaller estimate and allowed known spend to bypass the daily cap",
       "findings": [
         "a fabricated store decision could start hosted execution without evidence of a committed reservation",
         "typed-array species lookup could invoke a hostile own constructor accessor",
         "the committed candidate range contained trailing spaces in the implementation plan",
         "a store could echo the exact operation result without persisting it and hosted execution would still begin",
         "the prior candidate-to-closure range interleaved IP05 manifest work and therefore did not satisfy G05",
-        "timeout, invalid output, oversized output, and cost overage released the reservation after dispatch, recording zero and allowing repeated cap bypass"
+        "timeout, invalid output, oversized output, and cost overage released the reservation after dispatch, recording zero and allowing repeated cap bypass",
+        "a verified 9,000-micro receipt on a 1,000-micro reservation retained only 1,000 micros and allowed a second 9,000-micro hosted dispatch under a 10,000-micro cap"
       ],
-      "repair": "Keep every closed fix; retain exact reservations after any uncertain post-dispatch outcome; settle exact valid cost before refusing oversized output; expose retained counters to fallback audit; add retry-cap regressions; and rebuild a non-interleaved lineage.",
-      "focusedRed": "8 passed and 3 failed: temporary failure erased its reservation, invalid/overage output erased its hold, and oversized output recorded zero provider cost.",
-      "focusedGreen": "11/11 passed after the final correction, including retained reconciliation holds and exact oversized-output settlement.",
+      "repair": "Keep every closed fix; distinguish uncertain outcomes from verified receipts; atomically settle exact known cost before an overage refusal even beyond estimate/cap; retain an exact-cost hold only if safe-integer aggregation is impossible; and add the max-concurrency retry regression.",
+      "focusedRed": "11 passed and 1 failed: a verified 9,000-micro overage retained only the 1,000-micro estimate instead of recording known spend.",
+      "focusedGreen": "12/12 passed after exact known-cost reconciliation, including second-dispatch blocking under the daily cap.",
       "repositoryGates": "focused green; repository-wide, graph, exact-write, and independent gates pending the clean final candidate.",
-      "candidateCommit": "bc4a79be314a0f6473f4799c84caf2185e12473c",
-      "exactWriteSet": "candidate bc4a79be314a0f6473f4799c84caf2185e12473c changes exactly the declared five OR02 paths from d80d8a7fe0e0e5fc3cb698a8a2f1a59d42c0f002; exact G05 awaits this manifest-only closure",
+      "candidateCommit": "pending final repair candidate",
+      "exactWriteSet": "pending final candidate across exactly the declared five OR02 paths from c3ad646c87b21e23182c8a3d65e8dabeabc7d3b4",
       "g05Receipt": "pending non-interleaved candidate and manifest-only closure",
       "remainingGate": "repository gates, exact G05, and fresh independent reverification of the final repaired candidate"
     }
