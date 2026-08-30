@@ -1,0 +1,112 @@
+{
+  "graphVersion": "aura-graph/v2.0@680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8",
+  "node": "IP06",
+  "lane": "image-to-plan",
+  "stage": "explainable-preview-explicit-commit",
+  "job": "Create a pure provider-neutral contract that revalidates an IP05 proposal, explains the strict intent, assumptions, unresolved fields, validation, cost evidence, hashes, and exact changed document sections, then returns one inert one-undo editor load action only after exact deliberate confirmation; cancel returns zero writes and no applyable document, without UI, persistence, providers, money execution, or frozen design work.",
+  "inputs": [
+    {
+      "name": "IP05-verified-constraint-project-validation",
+      "version": "156b470",
+      "hash": "git:156b470d13ee2ce985e572526ef37687dfa3462e"
+    },
+    {
+      "name": "approved-preview-commit-contract",
+      "version": "2.0",
+      "hash": "git:f7616886f9f8a171c847ef5eb49e932246ff989b"
+    },
+    {
+      "name": "IP06-implementation-plan",
+      "version": "2026-08-30",
+      "hash": "git:31c1a6da462b52721218097887181c118dba87ee"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "explainable-image-plan-preview-commit-contract",
+      "acceptanceSchema": "AuraDesignIntentPreviewCommitV1",
+      "path": "app/lib/ai/designIntentPreviewCommit.ts"
+    },
+    {
+      "name": "preview-confirm-cancel-contract-proof",
+      "acceptanceSchema": "Playwright strict preview, one-action commit, zero-write cancel, and hostile-boundary proof",
+      "path": "app/tests-ip06/design-intent-preview-commit.contract.ts"
+    }
+  ],
+  "depends": [
+    "IP05:verified"
+  ],
+  "reject": [
+    "IP05 is not independently verified",
+    "a caller-supplied validation flag, receipt, project hash, preview, or candidate document is trusted without recomputing IP05 validation from the full input",
+    "the current document is migrated, normalized, repaired, or non-canonical rather than refused",
+    "a no-op candidate can produce an apply action or claim an undo step",
+    "the preview omits extracted intent, assumptions, confidence, unresolved fields, validation result, projected provider/Aura/total USD-micro cost, before/after document hashes, candidate project hash, or exact changed document sections",
+    "provider cost, Aura fee, and total cost do not use safe integer USD micros or total does not equal the exact sum",
+    "the public preview contains an applyable document, editor action, raw image bytes, prompt, provider body, credential, or persistence instruction",
+    "commit does not recompute the full preview and bind exact preview id, current document hash, and confirmation sentence",
+    "commit returns zero or multiple actions, an action other than one image-plan:accept document load, or undo metadata other than exactly one step restoring the prior document hash",
+    "cancel returns an action, document, project, nonzero write count, or any mutation surface",
+    "unknown keys, symbols, accessors, custom prototypes, cycles, aliases, sparse arrays, unsafe numbers, revoked values, mutable outputs, raw errors, or private detail pass the boundary",
+    "a provider SDK or name, network call, credential, environment read, storage, clock, randomness, payment execution, fee calculation, wallet, checkout, persistence, editor dispatch, React, public UI, CSS, or external action enters IP06",
+    "an undeclared path changes or the complete candidate write set differs from this manifest",
+    "a website 3D, rendering, animation, engine, scene, public visual, model, texture, shader, geometry, camera, lighting, motion, or quality-tier path changes"
+  ],
+  "writeSet": [
+    "docs/plans/2026-08-30-ip06-explainable-preview-commit-plan.md",
+    "docs/plans/execution/v2/IP06-explainable-preview-commit.json",
+    "app/lib/ai/designIntentPreviewCommit.ts",
+    "app/tests-ip06/design-intent-preview-commit.contract.ts",
+    "app/playwright.ip06.config.ts"
+  ],
+  "freezeClass": "none",
+  "owner": "primary-agent",
+  "verifier": "independent-fresh-context",
+  "sideEffects": "none",
+  "externalGates": [],
+  "verification": [
+    "npm run typecheck",
+    "npx playwright test --config=playwright.ip06.config.ts",
+    "npm test",
+    "npm run test:graph-v2",
+    "npm run test:graph-position",
+    "fixture: a revalidated IP05 proposal produces exact intent, assumption, confidence, unresolved, validation, cost, hash, and changed-section preview facts",
+    "fixture: the public preview contains no applyable document, editor action, raw image, provider body, credential, or persistence instruction",
+    "fixture: exact confirmation recomputes the proposal and returns exactly one image-plan:accept load action with one-step undo metadata",
+    "fixture: stale current documents, changed proposal inputs, forged previews, wrong confirmation, and no-op proposals fail closed",
+    "fixture: cancel returns zero writes and no action, document, project, or mutation surface",
+    "fixture: provider, Aura fee, and total cost use exact safe-integer USD micros and malformed arithmetic or basis fails",
+    "fixture: IP05 refusals and hostile boundaries return bounded errors without partial preview, project, action, hidden invocation, or mutation",
+    "fixture: successful preview, commit, cancel, and every nested returned surface are detached and deeply frozen",
+    "static proof: IP06 has no provider, network, secret, environment, storage, clock, randomness, wallet, checkout, payment execution, fee calculation, persistence, editor dispatch, React, UI, CSS, 3D, renderer, scene, animation, camera, lighting, shader, model, or texture dependency",
+    "git diff --check",
+    "git diff --name-only <IP06-base>...<IP06-candidate>"
+  ],
+  "repair": {
+    "maxLoops": 1,
+    "boundary": "IP06 writeSet only"
+  },
+  "evidence": {
+    "startedFrom": "c19e97dc82657fac2c524be0227ae87e7e0d4a81",
+    "dependencyGate": "IP05 independently verified and committed at 156b470d13ee2ce985e572526ef37687dfa3462e",
+    "planCommit": "31c1a6da462b52721218097887181c118dba87ee",
+    "readyManifestCommit": "pending",
+    "readinessReconciliation": "Founder-approved Graph v2 and graph-position contracts are green; IP05 is committed verified; OR02 remains disjoint verification-pending work and owns no IP06 path; the worktree was clean at node selection; no other live manifest overlaps the exact five-path IP06 set; external gates are empty; protected-path changes are zero.",
+    "existingSurfaceAudit": "IP05 already returns a complete immutable validated proposal and existing BuilderDocument hashing/validation plus the editor load reducer already own canonical documents and one-step undo. No pure contract currently binds explainable preview facts, exact cost evidence, deliberate confirmation, one inert load action, and zero-write cancel without importing UI or persistence.",
+    "dependencyInterpretation": "The approved image-to-plan lane places IP06 directly after verified IP05. IP07 and UX06 depend on IP06; neither is entered here. OR02 is a disjoint lateral node and does not block provider-free IP06 readiness.",
+    "writeOwnership": "OR02 is the only verification-pending manifest and its five paths are disjoint; no ready, active, verification-pending, or integration-pending manifest owns an IP06 path.",
+    "costBoundary": "IP06 verifies already-declared provider cost, Aura fee, and exact total in USD micros; it does not calculate a fee, authorize spend, execute payment, select a provider, or make a money claim beyond supplied bounded evidence.",
+    "protectedPathChanges": 0,
+    "githubSync": "remote-backed branch synchronized through the founder-authorized repository SSH route",
+    "verificationClosure": {
+      "verdict": "not-started",
+      "remainingGate": "committed ready manifest, activation reconciliation, TDD implementation, repository gates, exact G05, and independent fresh-context verification"
+    },
+    "repairLoop": {
+      "used": 0,
+      "attempt": 0,
+      "remainingGate": "not entered"
+    }
+  },
+  "status": "ready"
+}
