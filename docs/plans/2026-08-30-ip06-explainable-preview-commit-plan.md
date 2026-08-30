@@ -99,3 +99,14 @@ The dedicated IP06 contract will fail first because the module does not exist, t
 ## Stop conditions
 
 Stop and refuse rather than expanding IP06 if implementation requires a provider request, route, secret, environment read, account mutation, spend, fee calculation, checkout, wallet, storage/persistence adapter, editor dispatch, React/UI/CSS change, public-site design change, or any website 3D, rendering, animation, engine, scene, model, texture, shader, geometry, camera, lighting, motion, or quality-tier path.
+
+## Implementation evidence
+
+- The ready manifest was committed at `6c66921d90b2640985c2ee2c72c318ca3f65216b` and activated at `51685819033bebbb36447531221039bb0a6fc077` only after Graph v2 authority passed 25/25 and graph-position passed 14/14.
+- Initial RED: the dedicated IP06 suite failed at module resolution because `designIntentPreviewCommit.ts` did not exist.
+- Initial GREEN: the new pure contract reached 10/10 focused proofs and a clean TypeScript check after the fixture was corrected to use mutable detached inputs and canonical `HomeSpec.name` changes.
+- Boundary RED: a tampered public preview surfaced `invalid-cost-evidence` through cancellation instead of the public `invalid-preview` classification.
+- Boundary GREEN: cancellation now maps every malformed cost surface to `invalid-preview`; the complete focused suite remains 10/10 and TypeScript remains clean.
+- The deterministic repository suite passed with 733 tests and four intentional served-only skips; Graph v2 passed 25/25, graph-position passed 14/14, and `git diff --check` passed before candidate sealing.
+- The implementation imports only the existing IP02/IP05 contracts, canonical builder document owner, and a deterministic hash primitive. It introduces no route, provider request, environment read, storage, editor dispatch, payment execution, UI, CSS, or protected/frozen path.
+- Candidate, closure-aware G05, full repository receipts, and independent fresh-context verification remain mandatory before this node can become `verified`.
