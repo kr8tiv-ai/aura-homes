@@ -3,7 +3,7 @@
 **Date:** 2026-08-29
 **Graph:** `aura-graph/v2.0@680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8`
 **Node:** OR02
-**Movement:** lateral from IP05 while IP05 awaits independent verification
+**Movement:** bounded OR02 repair after IP05 reached independent verification
 **Side effects in this node:** none
 
 ## Outcome
@@ -16,7 +16,7 @@ The control plane accepts an injected atomic state store and injected verified I
 
 - OR01 is independently verified and supplies the hosted-shaped OpenRouter boundary.
 - IP03 is already verified beneath OR01 and remains the only task/request/response/error/cost promotion boundary.
-- IP05 is not an OR02 dependency. OR02 is disjoint lateral work while IP05 remains `verification-pending`.
+- IP05 is not an OR02 dependency. IP05 is independently verified and owns no OR02 path.
 - OR03 may consume the OR02 controller later. OR02 itself cannot import the OR01 server-only fetch wrapper or make a provider reachable.
 
 ## Current official OpenRouter facts used by this plan
@@ -41,7 +41,7 @@ Provider controls are defense in depth, not Aura authority. Aura must reserve co
    - global daily committed-plus-reserved provider-cost cap;
    - concurrency cap;
    - input and declared output byte caps.
-5. Count every hosted dispatch. Settle exact cost only from a verified bounded receipt; if output, receipt, timeout, cancellation, or provider completion is uncertain after dispatch, retain the reservation as a reconciliation hold so concurrency and spend capacity cannot be silently reused. Never allow a successful result whose actual hosted cost exceeds its reservation or daily cap.
+5. Count every hosted dispatch. Reserve the policy's full per-request cost ceiling rather than an optimistic estimate so concurrent verified overages cannot cross the daily cap. Settle exact cost only from a verified bounded receipt; if output, receipt, timeout, cancellation, or provider completion is uncertain after dispatch, retain the reservation as a reconciliation hold so concurrency and spend capacity cannot be silently reused. Never allow a successful result whose actual hosted cost exceeds its authorized ceiling.
 6. Route kill-switch, rate, spend, concurrency, and bounded temporary hosted failures to the injected deterministic fake. Unsafe input, accounting drift, oversized output, invalid receipts, or store failures fail closed instead of falling back.
 7. Return a detached deeply frozen execution result and redacted audit receipt containing only versioned policy/rule identity, opaque-scope hashes, byte/counter/cost facts, route, reason, and bucket—never image bytes, source name, prompt, model output, raw provider body, secret, or raw user/session/project identifier.
 8. Require `contentRetention: "none"` and a bounded audit-retention-days declaration; it does not persist or delete anything itself.
@@ -66,7 +66,7 @@ The dedicated OR02 contract will first fail because the control-plane module doe
 - encoded image bytes and declared output bytes are bounded before either adapter runs;
 - temporary hosted unavailability/rate/payment failures retain one reconciliation hold and use one deterministic fallback, while invalid output/receipt and accounting drift retain the hold and fail closed;
 - actual provider cost cannot exceed the reservation or global cap;
-- UTC bucket changes reset only their declared windows and stale counters cannot smuggle spend or concurrency;
+- UTC bucket changes reset only their declared windows, current-day request history establishes a monotonic minute watermark, and backward replay cannot evade minute limits;
 - hostile boundaries do not invoke accessors, mutate inputs, leak private details, or return partial reservations;
 - store transaction failures and malformed store results fail closed;
 - output and receipts are detached and deeply frozen;
@@ -95,5 +95,7 @@ The final fresh-context pass on this still-open repair attempt showed that the r
 The final deep review also proved that releasing a reservation after dispatch erases real or possible provider spend on timeout, invalid output, oversized output, or cost overage. The bounded correction now distinguishes pre-dispatch denial from post-dispatch uncertainty: uncertain attempts retain their exact reservation for reconciliation, verified oversized responses settle their exact valid receipt cost before refusing the output, and a second request cannot reuse the held daily capacity. No production reconciler, persistence implementation, provider call, or money movement enters OR02.
 
 The next adversarial pass on that same unclosed repair proved that a verified cost overage is not uncertain: retaining only the smaller estimate still understates known spend and can reopen the daily cap when concurrency exceeds one. The controller now atomically records the exact verified cost before returning the bounded accounting refusal, even when the provider overshoots the reservation or local daily ceiling. If integer aggregation itself cannot remain exact, it retains a hold equal to the exact receipt cost. A 1,000-micro estimate/9,000-micro receipt followed by a second 9,000-micro request proves that the second hosted dispatch is blocked under a 10,000-micro cap. This remains repair-loop use `1` and adds no provider call, store implementation, or external authority.
+
+The final adversarial pass on the same still-open repair found two remaining control gaps. Optimistic estimate-only reservations allowed two concurrent 1,000-micro estimates to dispatch under a 10,000-micro cap and later settle 18,000 micros of known cost. Filtering request history to the caller's minute also allowed a 12:34 request after a 12:35 request to replay the older rate bucket. The bounded correction reserves the policy's full per-request ceiling, rejects policies whose per-request ceiling exceeds the daily ceiling, retains bounded current-day request history, and refuses backward same-day minutes. Regressions prove only one of two concurrent requests dispatches and that backward-minute replay fails closed. This remains repair-loop use `1`; no external service, provider call, UI, persistence implementation, or frozen design path enters the repair.
 
 Stop and refuse rather than expanding OR02 if implementation requires a live provider call, route, secret, account login, account/guardrail mutation, workspace-budget mutation, spend, fee, payment, persistent production store, project mutation, UI, GitHub synchronization outside the separately authorized branch push, or any frozen/public design path.

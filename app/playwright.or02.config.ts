@@ -1,7 +1,7 @@
 import { defineConfig } from "playwright/test";
 
 export default defineConfig({
-  // Repair loop 1 proves durable reservations and exact known-cost reconciliation.
+  // Repair loop 1 also proves ceiling reservations and monotonic UTC-minute accounting.
   testDir: "./tests-or02",
   testMatch: "openrouter-execution-controls.contract.ts",
   workers: 1,

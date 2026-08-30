@@ -388,7 +388,7 @@ test("temporary hosted failures retain one reconciliation hold and cannot bypass
       route: "deterministic-fake",
       audit: {
         reason: `hosted-${failure}`,
-        counters: { activeReservations: 1, reservedProviderCostMicros: 1_250 },
+        counters: { activeReservations: 1, reservedProviderCostMicros: 2_000 },
       },
     });
     expect(fallbackCalls).toBe(1);
@@ -431,7 +431,7 @@ test("invalid hosted output and actual cost above reservation fail closed withou
   expect(state.transactions()).toBe(1);
 });
 
-test("a verified cost overage records exact known spend before refusing and blocks another dispatch", async () => {
+test("a verified cost above estimate but within its reserved ceiling settles exactly and blocks another dispatch", async () => {
   const state = atomicStore();
   let hostedCalls = 0;
   const limits = {
@@ -450,10 +450,14 @@ test("a verified cost overage records exact known spend before refusing and bloc
 
   const first = input("known-overage-first", limits);
   first.estimatedProviderCostMicros = 1_000;
-  await expectControlError(
-    runControlledDesignIntentTask(first, dependencies),
-    "accounting-failed",
-  );
+  const firstResult = await runControlledDesignIntentTask(first, dependencies);
+  expect(firstResult).toMatchObject({
+    route: "hosted",
+    audit: {
+      estimatedProviderCostMicros: 1_000,
+      actualProviderCostMicros: 9_000,
+    },
+  });
   expect(state.snapshot().reservations).toEqual([]);
   expect(state.snapshot().committedProviderCostMicros).toBe(9_000);
 
@@ -471,6 +475,49 @@ test("a verified cost overage records exact known spend before refusing and bloc
   expect(state.snapshot().committedProviderCostMicros).toBe(9_000);
 });
 
+test("concurrent dispatches reserve the per-request ceiling so verified overages cannot cross the daily cap", async () => {
+  const state = atomicStore();
+  let hostedCalls = 0;
+  const releases: Array<() => void> = [];
+  const limits = {
+    globalDailyProviderCostMicros: 10_000,
+    maxProviderCostMicrosPerRequest: 10_000,
+    maxConcurrent: 2,
+  };
+  const dependencies: OpenRouterControlDependencies = {
+    store: state.store,
+    hostedAdapter: hosted(async () => {
+      hostedCalls += 1;
+      return new Promise<RawDesignIntentAdapterResponse>((resolve) => {
+        releases.push(() => resolve(rawResponse(9_000)));
+      });
+    }),
+    fallbackAdapter: fake(),
+  };
+
+  const firstInput = input("concurrent-overage-first", limits);
+  firstInput.estimatedProviderCostMicros = 1_000;
+  const first = runControlledDesignIntentTask(firstInput, dependencies);
+  await expect.poll(() => hostedCalls).toBe(1);
+
+  const secondInput = input("concurrent-overage-second", limits);
+  secondInput.estimatedProviderCostMicros = 1_000;
+  const second = runControlledDesignIntentTask(secondInput, dependencies);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  const callsBeforeRelease = hostedCalls;
+  releases.forEach((release) => release());
+
+  const [firstResult, secondResult] = await Promise.all([first, second]);
+  expect(callsBeforeRelease).toBe(1);
+  expect(firstResult.route).toBe("hosted");
+  expect(secondResult).toMatchObject({
+    route: "deterministic-fake",
+    audit: { reason: "daily-spend-limit" },
+  });
+  expect(state.snapshot().committedProviderCostMicros).toBe(9_000);
+  expect(state.snapshot().reservations).toEqual([]);
+});
+
 test("actual serialized output is bounded after hosted execution and before return", async () => {
   const state = atomicStore();
   const value = input("oversized-output", { maxOutputBytes: 100 });
@@ -484,31 +531,41 @@ test("actual serialized output is bounded after hosted execution and before retu
   expect(state.snapshot().committedProviderCostMicros).toBe(1_250);
 });
 
-test("explicit UTC minute and day transitions reset only their declared counters", async () => {
+test("explicit UTC minute and day transitions reset only their declared counters and reject backward replay", async () => {
   const state = atomicStore();
-  const limits = { perUserRequestsPerMinute: 1, globalDailyProviderCostMicros: 1_500 };
-  await runControlledDesignIntentTask(input("bucket-first", limits), {
+  let hostedCalls = 0;
+  const limits = {
+    perUserRequestsPerMinute: 1,
+    globalDailyProviderCostMicros: 10_000,
+    maxProviderCostMicrosPerRequest: 2_000,
+  };
+  const dependencies: OpenRouterControlDependencies = {
     store: state.store,
-    hostedAdapter: hosted(),
+    hostedAdapter: hosted(async () => {
+      hostedCalls += 1;
+      return rawResponse();
+    }),
     fallbackAdapter: fake(),
+  };
+  await runControlledDesignIntentTask(input("bucket-first", limits), {
+    ...dependencies,
   });
 
   const nextMinute = input("bucket-minute", limits);
   nextMinute.window.minute = "2026-08-29T12:35Z";
-  const minuteResult = await runControlledDesignIntentTask(nextMinute, {
-    store: state.store,
-    hostedAdapter: hosted(),
-    fallbackAdapter: fake(),
-  });
-  expect(minuteResult).toMatchObject({ route: "deterministic-fake", audit: { reason: "daily-spend-limit" } });
+  const minuteResult = await runControlledDesignIntentTask(nextMinute, dependencies);
+  expect(minuteResult.route).toBe("hosted");
+
+  const backwardMinute = input("bucket-backward", limits);
+  await expectControlError(
+    runControlledDesignIntentTask(backwardMinute, dependencies),
+    "accounting-failed",
+  );
+  expect(hostedCalls).toBe(2);
 
   const nextDay = input("bucket-day", limits);
   nextDay.window = { day: "2026-08-30", minute: "2026-08-30T00:00Z" };
-  const dayResult = await runControlledDesignIntentTask(nextDay, {
-    store: state.store,
-    hostedAdapter: hosted(),
-    fallbackAdapter: fake(),
-  });
+  const dayResult = await runControlledDesignIntentTask(nextDay, dependencies);
   expect(dayResult.route).toBe("hosted");
   expect(state.snapshot().day).toBe("2026-08-30");
   expect(state.snapshot().committedProviderCostMicros).toBe(1_250);

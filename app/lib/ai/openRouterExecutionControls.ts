@@ -387,14 +387,19 @@ const parsePolicy = (value: unknown): OpenRouterControlPolicy => {
   if (typeof record.liveExecutionEnabled !== "boolean" || record.contentRetention !== "none") {
     return refuse("invalid-control-input");
   }
+  const globalDailyProviderCostMicros = positive(record.globalDailyProviderCostMicros);
+  const maxProviderCostMicrosPerRequest = positive(record.maxProviderCostMicrosPerRequest);
+  if (maxProviderCostMicrosPerRequest > globalDailyProviderCostMicros) {
+    return refuse("invalid-control-input");
+  }
   return {
     ruleId: boundedIdentifier(record.ruleId),
     liveExecutionEnabled: record.liveExecutionEnabled,
     perUserRequestsPerMinute: positive(record.perUserRequestsPerMinute, 100_000),
     perSessionRequestsPerMinute: positive(record.perSessionRequestsPerMinute, 100_000),
     perProjectRequestsPerMinute: positive(record.perProjectRequestsPerMinute, 100_000),
-    globalDailyProviderCostMicros: positive(record.globalDailyProviderCostMicros),
-    maxProviderCostMicrosPerRequest: positive(record.maxProviderCostMicrosPerRequest),
+    globalDailyProviderCostMicros,
+    maxProviderCostMicrosPerRequest,
     maxConcurrent: positive(record.maxConcurrent, 100_000),
     maxInputBytes: positive(record.maxInputBytes, 64 * 1024 * 1024),
     maxOutputBytes: positive(record.maxOutputBytes, 16 * 1024 * 1024),
@@ -629,12 +634,15 @@ const normalizedForWindow = (
 ): OpenRouterControlState => {
   if (parsed.window.day < state.day) return refuse("accounting-failed");
   const changedDay = parsed.window.day !== state.day;
+  if (!changedDay && state.requests.some((item) => item.minute > parsed.window.minute)) {
+    return refuse("accounting-failed");
+  }
   return {
     version: OPENROUTER_CONTROL_STATE_VERSION,
     day: parsed.window.day,
     committedProviderCostMicros: changedDay ? 0 : state.committedProviderCostMicros,
     reservations: [...state.reservations],
-    requests: state.requests.filter((item) => item.minute === parsed.window.minute),
+    requests: changedDay ? [] : [...state.requests],
   };
 };
 
@@ -680,7 +688,7 @@ const reserve = (
     return { state, value: fallbackDecision(state, parsed, "project-rate-limit") };
   }
   if (state.committedProviderCostMicros + current.reservedProviderCostMicros +
-      parsed.estimatedProviderCostMicros > parsed.policy.globalDailyProviderCostMicros) {
+      parsed.policy.maxProviderCostMicrosPerRequest > parsed.policy.globalDailyProviderCostMicros) {
     return { state, value: fallbackDecision(state, parsed, "daily-spend-limit") };
   }
   if (state.reservations.length >= parsed.policy.maxConcurrent) {
@@ -698,7 +706,7 @@ const reserve = (
       requestId: parsed.request.requestId,
       day: parsed.window.day,
       ...parsed.scopeHashes,
-      reservedProviderCostMicros: parsed.estimatedProviderCostMicros,
+      reservedProviderCostMicros: parsed.policy.maxProviderCostMicrosPerRequest,
     }],
     requests: [...state.requests, {
       requestId: parsed.request.requestId,
@@ -822,7 +830,7 @@ const retainedReservationCounters = async (
     item.userHash === parsed.scopeHashes.userHash &&
     item.sessionHash === parsed.scopeHashes.sessionHash &&
     item.projectHash === parsed.scopeHashes.projectHash &&
-    item.reservedProviderCostMicros === parsed.estimatedProviderCostMicros);
+    item.reservedProviderCostMicros === parsed.policy.maxProviderCostMicrosPerRequest);
   if (matches.length !== 1) {
     return refuse("control-store-failed");
   }
@@ -974,7 +982,7 @@ export async function runControlledDesignIntentTask(
     item.userHash === parsed.scopeHashes.userHash &&
     item.sessionHash === parsed.scopeHashes.sessionHash &&
     item.projectHash === parsed.scopeHashes.projectHash &&
-    item.reservedProviderCostMicros === parsed.estimatedProviderCostMicros);
+    item.reservedProviderCostMicros === parsed.policy.maxProviderCostMicrosPerRequest);
   const matchingRequests = reservationReceipt.state.requests.filter((item) =>
     item.requestId === parsed.request.requestId &&
     item.minute === parsed.window.minute &&
@@ -1012,7 +1020,8 @@ export async function runControlledDesignIntentTask(
     await retainedReservationCounters(parsed, dependencies, id);
     return refuse("accounting-failed");
   }
-  if (actualProviderCostMicros > parsed.estimatedProviderCostMicros) {
+  const authorizedProviderCostMicros = matchingReservations[0].reservedProviderCostMicros;
+  if (actualProviderCostMicros > authorizedProviderCostMicros) {
     await settle(parsed, dependencies, id, actualProviderCostMicros);
     return refuse("accounting-failed");
   }
