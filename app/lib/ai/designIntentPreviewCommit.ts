@@ -72,6 +72,8 @@ export interface DesignIntentPreviewInput {
   costEvidence: DesignIntentCostEvidence;
 }
 
+export type DesignIntentPreviewActionLabel = `image-plan:accept:${Hex}`;
+
 export type BuilderDocumentSection =
   | "comfort"
   | "finishes"
@@ -104,7 +106,7 @@ export interface DesignIntentPreview {
     afterDocumentHash: Hex;
     projectHash: Hex;
     changedSections: BuilderDocumentSection[];
-    actionLabel: "image-plan:accept";
+    actionLabel: DesignIntentPreviewActionLabel;
     undoSteps: 1;
   };
   cost: DesignIntentCostEvidence;
@@ -125,7 +127,7 @@ export interface DesignIntentCommitReceipt {
   action: {
     type: "load";
     doc: BuilderDocument;
-    label: "image-plan:accept";
+    label: DesignIntentPreviewActionLabel;
   };
   undo: {
     steps: 1;
@@ -291,6 +293,12 @@ const canonicalJson = (value: unknown): string => {
 };
 const canonicalHash = (value: unknown): Hex => keccak256(stringToHex(canonicalJson(value)));
 
+const transitionActionLabel = (
+  beforeDocumentHash: Hex,
+  afterDocumentHash: Hex,
+): DesignIntentPreviewActionLabel =>
+  `image-plan:accept:${canonicalHash({ beforeDocumentHash, afterDocumentHash })}`;
+
 const parseHash = (
   value: unknown,
   code: DesignIntentPreviewCommitErrorCode,
@@ -402,7 +410,7 @@ const previewBody = (
       afterDocumentHash,
       projectHash: validation.project.projectHash,
       changedSections: [...sections],
-      actionLabel: "image-plan:accept",
+      actionLabel: transitionActionLabel(beforeDocumentHash, afterDocumentHash),
       undoSteps: 1,
     },
     cost: copyPlain(cost),
@@ -504,7 +512,7 @@ const parsePreview = (value: unknown): DesignIntentPreview => {
     "actionLabel", "undoSteps",
   ] as const, "invalid-preview");
   if (changeRecord.kind !== "replace-current-builder-document" ||
-      changeRecord.actionLabel !== "image-plan:accept" || changeRecord.undoSteps !== 1 ||
+      changeRecord.undoSteps !== 1 ||
       !Array.isArray(changeRecord.changedSections) || changeRecord.changedSections.length === 0) {
     return refuse("invalid-preview");
   }
@@ -518,13 +526,17 @@ const parsePreview = (value: unknown): DesignIntentPreview => {
       JSON.stringify(sections) !== JSON.stringify([...sections].sort())) {
     return refuse("invalid-preview");
   }
+  const beforeDocumentHash = parseHash(changeRecord.beforeDocumentHash, "invalid-preview");
+  const afterDocumentHash = parseHash(changeRecord.afterDocumentHash, "invalid-preview");
+  const actionLabel = transitionActionLabel(beforeDocumentHash, afterDocumentHash);
+  if (changeRecord.actionLabel !== actionLabel) return refuse("invalid-preview");
   const projectChange = {
     kind: "replace-current-builder-document" as const,
-    beforeDocumentHash: parseHash(changeRecord.beforeDocumentHash, "invalid-preview"),
-    afterDocumentHash: parseHash(changeRecord.afterDocumentHash, "invalid-preview"),
+    beforeDocumentHash,
+    afterDocumentHash,
     projectHash: parseHash(changeRecord.projectHash, "invalid-preview"),
     changedSections: sections,
-    actionLabel: "image-plan:accept" as const,
+    actionLabel,
     undoSteps: 1 as const,
   };
   if (projectChange.beforeDocumentHash === projectChange.afterDocumentHash) return refuse("invalid-preview");
@@ -582,7 +594,7 @@ export function commitDesignIntentPreview(
     action: {
       type: "load" as const,
       doc: copyPlain(prepared.candidateDocument),
-      label: "image-plan:accept" as const,
+      label: prepared.preview.projectChange.actionLabel,
     },
     undo: {
       steps: 1 as const,

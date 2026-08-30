@@ -158,7 +158,7 @@ test("a valid IP05 proposal becomes one complete explainable preview without an 
       beforeDocumentHash: hashBuilderDocument(value.beforeDocument),
       afterDocumentHash: value.validationInput.project.documentHash,
       projectHash: value.validationInput.project.projectHash,
-      actionLabel: "image-plan:accept",
+      actionLabel: expect.stringMatching(/^image-plan:accept:0x[a-f0-9]{64}$/),
       undoSteps: 1,
     },
     cost: value.costEvidence,
@@ -189,7 +189,10 @@ test("exact deliberate confirmation recomputes and returns one inert load action
     version: 1,
     previewId: preview.previewId,
     committed: true,
-    action: { type: "load", label: "image-plan:accept" },
+    action: {
+      type: "load",
+      label: expect.stringMatching(/^image-plan:accept:0x[a-f0-9]{64}$/),
+    },
     undo: {
       steps: 1,
       restoresDocumentHash: preview.projectChange.beforeDocumentHash,
@@ -198,9 +201,50 @@ test("exact deliberate confirmation recomputes and returns one inert load action
     projectHash: preview.projectChange.projectHash,
   });
   expect(Object.keys(receipt.action).sort()).toEqual(["doc", "label", "type"]);
+  expect(receipt.action.label).toBe(preview.projectChange.actionLabel);
   expect(hashBuilderDocument(receipt.action.doc)).toBe(preview.projectChange.afterDocumentHash);
   expect(receipt.action.doc).toEqual(value.validationInput.project.document);
   expect(receipt.action.doc).not.toBe(value.validationInput.project.document);
+});
+
+test("two consecutive accepted proposals keep the immediately prior document as one undo step", () => {
+  const firstInput = input();
+  const initialDocument = structuredClone(firstInput.beforeDocument);
+  const firstPreview = prepareDesignIntentPreview(firstInput);
+  const firstReceipt = commitDesignIntentPreview(firstInput, {
+    previewId: firstPreview.previewId,
+    beforeDocumentHash: firstPreview.projectChange.beforeDocumentHash,
+    confirmationText: firstPreview.confirmationText,
+  });
+
+  const secondIntent = completeIntent();
+  secondIntent.approximateFootprint = {
+    unit: "m2",
+    targetM2: 80,
+    minimumM2: 68,
+    maximumM2: 92,
+  };
+  const secondInput = input();
+  secondInput.validationInput.intent = secondIntent;
+  secondInput.validationInput.project = structuredClone(compiledProject(secondIntent));
+  secondInput.beforeDocument = structuredClone(firstReceipt.action.doc);
+  secondInput.costEvidence.evidenceId = "cost-receipt-2";
+  const secondPreview = prepareDesignIntentPreview(secondInput);
+  const secondReceipt = commitDesignIntentPreview(secondInput, {
+    previewId: secondPreview.previewId,
+    beforeDocumentHash: secondPreview.projectChange.beforeDocumentHash,
+    confirmationText: secondPreview.confirmationText,
+  });
+
+  // BuilderApp's reducer coalesces consecutive history entries by label alone.
+  const firstPast = [initialDocument];
+  const secondPast = secondReceipt.action.label === firstReceipt.action.label
+    ? firstPast
+    : [...firstPast, firstReceipt.action.doc];
+  const oneStepUndoDocument = secondPast[secondPast.length - 1];
+
+  expect(hashBuilderDocument(oneStepUndoDocument)).toBe(secondReceipt.undo.restoresDocumentHash);
+  expect(secondReceipt.action.label).not.toBe(firstReceipt.action.label);
 });
 
 test("cancel exposes zero writes and no action, document, project, or mutation surface", () => {

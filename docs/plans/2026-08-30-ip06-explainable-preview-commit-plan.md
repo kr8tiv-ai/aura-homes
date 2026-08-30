@@ -17,7 +17,7 @@ IP06 does not render the preview, dispatch the action, persist a project, call a
 - IP05 is independently verified and is the only authority that may promote an IP04 proposal to `concept-preview-valid`.
 - IP06 must re-run IP05 validation from the full proposal input; it cannot trust a caller-supplied success flag, receipt, project hash, or preview.
 - Existing `BuilderDocument` hashing and validation remain canonical. IP06 does not invent another geometry or document model.
-- Existing editor history already treats one `{ type: "load", doc, label }` action as one undo step. IP06 returns that inert action but never imports React, the editor component, reducer, or dispatcher.
+- Existing editor history treats one `{ type: "load", doc, label }` action as one undo step, but coalesces consecutive steps by label alone. IP06 therefore binds each inert load label to the exact before/after document transition without importing React, the editor component, reducer, or dispatcher.
 - OR02 is disjoint hosted-execution work and is not an IP06 dependency.
 
 ## Contract
@@ -51,8 +51,7 @@ IP06 does not render the preview, dispatch the action, persist a project, call a
 1. Recompute the complete preview from the original input at commit time.
 2. Require an exact plain confirmation containing that preview identifier, current-document hash, and exact confirmation sentence.
 3. Refuse stale, partial, forged, mismatched, or extra confirmation data.
-4. Return one detached, deeply frozen commit receipt containing exactly one inert editor action:
-   `{ type: "load", doc: validatedCandidateDocument, label: "image-plan:accept" }`.
+4. Return one detached, deeply frozen commit receipt containing exactly one inert editor action whose label is `image-plan:accept:<transition-hash>`, with the transition hash derived deterministically from the exact before/after document hashes so consecutive accepted proposals cannot coalesce.
 5. Record `undoSteps: 1` and the exact prior document hash. It does not dispatch the action, touch editor state, or claim persistence.
 
 ### Cancel
@@ -75,7 +74,8 @@ The dedicated IP06 contract will fail first because the module does not exist, t
 
 - a valid IP05 proposal produces the complete explainable preview with exact intent, assumptions, unresolved fields, validation checks, cost facts, hashes, and changed document sections;
 - the public preview contains no applyable document or action and no raw image/provider content;
-- exact confirmation recomputes the proposal and returns exactly one `image-plan:accept` load action and one-step undo metadata;
+- exact confirmation recomputes the proposal and returns exactly one transition-bound `image-plan:accept:<transition-hash>` load action and one-step undo metadata;
+- two distinct proposals accepted consecutively receive distinct transition-bound labels, so one editor undo restores the immediately prior accepted document rather than the document before both proposals;
 - stale current documents, forged previews, changed validation inputs, wrong confirmation text, and no-op proposals fail closed;
 - cancel returns zero writes and no action/document surface;
 - malformed cost arithmetic, unsafe micros, unknown evidence basis, and hidden/extra fields fail closed;
@@ -110,3 +110,6 @@ Stop and refuse rather than expanding IP06 if implementation requires a provider
 - The deterministic repository suite passed with 733 tests and four intentional served-only skips; Graph v2 passed 25/25, graph-position passed 14/14, and `git diff --check` passed before candidate sealing.
 - The implementation imports only the existing IP02/IP05 contracts, canonical builder document owner, and a deterministic hash primitive. It introduces no route, provider request, environment read, storage, editor dispatch, payment execution, UI, CSS, or protected/frozen path.
 - Candidate, closure-aware G05, full repository receipts, and independent fresh-context verification remain mandatory before this node can become `verified`.
+- Independent verification found that the editor coalesces consecutive history by label alone while the first IP06 candidate emitted the fixed label `image-plan:accept`; two accepted proposals therefore broke the exact one-step prior-document promise.
+- Repair RED: the deterministic two-proposal regression failed because one undo restored the initial document hash instead of the first accepted proposal hash.
+- Repair GREEN: the action label is now a deterministic hash of the exact before/after document transition, malformed labels fail preview parsing, and the focused contract passes 11/11 including the real coalescing rule reproduction.
