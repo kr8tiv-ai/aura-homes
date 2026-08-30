@@ -89,7 +89,9 @@
     "startedFrom": "45e830960e4435d5e9d18d43a03aa5915a192c98",
     "dependencyGate": "OR01 independently verified at f5f57b132d29bc2a761f68107e8d56791b8ef7c3",
     "planCommit": "7698d40889dedfc6c3b4afc0b483493249fc6c8b",
+    "readyManifestCommit": "ccd7af30c9618bfa65b18f3371393eff0d43ab9a",
     "readinessReconciliation": "Graph v2 authority and position contracts were green at node selection; OR01 is committed verified; IP05 is verification-pending but owns no OR02 path; the worktree was clean; no other live manifest overlaps the five-path OR02 set; external gates are empty; declared protected paths are zero. G05 exact-write preflight is reserved for the completed candidate before closure.",
+    "activationReconciliation": "The committed ready manifest passed Graph v2 authority 25/25 and graph-position contracts 14/14. OR01 remains independently verified; IP05 remains disjoint; the exact five-path OR02 write set is unclaimed; and no external or protected-path gate blocks local provider-free control-plane work.",
     "officialInterfaceResearch": "Official OpenRouter documentation checked 2026-08-29 confirms per-request ZDR, opt-in prompt/response logging, metadata retention, response-native token/cost accounting, and provider workspace budget behavior including possible in-flight overshoot. These facts require stricter Aura-side reservation and privacy gates and do not authorize a request, account mutation, or spend.",
     "existingSurfaceAudit": "OR01 owns fixed private routing and a default-off unreachable server transport. IP03 owns strict task and receipt promotion plus a deterministic fake. No user/session/project control scope, atomic reservation store contract, daily/concurrency/byte ceiling, redacted audit receipt, or controlled fake-fallback orchestrator exists.",
     "dependencyInterpretation": "The approved lane places OR02 directly after verified OR01 and before OR03/OR04/AI02/CM01. IP05 is unrelated lateral work and remains held at independent verification.",
@@ -97,5 +99,5 @@
     "protectedPathChanges": 0,
     "githubSync": "authorized by founder; branch push remains pending GitHub CLI workflow-scope account confirmation"
   },
-  "status": "ready"
+  "status": "active"
 }
