@@ -127,7 +127,23 @@
         "sideEffects": "The control plane contains no network call, provider SDK, credential, environment read, clock, randomness, storage implementation, account mutation, wallet, checkout, fee, project persistence, React, public UI, CSS, or frozen 3D/rendering/animation dependency."
       },
       "remainingGate": "independent fresh-context verification"
+    },
+    "repairLoop": {
+      "attempt": 1,
+      "authorizedBy": "manifest repair.maxLoops and founder authorization for all bounded verification passes",
+      "baseCommit": "b490dab890e561e5a2054c96d268d916891155db",
+      "independentVerdict": "fail: one critical, one important, and one minor finding",
+      "findings": [
+        "a fabricated store decision could start hosted execution without evidence of a committed reservation",
+        "typed-array species lookup could invoke a hostile own constructor accessor",
+        "the committed candidate range contained trailing spaces in the implementation plan"
+      ],
+      "repair": "Require a bounded state-and-value transaction receipt, bind hosted execution to the exact returned reservation, request, and counters, inspect byte index descriptors without species lookup, add adversarial regressions, and remove committed whitespace.",
+      "focusedRed": "10 passed and 1 failed before repair at the hostile-byte assertion; the phantom-reservation assertion followed in the same bounded hostile-store contract.",
+      "focusedGreen": "11/11 passed after repair.",
+      "repositoryGates": "typecheck pass; 737 declared with 733 pass and 4 intentional served-only skips; graph-v2 25/25; graph-position 14/14; diff check clean.",
+      "remainingGate": "commit repaired candidate, exact G05 preflight, then fresh independent reverification"
     }
   },
-  "status": "verification-pending"
+  "status": "active"
 }

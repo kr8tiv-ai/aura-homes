@@ -223,13 +223,26 @@ function snapshotPlain(
 
   let isBytes = false;
   try {
-    isBytes = value instanceof Uint8Array;
+    isBytes = ArrayBuffer.isView(value) && Object.getPrototypeOf(value) === Uint8Array.prototype;
   } catch {
     return refuse("invalid-control-input");
   }
   if (isBytes) {
     try {
-      return Uint8Array.prototype.slice.call(value) as Uint8Array;
+      const byteKeys = Reflect.ownKeys(value);
+      if (byteKeys.length > MAX_ARRAY_ITEMS) return refuse("invalid-control-input");
+      const copy = new Uint8Array(byteKeys.length);
+      for (let index = 0; index < byteKeys.length; index += 1) {
+        if (byteKeys[index] !== String(index)) return refuse("invalid-control-input");
+        const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+        if (!descriptor || !Object.hasOwn(descriptor, "value") || descriptor.enumerable !== true ||
+            typeof descriptor.value !== "number" || !Number.isInteger(descriptor.value) ||
+            descriptor.value < 0 || descriptor.value > 255) {
+          return refuse("invalid-control-input");
+        }
+        copy[index] = descriptor.value;
+      }
+      return copy;
     } catch {
       return refuse("invalid-control-input");
     }
@@ -746,21 +759,33 @@ const parseDecision = (value: unknown): ReservationDecision => {
 const transact = async (
   dependencies: ParsedDependencies,
   operation: OpenRouterStoreOperation,
-): Promise<unknown> => {
+): Promise<OpenRouterStoreOperationResult> => {
+  let raw: unknown;
   try {
-    return await dependencies.transact.call(dependencies.storeObject, operation);
+    raw = await dependencies.transact.call(dependencies.storeObject, operation);
   } catch (error) {
     if (error instanceof OpenRouterControlError) throw error;
     return refuse("control-store-failed");
   }
+  try {
+    const receipt = exactRecord(snapshot(raw), ["state", "value"] as const);
+    return { state: parseState(receipt.state), value: receipt.value };
+  } catch {
+    return refuse("control-store-failed");
+  }
 };
+
+const sameCounters = (
+  left: OpenRouterControlCounters,
+  right: OpenRouterControlCounters,
+): boolean => JSON.stringify(left) === JSON.stringify(right);
 
 const release = async (
   parsed: ParsedInput,
   dependencies: ParsedDependencies,
   id: string,
 ): Promise<OpenRouterControlCounters> => {
-  const raw = await transact(dependencies, (stateValue) => {
+  const receipt = await transact(dependencies, (stateValue) => {
     const state = parseState(stateValue);
     const matches = state.reservations.filter((item) => item.id === id);
     if (matches.length !== 1) return refuse("accounting-failed");
@@ -768,7 +793,12 @@ const release = async (
     return { state: next, value: counters(next, parsed) };
   });
   try {
-    return parseCounters(snapshot(raw));
+    const parsedCounters = parseCounters(snapshot(receipt.value));
+    if (receipt.state.reservations.some((item) => item.id === id) ||
+        !sameCounters(parsedCounters, counters(receipt.state, parsed))) {
+      return refuse("control-store-failed");
+    }
+    return parsedCounters;
   } catch {
     return refuse("control-store-failed");
   }
@@ -780,7 +810,7 @@ const settle = async (
   id: string,
   actualProviderCostMicros: number,
 ): Promise<OpenRouterControlCounters> => {
-  const raw = await transact(dependencies, (stateValue) => {
+  const receipt = await transact(dependencies, (stateValue) => {
     const state = parseState(stateValue);
     const matches = state.reservations.filter((item) => item.id === id);
     if (matches.length !== 1) return refuse("accounting-failed");
@@ -802,7 +832,12 @@ const settle = async (
     return { state: next, value: counters(next, parsed) };
   });
   try {
-    return parseCounters(snapshot(raw));
+    const parsedCounters = parseCounters(snapshot(receipt.value));
+    if (receipt.state.reservations.some((item) => item.id === id) ||
+        !sameCounters(parsedCounters, counters(receipt.state, parsed))) {
+      return refuse("control-store-failed");
+    }
+    return parsedCounters;
   } catch {
     return refuse("control-store-failed");
   }
@@ -893,15 +928,39 @@ export async function runControlledDesignIntentTask(
     return refuse("invalid-control-input");
   }
 
-  const decision = parseDecision(await transact(
+  const reservationReceipt = await transact(
     dependencies,
     (state) => reserve(state, parsed),
-  ));
+  );
+  const decision = parseDecision(reservationReceipt.value);
   if (decision.kind === "fallback") {
+    if (!sameCounters(decision.counters, counters(reservationReceipt.state, parsed))) {
+      return refuse("control-store-failed");
+    }
     return fallbackResult(parsed, dependencies, decision.reason, decision.counters);
   }
 
   const id = decision.reservationId as string;
+  const expectedReservationId = reservationId(parsed);
+  const matchingReservations = reservationReceipt.state.reservations.filter((item) =>
+    item.id === id &&
+    item.id === expectedReservationId &&
+    item.requestId === parsed.request.requestId &&
+    item.day === parsed.window.day &&
+    item.userHash === parsed.scopeHashes.userHash &&
+    item.sessionHash === parsed.scopeHashes.sessionHash &&
+    item.projectHash === parsed.scopeHashes.projectHash &&
+    item.reservedProviderCostMicros === parsed.estimatedProviderCostMicros);
+  const matchingRequests = reservationReceipt.state.requests.filter((item) =>
+    item.requestId === parsed.request.requestId &&
+    item.minute === parsed.window.minute &&
+    item.userHash === parsed.scopeHashes.userHash &&
+    item.sessionHash === parsed.scopeHashes.sessionHash &&
+    item.projectHash === parsed.scopeHashes.projectHash);
+  if (matchingReservations.length !== 1 || matchingRequests.length !== 1 ||
+      !sameCounters(decision.counters, counters(reservationReceipt.state, parsed))) {
+    return refuse("control-store-failed");
+  }
   let response: DesignIntentTaskResponse;
   try {
     response = await runDesignIntentTask(parsed.request, dependencies.hostedAdapter);

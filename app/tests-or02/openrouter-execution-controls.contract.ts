@@ -185,7 +185,7 @@ const atomicStore = (initial: OpenRouterControlState = emptyState()) => {
       transactions += 1;
       const result = operation(structuredClone(state));
       state = structuredClone(result.state);
-      return structuredClone(result.value);
+      return structuredClone(result);
     },
   };
   return {
@@ -473,6 +473,22 @@ test("hostile boundaries and store failures are bounded without accessors, mutat
   expect(state.transactions()).toBe(0);
   expect(input()).toEqual(before);
 
+  const hostileBytesInput = input();
+  let byteAccessorInvoked = 0;
+  Object.defineProperty(hostileBytesInput.request.image.bytes, "constructor", {
+    get: () => {
+      byteAccessorInvoked += 1;
+      throw new Error("private-byte-getter");
+    },
+  });
+  const byteError = await expectControlError(runControlledDesignIntentTask(hostileBytesInput, {
+    store: state.store,
+    hostedAdapter: hosted(),
+    fallbackAdapter: fake(),
+  }), "invalid-control-input");
+  expect(byteAccessorInvoked).toBe(0);
+  expect(JSON.stringify(byteError)).not.toContain("private-byte-getter");
+
   let calls = 0;
   const broken: OpenRouterAtomicControlStore = {
     async transact() { throw new Error("private-database-detail"); },
@@ -484,6 +500,38 @@ test("hostile boundaries and store failures are bounded without accessors, mutat
   }), "control-store-failed");
   expect(calls).toBe(0);
   expect(JSON.stringify(storeError)).not.toContain("private-database-detail");
+
+  let phantomHostedCalls = 0;
+  let phantomTransactions = 0;
+  const phantom: OpenRouterAtomicControlStore = {
+    async transact() {
+      phantomTransactions += 1;
+      if (phantomTransactions !== 1) throw new Error("no-reservation-exists");
+      return {
+        kind: "hosted",
+        reason: "hosted-authorized",
+        reservationId: "phantom-reservation",
+        counters: {
+          userMinuteRequests: 1,
+          sessionMinuteRequests: 1,
+          projectMinuteRequests: 1,
+          activeReservations: 1,
+          committedProviderCostMicros: 0,
+          reservedProviderCostMicros: 1_250,
+        },
+      };
+    },
+  };
+  await expectControlError(runControlledDesignIntentTask(input(), {
+    store: phantom,
+    hostedAdapter: hosted(async () => {
+      phantomHostedCalls += 1;
+      return rawResponse();
+    }),
+    fallbackAdapter: fake(),
+  }), "control-store-failed");
+  expect(phantomHostedCalls).toBe(0);
+  expect(phantomTransactions).toBe(1);
 });
 
 test("successful results and every nested audit/output surface are detached and deeply frozen", async () => {

@@ -1,9 +1,9 @@
 # OR02 Hosted Execution Controls — Implementation Plan
 
-**Date:** 2026-08-29  
-**Graph:** `aura-graph/v2.0@680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8`  
-**Node:** OR02  
-**Movement:** lateral from IP05 while IP05 awaits independent verification  
+**Date:** 2026-08-29
+**Graph:** `aura-graph/v2.0@680FD8D8F2142E92DE5A629B60D9C1DE160CCC57A0F7DDDDC872CDC4ACDAB9A8`
+**Node:** OR02
+**Movement:** lateral from IP05 while IP05 awaits independent verification
 **Side effects in this node:** none
 
 ## Outcome
@@ -85,5 +85,9 @@ The dedicated OR02 contract will first fail because the control-plane module doe
 9. Independent fresh-context verification before `verified`
 
 ## Stop conditions
+
+### Authorized repair loop 1 — independent verification findings
+
+The fresh-context verifier found that the injected atomic-store boundary could return a fabricated hosted decision without returning the state it committed, a typed-array species lookup could invoke a hostile own `constructor` accessor, and the committed plan contained trailing spaces. The single Graph-authorized repair requires a bounded `{ state, value }` transaction receipt, proves the exact reservation/request/counters before hosted execution, copies bytes only through inspected indexed data descriptors, adds adversarial regressions, and removes the whitespace. No provider, route, persistence implementation, account mutation, UI, or external side effect enters the node.
 
 Stop and refuse rather than expanding OR02 if implementation requires a live provider call, route, secret, account login, account/guardrail mutation, workspace-budget mutation, spend, fee, payment, persistent production store, project mutation, UI, GitHub synchronization outside the separately authorized branch push, or any frozen/public design path.
