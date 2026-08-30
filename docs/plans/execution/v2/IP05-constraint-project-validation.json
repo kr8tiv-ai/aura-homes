@@ -107,7 +107,7 @@
     "verificationClosure": {
       "verdict": "verification-pending",
       "activationCommit": "40a518da384b4a0188bcee20d8523c2f07878e65",
-      "candidateCommit": "pending final repair candidate",
+      "candidateCommit": "23d01dc5b5f5a830ea5e928bebec1c119eaa938e",
       "lineageBase": "324b6c81100dc030012769461f5264f72f86874b",
       "manifestCorrectionCommit": "2b23a2bc81950997554ae83ad49690dcef292736",
       "writeSetCheck": {
@@ -117,13 +117,13 @@
         "protectedPathChanges": 0,
         "overlappingOwners": []
       },
-      "positionReceipt": "Pending exact G05 reproduction against the non-interleaved 324b6c8-to-final candidate and its manifest-only closure.",
+      "positionReceipt": "Pending exact closure-aware G05 reproduction against base 324b6c81100dc030012769461f5264f72f86874b, candidate 23d01dc5b5f5a830ea5e928bebec1c119eaa938e, and this manifest-only closure.",
       "gateReceipts": {
-        "typecheck": "pending final candidate rerun",
+        "typecheck": "pass",
         "focusedValidator": "18/18 dedicated IP05 contract proofs passed, including every canonical compiler-refusal class and compile-success project binding, without a server, model, provider, or external service",
-        "deterministic": "pending final candidate rerun",
-        "graphV2": "pending final candidate rerun",
-        "graphPosition": "pending final candidate rerun",
+        "deterministic": "737 declared; 733 passed and 4 intentional served-only skips",
+        "graphV2": "25/25 passed; authority pass; manifest errors empty",
+        "graphPosition": "14/14 passed after one transient Windows loose-object permission failure reran unchanged and passed",
         "diffCheck": "pass"
       },
       "contractEvidence": {
@@ -153,9 +153,9 @@
       "repair": "Keep every closed fix and its specific gate; after semantic/domain reconciliation, bind every successful validation to the exact canonical compiler proposal hash; add the south/west-to-north/east compile-success placement regression; and rebuild a non-interleaved lineage.",
       "focusedRed": "17 passed and 1 failed: a stale south-and-west project was accepted after a successful canonical recompile moved the openings to north and east.",
       "focusedGreen": "18/18 passed after exact successful-compiler project binding, including refusal and compile-success drift cases.",
-      "repositoryGates": "focused green; repository-wide, graph, exact-write, and independent gates pending the clean final candidate.",
-      "candidateCommit": "pending final repair candidate",
-      "exactWriteSet": "pending final candidate across exactly the declared five IP05 paths from 324b6c81100dc030012769461f5264f72f86874b",
+      "repositoryGates": "focused 18/18, typecheck, deterministic 733+4, Graph v2 25/25, graph-position 14/14, and diff checks passed; independent verification remains pending.",
+      "candidateCommit": "23d01dc5b5f5a830ea5e928bebec1c119eaa938e",
+      "exactWriteSet": "candidate 23d01dc5b5f5a830ea5e928bebec1c119eaa938e changes exactly the declared five IP05 paths from 324b6c81100dc030012769461f5264f72f86874b with zero protected paths",
       "g05Receipt": "pending non-interleaved candidate and manifest-only closure",
       "remainingGate": "repository gates, exact G05, and fresh independent reverification of the final repaired candidate"
     }
