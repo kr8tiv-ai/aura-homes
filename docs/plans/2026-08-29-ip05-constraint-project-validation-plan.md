@@ -134,6 +134,10 @@ Record immutable gate receipts and close the manifest as `verification-pending` 
 
 ## Stop conditions
 
+### Authorized repair loop 1 — independent verification findings
+
+The fresh-context verifier found that code-only decision membership did not authenticate the compiler's exact disclosure, room matching flattened storey ownership, and a `0.1 ft²` tolerance admitted a real minimum-area shortfall. The single Graph-authorized repair adds adversarial fixtures for all three cases, requires exact compiler decision objects, compares rooms within their assigned storey, and enforces the stated minimum without a business tolerance. No dependency, output, side effect, or write-set boundary changes.
+
 - IP04 loses verified status or another live manifest claims an IP05 path.
 - Validation needs a provider, network, secret, clock, randomness, persistence, money, UI, CSS, public design, or frozen 3D/rendering path.
 - A candidate is migrated, repaired, normalized, or partially returned instead of refused.

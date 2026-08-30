@@ -310,6 +310,33 @@ test("storeys, requested room names, counts, and minimum areas reconcile exactly
     ok: false,
     error: { gate: "program", code: "program-mismatch" },
   });
+
+  const swappedIntent = completeIntent();
+  (swappedIntent.storeys as Record<string, unknown>).count = 2;
+  const swappedProject = structuredClone(compile(swappedIntent));
+  const swappedGraph = graphOf(swappedProject);
+  const lowerName = swappedGraph.storeys[0].rooms[0].name;
+  swappedGraph.storeys[0].rooms[0].name = swappedGraph.storeys[1].rooms[0].name;
+  swappedGraph.storeys[1].rooms[0].name = lowerName;
+  rehash(swappedIntent, swappedProject);
+  expect(validateDesignIntentProject({
+    intent: swappedIntent,
+    project: swappedProject,
+    sourceApprovals: [approval()],
+  })).toMatchObject({
+    ok: false,
+    error: { gate: "program", code: "program-mismatch" },
+  });
+
+  const shortfall = fixture();
+  const shortfallRoom = graphOf(shortfall.project).storeys[0].rooms[0];
+  const shortfallIntentRooms = shortfall.intent.rooms as Array<Record<string, unknown>>;
+  shortfallIntentRooms[0].minimumAreaM2 = (shortfallRoom.areaSqft + 0.05) / 10.763910416709722;
+  rehash(shortfall.intent, shortfall.project);
+  expect(validateDesignIntentProject(shortfall)).toMatchObject({
+    ok: false,
+    error: { gate: "program", code: "program-mismatch" },
+  });
 });
 
 test("explicit opening counts and vertical head fit reconcile without silent trimming", () => {
@@ -341,6 +368,18 @@ test("omitted opening counts require the compiler's disclosed defaults", () => {
   project.decisions = project.decisions.filter((decision) => decision.code !== "default-window-count");
   rehash(intent, project);
   expect(validateDesignIntentProject({ intent, project, sourceApprovals: [approval()] })).toMatchObject({
+    ok: false,
+    error: { gate: "openings", code: "opening-mismatch" },
+  });
+
+  const forgedProject = structuredClone(compile(intent));
+  const disclosure = forgedProject.decisions.find((decision) => decision.code === "default-window-count");
+  expect(disclosure).toBeDefined();
+  if (!disclosure) throw new Error("Expected default-window-count disclosure.");
+  disclosure.field = "roof";
+  disclosure.statement = "This is not the compiler disclosure.";
+  rehash(intent, forgedProject);
+  expect(validateDesignIntentProject({ intent, project: forgedProject, sourceApprovals: [approval()] })).toMatchObject({
     ok: false,
     error: { gate: "openings", code: "opening-mismatch" },
   });

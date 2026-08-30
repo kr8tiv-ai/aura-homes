@@ -128,7 +128,23 @@
         "sideEffects": "The validator is provider-free, network-free, secret-free, storage-free, clock-free, randomness-free, wallet-free, payment-free, fee-free, budget-free, persistence-free, UI-free, and outside every frozen 3D/rendering/animation surface."
       },
       "remainingGate": "independent fresh-context verification"
+    },
+    "repairLoop": {
+      "attempt": 1,
+      "authorizedBy": "manifest repair.maxLoops and founder authorization for all bounded verification passes",
+      "baseCommit": "a00501529c065ad7c57e88a98d1241066adb5fb3",
+      "independentVerdict": "fail: three important fail-closed findings",
+      "findings": [
+        "default compiler decisions were authenticated by code presence rather than exact field and statement",
+        "room reconciliation flattened storeys and accepted cross-storey swaps",
+        "a 0.1 square-foot tolerance accepted a real minimum-area shortfall"
+      ],
+      "repair": "Add the three adversarial regressions, compare required decisions to exact deterministic compiler disclosures, reconcile rooms within each assigned storey, and enforce the stated minimum area without a business tolerance.",
+      "focusedRed": "13 passed and 2 failed before repair; the storey-swap and forged-disclosure regressions failed as expected, with the area shortfall sharing the program regression.",
+      "focusedGreen": "15/15 passed after repair.",
+      "repositoryGates": "typecheck pass; 737 declared with 733 pass and 4 intentional served-only skips; graph-v2 25/25; graph-position 14/14; diff check clean.",
+      "remainingGate": "commit repaired candidate, exact G05 preflight, then fresh independent reverification"
     }
   },
-  "status": "verification-pending"
+  "status": "active"
 }

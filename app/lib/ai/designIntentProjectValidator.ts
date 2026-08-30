@@ -9,6 +9,7 @@ import {
 import {
   COMPILED_DESIGN_INTENT_PROJECT_VERSION,
   DESIGN_INTENT_COMPILER_VERSION,
+  compileDesignIntentToProject,
   type CompiledDesignIntentProject,
   type DesignIntentCompilerDecision,
 } from "./designIntentCompiler";
@@ -356,9 +357,6 @@ function parseProject(value: unknown): CompiledDesignIntentProject {
   return project as unknown as CompiledDesignIntentProject;
 }
 
-const decisionCodes = (project: CompiledDesignIntentProject): Set<string> =>
-  new Set(project.decisions.map((decision) => decision.code));
-
 function validateIntegrityBeforeDocument(
   intent: DesignIntent,
   project: CompiledDesignIntentProject,
@@ -453,7 +451,7 @@ interface ExpectedRoom {
 
 const M2_TO_SQFT = 10.763910416709722;
 
-function expectedRooms(intent: DesignIntent, storeys: number): ExpectedRoom[] {
+function expectedRooms(intent: DesignIntent, storeys: number): ExpectedRoom[][] {
   const requested: ExpectedRoom[] = [];
   for (const room of intent.rooms) {
     const base = room.label ?? title(room.use);
@@ -473,54 +471,69 @@ function expectedRooms(intent: DesignIntent, storeys: number): ExpectedRoom[] {
       rooms.push({ name: index === 0 ? "Open plan" : "Upper open plan", minimumAreaSqFt: 0 });
     }
   });
-  return byStorey.flat();
+  return byStorey;
+}
+
+function exactCompilerProject(intent: DesignIntent): CompiledDesignIntentProject | null {
+  const compiled = compileDesignIntentToProject(intent);
+  if (!compiled.ok) return null;
+  return compiled.project;
+}
+
+function requireExactDecision(
+  project: CompiledDesignIntentProject,
+  expectedProject: CompiledDesignIntentProject | null,
+  code: string,
+  gate: DesignIntentProjectValidationGate,
+  errorCode: DesignIntentProjectValidationErrorCode,
+): void {
+  if (expectedProject === null) return;
+  const actual = project.decisions.filter((decision) => decision.code === code);
+  const expected = expectedProject.decisions.filter((decision) => decision.code === code);
+  if (canonicalJson(actual) !== canonicalJson(expected)) return refuse(gate, errorCode);
 }
 
 function validateProgram(
   intent: DesignIntent,
   project: CompiledDesignIntentProject,
   graph: BuildingGraph,
+  expectedProject: CompiledDesignIntentProject | null,
 ): void {
   const expectedStoreys = intent.storeys.count ?? 1;
-  const codes = decisionCodes(project);
-  if (intent.storeys.count === null && !codes.has("default-storeys")) {
-    return refuse("program", "program-mismatch");
-  }
+  requireExactDecision(project, expectedProject, "default-storeys", "program", "program-mismatch");
+  requireExactDecision(project, expectedProject, "default-room", "program", "program-mismatch");
   if (graph.storeys.length !== expectedStoreys) return refuse("program", "program-mismatch");
-  const expected = expectedRooms(intent, expectedStoreys);
-  const actual = graph.storeys.flatMap((storey) => storey.rooms);
-  if (actual.length !== expected.length) return refuse("program", "program-mismatch");
-  const remaining = [...actual];
-  for (const room of expected) {
-    const index = remaining.findIndex((candidate) =>
-      candidate.name === room.name && candidate.areaSqft + 0.1 >= room.minimumAreaSqFt);
-    if (index < 0) return refuse("program", "program-mismatch");
-    remaining.splice(index, 1);
-  }
-  if (remaining.length !== 0) return refuse("program", "program-mismatch");
-  if (intent.rooms.length === 0 && !codes.has("default-room")) {
-    return refuse("program", "program-mismatch");
+  const expectedByStorey = expectedRooms(intent, expectedStoreys);
+  for (let storeyIndex = 0; storeyIndex < expectedByStorey.length; storeyIndex += 1) {
+    const expected = expectedByStorey[storeyIndex];
+    const actual = graph.storeys[storeyIndex]?.rooms ?? [];
+    if (actual.length !== expected.length) return refuse("program", "program-mismatch");
+    const remaining = [...actual];
+    for (const room of expected) {
+      const index = remaining.findIndex((candidate) =>
+        candidate.name === room.name && candidate.areaSqft >= room.minimumAreaSqFt);
+      if (index < 0) return refuse("program", "program-mismatch");
+      remaining.splice(index, 1);
+    }
+    if (remaining.length !== 0) return refuse("program", "program-mismatch");
   }
 }
 
-function expectedOpeningCounts(intent: DesignIntent, project: CompiledDesignIntentProject) {
-  const codes = decisionCodes(project);
+function expectedOpeningCounts(
+  intent: DesignIntent,
+  project: CompiledDesignIntentProject,
+  expectedProject: CompiledDesignIntentProject | null,
+) {
+  requireExactDecision(project, expectedProject, "default-door-count", "openings", "opening-mismatch");
+  requireExactDecision(project, expectedProject, "default-window-count", "openings", "opening-mismatch");
+  requireExactDecision(project, expectedProject, "default-opening-orientation", "openings", "opening-mismatch");
   const doors = intent.openings.exteriorDoorCount ?? 1;
-  if (intent.openings.exteriorDoorCount === null && !codes.has("default-door-count")) {
-    return refuse("openings", "opening-mismatch");
-  }
   const defaultWindows = intent.openings.glazingLevel === "minimal"
     ? 2
     : intent.openings.glazingLevel === "generous"
       ? 8
       : 4;
   const windows = intent.openings.windowCount ?? defaultWindows;
-  if (intent.openings.windowCount === null && !codes.has("default-window-count")) {
-    return refuse("openings", "opening-mismatch");
-  }
-  if (intent.openings.orientationPriorities.length === 0 && !codes.has("default-opening-orientation")) {
-    return refuse("openings", "opening-mismatch");
-  }
   return { doors, windows };
 }
 
@@ -528,8 +541,9 @@ function validateOpenings(
   intent: DesignIntent,
   project: CompiledDesignIntentProject,
   graph: BuildingGraph,
+  expectedProject: CompiledDesignIntentProject | null,
 ): void {
-  const expected = expectedOpeningCounts(intent, project);
+  const expected = expectedOpeningCounts(intent, project, expectedProject);
   const openings = graph.storeys.flatMap((storey) =>
     storey.walls.flatMap((wall) => wall.openings.map((opening) => ({ opening, storey }))));
   const doors = openings.filter(({ opening }) => opening.kind === "door").length;
@@ -554,16 +568,15 @@ function expectedClimate(intent: DesignIntent): "4" | "5" | "7A" {
   return "7A";
 }
 
-function validateClimate(intent: DesignIntent, project: CompiledDesignIntentProject): void {
+function validateClimate(
+  intent: DesignIntent,
+  project: CompiledDesignIntentProject,
+  expectedProject: CompiledDesignIntentProject | null,
+): void {
   const expected = expectedClimate(intent);
-  const codes = decisionCodes(project);
+  requireExactDecision(project, expectedProject, "selected-climate", "climate", "climate-mismatch");
+  requireExactDecision(project, expectedProject, "default-climate", "climate", "climate-mismatch");
   if (project.document.spec.climateZone !== expected) return refuse("climate", "climate-mismatch");
-  if (!codes.has("selected-climate")) return refuse("climate", "climate-mismatch");
-  const usesDefault =
-    intent.climate.country !== "CR" &&
-    !["tropical-humid", "tropical-dry", "marine", "cold-continental", "mountain"]
-      .includes(intent.climate.profile);
-  if (usesDefault && !codes.has("default-climate")) return refuse("climate", "climate-mismatch");
 }
 
 function parseApprovals(value: unknown): DesignIntentImageSourceApproval[] {
@@ -668,12 +681,16 @@ function validateSnapshot(value: unknown): DesignIntentProjectValidationResult {
     return failed("intent", "invalid-intent");
   }
   const project = parseProject(root.project);
+  const expectedProject = exactCompilerProject(intent);
   validateIntegrityBeforeDocument(intent, project);
   const graph = validateDocumentAndGraph(project);
   validateHashes(project);
-  validateProgram(intent, project, graph);
-  validateOpenings(intent, project, graph);
-  validateClimate(intent, project);
+  validateProgram(intent, project, graph, expectedProject);
+  validateOpenings(intent, project, graph, expectedProject);
+  validateClimate(intent, project, expectedProject);
+  if (expectedProject !== null && canonicalJson(project.decisions) !== canonicalJson(expectedProject.decisions)) {
+    return refuse("integrity", "integrity-failed");
+  }
   validateRights(intent, root.sourceApprovals);
   const largestClearSpanFt = largestClearSpan(graph);
   const conceptOnlyNotice =
