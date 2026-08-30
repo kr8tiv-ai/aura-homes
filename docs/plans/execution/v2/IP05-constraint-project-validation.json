@@ -86,7 +86,7 @@
     "boundary": "IP05 writeSet only"
   },
   "evidence": {
-    "startedFrom": "09b9d247a7371d534a62da67acaa9bb5b164cbde",
+    "startedFrom": "f5f57b132d29bc2a761f68107e8d56791b8ef7c3",
     "dependencyGate": "IP04 independently verified at 76d463c5bb8375d0f7db2c4cfe278270e9e63ec9",
     "planCommit": "09b9d247a7371d534a62da67acaa9bb5b164cbde",
     "readyManifestCommit": "53f5471a5b1a9755f2751d0a8ff3fc4dd76b0713",
@@ -97,7 +97,7 @@
     "writeOwnership": "All instantiated manifests are verified; no ready, active, verification-pending, or integration-pending manifest owns an IP05 path.",
     "professionalBoundary": "The span gate records geometry facts and always requires professional review; it does not assert structural, code, permit, engineering, or construction adequacy.",
     "protectedPathChanges": 0,
-    "githubSync": "deferred by founder direction; this node remains local"
+    "githubSync": "authorized by founder; branch push is pending GitHub CLI workflow-scope confirmation"
   },
   "status": "active"
 }
