@@ -89,7 +89,9 @@
     "startedFrom": "09b9d247a7371d534a62da67acaa9bb5b164cbde",
     "dependencyGate": "IP04 independently verified at 76d463c5bb8375d0f7db2c4cfe278270e9e63ec9",
     "planCommit": "09b9d247a7371d534a62da67acaa9bb5b164cbde",
-    "readinessReconciliation": "Graph v2 authority passed 25/25 and position contracts passed 14/14 after IP04 and OR01 verification; IP04 is committed verified; the worktree was clean; external gates are empty; declared protected paths are zero.",
+    "readyManifestCommit": "53f5471a5b1a9755f2751d0a8ff3fc4dd76b0713",
+    "readinessReconciliation": "Graph v2 authority passed 25/25 before and after the committed ready manifest and position contracts passed 14/14 after IP04 and OR01 verification; IP04 is committed verified; the worktree was clean; no live manifest overlaps an IP05 path; external gates are empty; declared protected paths are zero. G05 exact-write preflight is reserved for the completed candidate before closure.",
+    "activationReconciliation": "The committed ready manifest passed Graph v2 authority and graph-position contracts. IP04 remains verified, the exact five-path IP05 write set is unclaimed, and no external or protected-path gate blocks local provider-free validation work.",
     "existingSurfaceAudit": "IP04 already creates a canonical graph-backed BuilderDocument and validates its graph/document once. Existing validators accept and normalize several legacy shapes, do not reconcile the original DesignIntent, source-bound rights, explicit room/opening/climate promises, project hash basis, or professional span truth, and do not produce a concept-preview validation receipt.",
     "dependencyInterpretation": "The approved activation sequence names IP04/IP05 as the next local pair before IP06 preview/commit. OR02 is a valid later lateral node but does not block provider-free IP05.",
     "writeOwnership": "All instantiated manifests are verified; no ready, active, verification-pending, or integration-pending manifest owns an IP05 path.",
@@ -97,5 +99,5 @@
     "protectedPathChanges": 0,
     "githubSync": "deferred by founder direction; this node remains local"
   },
-  "status": "ready"
+  "status": "active"
 }
