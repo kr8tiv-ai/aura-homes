@@ -103,7 +103,7 @@
     "writeOwnership": "All instantiated manifests are verified; no ready, active, verification-pending, or integration-pending manifest owns an IP05 path.",
     "professionalBoundary": "The span gate records geometry facts and always requires professional review; it does not assert structural, code, permit, engineering, or construction adequacy.",
     "protectedPathChanges": 0,
-    "githubSync": "authorized by founder; branch push is pending GitHub CLI workflow-scope confirmation",
+    "githubSync": "remote-backed branch synchronized through the founder-authorized repository SSH route",
     "verificationClosure": {
       "verdict": "verification-pending",
       "activationCommit": "40a518da384b4a0188bcee20d8523c2f07878e65",
@@ -117,7 +117,7 @@
         "protectedPathChanges": 0,
         "overlappingOwners": []
       },
-      "positionReceipt": "Pending exact closure-aware G05 reproduction against base 324b6c81100dc030012769461f5264f72f86874b, candidate 23d01dc5b5f5a830ea5e928bebec1c119eaa938e, and this manifest-only closure.",
+      "positionReceipt": "Closure-aware explicit G05 passed against base 324b6c81100dc030012769461f5264f72f86874b, candidate 23d01dc5b5f5a830ea5e928bebec1c119eaa938e, and manifest-only closure c3ad646c87b21e23182c8a3d65e8dabeabc7d3b4 with movement remain:IP05.",
       "gateReceipts": {
         "typecheck": "pass",
         "focusedValidator": "18/18 dedicated IP05 contract proofs passed, including every canonical compiler-refusal class and compile-success project binding, without a server, model, provider, or external service",
@@ -133,7 +133,15 @@
         "rightsAndProfessionalBoundary": "Uploaded-image sources require exactly one source-bound consent, rights, retention, and disposal approval; non-image sources cannot acquire image rights; spans remain concept-only and professional-review-required.",
         "sideEffects": "The validator is provider-free, network-free, secret-free, storage-free, clock-free, randomness-free, wallet-free, payment-free, fee-free, budget-free, persistence-free, UI-free, and outside every frozen 3D/rendering/animation surface."
       },
-      "remainingGate": "repository gates, exact non-interleaved G05, and independent fresh-context verification"
+      "independentVerification": {
+        "date": "2026-08-30",
+        "verdict": "independent fresh-context pass",
+        "authorityAndLineage": "Exact founder-approved Graph v2 and Matt-authored approval matched; base 324b6c81100dc030012769461f5264f72f86874b, candidate 23d01dc5b5f5a830ea5e928bebec1c119eaa938e, and closure c3ad646c87b21e23182c8a3d65e8dabeabc7d3b4 form valid non-interleaved ancestry.",
+        "writesAndGates": "Candidate changed exactly 5/5 declared paths; closure changed only this manifest; IP04 is verified; ownership overlap, external gates, and protected/frozen changes were zero; closure-aware G05 passed.",
+        "freshReceipts": "Focused IP05 18/18, typecheck, deterministic 733 passed plus 4 intentional skips, Graph v2 25/25, graph-position 14/14, and diff checks passed on the immutable remote-backed head.",
+        "sourceVerdict": "Every compiler refusal fails through a bounded domain/integrity gate; every compile success binds the exact canonical project hash after specific program/opening/climate/default checks; no provider, persistence, money, UI, or frozen 3D/design dependency exists."
+      },
+      "remainingGate": "none"
     },
     "repairLoop": {
       "used": 1,
@@ -153,12 +161,12 @@
       "repair": "Keep every closed fix and its specific gate; after semantic/domain reconciliation, bind every successful validation to the exact canonical compiler proposal hash; add the south/west-to-north/east compile-success placement regression; and rebuild a non-interleaved lineage.",
       "focusedRed": "17 passed and 1 failed: a stale south-and-west project was accepted after a successful canonical recompile moved the openings to north and east.",
       "focusedGreen": "18/18 passed after exact successful-compiler project binding, including refusal and compile-success drift cases.",
-      "repositoryGates": "focused 18/18, typecheck, deterministic 733+4, Graph v2 25/25, graph-position 14/14, and diff checks passed; independent verification remains pending.",
+      "repositoryGates": "focused 18/18, typecheck, deterministic 733+4, Graph v2 25/25, graph-position 14/14, diff checks, closure-aware G05, and independent fresh-context verification passed.",
       "candidateCommit": "23d01dc5b5f5a830ea5e928bebec1c119eaa938e",
       "exactWriteSet": "candidate 23d01dc5b5f5a830ea5e928bebec1c119eaa938e changes exactly the declared five IP05 paths from 324b6c81100dc030012769461f5264f72f86874b with zero protected paths",
-      "g05Receipt": "pending non-interleaved candidate and manifest-only closure",
-      "remainingGate": "repository gates, exact G05, and fresh independent reverification of the final repaired candidate"
+      "g05Receipt": "pass on exact non-interleaved candidate and manifest-only closure",
+      "remainingGate": "closed by independent pass at remote-backed 935cd3e4f1e3a077c9414897bbef355ae6752a3a"
     }
   },
-  "status": "verification-pending"
+  "status": "verified"
 }
