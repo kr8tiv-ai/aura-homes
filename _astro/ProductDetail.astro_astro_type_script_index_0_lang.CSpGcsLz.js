@@ -1,0 +1,1 @@
+import{a as e,l as t,o as n,u as r}from"./motion.CASNhnqH.js";e(()=>{let e=document.querySelector(`.product-page`);e&&!n()&&(t.getAll().filter(e=>e.vars.id===`product-rise`).forEach(e=>e.kill()),r.utils.toArray(`[data-rise]`,e).forEach(e=>{r.from(e,{y:24,opacity:0,duration:1.7,ease:`power3.out`,scrollTrigger:{id:`product-rise`,trigger:e,start:`top 90%`,once:!0}})}))});
