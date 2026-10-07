@@ -1,0 +1,1 @@
+import{a as e}from"./motion.CASNhnqH.js";import{t}from"./journey.B_OvRZv3.js";e(()=>t());
